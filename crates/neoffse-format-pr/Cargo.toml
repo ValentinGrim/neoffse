@@ -1,0 +1,18 @@
+[package]
+name = "neoffse-format-pr"
+description = "Final Fantasy I-VI Pixel Remaster save format for NeoFFSE"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+authors.workspace = true
+keywords = ["final-fantasy", "save-editor", "gamedev", "pixel-remaster"]
+categories = ["game-development", "parser-implementations"]
+
+[dependencies]
+neoffse-core = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "neoffse-app"
+description = "Desktop save editor for Final Fantasy, built with Slint"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+authors.workspace = true
+keywords = ["final-fantasy", "save-editor", "gamedev", "gui"]
+categories = ["game-development", "gui"]
+
+[dependencies]
+neoffse = { workspace = true }
+
+[lints]
+workspace = true

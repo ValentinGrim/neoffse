@@ -1,0 +1,17 @@
+[package]
+name = "neoffse-core"
+description = "Domain model of NeoFFSE: games, characters, items, edits and field metadata"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+authors.workspace = true
+keywords = ["final-fantasy", "save-editor", "gamedev", "domain"]
+categories = ["game-development"]
+
+[dependencies]
+
+[lints]
+workspace = true

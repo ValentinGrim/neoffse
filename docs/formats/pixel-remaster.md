@@ -1,0 +1,824 @@
+# Pixel Remaster save format
+
+This file is the source of truth for the save files of Final Fantasy I to
+VI Pixel Remaster (PR). Code cites a rule by file name and heading anchor,
+for example `pixel-remaster.md#cipher`. Each rule carries a confidence tag
+defined in [Confidence tags](#confidence-tags).
+
+## Scope and sources
+
+The FF I and FF II rules rest on 12 real Steam save files, 6 per game.
+The FF III to VI rules come from the code of KiameV's Go editor alone.
+Treat them as unverified until a real save of each game confirms them.
+
+### Games
+
+| Game | Steam app ID | Game folder under `My Games` |
+|---|---|---|
+| FF I PR | 1173770 | `FINAL FANTASY PR` |
+| FF II PR | 1173780 | `FINAL FANTASY II PR` |
+| FF III PR | 1173790 | `FINAL FANTASY III PR` |
+| FF IV PR | 1173800 | `FINAL FANTASY IV PR` |
+| FF V PR | 1173810 | `FINAL FANTASY V PR` |
+| FF VI PR | 1173820 | `FINAL FANTASY VI PR` |
+
+The Go editor holds this table in `ui/forms/io/savedir.go` and
+`saveSelect.go` [C]. A backup manifest that the Go editor wrote on a
+Proton install confirms the FF I row: `compatdata/1173770/…/My
+Games/FINAL FANTASY PR/Steam/<SteamID64>` [M]. FF I has no "I" in its
+folder name.
+
+Platforms covered:
+
+- **Steam PC**: Windows native and Linux through Proton, covered from
+  [Files on disk](#files-on-disk) to [Known pitfalls](#known-pitfalls).
+- **PlayStation `slotN.sav`**: the variant the Go editor opens
+  ([PlayStation variant](#playstation-variant)). Its rules come from the
+  Go code; no measured file backs them.
+
+### Sources
+
+| Source | Location | Used for |
+|---|---|---|
+| KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
+| Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
+| Real saves | one FF I and one FF II Steam save folder, six game files each, read-only copies | every [M] fact |
+| In-game checks | edited files loaded in the game | every [G] fact |
+
+The 12 measured files, sizes in bytes:
+
+| File (first characters) | Role | FF I | FF II |
+|---|---|---|---|
+| `ookrbATY…` | slot 1 | 8 157 | 96 049 |
+| `7nCxyzTw…` | Auto Save | 49 157 | 63 153 |
+| `Rl18osV3…` | Quick Save | 59 185 | 57 181 |
+| `dp3fS2vq…` | bestiary | 689 | 561 |
+| `2E4HxIyL…` | slot index | 133 | 133 |
+| `V=SfwyU3…` | system settings | 861 | 861 |
+
+All 12 end with CRLF, which no version of the Go editor's encoder
+writes, so the game wrote all 12 [M].
+
+### Confidence tags
+
+| Tag | Meaning |
+|---|---|
+| [M] | Measured on the 12 real save files (6 FF I, 6 FF II) |
+| [G] | Verified in game |
+| [C] | Taken from the code, tests or commit messages of KiameV's Go editor only; not measured |
+| [I] | Inferred from measurements; consistent with the data, not proven |
+
+## Files on disk
+
+A game keeps one save folder per Steam account. The folder holds up to
+22 slot files with fixed names, one bestiary shared by all slots, two
+more game files and one Steam file.
+
+### Save folder
+
+| Install | Folder |
+|---|---|
+| Windows | `<Documents>\My Games\<game folder>\Steam\<SteamID64>\` [C] |
+| Linux, Proton, native Steam | `~/.local/share/Steam/steamapps/compatdata/<app ID>/pfx/drive_c/users/steamuser/Documents/My Games/<game folder>/Steam/<SteamID64>/` [M for FF I] |
+| Linux, Proton, Flatpak Steam | the same path under `~/.var/app/com.valvesoftware.Steam/.local/share/Steam/` [C] |
+| Extra Steam library | `<library>/steamapps/compatdata/<app ID>/…`, with each library listed on a `"path"` line of `steamapps/libraryfolders.vdf` [C] |
+
+- `<SteamID64>` is the 17-digit account ID, starting with `7656` [M].
+- On Windows the Go editor tries the Known Folder `Documents`, then
+  `%USERPROFILE%\Documents`, `%USERPROFILE%\OneDrive\Documents` and
+  `%OneDrive%\Documents` [C].
+- On Linux it also tries `~/.steam/steam` and `~/.steam/root` as Steam
+  roots [C].
+- With several account folders, the Go editor picks one that holds a
+  slot file, then the most recent modification time [C].
+
+### Slot files
+
+The game names each slot file with a fixed 44-character string that looks
+like base64 and may contain `=` in the middle. The JSON `id` key of a
+slot equals its slot number [M for 1, 21, 22; C for the rest].
+
+| Slot | PC file name | `id` | PlayStation file |
+|---|---|---|---|
+| Auto Save | `7nCxyzTwG31W3Zlg70mo751W8ETH1n+Km0dWOzRU84Y=` | 21 | `slot21.sav` |
+| Quick Save | `Rl18osV3e9kPX9SMWQj8mqShFpTUmu1lf6Mb=FVVfqk=` | 22 | `slot22.sav` |
+| 1 | `ookrbATYovG3tEOXIH4HqWnsv8TrUlRWzM8AlCmW2mk=` | 1 | `slot1.sav` |
+| 2 | `vgU2wnuaPje2Or53Iqs8Mp=Al6sdM+GM04Iymv229Ow=` | 2 | `slot2.sav` |
+| 3 | `uhHNR4g5QL5twqCc+IhexaltjtBjJnzzcxh5RBSy4G4=` | 3 | `slot3.sav` |
+| 4 | `fmsBRQ+D6YzdjCbBbl7BQuagHyg=7iX3I=EnhccyGDM=` | 4 | `slot4.sav` |
+| 5 | `NXa+MQ+hiHKlPAHJ6GiVWi2Wk5JR2xQQaQxzhyCbK2E=` | 5 | `slot5.sav` |
+| 6 | `UWtRedIOaeA6ig=8r6DIvxg33X92oMM9P8JBwiag4d0=` | 6 | `slot6.sav` |
+| 7 | `e1gfNt2iCE2I3yucQ8zfXn0ou+P2=lREb2q7Lqm04Gc=` | 7 | `slot7.sav` |
+| 8 | `6Pf6Ky7e4QBPuKH9EFJ1Iu+BUEz0zNrXdaS8866Gcq0=` | 8 | `slot8.sav` |
+| 9 | `9dHjN5+9JJWfJ9xoprXo=ehwoEwJwKRYL1Hlc92UNQk=` | 9 | `slot9.sav` |
+| 10 | `oY6N7KlcC4jscZnfa4ea6Nr=TUSR+I=29kwPNZe2NAo=` | 10 | `slot10.sav` |
+| 11 | `NKQ3ux2pea=DqE=vXPKb8+oix5Lt467opYaG0p0brgU=` | 11 | `slot11.sav` |
+| 12 | `HyhjsKWa=tCVf3TWB3qRy7NyrJbc8orciJCntDpqT=I=` | 12 | `slot12.sav` |
+| 13 | `hl9YCUf633k79xePC9PiKAEOq1ajUcSZkLofQuNw2OM=` | 13 | `slot13.sav` |
+| 14 | `C=ozNkSxgKEoLCgOPLJakAUUhnL820LbGlpMz0irQFI=` | 14 | `slot14.sav` |
+| 15 | `z2837SldCS+oIV8y4w5LrnJK9URKYy1QrnoA9bvCg5o=` | 15 | `slot15.sav` |
+| 16 | `CnvUyfaDeqDg3XbVpVWJOj=sPKcGMCV3dR=xM8Ze5jE=` | 16 | `slot16.sav` |
+| 17 | `eQ9Km3NT1WoE4h0hFD90ggFIZayYxfHkIVntc7akYVo=` | 17 | `slot17.sav` |
+| 18 | `Lnbq+GaFOc4ybPZaCf=llI0arXo06rJL32Eu+mCwsLg=` | 18 | `slot18.sav` |
+| 19 | `9GkO1xc52WAzswcEtJxs963MkuCohOHgYj0Fhio=fPE=` | 19 | `slot19.sav` |
+| 20 | `mkYfUr4Mtg0zUmF=6lw+bxRLnbnBYp9ayg1KgploDpQ=` | 20 | `slot20.sav` |
+
+The names come from `saveSelect.go` [C]. The three names present in the
+measured folders (Auto Save, Quick Save, slot 1) match [M]. The names hold
+`+` and `=`, which are legal on Windows and Linux; quote them in shells.
+
+### Other files in the folder
+
+| File | Size (FF I / FF II) | Content |
+|---|---|---|
+| `dp3fS2vqP7GDj8eF72YKqbT7FIAF=e7Shy2CsTITm2E=` | 689 / 561 | Bestiary, shared by every slot of the game ([Bestiary](#bestiary)) [M] |
+| `2E4HxIyL+Mvaahk1GRNNOgKrO4vDSSm72kHLbVt71hg=` | 133 / 133 | Slot index: `{"keys":[1,…,22],"values":[22 booleans]}` [M] |
+| `V=SfwyU31ksiHpTxO7Rg2aBJrA18kSKvtF4jvDB4hRE=` | 861 / 861 | System settings, 18 keys ([Documents of the other files](#documents-of-the-other-files)) [M] |
+| `steam_autocloud.vdf` | 53 / 53 | Steam Cloud marker, plain-text VDF with one `accountid` key [M] |
+
+- The three game files use the container of
+  [Container encoding](#container-encoding) [M].
+- **Slot index.** In both games `values` is `true` at keys 1, 21 and 22
+  and `false` elsewhere, and the folder holds slot 1, Auto Save and
+  Quick Save and no other slot [M]. The file looks like the load menu's
+  list of used slots [I]. The Go editor never reads or writes it [C].
+- **System settings.** The file is byte-identical in the FF I and FF II
+  folders [M]. The Go editor never touches it [C].
+- **`steam_autocloud.vdf`.** Steam writes it, not the game. `accountid`
+  equals `SteamID64 − 76561197960265728`, the account part of the folder
+  name [M]. Leave it alone.
+
+### PlayStation naming
+
+The Go editor names PlayStation slots `slotN.sav`, with N taken from
+the `id` column of [Slot files](#slot-files): `slot1.sav` to
+`slot20.sav`, `slot21.sav` for Auto Save, `slot22.sav` for Quick Save
+[C]. It looks for the bestiary under the PC name `dp3fS2vq…` in the same
+folder [C]. The measured set holds no PlayStation folder.
+
+## Container encoding
+
+A PC file is base64 text, with a UTF-8 BOM in front and CRLF at the end,
+of a Rijndael-256-CBC ciphertext of a raw DEFLATE stream of compact UTF-8
+JSON. The reference decryption deletes trailing zero bytes that belong
+to the DEFLATE stream; a decoder must keep them.
+
+### Layers
+
+| Layer | Bytes | Tag |
+|---|---|---|
+| Prefix | UTF-8 BOM `EF BB BF` | [M] all 12 |
+| Text | one base64 line, standard alphabet, `=` padding | [M] |
+| Line end | `0D 0A` | [M] all 12 |
+| Ciphertext | Rijndael, 32-byte blocks, CBC | [M] |
+| Plaintext | raw DEFLATE stream followed by 0 to 31 zero bytes | [M] |
+| Payload | compact UTF-8 JSON, no BOM, no trailing newline | [M] |
+
+### BOM and line end
+
+- The game writes the BOM and the CRLF on every file [M].
+- The Go editor's decoder records the BOM as a prefix, and its encoder
+  writes it back. The encoder writes no CRLF [C].
+- The Go editor's decoder trims trailing space, tab, CR and LF before
+  base64 [C].
+- The game loads an FF I bestiary written by the Go editor's encoder,
+  so it accepts a file without the trailing CRLF [G].
+
+### Base64
+
+- RFC 4648 standard alphabet (`A-Z a-z 0-9 + /`) with `=` padding [M]:
+  text lengths are multiples of 4, and the files end in `=`, `==` or no
+  padding as the ciphertext length requires.
+- Text length is `4 × ceil(len(cipher) / 3)`. Example: 96 bytes of
+  ciphertext give 128 characters, plus 3 bytes of BOM and 2 of CRLF:
+  the 133-byte slot index [M].
+- The Go editor's decoder appends missing `=` before decoding [C]. Before
+  `6f8f74a` it ignored base64 errors and went on with empty data [C].
+
+### Cipher
+
+| Parameter | Value |
+|---|---|
+| Algorithm | Rijndael, 256-bit block, 256-bit key, 14 rounds |
+| Mode | CBC, fixed IV |
+| Key (32 bytes, hex) | `61090700b9c3b8b9421599e79ca57b87bea932d3797bad7663ed4dde0a943cc5` |
+| IV (32 bytes, hex) | `0224f9771fdb6e0e3bd508d7b795bf2e0cbd176942680a637b12bc6273db2ebb` |
+
+- AES fixes the block at 128 bits, so an AES library cannot decrypt
+  these files. NeoFFSE ports Rijndael-256 from the Go library.
+- CBC: the encryptor XORs the first plaintext block with the IV and each
+  later block with the previous ciphertext block [C].
+- The library packs each 4-byte column big-endian
+  (`b0<<24 | b1<<16 | b2<<8 | b3`) and ships both expanded key schedules
+  (`ke` and `kd`, 15 round keys of 8 words) as constants. `ke[0]` is the
+  key: `ke[0][0] = 1627981568 = 0x61090700` [C].
+- One key and one IV serve every game, slot, bestiary and settings file
+  [M: all 12 files decrypt with them].
+- With a fixed key and IV, equal plaintexts give equal files: the slot
+  index and the settings files have identical MD5 sums in both games [M].
+
+### Zero padding and the stripping trap
+
+**Padding.** The encryptor appends zero bytes up to the next multiple of
+32 and adds none when the length is already a multiple of 32
+(`padder.Encode`) [C]. Game files carry 6 to 30 bytes of padding [M].
+
+**Stripping.** `rijndael.Decrypt` returns `padder.Decode(plain)`. That
+function scans the last 31 bytes from the end and drops each zero byte
+until it meets a non-zero byte, so it deletes up to 31 bytes [C]. It
+cannot tell padding from data. A raw DEFLATE stream often ends with
+`0x00` (for example the 7-bit end-of-block code of a fixed-Huffman
+block), and the function deletes that byte too. Inflating the shortened
+stream fails with `unexpected EOF`.
+
+Measured cases [M]:
+
+| File | Ciphertext | DEFLATE stream | Padding | Bytes `Decrypt` removed | Stream bytes lost |
+|---|---|---|---|---|---|
+| FF II Quick Save | 42 880 | 42 854 | 26 | 27 | 1 |
+| Slot index, FF I and FF II | 96 | 83 | 13 | 14 | 1 |
+| The other 9 files | | | | equal to the padding | 0 |
+
+Before commit `6f8f74a`, the Go editor could not open the FF II Quick
+Save, and KiameV's release disables the bestiary after the same failure
+[C, `6f8f74a`]. Streams the Go editor's encoder writes with newer Go
+versions hit the same bug [C, same commit].
+
+**Fix.** After `Decrypt`, append `len(cipher) − len(plain)` zero bytes,
+then inflate. The inflater stops at the final block and ignores the
+zeros after it, as the game does [C, `codec.go`]. A port whose decryption
+never strips returns all `len(cipher)` bytes and needs no restore step.
+
+**Fallback.** A stream without a final block (sync-flushed only) runs
+into the padding, which an inflater reads as a stored block with a bad
+LEN/NLEN pair. The Go editor's codec then inflates the stripped bytes and
+accepts the result only when inflation hit the end of the input and the
+output is valid JSON [C, `TestDecodeStreamWithoutFinalBlock`]. None of
+the 12 game files needs this path [M].
+
+### Raw DEFLATE
+
+- The stream is raw RFC 1951 DEFLATE: no zlib header, no gzip header,
+  no checksum [M].
+- Each game stream ends with a block whose BFINAL bit is set, and holds
+  no `00 00 FF FF` sync-flush marker [M].
+- The game's compressor differs from zlib. No zlib level from 0 to 9,
+  with memLevel 8 or 9, reproduces the game's bytes, except for the
+  207-byte slot index at level 9 [M]. FF II slot 1 gives 72 003 bytes
+  from the game and 71 913 from zlib level 6 [M].
+- zlib does not reproduce the game's bytes, so a round-trip test
+  compares the inflated JSON text.
+- The game accepts a stream from Go's `compress/flate` at level 6,
+  closed with a final block [G, FF I bestiary].
+- JSON payloads of 122 to 235 KB compress to 6 to 72 KB in slot files
+  [M].
+
+### JSON text
+
+The payload is compact JSON: no space or newline between tokens, no
+trailing newline [M]. Strings hold raw UTF-8 (`é` as `C3 A9`), with no
+`\u` escape and no escaped `/` [M].
+[Top-level JSON document](#top-level-json-document) covers the document.
+
+### Pseudo-code
+
+Decode:
+
+```text
+decode(file) -> (json, prefix):
+    prefix = ""
+    if file starts with EF BB BF:
+        prefix = EF BB BF
+        file = file[3..]
+    text = file without trailing ' ', '\t', '\r', '\n'
+    while len(text) % 4 != 0: text += "="            # tolerance, the game pads
+    cipher = base64_std_decode(text)                 # error: damaged file
+    require len(cipher) > 0 and len(cipher) % 32 == 0
+    plain = rijndael256_cbc_decrypt(cipher, KEY, IV) # len(plain) == len(cipher), no unpadding
+    json = raw_inflate(plain)                        # stops at the final block
+    if inflate failed:
+        s = plain minus its trailing zero bytes (at most 31)
+        json = raw_inflate(s)
+        accept only if inflation ended at the end of s and json is valid JSON
+    return (json, prefix)
+```
+
+Encode:
+
+```text
+encode(json, prefix) -> file:
+    stream = raw_deflate(json)                       # ends with a BFINAL block
+    padded = stream + zero bytes up to a multiple of 32   # none when aligned
+    cipher = rijndael256_cbc_encrypt(padded, KEY, IV)
+    text = base64_std_encode(cipher)                 # with '=' padding
+    return prefix + text + CR LF                     # the game writes CR LF; the Go editor omits it
+```
+
+### PlayStation variant
+
+The Go editor reads a `slotN.sav` file as the JSON text of
+[Top-level JSON document](#top-level-json-document), with no BOM,
+base64, cipher or DEFLATE, and writes it back the same way [C]. It reads
+the bestiary file the same way [C]. PS4 and PS5 encrypt saves with
+console keys ([Goals and scope](../architecture.md#goals-and-scope)), so
+these files must be what an external tool extracts from the console. The
+measured set holds none.
+
+## Top-level JSON document
+
+A slot holds one object with ten keys. Four of them (`userData`,
+`configData`, `dataStorage`, `mapData`) hold whole JSON documents
+serialized into strings, and those documents nest more of the same, up
+to seven levels deep. An editor parses a string document, edits it and
+re-serializes it in the game's style, and leaves each untouched string
+as it read it.
+
+### Slot keys
+
+In this order [M]:
+
+| Key | JSON type | Content |
+|---|---|---|
+| `id` | int | slot number ([Slot files](#slot-files)) |
+| `pictureData` | string | base64 PNG thumbnail, 320 × 180; 1 086 to 64 950 bytes of PNG measured |
+| `userData` | string, JSON | party, characters, inventory, counters ([Domain sections](#domain-sections)) |
+| `configData` | string, JSON | in-game options of this slot ([Slot `configData`](#slot-configdata)) |
+| `dataStorage` | string, JSON | progress flags ([Time stamp and progress flags](#time-stamp-and-progress-flags)) |
+| `mapData` | string, JSON | position and map state ([Party position and map](#party-position-and-map)) |
+| `timeStamp` | string | save date, layout set by the game ([Time stamp and progress flags](#time-stamp-and-progress-flags)) |
+| `playTime` | float | `0.0` in all six slots; the play time sits in `userData.playTime` |
+| `clearFlag` | int | `1` in FF I slot 1, `0` elsewhere |
+| `isCompleteFlag` | int | equal to `clearFlag` in all six slots |
+
+### Documents inside strings
+
+These keys hold a JSON document serialized as a string [M]:
+
+```text
+userData
+userData.corpsList, .corpsSlots, .ownedCharacterList, .releasedJobs
+userData.normalOwnedItemList, .importantOwendItemList, .normalOwnedItemSortIdList
+userData.ownedTransportationList, .owendCrystalFlags, .warehouseItemList
+userData.ownedKeyWaordList, .ownedMagicList, .learnedAbilityList, .ownedMagicStoneList
+  each element of most "target" and "values" arrays (see Container shapes)
+character: parameter, commandList, abilityList, abilitySlotDataList, jobList,
+  equipmentList, additionOrderOwnedAbilityIds, sortOrderOwnedAbilityIds,
+  abilityDictionary, skillLevelTargets, learningAbilitys, equipmentAbilitys
+parameter: currentMpCountList, addtionalMaxMpCountList, currentConditionList
+abilitySlotDataList element: slotInfo
+configData, dataStorage, mapData
+mapData: playerEntity, gpsData
+bestiary: scenarioFlags, monsterDefeats
+system settings: gamePadKeySettings, keyboardKeySettings, mouseKeySettings
+```
+
+- Each string level doubles the escaping. A quote at depth n appears as
+  `2^n − 1` backslashes and a quote. FF I spell slots reach depth 7, 127
+  backslashes; FF II reaches depth 6 [M].
+- `userData.cheatSettingsData` is a plain nested object, not a string
+  [M].
+- An absent document is an empty string `""`, never `"{}"`: see
+  `companionEntity`, `telepoCacheData`, `timerData`, `userData.configData`
+  and empty spell slots [M]. Keep `""` as `""`.
+
+### Container shapes
+
+The game builds documents from two shapes [M]:
+
+| Shape | JSON | Notes |
+|---|---|---|
+| List | `{"target":[…]}` | elements are ints, booleans or JSON strings |
+| Dictionary | `{"keys":[…],"values":[…]}` | parallel arrays of equal length; values are ints or JSON strings |
+
+An object stored in a list is a JSON string, so a list of items reads
+`{"target":["{\"contentId\":62,\"count\":5}", …]}` [M].
+
+### Numbers
+
+- Floats keep a decimal point: `58.0`, `1.0`, `0.0` [M]. Go's JSON
+  encoder writes `58` and `1`, so the Go editor rewrites each float it
+  re-serializes as an integer [M, measured on `go-ordered-json`].
+- Doubles use the shortest round-trip form, up to 17 significant digits:
+  `"playTime":39087.71384844743` [M].
+- Integers exceed the i32 range. `dataStorage.treasure` holds
+  `4294967295` and `dataStorage.scenario` `4293655417` (u32 values), and
+  `timeStampTicks` reaches `639278367168195674` [M]. That tick value is
+  above 2^53, so a parser that maps each number to an f64 (JavaScript's
+  `JSON.parse`, for one) rounds it.
+- Keep the original text of each number you do not edit
+  ([Principles](../architecture.md#principles), principle 1).
+
+### Key order and spellings
+
+Keep the key order you read. The game's misspellings are the real key
+names [M]:
+
+| Key as written | Location |
+|---|---|
+| `owendGil` | `userData` |
+| `importantOwendItemList` | `userData` |
+| `owendCrystalFlags` | `userData` |
+| `ownedKeyWaordList` | `userData` |
+| `learningAbilitys`, `equipmentAbilitys` | character |
+| `numberOfButtles` | character |
+| `addtionalLevel` to `addtionalMagicDefenseCount` (24 keys) | `parameter` |
+| `addtionalMaxMpCountList` | `parameter` |
+| `addionalWeight` | `parameter` |
+| `isEnableEncount` | `userData.cheatSettingsData` |
+| `encountEnable` | `mapData` |
+| `resolutionHight` | system settings |
+
+### Keys that naive editors drop
+
+- The Go editor rebuilds each document from Go structs, so a key missing
+  from a struct vanishes on save [C].
+- `mapData.minimapEnable` exists in all six FF I and FF II slots [M].
+  The Go struct had no field for it until `6ef3bc7`, and the minimap
+  setting reset on each save [C].
+- After the fixes, a round trip of the measured FF I and FF II saves
+  loses no key [C, test in `6ef3bc7`]. Of all documents, only `mapData`
+  keeps keys the structs do not declare [C]; FF III to VI keys missing
+  from the other structs would still vanish.
+- The structs declare optional keys absent from FF I and FF II, and the
+  Go editor writes them only when the file had them [C]:
+  `userData.wonderWandIndex`; `mapData.currentSelectedPartyId`,
+  `viewType`, `otherPartyDataList`, `partyPlayableCharacterCorpsId`,
+  `fieldDefenseNpcEntityIDList`, `beastFieldEncountExchangeFlags`,
+  `beastFieldEncountSeekGroupId`, `rtsData`; `gpsData.transportationId`;
+  `configData.brightness`, `masterVolume`, `bgmVolume`, `seVolume`.
+
+### Documents of the other files
+
+| File | Keys, in order [M] |
+|---|---|
+| Bestiary | `scenarioFlags` (string, JSON), `monsterDefeats` (string, JSON), `totalSubjugationCount` (int) |
+| Slot index | `keys` (ints 1 to 22), `values` (booleans) |
+| System settings | `language`, `fontType`, `gamePadKeySettings`, `keyboardKeySettings`, `mouseKeySettings`, `screenMode`, `resolutionWidth`, `resolutionHight`, `isLeftActionIcon`, `isLeftVirtualPad`, `isLeftMenuCommand`, `isLeftBattleCommand`, `isAnalogMode`, `brightness`, `masterVolume`, `bgmVolume`, `seVolume`, `bgmType` |
+
+The three `…KeySettings` values are dictionaries whose values are more
+dictionaries in strings [M].
+
+## Domain sections
+
+Paths below use `.` for an object member and `→` for a step into a JSON
+string. Each subsection opens with what a writer needs.
+
+### Characters
+
+`userData → ownedCharacterList → target[]` holds one JSON string per
+character: 4 in FF I, 7 or 8 in FF II [M]. Identify a character by
+`id`; names repeat and change.
+
+| Key | Type | Notes |
+|---|---|---|
+| `id` | int | 1 to N, unique [M] |
+| `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]; meaning not measured |
+| `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
+| `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M] |
+| `name` | string | raw UTF-8, may hold non-ASCII [M]; two FF I heroes may share a name, FF VI has two Mogs [C, `d8a6c6f`] |
+| `currentExp` | int | [M] |
+| `parameter` | JSON | stats, below |
+| `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C] |
+| `abilityList`, `abilitySlotDataList`, `additionOrderOwnedAbilityIds`, `sortOrderOwnedAbilityIds`, `abilityDictionary`, `skillLevelTargets`, `learningAbilitys` | JSON | [Abilities](#abilities) |
+| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries, FF II 8 [M] |
+| `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4), meaning not measured |
+| `equipmentAbilitys` | JSON list | `[0,0,0]` in FF I and FF II [M] |
+| `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C] |
+
+`parameter` keys [M]: `currentHP`, `currentMP`, `currentMpCountList`,
+`addtionalMaxMpCountList` (dictionaries with 8 keys, one per spell level,
+in FF I and FF II), `addtionalLevel`, `addtionalMaxHp`, `addtionalMaxMp`,
+`addtionalPower`, `addtionalVitality`, `addtionalAgility`,
+`addionalWeight`, `addtionalIntelligence`, `addtionalSpirit`,
+`addtionalAttack`, `addtionalDefense`, `addtionalAbilityDefense`,
+`addtionalAbilityEvasionRate`, `addtionalMagic`, `addtionalLuck`,
+`addtionalAccuracyRate`, `addtionalEvasionRate`,
+`addtionalAbilityDisturbedRate`, `addtionalCriticalRate`,
+`addtionalDamageDirmeter`, `addtionalAbilityDefenseRate`,
+`addtionalAccuracyCount`, `addtionalEvasionCount`,
+`addtionalDefenseCount`, `addtionalMagicDefenseCount`,
+`currentConditionList` (`{"target":[]}` in all 35 measured characters).
+
+### Abilities
+
+An ability carries two IDs. `abilityId` points into the game's ability
+table; `contentId` points into the content table that items and
+equipment share [I]. Each game links the two by a fixed offset for its
+spells, with exceptions, and a writer must fill both.
+
+Ability object: `{"abilityId":int,"contentId":int,"skillLevel":int}`.
+
+| Game | `contentId − abilityId` | Tag |
+|---|---|---|
+| FF I | 208 | [M] 47 of 47 abilities and slot spells, slot 1 and Quick Save |
+| FF II | 207 for spells; ability 711 maps to content 937 (offset 226) | [M] 35 spells at 207; each FF II character holds ability 711 |
+| FF III | 201 | [C] |
+| FF IV | 310 | [C] |
+| FF V | 266 | [C] |
+| FF VI | 330 | [C] |
+
+The Go editor applies the offset only to an ability whose `contentId`
+is 0 [C]. Ability 711 is missing from its FF II table, which stops at
+644 [C].
+
+Character keys that reference abilities:
+
+| Key | Holds | Rule |
+|---|---|---|
+| `abilityList` | ability objects as JSON strings | one entry per `abilityId` [M] |
+| `additionOrderOwnedAbilityIds` | content IDs | the content IDs of `abilityList`, same order, in all 35 characters of the six slots [M] |
+| `sortOrderOwnedAbilityIds` | content IDs | empty or a subset of the owned ones; only FF II had entries [M]; the Go editor never edits it |
+| `abilityDictionary` | dictionary | FF II: key `3` maps to `{"target":[ability JSON strings]}`; FF I: empty [M]; meaning not measured |
+| `skillLevelTargets` | dictionary | FF II: keys 0 to 9 with ints; FF I: empty [M]; meaning not measured |
+| `learningAbilitys` | list | empty in FF I and FF II [M] |
+
+`userData → learnedAbilityList` holds ability IDs. In FF I it equals the
+union of the party's `abilityId`s (47 IDs) [M]. In FF II it does not, and
+its meaning is unknown [M].
+
+**FF I spell slots** [M]. `abilitySlotDataList → target[]` holds 8 JSON
+strings, one per spell level: `{"level":1..8,"slotInfo":"<JSON>"}`.
+`slotInfo` is `{"keys":[1,2,3],"values":[v1,v2,v3]}`, each value either
+`""` (empty slot) or an ability JSON string. In both FF I files, each
+spell of `abilityList` sits in a slot and each slot spell sits in
+`abilityList`.
+
+FF I writer rule [C, `375f916`; consistent with M]: for each spell in a
+slot, set `contentId = abilityId + 208`, list it once in `abilityList`,
+and list its content ID once in `additionOrderOwnedAbilityIds`.
+
+**`skillLevel`.** FF I: `0` [M]. FF II: spell proficiency, 0 to 456
+measured; the Go editor edits it as a level [M, C]. FF VI: learning
+percentage, 100 means learned [C].
+
+### Party
+
+`userData → corpsList` lists the active party; keep `characterId` values
+pointing at existing character `id`s.
+
+- `corpsList → target[]`: 4 JSON strings `{"id":1,"characterId":n}` in
+  FF I and FF II; `id` is 1 in each entry [M].
+- `corpsSlots`: dictionary with keys `0`, `1`, `2`; each value is a list
+  with the same entry shape [M]. In the six slots all three lists equal
+  `corpsList` [M]. FF VI uses several parties [C].
+- `userData.corpsSlotIndex`: `0` in all six slots [M].
+- `mapData.playableCharacterCorpsId`: 0 to 3 [M]; meaning not measured.
+- `userData → releasedJobs → target`: FF I 1 to 12, FF II 4 entries [M].
+
+### Inventory
+
+`userData → normalOwnedItemList → target[]` holds `{contentId, count}`
+JSON strings in the game's own order; the sort list holds content IDs,
+never row numbers.
+
+- Normal items: 47 to 56 entries, no duplicate `contentId`, no `count`
+  of 0, not sorted by ID [M].
+- `importantOwendItemList`: same shape, `count` 1 [M].
+- `normalOwnedItemSortIdList → target`: content IDs. FF II slot 1 and
+  FF II Auto Save hold 23, each one an owned item; the other four slots
+  hold none [M]. The Go editor's "Reset Sort" wrote `1..N` with empty rows
+  until `6ef3bc7` [C].
+- The Go editor drops rows with `contentId` 0 and keeps the sort list
+  unless the user resets it [C].
+- `warehouseItemList`, `ownedMagicList`: empty in FF I and FF II [M].
+- `ownedKeyWaordList → target`: FF II keywords, ints 917 to 931 [M];
+  content IDs [I].
+
+### Party position and map
+
+`mapData` holds the player's map, point and position. A writer copies
+each key back, including keys it does not edit.
+
+| Key | Type | Measured |
+|---|---|---|
+| `mapId` | int | 1 to 228 |
+| `pointIn` | int | −1 to 3 |
+| `transportationId` | int | 1 |
+| `carryingHoverShip` | bool | |
+| `playerEntity` | JSON | `{"position":{"x":f,"y":f,"z":f},"direction":int}`, direction 1 to 4 |
+| `companionEntity` | string | `""` |
+| `gpsData` | JSON | `{"mapId","areaId","gpsId","width":256,"height":256}`; optional `transportationId` [C] |
+| `moveCount`, `subtractSteps` | int | |
+| `telepoCacheData`, `timerData` | string | `""` |
+| `playableCharacterCorpsId` | int | 0 to 3 |
+| `encountEnable`, `minimapEnable` | bool | present in all six slots |
+
+The Go editor never copied `mapId`, `pointIn`, `transportationId` and
+`carryingHoverShip` back, so edits to them reverted on save until
+`6ef3bc7` [C]. [FF VI](#ff-vi) lists the FF VI keys.
+
+### Transportation
+
+`userData → ownedTransportationList → target[]` holds one JSON string
+per vehicle: 4 in FF I, 7 in FF II [M].
+
+- Keys: `position` (`x`, `y`, `z` floats), `direction` (0 to 8), `id`,
+  `mapId`, `enable`, `timeStampTicks` [M].
+- An unplaced vehicle has `mapId` −1 and a position such as
+  `(1000.0, 1000.0, -1000.0)` [M].
+- `timeStampTicks` counts .NET DateTime ticks: 100 ns units since
+  0001-01-01. `639278367168195674` reads 2026-10-17 12:25:16, inside
+  the date range of the measured saves [M, I]. `0` means never set [M].
+  Store it as i64. The time zone (local or UTC) is unknown.
+- The Go editor's `global.NowToTicks` adds `621259200000000000`
+  (`86400 × 365 × 1970 × 10^7`), 112 days short of the true Unix-epoch
+  offset `621355968000000000` [C, arithmetic]. No code calls it [C].
+
+### Counters and flags
+
+| Key in `userData` | Type | Notes |
+|---|---|---|
+| `owendGil` | int | up to 999 999 measured |
+| `totalGil` | int | `0` in all six slots |
+| `playTime` | float | seconds, e.g. `39087.71384844743` |
+| `steps`, `escapeCount` | int | `0` in all six slots |
+| `battleCount`, `openChestCount`, `saveCompleteCount`, `monstersKilledCount` | int | |
+| `currentArea`, `currentLocation` | string | free text; `currentLocation` may be `""` |
+| `owendCrystalFlags` | JSON list | 4 booleans in FF I and FF II |
+| `configData` | string | `""` in all six slots |
+| `cheatSettingsData` | object | 9 keys: `isEnableEncount`, `expRate`, `gilRate`, `learningProficiencyRate`, `isHpIncreaseByFightCount`, `abpRate`, `magicProficiencyRate`, `parameterUpRate`, `magicLearningProficiencyRate` |
+| `isOpenedGameBoosterWindow` | bool | |
+
+All rows [M].
+
+### Time stamp and progress flags
+
+`timeStamp` is a formatted local date whose layout varies by game; keep
+the string as read and write an edit in the same layout.
+
+| Files | Layout | Example |
+|---|---|---|
+| FF I, all three slots | `M/d/yyyy h:mm:ss tt` | `10/16/2026 4:09:06 PM` [M] |
+| FF II, all three slots | `dd/MM/yyyy HH:mm:ss` | `18/10/2026 14:46:28` [M] |
+
+- The two games ran on the same machine on the same days and still used
+  different layouts [M]. The Go code says the game uses the system
+  culture [C]; the measurement leaves the cause open
+  ([Open questions](#open-questions)).
+- The Go editor also parses `M/d/yyyy HH:mm:ss`, `dd.MM.yyyy
+  HH:mm:ss`, `yyyy/MM/dd H:mm:ss`, `yyyy-M-d H:mm:ss` and ISO 8601 [C].
+- Until `6ef3bc7` the Go editor prefixed `0` to a date like
+  `1/2/2026 …`, parsed with the single layout `01/02/2006 15:04:05 PM`,
+  and rewrote the stamp on save [C].
+
+`dataStorage` keys [M]: `scenario` (128 ints), `treasure` (128 ints),
+`global` (16 ints), `area` (8), `map` (8), `selected`, `itemSelected`,
+`transportation` (empty). `scenario` and `treasure` hold u32 values up
+to `4294967295`; the values look like bit sets [I]. FF VI stores the Cursed
+Shield fight count in `global[9]` [C].
+
+### Bestiary
+
+The bestiary file serves every slot of a game. `monsterDefeats` maps
+monster IDs to defeat counts in first-defeat order, and
+`totalSubjugationCount` equals the sum of the counts.
+
+- `scenarioFlags → target`: 1024 ints, each 0 or 1; FF I has 85 ones,
+  FF II 83 [M]. Meaning not measured; the Go editor never edits them.
+- `monsterDefeats`: `{"keys":[ids],"values":[counts]}`, keys unique,
+  counts ≥ 1, keys unsorted [M].
+- `totalSubjugationCount` = sum of `values`: 3463 in FF I, 2977 in FF II
+  [M].
+- It differs from a slot's `userData.monstersKilledCount` (FF I slot 1:
+  3458) [M], since one bestiary spans all slots [I].
+- A complete FF I bestiary holds IDs 1 to 128, each once [M]. The FF II
+  file holds 75 IDs, the highest 118 [M].
+- The ID tables list boss variants above 128 (FF I 129, FF II 129 to
+  142); the game counts them under the base monster, and no measured
+  file holds an ID above 128 [C, M].
+
+"Defeat all" rules of the Go editor [C, `models/core/bestiary.go`]:
+
+1. Keep each existing entry and its count.
+2. Append each missing ID with count 1, in ascending ID order, after the
+   existing entries.
+3. Skip IDs ≤ 0 and, in FF I and FF II, IDs above 128.
+4. Before writing, drop entries with ID ≤ 0 or count ≤ 0, merge
+   duplicate IDs by adding their counts at the first position, and
+   recompute `totalSubjugationCount`.
+
+Write the bestiary only when it loaded and changed. Keep
+`scenarioFlags`, unknown keys and number text as read [C].
+
+### FF VI
+
+The FF VI rules come from the Go code alone [C].
+
+- Espers: `userData → ownedMagicStoneList → target` lists owned esper
+  IDs; a character's `magicStoneId` holds the equipped one.
+- Magic: each spell sits in `abilityList` with `skillLevel` as the
+  learning percentage; 100 means learned; `contentId = abilityId + 330`.
+- Other parties: `mapData.otherPartyDataList` is a plain array of
+  objects `{mapId, pointIn, playerEntity, playableCharacterCorpsId}`,
+  with `playerEntity` a JSON string as in
+  [Party position and map](#party-position-and-map). Related keys:
+  `partyPlayableCharacterCorpsId`, `currentSelectedPartyId`.
+- Cursed Shield fights: `dataStorage.global[9]`.
+
+### Slot `configData`
+
+`configData` keys, in order [M]: `buttonType`, `battleModeIndex`,
+`battleSpeedIndex`, `battleMessageSpeedIndex`, `isCursorMemory`,
+`isKeepAutoBattle`, `messageSpeed`, `isLeftActionIcon`,
+`isLeftVirtualPad`, `isLeftMenuCommand`, `isLeftBattleCommand`,
+`reequipIndex`, `analogModeIndex`, `isAutoDash` (an int, `1`). The FF I
+and FF II slots carry no volume or brightness keys; those live in the
+system settings file [M].
+
+## Write rules
+
+A writer changes the keys the user edited and nothing else, re-encodes
+the container as in [Pseudo-code](#pseudo-code), and goes through the
+safe write pipeline of [Save safety](../architecture.md#save-safety).
+
+1. Write the BOM back when the file had one [C]. End the text with CRLF
+   to match the game; the game also loads a file without it [G].
+2. Terminate the DEFLATE stream with a final block, pad with zeros to a
+   multiple of 32, and use the key and IV of [Cipher](#cipher).
+3. Re-serialize only the string documents that hold an edit, and their
+   parent strings up to the slot. Leave every other string byte for
+   byte as read.
+4. Serialize in the game's style: compact, raw UTF-8, floats with a
+   decimal point, original key order and spellings. Go's encoder escapes
+   `<`, `>` and `&` as `\u003c`, `\u003e` and `\u0026` [M]; the game
+   wrote no `\u` escape in the measured files.
+5. Set `id` to the slot number of the target file
+   ([Slot files](#slot-files)) when you write
+   a slot's data under another slot's name [C].
+6. Fill both ability IDs ([Abilities](#abilities)) and keep the FF I lists consistent.
+7. Keep `timeStamp` as read unless the user edited it; write an edit in
+   the same layout [C].
+8. Write the bestiary only when it loaded and changed; leave an
+   unreadable bestiary untouched [C].
+9. The Go editor writes the slot, then the bestiary; a failure between
+   the two leaves a new slot with the old bestiary [C].
+10. Back up every file you replace before the first write. The Go
+    editor copies them to `<config dir>/backups/FF<n>/<YYYYMMDD-HHMMSS>/`
+    with a `backup.json` manifest and keeps 20 backups per game [C].
+    [Save safety](../architecture.md#save-safety) gives NeoFFSE's layout.
+11. Steam Cloud may report a conflict on the next launch; the player
+    must keep the local files ([Save safety](../architecture.md#save-safety)).
+
+## Known pitfalls
+
+One line per bug the Go editor had or the format invites. The tag
+gives the source; a commit ID points to the fix.
+
+1. `rijndael.Decrypt` deletes stream zero bytes with the padding; inflate fails (FF II Quick Save, slot index) [M, `6f8f74a`].
+2. Files the Go editor's encoder wrote, when built with newer Go versions, hit pitfall 1 [C, `6f8f74a`].
+3. The Go editor's loader ignored base64 errors and carried on with empty data [C, `6f8f74a`].
+4. A bestiary "eof" error-string hack dereferenced a nil error when the bestiary decoded fine [C, `6f8f74a`].
+5. An AES library cannot decrypt the files: the block is 256 bits ([Cipher](#cipher)).
+6. The library's `Encrypt` pads in place and can write into the caller's buffer [C, `codec.go`].
+7. Struct-based re-serialization drops unknown keys; `minimapEnable` reset on each save [C, `6ef3bc7`].
+8. Re-serialization turns `58.0` into `58` and `&` into `\u0026` [M, Go encoder].
+9. An f64-only JSON parser rounds `timeStampTicks` (above 2^53) [M].
+10. Values exceed i32 (u32 flags in `dataStorage`, i64 ticks), while the Go editor's number fields clamp to i32 [M, C `6ef3bc7`].
+11. Map "Misc" fields (`mapId`, `pointIn`, `transportationId`, `carryingHoverShip`) reverted on save [C, `6ef3bc7`].
+12. FF VI other parties: edits went to a copy, and an inverted error check wrote them only when encoding failed [C, `6ef3bc7`].
+13. A stale by-ID ability map created duplicate abilities on add [C, `d8a6c6f`].
+14. FF VI toggles and reselecting a character appended duplicate or unlearned spells [C, `d8a6c6f`].
+15. FF I abilities added in the editor kept `contentId` 0 [C, `375f916`].
+16. FF I slot spells went into `additionOrderOwnedAbilityIds` twice [C, `375f916`].
+17. FF II ability 711 breaks the +207 rule; it maps to 937 [M].
+18. "Reset Sort" wrote row numbers `1..N` into `normalOwnedItemSortIdList` [C, `6ef3bc7`].
+19. Time stamps: a `0` prefix, one en-US layout, and a rewrite of stamps the editor could not parse [C, `6ef3bc7`].
+20. `NowToTicks` is 112 days off; the .NET epoch offset is `621355968000000000` [C].
+21. The bestiary was rewritten and backed up on each save, even unchanged [C, `6f8f74a`, `68e6a80`].
+22. Character lookup by name opened the wrong character; use `id` [C, `d8a6c6f`].
+23. Switching between PC and PlayStation kept file names and the codec of the other mode [C, `7a83b22`].
+24. A switch to an empty folder kept slot buttons bound to the old folder, and "save" overwrote the real game save [C, `7a83b22`].
+25. A crash during a non-atomic write left an empty or partial slot [C, `375f916`].
+26. An empty nested document is `""`; writing `"{}"` changes the file [M].
+
+## Open questions
+
+The measured files leave these points open. Each needs a real save or
+an in-game test.
+
+1. FF III, IV, V and VI: every [C] rule, from file names and the cipher
+   to the ability offsets and FF VI keys. A real save of each game
+   settles them.
+2. Does the game load a file without the BOM?
+3. Does the game load a float written as an integer (`58` for `58.0`)?
+   The Go editor writes that form [M]; no in-game test covers it.
+4. Does the game pad an aligned stream with a full block of zeros, and
+   does it accept zero bytes of padding? No game file had a stream
+   length divisible by 32.
+5. Slot index: does the load menu hide a slot whose flag is `false` when
+   the slot file exists? Writing into an empty slot depends on the
+   answer, and the Go editor never updates the index.
+6. The `timeStamp` layout: FF I and FF II used different layouts on one
+   machine, and the setting that picks the layout is unknown.
+7. `timeStampTicks`: local time or UTC?
+8. Meaning of `clearFlag` against `isCompleteFlag`, of the top-level
+   `playTime` (`0.0` in all six slots), of `characterStatusId`, `pointIn`,
+   `playableCharacterCorpsId`, `skillLevelTargets`, `abilityDictionary`,
+   `scenarioFlags`, equipment `count`, and the FF II
+   `learnedAbilityList`.
+9. Does the game accept an inventory item missing from a non-empty
+   `normalOwnedItemSortIdList`?
+10. The PlayStation variant: file layout after extraction, presence of
+    a bestiary, BOM.
+11. System settings `language`: value `3` in both games; mapping not
+    measured.

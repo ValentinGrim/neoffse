@@ -1,0 +1,3 @@
+# Project and product names clippy::doc_markdown must not take for code.
+# ".." keeps the default list.
+doc-valid-idents = ["NeoFFSE", "OneDrive", ".."]

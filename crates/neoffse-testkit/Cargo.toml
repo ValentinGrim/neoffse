@@ -1,0 +1,18 @@
+[package]
+name = "neoffse-testkit"
+description = "Test helpers for NeoFFSE: synthetic fixtures and private save discovery"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+authors.workspace = true
+keywords = ["final-fantasy", "save-editor", "gamedev", "testing"]
+categories = ["development-tools::testing"]
+publish = false
+
+[dependencies]
+
+[lints]
+workspace = true

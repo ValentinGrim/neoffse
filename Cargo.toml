@@ -1,0 +1,48 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/neoffse-core",
+    "crates/neoffse-data",
+    "crates/neoffse-io",
+    "crates/neoffse-format-pr",
+    "crates/neoffse",
+    "crates/neoffse-app",
+    "crates/neoffse-testkit",
+]
+
+[workspace.package]
+# No shared version: each crate carries its own and moves it when its own
+# code moves.
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ValentinGrim/neoffse"
+readme = "README.md"
+authors = ["ValentinGrim <34299375+ValentinGrim@users.noreply.github.com>"]
+
+[workspace.lints.rust]
+missing_debug_implementations = "deny"
+missing_docs = "deny"
+unreachable_pub = "deny"
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+# Groups carry a lower priority so a named lint below can still override one
+# of their members.
+cargo = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+expect_used = "deny"
+print_stderr = "deny"
+print_stdout = "deny"
+unwrap_used = "deny"
+
+[workspace.dependencies]
+neoffse-core = { path = "crates/neoffse-core", version = "0.1.0" }
+neoffse-data = { path = "crates/neoffse-data", version = "0.1.0" }
+neoffse-io = { path = "crates/neoffse-io", version = "0.1.0" }
+neoffse-format-pr = { path = "crates/neoffse-format-pr", version = "0.1.0" }
+neoffse = { path = "crates/neoffse", version = "0.1.0" }
+neoffse-testkit = { path = "crates/neoffse-testkit" }
+
+[profile.test]
+opt-level = 2
