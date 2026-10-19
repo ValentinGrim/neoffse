@@ -7,6 +7,8 @@
 //!   and the PR zero padding.
 //! - [`container`]: the file around the JSON text (BOM, base64, cipher, raw
 //!   deflate, CRLF), with `decode` and `encode`.
+//! - [`document`]: a lossless view of the JSON text, read and edited by path.
 
 pub mod cipher;
 pub mod container;
+pub mod document;
