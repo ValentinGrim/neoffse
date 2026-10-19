@@ -14,7 +14,7 @@ members = [
 # No shared version: each crate carries its own and moves it when its own
 # code moves.
 edition = "2024"
-rust-version = "1.92"
+rust-version = "1.95"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ValentinGrim/neoffse"
 readme = "README.md"

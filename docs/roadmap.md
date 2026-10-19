@@ -16,8 +16,7 @@ lists the crates each milestone closes.
 - CI on Linux and Windows: `cargo fmt --all --check`, a `Cargo.lock` check,
   `scripts/clippy.sh`, `cargo test --workspace --locked`; on Linux also
   the tests of `neoffse-format-pr` alone and `cargo doc` with warnings
-  denied; plus a `cargo check` job at Rust 1.92, the workspace
-  `rust-version`.
+  denied; plus a `cargo check` job at the workspace `rust-version`.
 - A Slint skeleton window with a top-level menu and an About dialog that
   shows the `AboutSlint` widget.
 - `LICENSE-MIT`, `LICENSE-APACHE`, and a `licenses/` folder for
