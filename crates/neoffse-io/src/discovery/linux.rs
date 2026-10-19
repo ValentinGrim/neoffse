@@ -109,6 +109,15 @@ fn libraries(roots: Vec<PathBuf>, skipped: &mut Vec<IoError>) -> Vec<Library> {
         match library_paths(&text) {
             Ok(paths) => {
                 for path in paths {
+                    // A relative path would resolve against the process's current
+                    // folder, so discovery would walk a folder it was not pointed at.
+                    if !path.is_absolute() {
+                        skipped.push(IoError::LibraryListInvalid {
+                            path: list.clone(),
+                            source: "a library path is not absolute".into(),
+                        });
+                        continue;
+                    }
                     if let Some(canonical) = settle(fs::canonicalize(&path), Operation::Read, &path, skipped) {
                         add(&mut libraries, &root, canonical);
                     }

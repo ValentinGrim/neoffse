@@ -4,6 +4,7 @@
 mod common;
 
 use std::fs;
+use std::path::Path;
 
 use common::backup::tree;
 use common::discovery::{GAME_A, GAME_B, ID_1, ID_2, assert_nothing, library, list_libraries, paths, prefix, run, site, steam_origin, steam_root};
@@ -162,4 +163,23 @@ fn an_unreadable_prefix_is_reported() {
     };
     assert_eq!(*operation, Operation::ListDir);
     assert_eq!(*path, locked_save.parent().unwrap());
+}
+
+#[test]
+fn a_relative_library_path_is_skipped_and_reported() {
+    use neoffse_io::error::IoError;
+
+    let site = site("a_relative_library_path_is_skipped_and_reported");
+    let (root, other) = (steam_root(&site, NATIVE), library(&site, "b"));
+    list_libraries(&root, &[Path::new("relative-library"), &other]);
+    let save = prefix(&other, &GAME_A, ID_1);
+
+    let found = run(&site, &[GAME_A]);
+
+    assert_eq!(paths(&found), [save]);
+    assert_eq!(found.skipped.len(), 1);
+    let IoError::LibraryListInvalid { path, .. } = &found.skipped[0] else {
+        panic!("unexpected error {:?}", found.skipped[0]);
+    };
+    assert_eq!(*path, root.join("steamapps/libraryfolders.vdf"));
 }
