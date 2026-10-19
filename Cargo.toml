@@ -40,8 +40,8 @@ unwrap_used = "deny"
 [workspace.dependencies]
 neoffse-core = { path = "crates/neoffse-core", version = "0.2.0" }
 neoffse-data = { path = "crates/neoffse-data", version = "0.1.0" }
-neoffse-io = { path = "crates/neoffse-io", version = "0.1.0" }
-neoffse-format-pr = { path = "crates/neoffse-format-pr", version = "0.2.0" }
+neoffse-io = { path = "crates/neoffse-io", version = "0.3.0" }
+neoffse-format-pr = { path = "crates/neoffse-format-pr", version = "0.3.0" }
 neoffse = { path = "crates/neoffse", version = "0.2.0" }
 neoffse-testkit = { path = "crates/neoffse-testkit" }
 
