@@ -382,7 +382,7 @@ a file.
   `cargo doc --workspace --no-deps --locked` with
   `RUSTDOCFLAGS=-D warnings`, so a broken intra-doc link fails the build.
   The `msrv` job runs `cargo check --workspace --all-targets --locked`
-  on Linux with Rust 1.92.0, the `rust-version` of the workspace. CI
+  on Linux with Rust 1.95.0, the `rust-version` of the workspace. CI
   leaves `NEOFFSE_SAVES` unset, so tests that need real saves skip there.
 
 ## Comment doctrine and source hygiene

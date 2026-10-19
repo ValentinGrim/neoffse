@@ -43,7 +43,7 @@ Every crate sets `publish = false` until a crates.io release is decided.
 
 ## Build
 
-NeoFFSE needs Rust 1.92 or newer, the minimum Slint 1.18 sets.
+NeoFFSE needs Rust 1.95 or newer, the minimum `sysinfo` 0.39 sets.
 
 ```sh
 cargo build -p neoffse-app    # the desktop app

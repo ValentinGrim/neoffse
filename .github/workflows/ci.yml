@@ -65,7 +65,7 @@ jobs:
         run: cargo doc --workspace --no-deps --locked
 
   msrv:
-    name: MSRV check (Rust 1.92)
+    name: MSRV check (Rust 1.95)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -75,7 +75,7 @@ jobs:
       # Keep this version equal to rust-version in the root Cargo.toml.
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92.0"
+          toolchain: "1.95.0"
       - name: Install Linux system packages
         run: |
           sudo apt-get update
