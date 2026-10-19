@@ -36,7 +36,7 @@ fn set_float_keeps_the_decimal_point() {
         (0.0, "0.0"),
         (-0.0, "-0.0"),
         (0.5, "0.5"),
-        (39_087.713_848_447_43, "39087.71384844743"),
+        (12_345.678_901_234_567, "12345.678901234567"),
     ];
     for (float, text) in cases {
         let mut document = parse("[0]");
@@ -77,7 +77,7 @@ fn set_integers_are_plain_text() {
 fn set_u32_above_i32_and_i64_above_2_pow_53_round_trip() {
     let values = [
         Scalar::Int(4_293_655_417),
-        Scalar::Int(639_278_367_168_195_674),
+        Scalar::Int(600_000_000_000_000_013),
         Scalar::Int(i64::MAX),
         Scalar::Int(i64::MIN),
         Scalar::Uint(u64::MAX),

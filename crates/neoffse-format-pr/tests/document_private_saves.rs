@@ -83,14 +83,22 @@ fn private_saves_round_trip_without_edits() {
         };
         let mut total = 0;
         for file in files {
-            let name = file.file_name().unwrap().to_string_lossy().into_owned();
-            let label = format!("{game} {name}");
-            let bytes = std::fs::read(&file).unwrap();
-            let decoded = container::decode(&bytes).unwrap();
-            let mut document = Document::parse(&decoded.json).unwrap();
+            let Some(name) = file.file_name() else {
+                panic!("{game}: a save path has no file name");
+            };
+            let label = format!("{game} {}", name.to_string_lossy());
+            let Ok(bytes) = std::fs::read(&file) else { panic!("{label}: read failed") };
+            let Ok(decoded) = container::decode(&bytes) else {
+                panic!("{label}: decode failed")
+            };
+            let Ok(mut document) = Document::parse(&decoded.json) else {
+                panic!("{label}: parse failed")
+            };
             assert!(document.to_json() == decoded.json, "{label}: before access");
 
-            let oracle: Value = serde_json::from_str(&decoded.json).unwrap();
+            let Ok(oracle) = serde_json::from_str::<Value>(&decoded.json) else {
+                panic!("{label}: oracle parse failed")
+            };
             let mut walk = Walk {
                 document: &mut document,
                 label: &label,

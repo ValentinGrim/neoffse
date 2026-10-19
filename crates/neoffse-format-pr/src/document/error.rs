@@ -9,12 +9,16 @@
 ///
 /// The type derives `Debug` only: `serde_json::Error` is neither `Clone` nor
 /// `PartialEq`. Tests match with `matches!`.
+///
+/// A later version may add variants, so a `match` needs a wildcard arm.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum DocumentError {
     /// The text is not valid JSON, or a string holds an escape that no
-    /// `String` can represent (a lone surrogate). The inner error names the
-    /// line and column inside the text it parsed.
-    #[error("invalid JSON at {path}: {source}")]
+    /// `String` can represent (a lone surrogate). The line and column live
+    /// in the source error, which counts from the first byte of the text
+    /// that failed to parse.
+    #[error("invalid JSON at {path}")]
     InvalidJson {
         /// Rendered location of the value that failed to parse.
         path: String,
