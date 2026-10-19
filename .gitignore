@@ -1,11 +1,11 @@
 # Rust (Cargo.lock is committed: the workspace ships binaries)
 target/
 
-# Claude Code: CLAUDE.md, agents, agent memory, pipeline state, settings.
-# The owner keeps every Claude file out of the repository.
-/CLAUDE.md
-/CLAUDE.local.md
-/.claude/
+# Claude Code files (CLAUDE.md, agents, agent memory, pipeline state,
+# settings) stay out of the repository.
+CLAUDE.md
+CLAUDE.local.md
+.claude/
 
 # Throwaway probes written by agents during reviews and audits
 .scratch/

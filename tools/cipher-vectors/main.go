@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 // Command cipher-vectors writes Rijndael-256 test vectors for the Pixel
 // Remaster save cipher. It drives KiameV's ffpr-save-cypher library, the
 // reference the Rust port in neoffse-format-pr must reproduce.
@@ -41,6 +43,11 @@ const (
 	// the Rust port also knows. A typo here changes one vector, not the
 	// cipher.
 	keyHex = "61090700b9c3b8b9421599e79ca57b87bea932d3797bad7663ed4dde0a943cc5"
+
+	// ivHex is the PR IV from pixel-remaster.md#cipher. The library fixes
+	// its IV inside New; checkIV compares this copy with the one the
+	// library applies, so the document and the generator cannot drift.
+	ivHex = "0224f9771fdb6e0e3bd508d7b795bf2e0cbd176942680a637b12bc6273db2ebb"
 )
 
 // header is the top of the data file. It carries the grammar, so a reader
@@ -125,6 +132,9 @@ func run(path string) error {
 		return err
 	}
 	g := &gen{cipher: rijndael.New(), rng: prng{state: seed}}
+	if err := g.checkIV(); err != nil {
+		return err
+	}
 	fmt.Fprintf(&g.out, header, modulePath, moduleVer, seed)
 	for _, section := range []func() error{g.blocks, g.encrypts, g.decrypts} {
 		g.out.WriteString("\n")
@@ -160,6 +170,32 @@ func checkModule() error {
 		return nil
 	}
 	return fmt.Errorf("%s is not part of the build", modulePath)
+}
+
+// checkIV fails when the library's CBC path starts from another IV than
+// ivHex. CBC encrypts an all-zero first block to E(0 xor IV) = E(IV), so
+// that ciphertext must equal the raw block cipher applied to ivHex. The raw
+// cipher comes from encryptBlock, which does not depend on the IV.
+func (g *gen) checkIV() error {
+	iv, err := hex.DecodeString(ivHex)
+	if err != nil {
+		return err
+	}
+	if len(iv) != blockSize {
+		return fmt.Errorf("iv has %d bytes, want %d", len(iv), blockSize)
+	}
+	first, err := g.encrypt(make([]byte, blockSize))
+	if err != nil {
+		return err
+	}
+	raw, err := g.encryptBlock(iv)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(first, raw) {
+		return errors.New("the library's CBC IV differs from ivHex (pixel-remaster.md#cipher)")
+	}
+	return nil
 }
 
 func (g *gen) note(format string, args ...any) {

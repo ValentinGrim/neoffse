@@ -10,6 +10,7 @@ readme.workspace = true
 authors.workspace = true
 keywords = ["final-fantasy", "save-editor", "gamedev", "pixel-remaster"]
 categories = ["game-development", "parser-implementations"]
+publish = false
 
 [dependencies]
 neoffse-core = { workspace = true }
