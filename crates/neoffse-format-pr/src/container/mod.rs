@@ -28,8 +28,9 @@ pub const MAX_PAYLOAD_LEN: usize = 16 * 1024 * 1024;
 /// bytes per block flate2 writes at level 0.
 const MAX_STREAM_LEN: usize = 2 * MAX_PAYLOAD_LEN;
 
-/// Longest base64 text [`decode`] accepts: [`MAX_STREAM_LEN`] padded to 32
-/// bytes, in base64 (4 characters per 3 bytes). It is a margin, not an exact
+/// Longest base64 text [`decode`] accepts: a stream of twice
+/// [`MAX_PAYLOAD_LEN`] padded to 32 bytes, in base64 (4 characters per 3
+/// bytes). It is a margin, not an exact
 /// bound: any practical encoder stays under it for a payload within
 /// [`MAX_PAYLOAD_LEN`], and a file far larger is refused before base64. The
 /// measured streams run from 6 to 84 KB

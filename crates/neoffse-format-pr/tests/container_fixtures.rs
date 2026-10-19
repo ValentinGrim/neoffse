@@ -5,6 +5,8 @@
 //! `NEOFFSE_WRITE_FIXTURES=1 cargo test -p neoffse-format-pr --test container_fixtures write_fixtures`.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
 use std::io::Write as _;
 
 use flate2::Compression;
@@ -126,13 +128,10 @@ fn write_fixtures() {
 
 #[test]
 fn private_saves_decode_to_json_objects() {
-    for game in ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"] {
-        let Some(files) = neoffse_testkit::private_saves(game) else { continue };
+    for game in common::GAMES {
+        let Some(files) = common::save_files(game) else { continue };
         for file in files {
             let name = file.file_name().unwrap().to_string_lossy().into_owned();
-            if name == "steam_autocloud.vdf" {
-                continue;
-            }
             let bytes = std::fs::read(&file).unwrap_or_else(|error| panic!("{game} {name}: {error}"));
             let decoded = decode(&bytes).unwrap_or_else(|error| panic!("{game} {name}: {error}"));
             assert!(decoded.json.starts_with('{'), "{game} {name}: the payload is not an object");
