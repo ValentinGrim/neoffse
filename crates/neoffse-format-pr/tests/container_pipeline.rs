@@ -9,7 +9,7 @@ use flate2::write::DeflateEncoder;
 use neoffse_format_pr::cipher::{BLOCK_SIZE, PR_IV, Rijndael256};
 use neoffse_format_pr::container::deflate::{deflate, inflate};
 use neoffse_format_pr::container::text::{BOM, decode_base64, split};
-use neoffse_format_pr::container::{CodecError, Container, InflatePath, MAX_PAYLOAD_LEN, decode, encode, seal};
+use neoffse_format_pr::container::{CodecError, Container, InflatePath, MAX_PAYLOAD_LEN, MAX_TRAILER_LEN, decode, encode, seal};
 
 /// The decrypted bytes of a file: stream plus padding.
 fn plain_of(file: &[u8]) -> Vec<u8> {
@@ -115,6 +115,37 @@ fn encode_adds_no_block_when_the_stream_is_aligned() {
 fn encode_rejects_a_trailer_with_a_non_whitespace_byte() {
     let outcome = encode("{}", &container(true, b" x"));
     assert!(matches!(outcome, Err(CodecError::Trailer { index: 1 })));
+}
+
+#[test]
+fn a_trailer_at_the_cap_round_trips() {
+    let at_cap = container(true, &b"\r\n".repeat(MAX_TRAILER_LEN / 2));
+    assert_eq!(at_cap.trailer.len(), MAX_TRAILER_LEN);
+    let decoded = decode(&encode("{\"a\":1}", &at_cap).unwrap()).unwrap();
+    assert_eq!(decoded.json, "{\"a\":1}");
+    assert_eq!(decoded.container, at_cap);
+}
+
+#[test]
+fn seal_refuses_a_trailer_above_the_cap() {
+    let mut trailer = b"\r\n".repeat(32);
+    trailer.push(b' ');
+    let above = container(true, &trailer);
+    assert_eq!(above.trailer.len(), 65);
+    let stream = deflate(b"{}").unwrap();
+    let sealed = seal(&stream, &above);
+    assert!(matches!(sealed, Err(CodecError::TrailerTooLong { len: 65, limit: 64 })), "{sealed:?}");
+    let encoded = encode("{}", &above);
+    assert!(matches!(encoded, Err(CodecError::TrailerTooLong { len: 65, limit: 64 })), "{encoded:?}");
+}
+
+#[test]
+fn the_length_check_comes_before_the_byte_check() {
+    let mut trailer = vec![b' '; MAX_TRAILER_LEN];
+    trailer.push(b'x');
+    let stream = deflate(b"{}").unwrap();
+    let sealed = seal(&stream, &container(false, &trailer));
+    assert!(matches!(sealed, Err(CodecError::TrailerTooLong { len: 65, .. })), "{sealed:?}");
 }
 
 #[test]
