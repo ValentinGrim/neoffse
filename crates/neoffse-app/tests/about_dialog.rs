@@ -1,5 +1,5 @@
 //! Offscreen tests for the About dialog wiring, run on Slint's testing
-//! backend. No test opens a window or starts an event loop.
+//! backend. No test opens a desktop window or starts an event loop.
 
 use neoffse_app::{MainWindow, connect_about, new_about_dialog};
 use slint::ComponentHandle;

@@ -1,24 +1,23 @@
 # NeoFFSE
 
 NeoFFSE (Neo Final Fantasy Save Editor) edits Final Fantasy save files.
-It ships as a desktop app built with Slint. The app runs on the
-`neoffse` Rust library, which other Rust projects can use without the
-app. The scope covers Final Fantasy I to XVI, except XIV. PS4, PS5, Switch and Xbox
-encrypt their saves: NeoFFSE might reads a console save once you have
-extracted and decrypted it with another tool.
+It ships as a desktop app built with Slint.  
+The app runs on the `neoffse` Rust library, which other Rust projects can use without the app.  
+The scope covers Final Fantasy I to XVI, except XI and XIV. PS4, PS5, Switch and Xbox encrypt their saves:  
+NeoFFSE might read a console save once you have extracted and decrypted it with another tool.
 
 ## Status
 
-Pre-alpha. Nothing works yet. The first target is Final Fantasy I to VI
-Pixel Remaster on Steam PC (Windows and Linux, Proton included). See
-[`docs/roadmap.md`](docs/roadmap.md) for the milestones.
+Pre-alpha.
+It does not read or edit saves yet, and the library crates other than `neoffse-app` hold no code.  
+The first target is Final Fantasy I to VI Pixel Remaster on Steam PC (Windows and Linux, Proton included).  
+See [`docs/roadmap.md`](docs/roadmap.md) for the milestones.
 
 ## Principles
 
 - Never lose data: fields the editor does not know survive a save.
 - Never write without a backup and a read-back check.
-- Edit spells, items and levels through dedicated widgets, with the raw
-  value in reach.
+- Edit spells, items and levels through dedicated widgets, with the raw value in reach.
 - One format per isolated, tested module.
 - Show every change before saving, with undo and redo.
 
@@ -27,22 +26,35 @@ document gives the reason behind each one.
 
 ## Workspace
 
-| Crate | Role |
-|---|---|
-| `neoffse` | public facade of the library, the crate other projects depend on |
-| `neoffse-core` | domain model: games, characters, edits, field metadata |
-| `neoffse-data` | ID tables per game, from `data/*.toml` |
-| `neoffse-io` | save discovery, backups, verified atomic writes |
-| `neoffse-format-pr` | FF I to VI Pixel Remaster format |
-| `neoffse-app` | Slint desktop app |
-| `neoffse-testkit` | test fixtures, not published |
+|        Crate        |                             Role                                 |
+|:-------------------:|:----------------------------------------------------------------:|
+| `neoffse`           | public facade of the library, the crate other projects depend on |
+| `neoffse-core`      | domain model: games, characters, edits, field metadata           |
+| `neoffse-data`      | ID tables per game, from `data/*.toml`                           |
+| `neoffse-io`        | save discovery, backups, verified atomic writes                  |
+| `neoffse-format-pr` | FF I to VI Pixel Remaster format                                 |
+| `neoffse-app`       | Slint desktop app                                                |
+| `neoffse-testkit`   | test fixtures, not published                                     |
 
 ## Build
 
+NeoFFSE needs Rust 1.92 or newer, the minimum Slint 1.18 sets.
+
 ```sh
-cargo build --workspace
-./scripts/clippy.sh
+cargo build -p neoffse-app    # the desktop app
+cargo build --workspace       # every crate
 cargo test --workspace
+./scripts/clippy.sh
+cargo fmt --all --check
+```
+
+`cargo run -p neoffse-app` opens the app window.
+
+On Debian and Ubuntu, Slint's build guide lists these packages for the
+X11 and Wayland backends:
+
+```sh
+sudo apt-get install libfontconfig-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
 ```
 
 ## License
