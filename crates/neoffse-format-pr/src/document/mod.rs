@@ -28,9 +28,10 @@ pub use scalar::Scalar;
 
 use node::Node;
 
-/// Longest path, in segments, that a call accepts. The measured nesting is
-/// 7 string levels at most four segments each
-/// (`docs/formats/pixel-remaster.md#documents-inside-strings`).
+/// Longest path, in segments, that a call accepts. The measured saves nest
+/// string documents up to 7 levels deep
+/// (`docs/formats/pixel-remaster.md#documents-inside-strings`), and 64
+/// segments leave room for several keys and indexes per level.
 pub const MAX_DEPTH: usize = 64;
 
 /// The four bytes that JSON allows between tokens.
@@ -47,8 +48,24 @@ pub enum Segment<'a> {
     Doc,
 }
 
-/// Renders a path for messages: `userData.ownedCharacterList.target[2].parameter`.
-/// The empty path, and a path of `Doc` steps, render as `<root>`.
+/// Renders a path for messages: keys join with `.`, an index shows as
+/// `[2]`, and a `Doc` step shows nothing. The empty path, and a path of
+/// `Doc` steps, render as `<root>`.
+///
+/// ```
+/// use neoffse_format_pr::document::{Segment, render_path};
+///
+/// let path = [
+///     Segment::Key("userData"),
+///     Segment::Doc,
+///     Segment::Key("ownedCharacterList"),
+///     Segment::Key("target"),
+///     Segment::Index(2),
+///     Segment::Key("parameter"),
+/// ];
+/// assert_eq!(render_path(&path), "userData.ownedCharacterList.target[2].parameter");
+/// assert_eq!(render_path(&[]), "<root>");
+/// ```
 #[must_use]
 pub fn render_path(path: &[Segment<'_>]) -> String {
     let mut out = String::new();
@@ -75,6 +92,18 @@ pub fn render_path(path: &[Segment<'_>]) -> String {
 ///
 /// Reads take `&mut self` because they parse levels and keep them. A read
 /// never changes [`to_json`](Self::to_json).
+///
+/// ```
+/// use neoffse_format_pr::document::{Document, Scalar, Segment};
+///
+/// let mut document = Document::parse(r#"{"userData":"{\"playTime\":58.0}"}"#)?;
+/// let play_time = [Segment::Key("userData"), Segment::Doc, Segment::Key("playTime")];
+///
+/// assert_eq!(document.get(&play_time)?, Scalar::Float(58.0));
+/// assert_eq!(document.raw(&play_time)?, "58.0"); // the written form survives
+/// assert_eq!(document.to_json(), r#"{"userData":"{\"playTime\":58.0}"}"#);
+/// # Ok::<(), neoffse_format_pr::document::DocumentError>(())
+/// ```
 #[derive(Debug, Clone)]
 pub struct Document {
     lead: String,

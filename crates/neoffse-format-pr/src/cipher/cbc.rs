@@ -21,6 +21,21 @@ impl Rijndael256 {
     ///
     /// Returns [`UnalignedLength`] when `data.len()` is not a multiple of 32.
     /// The check runs before any write, so `data` is unchanged on error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neoffse_format_pr::cipher::{PR_IV, Rijndael256, pad_zeros};
+    ///
+    /// let cipher = Rijndael256::pr();
+    /// let mut data = b"hello".to_vec();
+    /// pad_zeros(&mut data);
+    /// cipher.cbc_encrypt(&PR_IV, &mut data)?;
+    /// cipher.cbc_decrypt(&PR_IV, &mut data)?;
+    /// assert_eq!(data.len(), 32);
+    /// assert!(data.starts_with(b"hello"));
+    /// # Ok::<(), neoffse_format_pr::cipher::UnalignedLength>(())
+    /// ```
     pub fn cbc_encrypt(&self, iv: &[u8; 32], data: &mut [u8]) -> Result<(), UnalignedLength> {
         let len = data.len();
         let (blocks, rest) = data.as_chunks_mut::<BLOCK_SIZE>();

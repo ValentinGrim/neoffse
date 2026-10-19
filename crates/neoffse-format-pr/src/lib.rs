@@ -1,13 +1,34 @@
-//! Final Fantasy I to VI Pixel Remaster saves: the codec (base64,
-//! Rijndael-256, raw deflate), the lossless JSON document, and the mapping
-//! to the domain model. `docs/formats/pixel-remaster.md` is the source of
-//! truth for every rule this crate implements.
+//! Final Fantasy I to VI Pixel Remaster saves: the codec that turns a PC
+//! save file into its JSON text and back, and a lossless document that
+//! reads and edits that text by path.
+//! `docs/formats/pixel-remaster.md` is the source of truth for every rule
+//! this crate implements. The crate knows no domain type yet: it moves
+//! bytes and JSON text, not characters or items.
 //!
 //! - [`cipher`]: Rijndael with a 256-bit block, CBC mode, the PR key and IV,
 //!   and the PR zero padding.
 //! - [`container`]: the file around the JSON text (BOM, base64, cipher, raw
 //!   deflate, CRLF), with `decode` and `encode`.
 //! - [`document`]: a lossless view of the JSON text, read and edited by path.
+//!
+//! Decode a file, edit one value, encode it again:
+//!
+//! ```
+//! use neoffse_format_pr::container::{Container, decode, encode};
+//! use neoffse_format_pr::document::{Document, Scalar, Segment};
+//!
+//! let json = r#"{"userData":"{\"gil\":100}"}"#;
+//! let file = encode(json, &Container::game())?;
+//!
+//! let decoded = decode(&file)?;
+//! let mut document = Document::parse(&decoded.json)?;
+//! let gil = [Segment::Key("userData"), Segment::Doc, Segment::Key("gil")];
+//! document.set(&gil, &Scalar::Int(250))?;
+//!
+//! let edited = encode(&document.to_json(), &decoded.container)?;
+//! assert_eq!(decode(&edited)?.json, r#"{"userData":"{\"gil\":250}"}"#);
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 pub mod cipher;
 pub mod container;

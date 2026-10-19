@@ -26,18 +26,20 @@ both.
 
 **Scope.**
 - A hand port of Rijndael-256 from KiameV's Go implementation. The
-  port adds KiameV's copyright notice to `licenses/`.
-- Test vectors from the Go implementation, committed.
-- The codec, decode and encode: BOM, base64 that ignores a trailing CR
-  or LF, decryption, restoration of the trailing zero bytes the
-  decryption strips, raw inflate, JSON text (see
+  port adds the notices of KiameV and Meyti to `licenses/`.
+- Test vectors from the Go implementation, committed, with the Go
+  program that generates them (`tools/cipher-vectors/`).
+- The codec, decode and encode: BOM, base64 that ignores trailing
+  whitespace, decryption that keeps the zero padding, raw inflate that
+  stops at the final block, JSON text (see
   [Container encoding](formats/pixel-remaster.md#container-encoding)).
 - The lossless JSON document (rule 1 of
   [Principles](architecture.md#principles)).
 - [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md), the
   source of truth for each rule above.
 - Library tests on synthetic fixtures, and on private real saves that
-  the tests find through `NEOFFSE_SAVES`.
+  the tests find through `NEOFFSE_SAVES`, with `neoffse-testkit` to
+  locate both (see [Test policy](architecture.md#test-policy)).
 
 **Exit.** The Rust cipher reproduces every Go test vector. Real FF I and
 FF II saves, read through `NEOFFSE_SAVES`, survive decode, encode and

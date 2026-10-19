@@ -1,5 +1,7 @@
-//! Test helpers: synthetic fixtures, and the private real saves found
-//! through `NEOFFSE_SAVES`, which tests skip rather than fail without.
+//! Test helpers: locate and read the committed fixtures under `fixtures/`,
+//! and locate the private real saves named by `NEOFFSE_SAVES`. The crate
+//! generates no fixture. A test that finds no private save returns early
+//! and passes, after [`skip`] has written the reason on stderr.
 //!
 //! A test that needs real saves starts with:
 //!

@@ -6,6 +6,11 @@
 //! [`Container`] facts. [`encode`] turns them back into file bytes. The
 //! stage modules [`text`] and [`deflate`] are public so tests can reach each
 //! step. The codec works on byte slices and parses no JSON.
+//!
+//! The decrypted stream keeps its zero padding: no step strips it or
+//! restores it, and the inflater stops at the final DEFLATE block, so the
+//! padding after it does no harm. Only [`InflatePath::Fallback`] inflates a
+//! view without the trailing zeros, for a stream that has no final block.
 
 mod error;
 
@@ -28,12 +33,13 @@ pub const MAX_PAYLOAD_LEN: usize = 16 * 1024 * 1024;
 /// bytes per block flate2 writes at level 0.
 const MAX_STREAM_LEN: usize = 2 * MAX_PAYLOAD_LEN;
 
-/// Longest base64 text [`decode`] accepts: a stream of twice
-/// [`MAX_PAYLOAD_LEN`] padded to 32 bytes, in base64 (4 characters per 3
-/// bytes). It is a margin, not an exact
-/// bound: any practical encoder stays under it for a payload within
-/// [`MAX_PAYLOAD_LEN`], and a file far larger is refused before base64. The
-/// measured streams run from 6 to 84 KB
+/// Longest base64 text [`decode`] accepts, in bytes, BOM and trailer
+/// excluded: about 43 MiB, the base64 form (4 characters per 3 bytes) of a
+/// stream of twice [`MAX_PAYLOAD_LEN`] padded to 32 bytes.
+///
+/// It is a margin, not an exact bound. Any practical encoder stays under it
+/// for a payload within [`MAX_PAYLOAD_LEN`], and [`decode`] refuses a longer
+/// text before it decodes base64. The measured streams run from 6 to 84 KB
 /// (`docs/formats/pixel-remaster.md#raw-deflate`).
 pub const MAX_TEXT_LEN: usize = MAX_STREAM_LEN.next_multiple_of(BLOCK_SIZE).div_ceil(3) * 4;
 
@@ -90,11 +96,12 @@ pub struct Decoded {
 /// The decrypted buffer keeps every byte: no unpadding, so a stream whose
 /// last byte is zero survives
 /// (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
-/// Bytes after the final block are ignored.
+/// The inflater stops at the final block and ignores the zero padding after
+/// it. [`Container::trailer`] keeps the whitespace after the base64 text
+/// byte for byte, with no cap on its length.
 ///
-/// A base64 text longer than [`MAX_TEXT_LEN`] is refused before any decoding,
-/// so a file far larger than any payload within [`MAX_PAYLOAD_LEN`] needs
-/// costs no memory.
+/// A base64 text longer than [`MAX_TEXT_LEN`] is refused before base64
+/// decoding. The inflated payload may not exceed [`MAX_PAYLOAD_LEN`].
 ///
 /// # Errors
 ///
@@ -103,6 +110,20 @@ pub struct Decoded {
 /// [`CodecError::InflateTruncated`], [`CodecError::PayloadTooLarge`] (an
 /// inflated payload above [`MAX_PAYLOAD_LEN`], or a text above
 /// [`MAX_TEXT_LEN`]) or [`CodecError::Utf8`].
+///
+/// # Examples
+///
+/// ```
+/// use neoffse_format_pr::container::{Container, InflatePath, decode, encode};
+///
+/// let file = encode(r#"{"gil":100}"#, &Container::game())?;
+/// let decoded = decode(&file)?;
+/// assert_eq!(decoded.json, r#"{"gil":100}"#);
+/// assert!(decoded.container.bom);
+/// assert_eq!(decoded.container.trailer, b"\r\n");
+/// assert_eq!(decoded.inflate_path, InflatePath::FinalBlock);
+/// # Ok::<(), neoffse_format_pr::container::CodecError>(())
+/// ```
 pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
     let framing = text::split(file);
     if framing.text.is_empty() {

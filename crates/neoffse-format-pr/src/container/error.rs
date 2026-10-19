@@ -21,8 +21,8 @@ pub enum CodecError {
         /// The decoder's error.
         source: base64::DecodeError,
     },
-    /// The ciphertext is empty or not a multiple of 32 bytes. It also
-    /// carries [`UnalignedLength`] from the cipher.
+    /// The ciphertext is empty or not a multiple of 32 bytes. An
+    /// [`UnalignedLength`] from the cipher converts to this variant.
     #[error("ciphertext length {len} is not a non-zero multiple of 32 bytes")]
     CipherLength {
         /// The ciphertext length in bytes.
@@ -45,10 +45,10 @@ pub enum CodecError {
         /// Bytes the inflater took before it ran dry.
         consumed: usize,
     },
-    /// The inflated payload is larger than the limit, or the file is too
-    /// large to carry one: the base64 text exceeds `MAX_TEXT_LEN`, a margin
-    /// of twice the payload cap that sits far above the measured streams
-    /// (`docs/formats/pixel-remaster.md#raw-deflate`).
+    /// The inflated payload exceeds [`MAX_PAYLOAD_LEN`](super::MAX_PAYLOAD_LEN),
+    /// or the base64 text exceeds [`MAX_TEXT_LEN`](super::MAX_TEXT_LEN) and
+    /// cannot carry a payload within that cap. Both cases report the payload
+    /// cap in `limit`.
     #[error("the payload exceeds {limit} bytes")]
     PayloadTooLarge {
         /// The limit in bytes.

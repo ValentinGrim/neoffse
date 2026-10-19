@@ -255,10 +255,12 @@ to the DEFLATE stream; a decoder must keep them.
   these files. NeoFFSE ports Rijndael-256 from the Go library.
 - CBC: the encryptor XORs the first plaintext block with the IV and each
   later block with the previous ciphertext block [C].
-- The library packs each 4-byte column big-endian
+- The Go library packs each 4-byte column big-endian
   (`b0<<24 | b1<<16 | b2<<8 | b3`) and ships both expanded key schedules
   (`ke` and `kd`, 15 round keys of 8 words) as constants. `ke[0]` is the
-  key: `ke[0][0] = 1627981568 = 0x61090700` [C].
+  key: `ke[0][0] = 1627981568 = 0x61090700` [C]. Both schedules follow
+  from the key, so an implementation may expand them at run time
+  instead of embedding them.
 - One key and one IV serve every game, slot, bestiary and settings file
   [M: all 34 files decrypt with them].
 - With a fixed key and IV, equal plaintexts give equal files: the
@@ -290,9 +292,10 @@ Measured cases [M]:
 | FF II slot 2 (editor) | 71 872 | 71 869 | 3 | 4 | 1 |
 | The other 29 game files | | | | equal to the padding | 0 |
 
-No FF III to VI file loses a stream byte. The restore stays mandatory:
-the loss depends on the last stream byte, and the FF II Quick Save, the
-FF I and FF II slot index and both editor files lose one each.
+No FF III to VI file loses a stream byte. A decoder must still keep
+every decrypted byte: the loss depends on the last stream byte, and the
+FF II Quick Save, the FF I and FF II slot index and both editor files
+lose one each.
 
 Before commit `6f8f74a`, the Go editor could not open the FF II Quick
 Save, and KiameV's release disables the bestiary after the same failure
@@ -475,8 +478,15 @@ An object stored in a list is a JSON string, so a list of items reads
   rewrites each float it re-serializes as an integer [M, measured on
   `go-ordered-json` and two editor files].
 - No number uses an exponent or a leading zero [M].
-- Doubles use the shortest round-trip form, up to 17 significant digits:
-  `"playTime":39087.71384844743` [M].
+- The game writes doubles with up to 17 significant digits, not always
+  in the shortest round-trip form: `"playTime":39087.71384844743` [M].
+  Of the non-integral `userData.playTime` values, 4 carry 17 digits whose
+  last digit differs by 1 or 2 from the shortest form of the same double;
+  both texts parse to the same double [M]. A serializer that prints a
+  parsed double rewrites those 4 values, so keep the original text of
+  each number you do not edit. The correctly rounded 17-digit form
+  equals the shortest form, so the game's last digits are not correctly
+  rounded [M].
 - Integers exceed the i32 range. `dataStorage.treasure` holds
   `4294967295` and `dataStorage.scenario` `4293655417` (u32 values), and
   `timeStampTicks` reaches `639278367168195674` [M]. That tick value is
@@ -486,6 +496,13 @@ An object stored in a list is a JSON string, so a list of items reads
   FF VI also a `scenario` above i32 [M].
 - Keep the original text of each number you do not edit
   ([Principles](../architecture.md#principles), principle 1).
+- Rust's `serde_json` 1.0.154 with `preserve_order` and
+  `arbitrary_precision` re-serializes all 5,527 JSON documents of the 34
+  files, at every nesting depth from 0 to 7, byte for byte, and
+  re-escapes all 7,392 string tokens byte for byte [M]. Without
+  `arbitrary_precision`, 4 `userData` documents break on
+  `userData.playTime`; without `preserve_order` as well, 1,266 documents
+  break on key order [M].
 
 ### Key order and spellings
 

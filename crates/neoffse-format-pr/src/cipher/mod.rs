@@ -2,10 +2,12 @@
 //! the cipher of the Pixel Remaster saves
 //! (`docs/formats/pixel-remaster.md#cipher`).
 //!
-//! Provenance: ported by hand from `KiameV`'s ffpr-save-cypher (Go, MIT),
-//! which is based on py3rijndael (Python, MIT, Meyti), which derives from
-//! Bram Cohen's Java reference code of 2001 (public domain). The notices
-//! sit in `licenses/`.
+//! Provenance: a hand port of `KiameV`'s ffpr-save-cypher (Go, MIT). That
+//! library is based on py3rijndael (Python, MIT, Meyti), whose origin is a
+//! gist that ports Bram Cohen's Java reference code of 2001 (public
+//! domain). The notices sit in `licenses/`. The port computes the S-box and
+//! the lookup tables at compile time and expands the key schedule in
+//! [`Rijndael256::new`]; the Go library embeds both.
 //!
 //! Rijndael with a 256-bit block is not AES: AES fixes the block at 128
 //! bits (`docs/formats/pixel-remaster.md#known-pitfalls`, item 5).
@@ -64,6 +66,15 @@ impl std::error::Error for UnalignedLength {}
 /// place and that is the only mutation: an owned `&mut Vec` cannot alias,
 /// unlike the Go `append` that wrote into a shared backing array
 /// (`docs/formats/pixel-remaster.md#known-pitfalls`, item 6).
+///
+/// ```
+/// use neoffse_format_pr::cipher::pad_zeros;
+///
+/// let mut data = vec![1, 2, 3];
+/// pad_zeros(&mut data);
+/// assert_eq!(data.len(), 32);
+/// assert!(data[3..].iter().all(|&byte| byte == 0));
+/// ```
 pub fn pad_zeros(data: &mut Vec<u8>) {
     let padding = (BLOCK_SIZE - data.len() % BLOCK_SIZE) % BLOCK_SIZE;
     data.resize(data.len() + padding, 0);
