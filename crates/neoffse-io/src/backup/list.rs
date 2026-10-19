@@ -91,7 +91,7 @@ fn scan(game_dir: &Path, game: &str) -> Result<Listing, IoError> {
 }
 
 /// Reads and checks one `backup.json`, which must belong to `game`.
-fn read_manifest(path: &Path, game: &str) -> Result<Manifest, IoError> {
+pub(super) fn read_manifest(path: &Path, game: &str) -> Result<Manifest, IoError> {
     let invalid = |source: Box<dyn Error + Send + Sync>| IoError::ManifestInvalid {
         path: path.to_path_buf(),
         source,
@@ -126,10 +126,19 @@ fn is_stamp(name: &str) -> bool {
 ///
 /// `keep` is the backup just made. When the clock ran backwards it sorts as
 /// the oldest, and the oldest of the others go in its place.
-pub(super) fn prune(game_dir: &Path, keep: &Backup) -> Result<(), IoError> {
+///
+/// `protect` is a backup folder that stays and does not count toward
+/// [`MAX_BACKUPS`]. A restore protects the backup it reads from, which would
+/// otherwise be the oldest one and the first to go.
+pub(super) fn prune(game_dir: &Path, keep: &Backup, protect: Option<&Path>) -> Result<(), IoError> {
     let valid = scan(game_dir, &keep.manifest.game)?.backups;
-    let excess = valid.len().saturating_sub(MAX_BACKUPS);
-    for old in valid.iter().rev().filter(|backup| backup.dir != keep.dir).take(excess) {
+    let protected = usize::from(protect.is_some_and(|dir| valid.iter().any(|backup| backup.dir == dir)));
+    let excess = valid.len().saturating_sub(protected).saturating_sub(MAX_BACKUPS);
+    let candidates = valid
+        .iter()
+        .rev()
+        .filter(|backup| backup.dir != keep.dir && Some(backup.dir.as_path()) != protect);
+    for old in candidates.take(excess) {
         fs::remove_dir_all(&old.dir).map_err(|source| IoError::Io {
             operation: Operation::Remove,
             path: old.dir.clone(),

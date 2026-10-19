@@ -3,6 +3,8 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use crate::backup::Backup;
+
 /// The step of a file operation that failed. It names the step in
 /// [`IoError::Io`].
 ///
@@ -94,5 +96,23 @@ pub enum IoError {
         /// The serialization or parse error, boxed so that no third-party
         /// type appears in this crate's public API.
         source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// A restore failed while it wrote files.
+    ///
+    /// The files in `written` hold the backup's version, the others hold their
+    /// old one. The restore does not roll back: a rollback would write to a
+    /// disk that just failed. Restoring `safety` puts the old versions back.
+    #[error("restore stopped after {} of {} files", .written.len(), .written.len() + .remaining.len())]
+    RestoreFailed {
+        /// Files already replaced by the backup's version, in write order.
+        written: Vec<String>,
+        /// Files not restored: the one that failed first, then the untouched
+        /// ones.
+        remaining: Vec<String>,
+        /// The backup of the replaced files; restoring it undoes the restore.
+        /// `None` when no file existed to back up.
+        safety: Option<Box<Backup>>,
+        /// The error of the file that failed: `Io` or `VerificationFailed`.
+        source: Box<IoError>,
     },
 }

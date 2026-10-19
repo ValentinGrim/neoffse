@@ -20,6 +20,16 @@
 //! [`MAX_BACKUPS`] (20) remain for the game. Only readable backups count and
 //! only they are deleted. The backup just made always stays.
 //!
+//! [`restore()`] writes the files of one backup over the files of a save
+//! folder. It reads the manifest and every backup file first, backs up the
+//! current versions of the files it will replace (`reason`
+//! `before-restore`), then writes them one by one through the verified atomic
+//! write. A failure before the first write returns the plain error and
+//! changes nothing; a failure after it is [`IoError::RestoreFailed`], which
+//! carries the safety backup as the way back. The backup being restored is
+//! exempt from the retention pass of the safety backup, so a game may hold 21
+//! readable backups until the next [`create()`].
+//!
 //! The file `backup.json` of a backup folder lists the files by plain name.
 //! The path of file `name` in a [`Backup`] is `backup.dir.join(name)`, for a
 //! `name` in `backup.manifest.files`.
@@ -30,6 +40,7 @@
 
 mod list;
 mod manifest;
+mod restore;
 
 use std::error::Error;
 use std::fs::{self, File, OpenOptions};
@@ -42,6 +53,7 @@ use crate::error::{IoError, Operation};
 
 pub use list::{Listing, MAX_BACKUPS, list};
 pub use manifest::{MANIFEST_VERSION, Manifest, Moment};
+pub use restore::{Restored, restore, restore_with};
 
 use manifest::MANIFEST_FILE;
 
@@ -106,6 +118,13 @@ pub fn create(data: &DataDir, request: &Request<'_>) -> Result<Backup, IoError> 
 /// deletes the oldest readable backups beyond [`MAX_BACKUPS`]; a failure of
 /// that cleanup is not reported.
 pub fn create_with<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Request<'_>, now: Moment) -> Result<Backup, IoError> {
+    create_protecting(ops, data, request, now, None)
+}
+
+/// The body of [`create_with`]. `protect` names a backup folder that the
+/// retention pass leaves alone and does not count: a restore passes the
+/// folder it reads from.
+fn create_protecting<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Request<'_>, now: Moment, protect: Option<&Path>) -> Result<Backup, IoError> {
     let game_dir = data.game_backups_dir(request.game)?;
     let stamp = now.stamp();
     let manifest = Manifest {
@@ -137,7 +156,7 @@ pub fn create_with<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Reque
     let backup = Backup { dir, manifest };
     // The backup exists and the save pipeline goes on. A failed deletion
     // leaves an extra old backup, and the next successful call prunes again.
-    let _ = list::prune(&game_dir, &backup);
+    let _ = list::prune(&game_dir, &backup, protect);
     let _ = ops.sync_dir(&game_dir);
     Ok(backup)
 }
