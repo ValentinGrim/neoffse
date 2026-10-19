@@ -10,6 +10,7 @@ readme.workspace = true
 authors.workspace = true
 keywords = ["final-fantasy", "save-editor", "gamedev", "backup"]
 categories = ["game-development", "filesystem"]
+publish = false
 
 [dependencies]
 

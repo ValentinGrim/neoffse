@@ -55,6 +55,9 @@ jobs:
         run: bash ./scripts/clippy.sh
       - name: Test
         run: cargo test --workspace --locked
+      - name: Test the format crate alone
+        if: runner.os == 'Linux'
+        run: cargo test -p neoffse-format-pr --locked
       - name: Rustdoc
         if: runner.os == 'Linux'
         env:
