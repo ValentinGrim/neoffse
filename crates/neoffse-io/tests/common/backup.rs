@@ -8,8 +8,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use neoffse_io::atomic::{FileOps, RealFileOps};
-use neoffse_io::backup::{Backup, Moment, Request, create_with};
+use neoffse_io::backup::{Backup, Moment, Request, Restored, create_with, restore_with};
 use neoffse_io::dirs::DataDir;
+use neoffse_io::error::IoError;
 
 use super::{Log, Probe, Step};
 
@@ -69,6 +70,23 @@ pub(crate) fn request<'a>(world: &'a World, game: &'a str, files: &'a [&'a str])
 pub(crate) fn make(world: &World, game: &str, unix: i64) -> Backup {
     let files = [SLOT, BESTIARY];
     create_with(&RealFileOps, &world.data, &request(world, game, &files), at(unix)).unwrap()
+}
+
+/// The bytes `edit` writes into `SLOT`.
+pub(crate) const EDITED_SLOT: &[u8] = b"slot-edited";
+
+/// The bytes `edit` writes into `BESTIARY`.
+pub(crate) const EDITED_BESTIARY: &[u8] = b"bestiary-edited";
+
+/// Overwrites both files of the save folder, after a `make` took the old ones.
+pub(crate) fn edit(world: &World) {
+    fs::write(world.source.join(SLOT), EDITED_SLOT).unwrap();
+    fs::write(world.source.join(BESTIARY), EDITED_BESTIARY).unwrap();
+}
+
+/// Restores `backup` of game `ff1-pr` into the save folder at `unix`.
+pub(crate) fn restore_at(world: &World, backup: &Backup, unix: i64) -> Result<Restored, IoError> {
+    restore_with(&RealFileOps, &world.data, "ff1-pr", backup, &world.source, at(unix))
 }
 
 /// Every file below `dir`, keyed by the relative path with `/` separators.
