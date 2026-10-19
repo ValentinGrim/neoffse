@@ -9,7 +9,7 @@ use flate2::write::DeflateEncoder;
 use neoffse_format_pr::cipher::UnalignedLength;
 use neoffse_format_pr::container::deflate::deflate;
 use neoffse_format_pr::container::text::{BOM, encode_base64};
-use neoffse_format_pr::container::{CodecError, Container, MAX_PAYLOAD_LEN, MAX_TEXT_LEN, decode, seal};
+use neoffse_format_pr::container::{CodecError, Container, MAX_PAYLOAD_LEN, MAX_TEXT_LEN, MAX_TRAILER_LEN, decode, encode, seal};
 
 #[test]
 fn decode_reports_an_empty_file() {
@@ -69,6 +69,49 @@ fn decode_refuses_a_text_longer_than_any_capped_payload() {
     assert!(matches!(decode(&file), Err(CodecError::PayloadTooLarge { limit: MAX_TEXT_LEN })));
 }
 
+/// A valid file with a BOM and no trailer, for tests that append their own.
+fn file_without_trailer() -> Vec<u8> {
+    let container = Container {
+        bom: true,
+        trailer: Vec::new(),
+    };
+    encode("{}", &container).unwrap()
+}
+
+#[test]
+fn max_trailer_len_is_64_and_holds_the_game_crlf() {
+    assert_eq!(MAX_TRAILER_LEN, 64);
+    assert!(Container::game().trailer.len() <= MAX_TRAILER_LEN);
+}
+
+#[test]
+fn decode_refuses_a_trailer_one_byte_above_the_cap() {
+    let mut file = file_without_trailer();
+    file.extend_from_slice(&b"\r\n".repeat(32));
+    file.push(b'\n');
+    let outcome = decode(&file);
+    assert!(matches!(outcome, Err(CodecError::TrailerTooLong { len: 65, limit: 64 })), "{outcome:?}");
+}
+
+/// The audit case N1: a file padded with megabytes of whitespace.
+#[test]
+fn decode_refuses_a_megabyte_of_trailing_spaces() {
+    let mut file = file_without_trailer();
+    file.resize(file.len() + 1_048_576, b' ');
+    let outcome = decode(&file);
+    assert!(matches!(outcome, Err(CodecError::TrailerTooLong { len: 1_048_576, .. })), "{outcome:?}");
+}
+
+#[test]
+fn whitespace_only_stays_empty_above_the_cap() {
+    let spaces = vec![b' '; 1000];
+    let mut with_bom = BOM.to_vec();
+    with_bom.extend_from_slice(&spaces);
+    for file in [spaces, with_bom] {
+        assert!(matches!(decode(&file), Err(CodecError::Empty)));
+    }
+}
+
 /// The slowest test of the crate: it encrypts and decrypts about 16 MiB.
 #[test]
 fn max_text_len_admits_the_worst_case_payload() {
@@ -101,4 +144,6 @@ fn error_messages_name_the_step_and_the_position() {
     assert!(message.contains("byte 5"), "{message}");
     let message = CodecError::CipherLength { len: 33 }.to_string();
     assert!(message.contains("33") && message.contains("32"), "{message}");
+    let message = CodecError::TrailerTooLong { len: 65, limit: 64 }.to_string();
+    assert!(message.contains("65") && message.contains("64"), "{message}");
 }

@@ -368,7 +368,8 @@ zero or not.
 - The game loads an FF I bestiary written by the Go editor's encoder,
   so it accepts a file without the trailing CRLF [G].
 - NeoFFSE trims the same four bytes and keeps them as the trailer, byte
-  for byte, with no length cap. Any other byte, a form feed included,
+  for byte, up to 64 bytes. A longer trailer fails decoding, and encoding
+  refuses a container that holds one. Any other byte, a form feed included,
   stays in the base64 text, and decoding fails on it.
 - `decode` returns the BOM flag and the trailer, and `encode` writes back
   the BOM and the trailer of the container it receives. `Container::game()`
@@ -520,6 +521,7 @@ decode(file) -> (json, container):
     if bom: file = file[3..]
     text = file without trailing ' ', '\t', '\r', '\n'
     trailer = the bytes removed from the end         # kept as read, maybe empty
+    require len(trailer) <= 64                       # NeoFFSE cap; the game writes 2
     while len(text) % 4 != 0: text += "="            # tolerance, the game pads
     cipher = base64_std_decode(text)                 # error: damaged file
     require len(cipher) > 0 and len(cipher) % 32 == 0
