@@ -1,0 +1,63 @@
+import { AboutSlint, StandardButton, VerticalBox } from "std-widgets.slint";
+
+export component AboutDialog inherits Dialog {
+    in property <string> app-version;
+    in property <string> license;
+    callback dismiss();
+
+    title: @tr("About NeoFFSE");
+
+    VerticalBox {
+        Text {
+            text: @tr("NeoFFSE");
+            horizontal-alignment: center;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        Text {
+            text: @tr("Version {}", root.app-version);
+            horizontal-alignment: center;
+        }
+        Text {
+            text: @tr("License: {}", root.license);
+            horizontal-alignment: center;
+        }
+        AboutSlint { }
+    }
+
+    StandardButton {
+        kind: close;
+        clicked => { root.dismiss(); }
+    }
+}
+
+export component MainWindow inherits Window {
+    callback about-requested();
+    callback quit-requested();
+
+    title: @tr("NeoFFSE");
+    preferred-width: 800px;
+    preferred-height: 600px;
+
+    MenuBar {
+        Menu {
+            title: @tr("File");
+            MenuItem {
+                title: @tr("Quit");
+                activated => { root.quit-requested(); }
+            }
+        }
+        Menu {
+            title: @tr("Help");
+            MenuItem {
+                title: @tr("About NeoFFSE");
+                activated => { root.about-requested(); }
+            }
+        }
+    }
+
+    Text {
+        text: @tr("Final Fantasy save editor");
+        horizontal-alignment: center;
+    }
+}

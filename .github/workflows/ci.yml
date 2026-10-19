@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - "v*.*.*"
+  pull_request:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: fmt, clippy, test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Install Linux system packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfontconfig-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Check Cargo.lock
+        run: cargo fetch --locked
+      - name: Clippy
+        run: bash ./scripts/clippy.sh
+      - name: Test
+        run: cargo test --workspace --locked
+
+  msrv:
+    name: MSRV check (Rust 1.92)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Keep this version equal to rust-version in the root Cargo.toml.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92.0"
+      - name: Install Linux system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfontconfig-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Check at the declared rust-version
+        run: cargo check --workspace --all-targets --locked
