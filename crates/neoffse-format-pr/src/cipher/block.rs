@@ -11,7 +11,9 @@ const ROUND_KEYS: usize = 15;
 type Columns = [u32; COLUMNS];
 type Lookup = [&'static [u32; 256]; 4];
 
-/// Row shifts for a 256-bit block, `shifts[2]` of the Go reference.
+/// Row shifts for a 256-bit block (`docs/formats/pixel-remaster.md#cipher`):
+/// rows 1 to 3 read from 1, 3 and 4 columns further when encrypting, and from
+/// 7, 5 and 4 when decrypting.
 const ENCRYPT_SHIFTS: [usize; 3] = [1, 3, 4];
 const DECRYPT_SHIFTS: [usize; 3] = [7, 5, 4];
 
@@ -28,6 +30,18 @@ pub struct Rijndael256 {
 
 impl Rijndael256 {
     /// Expands `key` into the encryption and decryption schedules.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neoffse_format_pr::cipher::{PR_KEY, Rijndael256};
+    ///
+    /// let cipher = Rijndael256::new(&PR_KEY);
+    /// let block = [7_u8; 32];
+    /// let sealed = cipher.encrypt_block(&block);
+    /// assert_ne!(sealed, block);
+    /// assert_eq!(cipher.decrypt_block(&sealed), block);
+    /// ```
     #[must_use]
     pub fn new(key: &[u8; 32]) -> Self {
         let ke = expand_key(key);
@@ -40,6 +54,18 @@ impl Rijndael256 {
     }
 
     /// The cipher keyed with [`PR_KEY`](super::PR_KEY).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neoffse_format_pr::cipher::{PR_KEY, Rijndael256};
+    ///
+    /// let block = [7_u8; 32];
+    /// assert_eq!(
+    ///     Rijndael256::pr().encrypt_block(&block),
+    ///     Rijndael256::new(&PR_KEY).encrypt_block(&block),
+    /// );
+    /// ```
     #[must_use]
     pub fn pr() -> Self {
         Self::new(&PR_KEY)
@@ -77,6 +103,9 @@ fn expand_key(key: &[u8; 32]) -> [Columns; ROUND_KEYS] {
     let mut round_constant = 0x01_u8;
     for index in COLUMNS..words.len() {
         let mut word = words[index - 1];
+        // The Rijndael rules test `index % Nk`; `% COLUMNS` is the same test
+        // because Nk = Nb = 8 for a 256-bit key and a 256-bit block. For
+        // Nk > 6, the word at position 4 gets the extra SubWord.
         if index % COLUMNS == 0 {
             word = sub_word(word.rotate_left(8)) ^ (u32::from(round_constant) << 24);
             round_constant = xtime(round_constant);
@@ -125,7 +154,7 @@ fn round(state: &Columns, round_key: &Columns, row_shifts: [usize; 3], tables: &
     })
 }
 
-/// The last round skips the column mix and substitutes bytes directly.
+/// The last round skips the column mix and substitutes bytes.
 fn last_round(state: &Columns, round_key: &Columns, row_shifts: [usize; 3], sbox: &[u8; 256]) -> Columns {
     let [second_row, third_row, fourth_row] = row_shifts;
     core::array::from_fn(|column| {

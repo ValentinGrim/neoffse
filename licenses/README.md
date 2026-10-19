@@ -1,15 +1,15 @@
 # Third-party notices
 
-NeoFFSE ports code and data from MIT-licensed projects by KiameV and
-Meyti. The cipher's code goes back to public-domain reference code by Bram
-Cohen. The MIT notices travel with the ported work, as the MIT license
-requires.
+NeoFFSE ports code from MIT-licensed projects by KiameV and Meyti, and
+will port data from KiameV's editor in M3. The cipher's code goes back to
+public-domain reference code by Bram Cohen. The MIT notices travel with
+the ported work, as the MIT license requires.
 
-| File | Project | What NeoFFSE ports |
-|---|---|---|
-| `kiamev-final-fantasy-pr-save-editor.txt` | [final-fantasy-pr-save-editor](https://github.com/KiameV/final-fantasy-pr-save-editor) | Pixel Remaster save rules and the ID tables of FF I to VI |
-| `kiamev-ffpr-save-cypher.txt` | [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher) | The Rijndael-256 save cipher, key and IV |
-| `meyt-py3rijndael.txt` | [py3rijndael](https://github.com/meyt/py3rijndael) | The Python Rijndael that ffpr-save-cypher is based on: round structure, CBC and zero padding |
+| File | Project | What NeoFFSE ports | NeoFFSE code derived from it |
+|---|---|---|---|
+| `kiamev-final-fantasy-pr-save-editor.txt` | [final-fantasy-pr-save-editor](https://github.com/KiameV/final-fantasy-pr-save-editor) | The Pixel Remaster save rules, and in M3 the ID tables of FF I to VI | `docs/formats/pixel-remaster.md` for the rules; nothing yet for the ID tables, since `data/` holds none |
+| `kiamev-ffpr-save-cypher.txt` | [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher) | The Rijndael-256 save cipher, key and IV | The `cipher` module of `neoffse-format-pr`; the vector generator in `tools/cipher-vectors/`, which runs the library |
+| `meyt-py3rijndael.txt` | [py3rijndael](https://github.com/meyt/py3rijndael) | The Python Rijndael that ffpr-save-cypher is based on: round structure, CBC and zero padding | The `cipher` module of `neoffse-format-pr`, through ffpr-save-cypher |
 
 ## Provenance of the cipher
 

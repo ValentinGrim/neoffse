@@ -122,7 +122,7 @@ fn run_probe(root: &Path, game: &str, probe: &str) -> Output {
         .unwrap()
 }
 
-/// Asserts that the child ran exactly one test and passed; returns its stderr.
+/// Asserts that the child ran one test and passed; returns its stderr.
 /// A renamed probe or a bad filter runs zero tests and still exits with success.
 fn child_stderr(output: &Output) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();

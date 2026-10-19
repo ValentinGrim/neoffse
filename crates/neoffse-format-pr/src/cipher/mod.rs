@@ -62,9 +62,10 @@ impl std::error::Error for UnalignedLength {}
 
 /// Appends `(32 - len % 32) % 32` zero bytes to `data`.
 ///
-/// Aligned and empty input stay as they are. The caller's `Vec` grows in
-/// place and that is the only mutation: an owned `&mut Vec` cannot alias,
-/// unlike the Go `append` that wrote into a shared backing array
+/// Aligned and empty input stay as they are. The function changes `data`
+/// and nothing else, and the `Vec` may reallocate to make room. A `&mut Vec`
+/// is a unique borrow, so no other slice sees the appended bytes, unlike the
+/// Go `append` that wrote into a backing array the caller shared
 /// (`docs/formats/pixel-remaster.md#known-pitfalls`, item 6).
 ///
 /// ```

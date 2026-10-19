@@ -66,8 +66,9 @@ fn for_each_save(mut check: impl FnMut(&str, &[u8]) -> bool) -> Vec<(&'static st
         .collect()
 }
 
-/// The longest suffix of space, tab, CR and LF, computed apart from the
-/// codec so a decoder bug cannot hide behind itself.
+/// The longest suffix of space, tab, CR and LF
+/// (`docs/formats/pixel-remaster.md#bom-and-line-end`), computed apart from
+/// the codec so a decoder bug cannot hide behind itself.
 fn trailing_whitespace(bytes: &[u8]) -> &[u8] {
     let kept = bytes
         .iter()
@@ -108,7 +109,10 @@ fn real_saves_survive_the_document_and_the_codec() {
 }
 
 /// The token of the edited key at depth 1: the `userData` string holds the
-/// JSON, so its quotes are escaped with a backslash.
+/// JSON, so each quote inside it shows as a backslash and a quote (a quote at
+/// depth n shows as `2^n - 1` backslashes,
+/// `docs/formats/pixel-remaster.md#documents-inside-strings`). `owendGil` is
+/// the game's spelling (`docs/formats/pixel-remaster.md#key-order-and-spellings`).
 fn token(value: i64) -> String {
     format!("\\\"owendGil\\\":{value}")
 }
@@ -132,7 +136,8 @@ fn an_edit_changes_only_its_bytes_through_the_codec() {
             Err(DocumentError::MissingKey { key, .. }) if key == "userData" => return false,
             Err(_) => panic!("{label}: reading gil failed"),
         };
-        // The edit only needs a different value the game would accept.
+        // Any other integer serves: the test loads no game, so it claims nothing
+        // about which gil values the game accepts.
         let new = if old > 0 { old - 1 } else { 1 };
         assert!(document.set(&path, &Scalar::Int(new)).is_ok(), "{label}: set failed");
         let file = encoded(label, &document.to_json(), &d1);

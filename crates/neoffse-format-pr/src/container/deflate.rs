@@ -51,7 +51,7 @@ fn to_usize(value: u64) -> usize {
 /// `ended` false: the Fallback of
 /// `docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap` needs
 /// that case. The limit is checked after each 16 KiB chunk, so a bomb stops
-/// at about `limit` plus one chunk; an output of exactly `limit` bytes
+/// at about `limit` plus one chunk; an output of `limit` bytes
 /// passes.
 ///
 /// # Errors

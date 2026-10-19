@@ -4,8 +4,10 @@
 //! A [`Document`] keeps the raw text of every value. A level is parsed only
 //! when a path walks through it, and the JSON that a string holds only when
 //! a path asks for it with [`Segment::Doc`]. An edit re-serializes the
-//! levels it touched and their parent strings up to the root. Untouched
-//! members keep their bytes at every level the edit does not cross: number
+//! levels it touched and their parent strings up to the root. A touched
+//! level is written compact: the whitespace between its tokens disappears
+//! and its keys come back re-escaped by `serde_json`. Untouched members
+//! keep their bytes at every level the edit does not cross: number
 //! spellings, escapes and whitespace stay as read. A string document on the
 //! edit's path is re-serialized as a whole and re-escaped by `serde_json`,
 //! which writes only `\"` and `\\` for the characters the game escapes
@@ -55,12 +57,16 @@ pub enum Segment<'a> {
 /// ```
 /// use neoffse_format_pr::document::{Segment, render_path};
 ///
+/// // `userData`, `ownedCharacterList`, each element of `target` and
+/// // `parameter` hold JSON strings, so a walk crosses a `Doc` step into each.
 /// let path = [
 ///     Segment::Key("userData"),
 ///     Segment::Doc,
 ///     Segment::Key("ownedCharacterList"),
+///     Segment::Doc,
 ///     Segment::Key("target"),
 ///     Segment::Index(2),
+///     Segment::Doc,
 ///     Segment::Key("parameter"),
 /// ];
 /// assert_eq!(render_path(&path), "userData.ownedCharacterList.target[2].parameter");
@@ -148,6 +154,19 @@ impl Document {
     /// `InvalidJson` with path `<root>` for empty text, whitespace only, a
     /// second value after the first, a truncated value or a leading BOM. Its
     /// line and column count from the first byte of `text`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neoffse_format_pr::document::Document;
+    ///
+    /// let text = " {\"gil\": 100}\n";
+    /// let document = Document::parse(text)?;
+    /// assert_eq!(document.to_json(), text); // outer whitespace and inner spacing stay
+    /// assert!(Document::parse("").is_err());
+    /// assert!(Document::parse("{} {}").is_err());
+    /// # Ok::<(), neoffse_format_pr::document::DocumentError>(())
+    /// ```
     pub fn parse(text: &str) -> Result<Self, DocumentError> {
         let (lead, body, tail) = split_outer(text);
         Ok(Self {
@@ -158,7 +177,8 @@ impl Document {
     }
 
     /// The document as text: the input byte for byte until an edit touches
-    /// it. An edit changes only the levels on its path.
+    /// it. An edit changes only the levels on its path, and each of those is
+    /// written compact.
     #[must_use]
     pub fn to_json(&self) -> String {
         let mut out = String::new();
@@ -210,6 +230,23 @@ impl Document {
     ///
     /// The errors of [`set_raw`](Self::set_raw), plus `NonFiniteFloat`. The
     /// document stays as it was.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neoffse_format_pr::document::{Document, Scalar, Segment};
+    ///
+    /// let mut document = Document::parse(r#"{"gil": 100, "name": "Firion"}"#)?;
+    /// let gil = [Segment::Key("gil")];
+    /// document.set(&gil, &Scalar::Int(250))?;
+    /// // The level the edit crossed is written compact; the name keeps its text.
+    /// assert_eq!(document.to_json(), r#"{"gil":250,"name":"Firion"}"#);
+    /// assert_eq!(document.get(&gil)?, Scalar::Int(250));
+    ///
+    /// assert!(document.set(&[Segment::Key("exp")], &Scalar::Int(1)).is_err());
+    /// assert_eq!(document.to_json(), r#"{"gil":250,"name":"Firion"}"#);
+    /// # Ok::<(), neoffse_format_pr::document::DocumentError>(())
+    /// ```
     pub fn set(&mut self, path: &[Segment<'_>], value: &Scalar) -> Result<(), DocumentError> {
         check_depth(path)?;
         let json = value.json_text(path)?;
@@ -223,8 +260,24 @@ impl Document {
     /// # Errors
     ///
     /// `TooDeep`, `EndsInDoc` for a path ending in [`Segment::Doc`],
-    /// `InvalidJson` for `json`, then any step error. The document stays
-    /// exactly as it was.
+    /// `InvalidJson` for `json`, then any step error. The document stays as
+    /// it was.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neoffse_format_pr::document::{Document, Segment};
+    ///
+    /// let mut document = Document::parse(r#"{"list": [1, 2]}"#)?;
+    /// let list = [Segment::Key("list")];
+    /// // Whitespace around the new value goes; its inner spacing stays.
+    /// document.set_raw(&list, " [3,  4] ")?;
+    /// assert_eq!(document.to_json(), r#"{"list":[3,  4]}"#);
+    ///
+    /// assert!(document.set_raw(&list, "[3,").is_err());
+    /// assert_eq!(document.to_json(), r#"{"list":[3,  4]}"#);
+    /// # Ok::<(), neoffse_format_pr::document::DocumentError>(())
+    /// ```
     pub fn set_raw(&mut self, path: &[Segment<'_>], json: &str) -> Result<(), DocumentError> {
         check_depth(path)?;
         if path.last() == Some(&Segment::Doc) {
