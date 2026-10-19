@@ -12,8 +12,8 @@ use neoffse_format_pr::document::{Document, DocumentError, Scalar, Segment};
 
 const GAMES: [&str; 6] = ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"];
 
-/// Largest `owendGil` the edit test writes, one below the cap `9_999_999`.
-const GIL_LIMIT: i64 = 9_999_999;
+/// Steam writes this file beside the saves; it is not a save.
+const STEAM_CLOUD_MARKER: &str = "steam_autocloud.vdf";
 
 fn label(game: &str, path: &Path) -> String {
     let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
@@ -24,9 +24,18 @@ fn saves(game: &str) -> Option<Vec<PathBuf>> {
     neoffse_testkit::private_saves(game)
 }
 
-/// The games that have private saves, with their files.
+/// The games that have private saves, with their save files. The Steam cloud
+/// marker is dropped from each list, and a game left with no file counts as
+/// absent.
 fn present_games() -> Vec<(&'static str, Vec<PathBuf>)> {
-    GAMES.iter().filter_map(|&game| saves(game).map(|files| (game, files))).collect()
+    GAMES
+        .iter()
+        .filter_map(|&game| {
+            let mut files = saves(game)?;
+            files.retain(|path| path.file_name().is_none_or(|name| name != STEAM_CLOUD_MARKER));
+            (!files.is_empty()).then_some((game, files))
+        })
+        .collect()
 }
 
 fn read(label: &str, path: &Path) -> Vec<u8> {
@@ -134,7 +143,8 @@ fn an_edit_changes_only_its_bytes_through_the_codec() {
             Err(DocumentError::MissingKey { key, .. }) if key == "userData" => return false,
             Err(_) => panic!("{label}: reading gil failed"),
         };
-        let new = if old < GIL_LIMIT { old + 1 } else { old - 1 };
+        // The edit only needs a different value the game would accept.
+        let new = if old > 0 { old - 1 } else { 1 };
         assert!(document.set(&path, &Scalar::Int(new)).is_ok(), "{label}: set failed");
         let file = encoded(label, &document.to_json(), &d1);
         let d2 = decoded(label, &file);
