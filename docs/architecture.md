@@ -152,12 +152,27 @@ app depends on Slint, so their tests run without opening a window.
 - **`neoffse-data`** (M3) loads the ID tables (items, spells, maps, monsters,
   jobs) from the TOML files under `data/`. The build embeds them, so a
   library caller needs no data directory. Names and IDs only.
-- **`neoffse-io`** (M2) touches the user's files. It finds save roots (Steam
-  native and Flatpak, extra libraries from `libraryfolders.vdf`, Proton
-  `compatdata` prefixes, Windows Documents including OneDrive), writes
-  through the verified atomic pipeline, manages backups and their
-  `backup.json` manifest, restores, and detects a running game. Each
-  format crate declares where its saves sit relative to those roots.
+- **`neoffse-io`** touches the user's files. Today it holds `IoError`,
+  the error type of every operation of the crate, and `dirs::DataDir`,
+  which names the folder where NeoFFSE keeps its backups. `DataDir::platform`
+  asks the operating system for it (`ProjectDirs::data_dir()`:
+  `~/.local/share/neoffse` on Linux, the roaming application data folder
+  on Windows); `DataDir::at` takes any folder, which tests use. The type
+  builds `<data dir>/backups` and `<data dir>/backups/<game>` and creates
+  nothing on disk. A game id holds only ASCII lowercase letters, digits
+  and `-`, so it stays inside the backups folder and two ids cannot
+  collide on a case-insensitive file system.
+
+  M2 adds the rest. Discovery collects Steam roots (native, Flatpak,
+  Snap), reads every library from each root's `libraryfolders.vdf` and
+  probes `compatdata/<app ID>` in every library, because a Proton prefix
+  can sit outside the game's library; on Windows it reads the Documents
+  Known Folder, which follows OneDrive. The crate also writes through the
+  verified atomic pipeline, manages backups and their `backup.json`
+  manifest, restores, and detects a running game. Each format crate
+  declares where its saves sit relative to those roots. The rules behind
+  discovery are in
+  [Steam roots and libraries](formats/pixel-remaster.md#steam-roots-and-libraries).
 - **`neoffse-format-pr`** reads and writes FF I to VI PR saves. The codec
   splits off the BOM and the trailing whitespace, decodes base64,
   decrypts with Rijndael-256, inflates the raw deflate stream and returns
@@ -239,9 +254,9 @@ all three together.
 | Cipher test vectors | Go program in `tools/cipher-vectors/` | runs KiameV's ffpr-save-cypher (version pinned in its `go.mod`). Only a contributor who regenerates the vectors needs Go |
 | Binary formats (after M5) | `binrw` | for the console and older PC formats after the PR |
 | Atomic write (M2) | `tempfile` | temp file in the target folder, then rename |
-| Config and cache dirs (M2) | `directories` | |
+| Data dir | `directories` | `ProjectDirs::data_dir()` locates the backups ([Save safety](#save-safety)) |
 | Steam library list (M2) | `keyvalues-parser` | reads `libraryfolders.vdf` |
-| Running game (M2) | `sysinfo` | process scan before a write |
+| Running game (M2) | `sysinfo` | process scan before a write. Windows matches `name()` to the executable name; Linux matches the last component of `cmd()[0]`, because the kernel cuts the process name to 15 bytes ([Save safety](#save-safety)) |
 | Errors | `thiserror` in libraries, `anyhow` in the app (M4) | [Errors](#errors) |
 | Logging (M4) | `tracing` | |
 | Tests | `proptest` (`std` only); `insta` (M4) | property tests on codecs and on the document; snapshots |
@@ -260,11 +275,14 @@ a file.
   `DocumentError` (reads and edits of the JSON document). M3 adds
   `FormatError` in `neoffse-core`, next to the `SaveFormat` trait; a
   format crate converts its own errors into it and keeps them as the
-  source. `EditError` (M3) and `IoError` (M2) follow with their crates.
-  The app (M4) uses `anyhow` and adds context at the boundary.
-- Both enums are `#[non_exhaustive]`, so a `match` needs a wildcard arm
-  and a later version may add a variant. `neoffse-io` (M2) follows the
-  same rule.
+  source. `neoffse-io` has `IoError`: a failed file operation with its
+  step and path, a missing home directory, an invalid game id, a failed
+  verification and an invalid backup manifest. `EditError` (M3) follows
+  with `neoffse-core`. The app (M4) uses `anyhow` and adds context at the
+  boundary.
+- Every error enum is `#[non_exhaustive]`, so a `match` needs a wildcard
+  arm and a later version may add a variant. `IoError` and its
+  `Operation` enum follow the rule.
 - `Display` never repeats the source error, so an `anyhow` chain prints
   each cause once.
 - No panic path on input data. The workspace lints deny `unwrap_used`
@@ -460,12 +478,16 @@ public build redistributes nothing the project has no right to ship.
 
 A save reaches disk through one pipeline in the `neoffse` facade, and
 any failure before the final rename leaves the original file as it was.
-`neoffse-io` (M2) will provide the backup, write, rename and process
-steps, and the facade (M4) will join them to the format's encoder and
-decoder.
+`neoffse-io` provides the backup, write, rename and process steps (M2),
+and the facade (M4) joins them to the format's encoder and decoder.
 
 1. The facade checks for a running game process, and the app warns when
-   it finds one. The user may cancel or continue.
+   it finds one. The user may cancel or continue. A PR game runs under
+   its Windows executable name (`FINAL FANTASY II.exe`). On Windows the
+   check compares the process name. On Linux the game runs under Wine,
+   where the kernel cuts the process name to 15 bytes: FF II, FF III and
+   FF IV all read `FINAL FANTASY I`. The check compares the executable
+   name from the command line (`cmd()[0]`) instead, and skips threads.
 2. The user reviews the change summary and confirms.
 3. `neoffse-io` copies the current files into a new backup folder and
    writes its `backup.json`.
@@ -481,10 +503,16 @@ decoder.
 **Backup layout.**
 
 ```
-<config dir>/backups/<game>/<YYYYMMDD-HHMMSS>[-NN]/
+<data dir>/backups/<game>/<YYYYMMDD-HHMMSS>[-NN]/
 ├── backup.json
 └── <the save files, under their original names>
 ```
+
+`<data dir>` is the platform data folder that `neoffse_io::dirs::DataDir`
+names: `~/.local/share/neoffse` on Linux, the roaming application data
+folder on Windows. Backups hold user data, so they sit in the data
+folder. `<game>` is a game id of lowercase ASCII letters, digits and `-`,
+such as `ff1-pr`.
 
 `-NN` separates two backups taken in the same second. The manifest
 (illustrative values):
