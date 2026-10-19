@@ -4,7 +4,7 @@
 
 #![allow(
     clippy::multiple_crate_versions,
-    reason = "Slint's tree (winit, wayland, objc2, windows-sys, rustix, hashbrown, thiserror, tiny-skia and others) resolves 25 crates twice or more; the workspace cannot unify them"
+    reason = "Slint's tree (winit, wayland, objc2, windows-sys, rustix, hashbrown, thiserror, tiny-skia and others) resolves several crates at more than one version; the workspace cannot unify them"
 )]
 
 mod generated {
@@ -47,8 +47,9 @@ pub fn new_about_dialog() -> Result<AboutDialog, slint::PlatformError> {
 /// Opens `about` from the menu and hides it on dismiss or when the main
 /// window closes.
 ///
-/// The main window holds the only strong reference to the dialog. The
-/// dialog's own callbacks hold weak ones, so no reference cycle forms.
+/// The main window's About callback holds a strong reference, so the
+/// dialog outlives the caller's handle. The dialog's own callbacks hold
+/// weak ones, so no reference cycle forms.
 pub fn connect_about(main_window: &MainWindow, about: &AboutDialog) {
     let dialog = about.clone_strong();
     main_window.on_about_requested(move || {
@@ -63,7 +64,8 @@ pub fn connect_about(main_window: &MainWindow, about: &AboutDialog) {
         }
     });
 
-    // An open dialog keeps the process alive after the main window closes.
+    // Without this hide, an open About dialog keeps the event loop, and the
+    // process, alive after the main window closes.
     let weak = about.as_weak();
     main_window.window().on_close_requested(move || {
         if let Some(dialog) = weak.upgrade() {
