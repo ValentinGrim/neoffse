@@ -101,6 +101,29 @@ pub(crate) fn game_dir(world: &World, game: &str) -> PathBuf {
     world.data.game_backups_dir(game).unwrap()
 }
 
+/// A valid `backup.json` document, in the pretty form `create_with` writes.
+pub(crate) fn manifest_text(game: &str, version: u64, files: &[&str]) -> String {
+    let files: Vec<String> = files.iter().map(|name| format!("    {}", serde_json::to_string(name).unwrap())).collect();
+    format!(
+        "{{\n  \"version\": {version},\n  \"game\": {game:?},\n  \"sourceDir\": \"/some/source\",\n  \
+         \"created\": \"2026-10-18T22:14:03+02:00\",\n  \"files\": [\n{}\n  ],\n  \"saveType\": \"slot\",\n  \
+         \"reason\": \"before-save\"\n}}\n",
+        files.join(",\n")
+    )
+}
+
+/// Creates `<game dir>/<name>` with a file `SLOT` and, for `Some`, a
+/// `backup.json` that holds the text. Returns the folder.
+pub(crate) fn plant(world: &World, game: &str, name: &str, manifest: Option<&str>) -> PathBuf {
+    let dir = game_dir(world, game).join(name);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join(SLOT), b"planted").unwrap();
+    if let Some(text) = manifest {
+        fs::write(dir.join("backup.json"), text).unwrap();
+    }
+    dir
+}
+
 /// A `FileOps` that wraps a `Probe` and records the content of the folder at
 /// each `create_temp`. With `corrupt_write` it writes `{}` instead of the
 /// bytes it receives.
