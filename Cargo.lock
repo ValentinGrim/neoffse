@@ -2632,7 +2632,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neoffse-core",
  "neoffse-data",
@@ -2652,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse-core"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "neoffse-data"
@@ -2660,7 +2660,7 @@ version = "0.1.0"
 
 [[package]]
 name = "neoffse-format-pr"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neoffse-core",
 ]
@@ -2671,7 +2671,7 @@ version = "0.1.0"
 
 [[package]]
 name = "neoffse-testkit"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "nix"
