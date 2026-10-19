@@ -1,6 +1,6 @@
 [package]
 name = "neoffse-testkit"
-description = "Test helpers for NeoFFSE: synthetic fixtures and private save discovery"
+description = "Locates and reads fixtures and private saves for NeoFFSE tests"
 version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true

@@ -29,7 +29,14 @@ and starts with the Pixel Remaster (PR) of I to VI on Steam PC.
   Go code: the archived editor
   [final-fantasy-pr-save-editor](https://github.com/KiameV/final-fantasy-pr-save-editor)
   and [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher).
-  KiameV's copyright notices sit in `licenses/`.
+- The Rijndael-256 cipher is a hand port of ffpr-save-cypher. That library
+  is based on Meyti's MIT-licensed
+  [py3rijndael](https://github.com/meyt/py3rijndael), whose origin is a
+  gist that ports Bram Cohen's public-domain Java reference code of 2001.
+  The same Go library generates the cipher test vectors.
+- The notices of KiameV and Meyti sit in `licenses/`, and
+  [`licenses/README.md`](../licenses/README.md) maps each file to the
+  work it covers.
 - Contributors may read the format notes of GPL editors (Black Chocobo
   for FF7, Hyne for FF8) and must not copy their code: copied GPL code
   would force the GPL on NeoFFSE.
@@ -85,7 +92,7 @@ Another Rust project uses the same facade.
 ```
 neoffse/
 ├── Cargo.toml                  workspace root, shared lints
-├── .github/workflows/          CI: fmt, lock check, clippy, tests, MSRV
+├── .github/workflows/          CI: fmt, lock check, clippy, tests, rustdoc, MSRV
 ├── scripts/                    clippy.sh, the strict clippy gate
 ├── crates/
 │   ├── neoffse-core/           domain: Game, Platform, Character, Item,
@@ -96,6 +103,7 @@ neoffse/
 │   │                           backups, restore, game-running check
 │   ├── neoffse-format-pr/      FF I to VI Pixel Remaster: codec,
 │   │                           lossless document, domain mapping
+│   │                           (the mapping lands with M3)
 │   ├── neoffse/                public facade: re-exports, format
 │   │                           registry, save pipeline
 │   ├── neoffse-app/            Slint desktop app
@@ -107,7 +115,9 @@ neoffse/
 │   └── neoffse-testkit/        fixtures and private-save locator,
 │                               dev-dependency, never published
 ├── data/                       TOML ID tables (data/pr/ff1/, ...)
-├── fixtures/                   synthetic test saves, committed
+├── fixtures/                   synthetic test saves, committed (pr/)
+│                               and private real saves, ignored (private/)
+├── tools/cipher-vectors/       Go program that writes the cipher test vectors
 ├── assets/                     original art, free-license art
 ├── licenses/                   third-party notices
 └── docs/                       this file, roadmap, formats/
@@ -139,11 +149,14 @@ app depends on Slint, so their tests run without opening a window.
   `backup.json` manifest, restores, and detects a running game. Each
   format crate declares where its saves sit relative to those roots.
 - **`neoffse-format-pr`** reads and writes FF I to VI PR saves. The codec
-  strips the BOM, decodes base64 (ignoring a trailing CR or LF),
-  decrypts with Rijndael-256, restores the trailing zero bytes the
-  decryption stripped as padding, inflates the raw deflate stream and
-  hands the JSON text to the lossless document. The mapping layer
-  exposes that document as domain types and `FieldMeta`.
+  splits off the BOM and the trailing whitespace, decodes base64,
+  decrypts with Rijndael-256, inflates the raw deflate stream and returns
+  the JSON text. The decrypted stream keeps its zero padding, because the
+  inflater stops at the final block and so ignores it, and the codec
+  records the BOM and the exact trailing bytes so that `encode` writes
+  them back. The lossless document reads and edits that text by path. A
+  mapping layer will expose the document as domain types and `FieldMeta`
+  (M3).
   [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md) holds
   every byte-level rule, with the codec layers under
   [Container encoding](formats/pixel-remaster.md#container-encoding).
@@ -157,15 +170,16 @@ app depends on Slint, so their tests run without opening a window.
   and the code that wires their callbacks; the `neoffse-app` binary
   (`src/main.rs`) only calls `run`. The library target lets integration
   tests drive the windows (see [Test policy](#test-policy)).
-- **`neoffse-testkit`** builds synthetic fixtures and locates private
-  real saves through `NEOFFSE_SAVES` (see [Test policy](#test-policy)).
+- **`neoffse-testkit`** locates and reads the committed fixtures, finds
+  the private real saves through `NEOFFSE_SAVES`, and reports a skipped
+  test on stderr. It generates no fixture (see
+  [Test policy](#test-policy)).
 
 ### Format traits
 
 A format registers one `SaveFormat`. Opening a save yields a
 `SaveDocument`, which owns the original data and every edit applied to
-it. The sketch below shows the shape; the real signatures land with M1
-and M3.
+it. The sketch below shows the shape; the real signatures land with M3.
 
 ```rust
 // Illustrative, not the final API.
@@ -209,10 +223,11 @@ all three together.
 | UI build | `slint-build` | build script of `neoffse-app` (`build.rs`) compiles `ui/app.slint` with the `fluent` style |
 | UI tests | `i-slint-backend-testing` | dev-dependency of `neoffse-app`: headless UI tests with no window and no event loop. Internal Slint crate |
 | File dialogs | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
-| JSON | `serde`, `serde_json` (`preserve_order`) | under a lossless document layer that keeps number text and nesting |
+| JSON | `serde`, `serde_json` | `serde` with `std` only. `serde_json` with `preserve_order` (key order), `arbitrary_precision` (a number keeps its written text) and `raw_value` (an untouched value keeps its bytes). They sit under a lossless document layer |
 | Deflate | `flate2` (`rust_backend`) | raw deflate, no zlib header, pure Rust |
-| Base64 | `base64` | |
-| PR cipher | hand-ported Rijndael-256 | 32-byte block, 32-byte key, CBC, fixed key and IV, zero padding; AES fixes the block at 16 bytes, so AES crates cannot decrypt it. Test vectors come from the Go implementation |
+| Base64 | `base64` (`std` only) | standard alphabet, `=` padding |
+| PR cipher | hand-ported Rijndael-256 | 32-byte block, 32-byte key, CBC, fixed key and IV, zero padding; AES fixes the block at 16 bytes, so AES crates cannot decrypt it. The port computes its S-box and lookup tables by `const fn` and expands the key schedule in `Rijndael256::new` |
+| Cipher test vectors | Go program in `tools/cipher-vectors/` | runs KiameV's ffpr-save-cypher (version pinned in its `go.mod`). Only a contributor who regenerates the vectors needs Go |
 | Binary formats | `binrw` | for the console and older PC formats after the PR |
 | Atomic write | `tempfile` | temp file in the target folder, then rename |
 | Config and cache dirs | `directories` | |
@@ -220,25 +235,34 @@ all three together.
 | Running game | `sysinfo` | process scan before a write |
 | Errors | `thiserror` in libraries, `anyhow` in the app | [Errors](#errors) |
 | Logging | `tracing` | |
-| Tests | `insta`, `proptest` | snapshots, property tests on codecs |
+| Tests | `insta`, `proptest` (`std` only) | snapshots, property tests on codecs and on the document |
 
 ## Errors
 
 A library crate returns errors; it does not panic on anything read from
 a file.
 
-- One `thiserror` enum per library crate (`FormatError`, `EditError`,
-  `IoError`, ...). The app uses `anyhow` and adds context at the
-  boundary.
+- One `thiserror` enum per failure domain of a library crate. Today
+  `neoffse-format-pr` has `CodecError` (the container steps) and
+  `DocumentError` (reads and edits of the JSON document). M3 adds
+  `FormatError` in `neoffse-core`, next to the `SaveFormat` trait; a
+  format crate converts its own errors into it and keeps them as the
+  source. `EditError` and `IoError` follow with their crates. The app
+  uses `anyhow` and adds context at the boundary.
 - No panic path on input data. The workspace lints deny `unwrap_used`
   and `expect_used`; a test root allows both, since a test asserts by
   panicking.
-- An error carries the file and the position when the code knows them:
-  a byte offset for a binary format, a document path for JSON
-  (`userData.ownedCharacterList[2].parameter`), with the step that
-  failed (base64, decrypt, inflate, parse).
-- A refused edit returns `EditError` with the field and the bound it
-  broke. The document stays as it was before the call.
+- An error carries the position when the code knows it, and its variant
+  names the step that failed. `CodecError::Base64` holds the byte offset
+  in the file, `CodecError::Inflate` the offset in the decrypted stream.
+  `DocumentError` holds a rendered path, for example
+  `userData.ownedCharacterList.target[2].parameter`: keys join with dots,
+  an index shows in brackets, and the step into a string's document shows
+  nothing.
+- A refused edit returns an error with the field and the reason, and the
+  document stays as it was before the call. `Document::set` already
+  behaves so with `DocumentError`; `EditError` will carry the bound an
+  edit broke (M3).
 
 ## Test policy
 
@@ -248,7 +272,8 @@ a file.
   crate. A crate's tests sit in its `tests/` directory as integration
   tests and use the public API. An internal stage that needs tests, such
   as a codec step or the cipher, is exposed in a documented public
-  module.
+  module. Helpers that several test files share sit in
+  `tests/common/mod.rs`, which Cargo does not build as a test target.
 - **Round trip on every fixture.** Decode, encode, decode again: the two
   decoded documents must match. The game's deflate encoder and `flate2`
   choose different streams for the same input, so a PR save never
@@ -258,17 +283,32 @@ a file.
   re-encoded.
 - **Edit tests.** An edit, then encode and decode, yields the intended
   change and no other difference in the JSON text.
-- **Codec properties.** `proptest` drives each codec stage
-  (base64, cipher, zero-byte restoration, deflate) with random input and
-  checks that decode inverts encode.
-- **Cipher vectors.** A small Go program run against KiameV's
-  implementation produces Rijndael-256 test vectors; the repository
-  commits the vectors, and the Rust port must reproduce them.
-- **Fixtures.** Synthetic fixtures live under `fixtures/` and in
-  `neoffse-testkit`, committed. Real saves are personal data and stay
-  out of the repository: tests find them through the `NEOFFSE_SAVES`
-  environment variable and skip, with a printed reason, when it is
-  unset.
+- **Properties.** `proptest` drives each codec stage (framing, base64,
+  the cipher with its padding, deflate), the whole pipeline and the
+  document with generated input. Decode inverts encode, an integer edit
+  changes only its own digits, and no input makes a stage panic.
+- **Cipher vectors.** A Go program in `tools/cipher-vectors/` runs
+  KiameV's ffpr-save-cypher and writes Rijndael-256 vectors (single
+  blocks, CBC encryption, CBC decryption with the length the Go `Decrypt`
+  returns) to `crates/neoffse-format-pr/tests/data/rijndael256-vectors.txt`.
+  The repository commits that file and the Rust port must reproduce every
+  vector. The output depends only on the pinned library version and a
+  fixed seed. To regenerate it, run, with Go installed:
+  `cd tools/cipher-vectors && go run . -o ../../crates/neoffse-format-pr/tests/data/rijndael256-vectors.txt`.
+- **Fixtures.** Synthetic fixtures are committed under `fixtures/`, and
+  `neoffse-testkit` locates and reads them. The six container fixtures
+  of `fixtures/pr/` come from one test; to regenerate them, run
+  `NEOFFSE_WRITE_FIXTURES=1 cargo test -p neoffse-format-pr --test container_fixtures write_fixtures`.
+- **Real saves.** They are personal data and stay out of the repository.
+  A test asks the testkit for the saves of one game, for example
+  `neoffse_testkit::private_saves("ff1")`. The testkit reads the folder
+  named by `NEOFFSE_SAVES`, `fixtures/private/` by default. When it holds
+  nothing for that game, the call returns `None` after
+  `neoffse_testkit::skip` writes the reason on stderr; the test returns
+  early and passes. `cargo test -- --nocapture` shows the reason. The PR
+  tests ignore `steam_autocloud.vdf`, the marker Steam writes beside
+  saves, and treat a game folder that holds only that file as absent.
+  Real-save tests only read.
 - **Snapshots.** `insta` pins change summaries and view model state.
 - **UI.** View models carry the UI logic and run in plain Rust tests.
   The Slint layer runs on Slint's testing backend, through
@@ -280,10 +320,12 @@ a file.
   request into `develop`. The `checks` job runs on Linux and on Windows:
   `cargo fmt --all --check`, `cargo fetch --locked` (fails when
   `Cargo.lock` no longer matches the manifests), `scripts/clippy.sh`,
-  then `cargo test --workspace --locked`. The `msrv` job runs
-  `cargo check --workspace --all-targets --locked` on Linux with Rust
-  1.92.0, the `rust-version` of the workspace. CI leaves `NEOFFSE_SAVES`
-  unset, so tests that need real saves skip there.
+  then `cargo test --workspace --locked`. On Linux, it also runs
+  `cargo doc --workspace --no-deps --locked` with
+  `RUSTDOCFLAGS=-D warnings`, so a broken intra-doc link fails the build.
+  The `msrv` job runs `cargo check --workspace --all-targets --locked`
+  on Linux with Rust 1.92.0, the `rust-version` of the workspace. CI
+  leaves `NEOFFSE_SAVES` unset, so tests that need real saves skip there.
 
 ## Comment doctrine and source hygiene
 
@@ -293,13 +335,14 @@ line.
 - Comments carry invariants, units and format rules. A magic number or
   a format rule cites its heading in `docs/formats/*.md` by file and
   anchor, for example
-  `// zero bytes restored, pixel-remaster.md#zero-padding-and-the-stripping-trap`.
+  `// padding stays in the stream, pixel-remaster.md#zero-padding-and-the-stripping-trap`.
 - Delete a comment that repeats the code. Write a full paragraph when a
   block needs one to be safe to touch.
 - A comment cites what a reader can still resolve in a year: a
   `docs/formats` heading, a test name, a milestone number. A task or
   review number means nothing outside the tracker that issued it.
-- Split a source file into modules as it nears 300 lines.
+- A source or test file holds 300 lines at most. Split it into modules
+  before it gets there.
 - The lint set lives in the root `Cargo.toml` under `[workspace.lints]`:
   clippy `pedantic` and `cargo` as groups, `unwrap_used`, `expect_used`,
   `print_stdout` and `print_stderr` by name, and rustc's `missing_docs`,
