@@ -5,37 +5,22 @@
 //! length or a decoded byte: the files hold personal data.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
 use std::path::{Path, PathBuf};
 
 use neoffse_format_pr::container::{CodecError, Decoded, InflatePath, decode, encode};
 use neoffse_format_pr::document::{Document, DocumentError, Scalar, Segment};
-
-const GAMES: [&str; 6] = ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"];
-
-/// Steam writes this file beside the saves; it is not a save.
-const STEAM_CLOUD_MARKER: &str = "steam_autocloud.vdf";
 
 fn label(game: &str, path: &Path) -> String {
     let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
     format!("{game} {}", name.chars().take(8).collect::<String>())
 }
 
-fn saves(game: &str) -> Option<Vec<PathBuf>> {
-    neoffse_testkit::private_saves(game)
-}
-
-/// The games that have private saves, with their save files. The Steam cloud
-/// marker is dropped from each list, and a game left with no file counts as
-/// absent.
+/// The games that have private saves, with their save files; a game with
+/// only the Steam cloud marker counts as absent.
 fn present_games() -> Vec<(&'static str, Vec<PathBuf>)> {
-    GAMES
-        .iter()
-        .filter_map(|&game| {
-            let mut files = saves(game)?;
-            files.retain(|path| path.file_name().is_none_or(|name| name != STEAM_CLOUD_MARKER));
-            (!files.is_empty()).then_some((game, files))
-        })
-        .collect()
+    common::GAMES.iter().filter_map(|&game| Some((game, common::save_files(game)?))).collect()
 }
 
 fn read(label: &str, path: &Path) -> Vec<u8> {

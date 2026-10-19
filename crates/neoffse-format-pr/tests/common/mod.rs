@@ -1,9 +1,31 @@
-//! Helpers that several `document_*` test crates share. Each crate declares
-//! `mod common;`: Cargo does not build this file as a test target.
+//! Helpers that the `document_*` test crates and the private-save test
+//! crates share. Each crate declares `mod common;`: Cargo does not build
+//! this file as a test target.
 #![allow(dead_code, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+use std::path::PathBuf;
+
 use neoffse_format_pr::document::Segment;
+
+/// The six game folders under the saves root.
+pub(crate) const GAMES: [&str; 6] = ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"];
+
+/// Steam writes this file beside the saves; it is not a save.
+pub(crate) const STEAM_CLOUD_MARKER: &str = "steam_autocloud.vdf";
+
+/// The private save files of `game` without the Steam cloud marker.
+/// `None` when the game has no private saves or only the marker; the
+/// second case reports the skip through `neoffse_testkit::skip`.
+pub(crate) fn save_files(game: &str) -> Option<Vec<PathBuf>> {
+    let mut files = neoffse_testkit::private_saves(game)?;
+    files.retain(|path| path.file_name().is_none_or(|name| name != STEAM_CLOUD_MARKER));
+    if files.is_empty() {
+        neoffse_testkit::skip(&format!("{game} holds only the Steam cloud marker"));
+        return None;
+    }
+    Some(files)
+}
 
 /// An owned path step, so a test can build paths and borrow them as
 /// [`Segment`]s through [`segments`].
@@ -30,7 +52,7 @@ pub(crate) fn embed(doc: &str) -> String {
     embed_with(doc, false)
 }
 
-/// Like [`embed`]; with `unicode_quote` each `"` becomes `"`, a form the
+/// Like [`embed`]; with `unicode_quote` each `"` becomes `\u0022`, a form the
 /// game's writer does not produce but a reader must accept.
 pub(crate) fn embed_with(doc: &str, unicode_quote: bool) -> String {
     let quote = if unicode_quote { "\\u0022" } else { "\\\"" };

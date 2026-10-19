@@ -11,18 +11,6 @@ use neoffse_format_pr::container;
 use neoffse_format_pr::document::{Document, DocumentError, render_path};
 use serde_json::Value;
 
-/// The string documents of `value`, counted by `serde_json` alone: a
-/// non-empty string that starts with `{` or `[` and parses, then the
-/// documents inside it. The walk below must enter exactly this many.
-fn count_oracle_docs(value: &Value) -> usize {
-    match value {
-        Value::Object(members) => members.values().map(count_oracle_docs).sum(),
-        Value::Array(items) => items.iter().map(count_oracle_docs).sum(),
-        Value::String(content) if is_document(content) => 1 + serde_json::from_str::<Value>(content).map_or(0, |inner| count_oracle_docs(&inner)),
-        _ => 0,
-    }
-}
-
 fn is_document(content: &str) -> bool {
     content.starts_with(['{', '[']) && serde_json::from_str::<Value>(content).is_ok()
 }
@@ -77,6 +65,11 @@ impl Walk<'_> {
             if let Ok(inner) = serde_json::from_str::<Value>(content) {
                 self.visit(&inner, path);
             }
+        } else {
+            assert!(
+                matches!(step, Err(DocumentError::NotADocument { .. } | DocumentError::InvalidJson { .. })),
+                "{label} {rendered}: a plain string must give NotADocument or InvalidJson"
+            );
         }
         path.pop();
     }
@@ -84,16 +77,13 @@ impl Walk<'_> {
 
 #[test]
 fn private_saves_round_trip_without_edits() {
-    for game in ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"] {
-        let Some(files) = neoffse_testkit::private_saves(game) else {
+    for game in common::GAMES {
+        let Some(files) = common::save_files(game) else {
             continue;
         };
         let mut total = 0;
         for file in files {
             let name = file.file_name().unwrap().to_string_lossy().into_owned();
-            if name == "steam_autocloud.vdf" {
-                continue;
-            }
             let label = format!("{game} {name}");
             let bytes = std::fs::read(&file).unwrap();
             let decoded = container::decode(&bytes).unwrap();
@@ -101,7 +91,6 @@ fn private_saves_round_trip_without_edits() {
             assert!(document.to_json() == decoded.json, "{label}: before access");
 
             let oracle: Value = serde_json::from_str(&decoded.json).unwrap();
-            let oracle_docs = count_oracle_docs(&oracle);
             let mut walk = Walk {
                 document: &mut document,
                 label: &label,
@@ -109,7 +98,6 @@ fn private_saves_round_trip_without_edits() {
             };
             walk.visit(&oracle, &mut Vec::new());
             let entered = walk.entered;
-            assert!(entered == oracle_docs, "{label}: documents entered differ from the oracle");
             assert!(document.to_json() == decoded.json, "{label}: after the walk");
             total += entered;
         }
