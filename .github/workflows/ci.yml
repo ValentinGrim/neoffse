@@ -49,6 +49,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
+      - name: Check Cargo.lock
+        run: cargo fetch --locked
       - name: Clippy
         run: bash ./scripts/clippy.sh
       - name: Test
