@@ -1,9 +1,8 @@
 # Pixel Remaster save format
 
-This file is the source of truth for the save files of Final Fantasy I to
-VI Pixel Remaster (PR). Code cites a rule by file name and heading anchor,
-for example `pixel-remaster.md#cipher`. Each rule carries a confidence tag
-defined in [Confidence tags](#confidence-tags).
+A Final Fantasy I to VI Pixel Remaster (PR) save file is compact JSON,
+compressed with raw DEFLATE, encrypted with Rijndael-256 in CBC mode and
+written as base64 text. The container rules below hold in all six games.
 
 ## Scope and sources
 
@@ -221,6 +220,9 @@ to the DEFLATE stream; a decoder must keep them.
 | Plaintext | raw DEFLATE stream followed by 0 to 31 zero bytes | [M] |
 | Payload | compact UTF-8 JSON, no BOM, no trailing newline | [M] |
 
+The inflater stops at the final block and ignores every byte after it,
+zero or not.
+
 ### BOM and line end
 
 - The game writes the BOM and the CRLF on every file [M, 32 files].
@@ -230,6 +232,15 @@ to the DEFLATE stream; a decoder must keep them.
   base64 [C].
 - The game loads an FF I bestiary written by the Go editor's encoder,
   so it accepts a file without the trailing CRLF [G].
+- NeoFFSE trims the same four bytes and keeps them as the trailer, byte
+  for byte, with no length cap. Any other byte, a form feed included,
+  stays in the base64 text, and decoding fails on it.
+- `decode` returns the BOM flag and the trailer, and `encode` writes back
+  the BOM and the trailer of the container it receives. `Container::game()`
+  holds the BOM and the CRLF the game writes. A container decoded from an
+  editor file holds the BOM and no CRLF, and `encode` keeps it that way.
+  The file-safety layer (M2) chooses which container the save pipeline
+  passes.
 
 ### Base64
 
@@ -241,6 +252,10 @@ to the DEFLATE stream; a decoder must keep them.
   the 133-byte slot index [M].
 - The Go editor's decoder appends missing `=` before decoding [C]. Before
   `6f8f74a` it ignored base64 errors and went on with empty data [C].
+- NeoFFSE refuses a CR or LF inside the text. Go's `encoding/base64`
+  decoder skips them, and no measured file holds one [M].
+- NeoFFSE refuses a text longer than 44 739 244 bytes (`MAX_TEXT_LEN`)
+  before it decodes. The largest measured file is 112 305 bytes.
 
 ### Cipher
 
@@ -261,6 +276,10 @@ to the DEFLATE stream; a decoder must keep them.
   key: `ke[0][0] = 1627981568 = 0x61090700` [C]. Both schedules follow
   from the key, so an implementation may expand them at run time
   instead of embedding them.
+- With a 256-bit block (Nb = 8), the rows of the state shift by 0, 1, 3
+  and 4 columns in encryption and by 0, 7, 5 and 4 in decryption. The Go
+  library holds these as `shifts[2]` [C], and the Rust port reproduces
+  its test vectors with them.
 - One key and one IV serve every game, slot, bestiary and settings file
   [M: all 34 files decrypt with them].
 - With a fixed key and IV, equal plaintexts give equal files: the
@@ -312,8 +331,13 @@ never strips returns all `len(cipher)` bytes and needs no restore step.
 into the padding, which an inflater reads as a stored block with a bad
 LEN/NLEN pair. The Go editor's codec then inflates the stripped bytes and
 accepts the result only when inflation hit the end of the input and the
-output is valid JSON [C, `TestDecodeStreamWithoutFinalBlock`]. None of
-the 34 files needs this path [M].
+output is valid JSON [C, `TestDecodeStreamWithoutFinalBlock`]. NeoFFSE
+accepts the stripped view when inflation consumed all of it without
+reaching a final block and the inflated bytes pass a shape check: they
+start with `{`, brackets balance outside strings, the depth first returns
+to zero at the last byte and no string stays open. The check does not
+match a `[` with a `]`; full JSON validation belongs to the document
+layer. None of the 34 files needs this path [M].
 
 ### Raw DEFLATE
 
@@ -339,6 +363,7 @@ the 34 files needs this path [M].
   closed with a final block [G, FF I bestiary].
 - JSON payloads of 80 to 235 KB compress to 6 to 84 KB in slot files
   [M].
+- NeoFFSE refuses an inflated payload above 16 MiB (`MAX_PAYLOAD_LEN`).
 
 ### JSON text
 
@@ -355,12 +380,11 @@ character.
 Decode:
 
 ```text
-decode(file) -> (json, prefix):
-    prefix = ""
-    if file starts with EF BB BF:
-        prefix = EF BB BF
-        file = file[3..]
+decode(file) -> (json, container):
+    bom = file starts with EF BB BF
+    if bom: file = file[3..]
     text = file without trailing ' ', '\t', '\r', '\n'
+    trailer = the bytes removed from the end         # kept as read, maybe empty
     while len(text) % 4 != 0: text += "="            # tolerance, the game pads
     cipher = base64_std_decode(text)                 # error: damaged file
     require len(cipher) > 0 and len(cipher) % 32 == 0
@@ -369,19 +393,22 @@ decode(file) -> (json, prefix):
     if inflate failed:
         s = plain minus its trailing zero bytes (at most 31)
         json = raw_inflate(s)
-        accept only if inflation ended at the end of s and json is valid JSON
-    return (json, prefix)
+        accept only if inflation consumed all of s without a final block
+            and json is a balanced object (see Fallback)
+    return (json, container = (bom, trailer))
 ```
 
 Encode:
 
 ```text
-encode(json, prefix) -> file:
+encode(json, container) -> file:
     stream = raw_deflate(json)                       # ends with a BFINAL block
     padded = stream + zero bytes up to a multiple of 32   # none when aligned
     cipher = rijndael256_cbc_encrypt(padded, KEY, IV)
     text = base64_std_encode(cipher)                 # with '=' padding
-    return prefix + text + CR LF                     # the game writes CR LF; the Go editor omits it
+    return (EF BB BF if container.bom) + text + container.trailer
+        # the trailer is whatever the container holds: the game's container
+        # holds CR LF, a container decoded from an editor file holds nothing
 ```
 
 ### PlayStation variant
@@ -479,21 +506,22 @@ An object stored in a list is a JSON string, so a list of items reads
   `go-ordered-json` and two editor files].
 - No number uses an exponent or a leading zero [M].
 - The game writes doubles with up to 17 significant digits, not always
-  in the shortest round-trip form: `"playTime":39087.71384844743` [M].
-  Of the non-integral `userData.playTime` values, 4 carry 17 digits whose
-  last digit differs by 1 or 2 from the shortest form of the same double;
-  both texts parse to the same double [M]. A serializer that prints a
-  parsed double rewrites those 4 values, so keep the original text of
-  each number you do not edit. The correctly rounded 17-digit form
-  equals the shortest form, so the game's last digits are not correctly
-  rounded [M].
+  in the shortest round-trip form [M]. Of the non-integral
+  `userData.playTime` values, 4 carry 17 digits whose last digit differs
+  by 1 or 2 from the shortest form of the same double; both texts parse to
+  the same double [M]. Invented values show the property: `13621.814333377138`
+  and `13621.814333377139` parse to one double, and the second is its
+  shortest form. A serializer that prints a parsed double rewrites those
+  4 values, so keep the original text of each number you do not edit. The
+  correctly rounded 17-digit form equals the shortest form, so the game's
+  last digits are not correctly rounded [M].
 - Integers exceed the i32 range. `dataStorage.treasure` holds
   `4294967295` and `dataStorage.scenario` `4293655417` (u32 values), and
-  `timeStampTicks` reaches `639278367168195674` [M]. That tick value is
-  above 2^53, so a parser that maps each number to an f64 (JavaScript's
-  `JSON.parse`, for one) rounds it. FF III and FF IV saves hold no integer
-  above i32. FF V and FF VI each hold a `timeStampTicks` above 2^53, and
-  FF VI also a `scenario` above i32 [M].
+  `timeStampTicks` reaches 18 digits [M]. An invented value such as
+  `639083329294237651` is above 2^53, so a parser that maps each number
+  to an f64 (JavaScript's `JSON.parse`, for one) rounds it. FF III and
+  FF IV saves hold no integer above i32. FF V and FF VI each hold a
+  `timeStampTicks` above 2^53, and FF VI also a `scenario` above i32 [M].
 - Keep the original text of each number you do not edit
   ([Principles](../architecture.md#principles), principle 1).
 - Rust's `serde_json` 1.0.154 with `preserve_order` and
@@ -570,7 +598,7 @@ dictionaries in strings [M].
 ## Domain sections
 
 Paths below use `.` for an object member and `→` for a step into a JSON
-string. Each subsection opens with what a writer needs.
+string.
 
 ### Characters
 
@@ -727,8 +755,9 @@ per vehicle: 4 in FF I, 7 in FF II [M].
 - An unplaced vehicle has `mapId` −1 and a position such as
   `(1000.0, 1000.0, -1000.0)` [M].
 - `timeStampTicks` counts .NET DateTime ticks: 100 ns units since
-  0001-01-01. `639278367168195674` reads 2026-10-17 12:25:16, inside
-  the date range of the measured saves [M, I]. `0` means never set [M].
+  0001-01-01. The invented value `639083329294237651` reads 2026-03-05
+  18:42:09; the measured values fall in the date range of the saves
+  [M, I]. `0` means never set [M].
   Store it as i64. The time zone (local or UTC) is unknown.
 - The Go editor's `global.NowToTicks` adds `621259200000000000`
   (`86400 × 365 × 1970 × 10^7`), 112 days short of the true Unix-epoch
@@ -740,7 +769,7 @@ per vehicle: 4 in FF I, 7 in FF II [M].
 |---|---|---|
 | `owendGil` | int | up to 999 999 measured |
 | `totalGil` | int | `0` in all six slots |
-| `playTime` | float | seconds, e.g. `39087.71384844743` |
+| `playTime` | float | seconds; an invented example is `13621.814333377138` |
 | `steps`, `escapeCount` | int | `0` in all six slots |
 | `battleCount`, `openChestCount`, `saveCompleteCount`, `monstersKilledCount` | int | |
 | `currentArea`, `currentLocation` | string | free text; `currentLocation` may be `""` |
@@ -756,11 +785,11 @@ All rows [M].
 `timeStamp` is a formatted local date whose layout varies by game; keep
 the string as read and write an edit in the same layout.
 
-| Files | Layout | Example |
+| Files | Layout | Invented example |
 |---|---|---|
-| FF I, all three slots | `M/d/yyyy h:mm:ss tt` | `10/16/2026 4:09:06 PM` [M] |
-| FF II, all three slots | `dd/MM/yyyy HH:mm:ss` | `18/10/2026 14:46:28` [M] |
-| FF III to VI, slot 1 and Auto Save | `M/d/yyyy h:mm:ss tt` | the FF I layout [M] |
+| FF I, all three slots | `M/d/yyyy h:mm:ss tt` [M] | `3/17/2026 6:42:09 PM` |
+| FF II, all three slots | `dd/MM/yyyy HH:mm:ss` [M] | `17/03/2026 18:51:30` |
+| FF III to VI, slot 1 and Auto Save | the FF I layout [M] | |
 
 - FF II is the only game with the `dd/MM/yyyy` layout. FF I and FF II
   ran on the same machine on the same days and still used different
@@ -847,8 +876,9 @@ A writer changes the keys the user edited and nothing else, re-encodes
 the container as in [Pseudo-code](#pseudo-code), and goes through the
 safe write pipeline of [Save safety](../architecture.md#save-safety).
 
-1. Write the BOM back when the file had one [C]. End the text with CRLF
-   to match the game; the game also loads a file without it [G].
+1. Write the BOM back when the file had one [C]. Write back the trailer
+   of the decoded container. The game ends its files with CRLF and also
+   loads a file without it [G].
 2. Terminate the DEFLATE stream with a final block, pad with zeros to a
    multiple of 32, and use the key and IV of [Cipher](#cipher).
 3. Re-serialize only the string documents that hold an edit, and their

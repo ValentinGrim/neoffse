@@ -21,7 +21,8 @@ struct Fixture {
     path: InflatePath,
 }
 
-/// The slot-index shape: 22 keys, `true` at 1, 21 and 22.
+/// The slot index of FF I and FF II: keys 1 to 22, `true` at 1, 21 and 22
+/// (`docs/formats/pixel-remaster.md#other-files-in-the-folder`).
 fn slot_index() -> String {
     let keys: Vec<String> = (1..=22).map(|key| key.to_string()).collect();
     let values: Vec<&str> = (1..=22).map(|key| if matches!(key, 1 | 21 | 22) { "true" } else { "false" }).collect();
@@ -116,6 +117,9 @@ fn fixture_set_covers_the_container_variants() {
     assert!(set.iter().any(|fixture| fixture.container.trailer == b"\n"));
     assert!(set.iter().any(|fixture| fixture.container.trailer == b"\r\n"));
     assert!(set.iter().any(|fixture| !fixture.json.is_ascii()));
+    // `large.sav` holds about 20 KB of JSON, the size of a small slot (measured
+    // payloads run 80 to 235 KB, `docs/formats/pixel-remaster.md#raw-deflate`).
+    // 15_000 is a round floor under that size and matches no format figure.
     assert!(set.iter().any(|fixture| fixture.json.len() > 15_000));
     assert!(set.iter().any(|fixture| fixture.path == InflatePath::FinalBlock));
     assert!(set.iter().any(|fixture| fixture.path == InflatePath::Fallback));

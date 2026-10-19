@@ -54,7 +54,7 @@ impl Rijndael256 {
     /// Decrypts `data` in place in CBC mode and strips nothing.
     ///
     /// The output has the input length, trailing zero bytes included: the
-    /// Go reference cuts up to 31 of them and loses stream bytes (see
+    /// Go `Decrypt` cuts up to 31 of them and loses stream bytes (see
     /// `docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
     /// An empty slice is a valid empty message.
     ///

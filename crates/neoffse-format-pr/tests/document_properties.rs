@@ -9,7 +9,10 @@ use proptest::collection::vec;
 use proptest::prelude::*;
 use proptest::sample::{Index, select};
 
-/// Number and string spellings that `serde_json` rewrites when it re-serializes.
+/// Leaf spellings that an untouched value must keep as written. Two of them,
+/// `1E5` and `"a\/b"`, change when `serde_json::Value` re-serializes them
+/// (`1e+5` and `"a/b"`). The other six pass through `Value` unchanged under
+/// the crate's features and pin the plain pass-through.
 const ODD: [&str; 8] = ["1E5", "-0", "1.50", "58.0", "\"a\\/b\"", "\"é\"", "true", "null"];
 
 #[derive(Debug, Clone)]

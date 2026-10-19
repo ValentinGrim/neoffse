@@ -9,9 +9,13 @@ pub enum Scalar {
     Null,
     /// `true` or `false`.
     Bool(bool),
-    /// An integer without `.`, `e` or `E` that fits `i64`.
+    /// An integer without `.`, `e` or `E` that fits `i64`. The text `-0`
+    /// reads as `Int(0)`; [`Document::raw`](super::Document::raw) keeps the
+    /// sign.
     Int(i64),
     /// An integer without `.`, `e` or `E` above `i64::MAX` that fits `u64`.
+    /// A `Uint` below that bound reads back as `Int`: after
+    /// `set(Scalar::Uint(5))`, `get` returns `Int(5)`.
     Uint(u64),
     /// A number with `.`, `e` or `E`. The written form is lost: `58.0` reads
     /// as `58.0_f64`. [`Document::raw`](super::Document::raw) keeps the text.

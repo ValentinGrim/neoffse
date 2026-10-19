@@ -28,15 +28,17 @@ document gives the reason behind each one.
 
 ## Workspace
 
-|        Crate        |                             Role                                 |
-|:-------------------:|:----------------------------------------------------------------:|
-| `neoffse`           | public facade of the library, the crate other projects depend on |
-| `neoffse-core`      | domain model: games, characters, edits, field metadata           |
-| `neoffse-data`      | ID tables per game, from `data/*.toml`                           |
-| `neoffse-io`        | save discovery, backups, verified atomic writes                  |
-| `neoffse-format-pr` | FF I to VI Pixel Remaster format: codec and lossless document    |
-| `neoffse-app`       | Slint desktop app                                                |
-| `neoffse-testkit`   | locates fixtures and private saves for tests, not published      |
+|        Crate        |                                 Role                                  |
+|:-------------------:|:---------------------------------------------------------------------:|
+| `neoffse`           | public facade of the library, the crate other projects depend on (M4) |
+| `neoffse-core`      | domain model: games, characters, edits, field metadata (M3)           |
+| `neoffse-data`      | ID tables per game, from `data/*.toml` (M3)                           |
+| `neoffse-io`        | save discovery, backups, verified atomic writes (M2)                  |
+| `neoffse-format-pr` | FF I to VI Pixel Remaster format: codec and lossless document         |
+| `neoffse-app`       | Slint desktop app                                                     |
+| `neoffse-testkit`   | locates fixtures and private saves for tests                          |
+
+Every crate sets `publish = false` until a crates.io release is decided.
 
 ## Build
 
@@ -64,12 +66,11 @@ sudo apt-get install libfontconfig-dev libxkbcommon-dev libxcb-shape0-dev libxcb
 
 ## License
 
-You may use NeoFFSE under the MIT license or the Apache License 2.0, at
-your option. The app uses [Slint](https://slint.dev) under the Slint
-Royalty-free Desktop, Mobile and Web Applications License 2.0. NeoFFSE ports
-KiameV's MIT-licensed Pixel Remaster editor and cipher library. The cipher
-library is based on Meyti's MIT-licensed py3rijndael. The copyright
-notices sit in [`licenses/`](licenses/).
+You may use NeoFFSE under the MIT license or the Apache License 2.0, at your option.
+The app uses [Slint](https://slint.dev) under the Slint Royalty-free Desktop, Mobile and Web Applications License 2.0.
+NeoFFSE ports the cipher of KiameV's MIT-licensed ffpr-save-cypher library, which is based on Meyti's MIT-licensed py3rijndael.
+The ID tables of KiameV's Pixel Remaster editor will follow in M3.
+The copyright notices sit in [`licenses/`](licenses/).
 
 Final Fantasy, its game data and its artwork belong to Square Enix.
 NeoFFSE is not affiliated with or endorsed by Square Enix.

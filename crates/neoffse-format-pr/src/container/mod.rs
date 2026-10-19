@@ -75,15 +75,21 @@ pub enum InflatePath {
     FinalBlock,
     /// The Fallback of
     /// `docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`:
-    /// the stream has no final block and ends where the input ends.
+    /// the stream has no final block and ends where the input ends. The
+    /// inflated bytes must also pass a shape check: they start with `{`,
+    /// brackets balance outside strings, the depth first returns to zero at
+    /// the last byte and no string stays open. Bracket kinds are not
+    /// matched; the document layer validates the JSON.
     Fallback,
 }
 
 /// The result of [`decode`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Decoded {
-    /// The payload, compact JSON text. It is valid UTF-8; the codec checks
-    /// no more than that.
+    /// The payload, compact JSON text. It is valid UTF-8. On the final-block
+    /// path the codec checks nothing more. On the Fallback path the text also
+    /// passed the shape check of [`InflatePath::Fallback`]. Full JSON
+    /// validation belongs to the document layer.
     pub json: String,
     /// The framing around the payload.
     pub container: Container,
@@ -154,9 +160,25 @@ pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
 /// base64, then the BOM and the trailer of `container`
 /// (`docs/formats/pixel-remaster.md#pseudo-code`).
 ///
+/// The trailer is written as `container` holds it. [`Container::game`] ends
+/// the file with CRLF; a container decoded from an editor file has no CRLF
+/// and keeps none.
+///
 /// # Errors
 ///
 /// [`CodecError::Deflate`] when compression fails, and the errors of [`seal`].
+///
+/// # Examples
+///
+/// ```
+/// use neoffse_format_pr::container::{Container, decode, encode};
+///
+/// let file = encode(r#"{"gil":100}"#, &Container::game())?;
+/// assert!(file.starts_with(&[0xEF, 0xBB, 0xBF]));
+/// assert!(file.ends_with(b"\r\n"));
+/// assert_eq!(decode(&file)?.json, r#"{"gil":100}"#);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> {
     let stream = deflate::deflate(json.as_bytes())?;
     seal(&stream, container)
@@ -178,6 +200,23 @@ pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> 
 ///
 /// [`CodecError::Trailer`] when the trailer holds a byte other than space,
 /// tab, CR or LF: such a trailer would not decode again.
+///
+/// # Examples
+///
+/// ```
+/// use neoffse_format_pr::container::deflate::deflate;
+/// use neoffse_format_pr::container::{CodecError, Container, decode, seal};
+///
+/// let stream = deflate(b"{}")?;
+/// let editor_style = Container { bom: true, trailer: Vec::new() };
+/// let file = seal(&stream, &editor_style)?;
+/// assert!(!file.ends_with(b"\n"));
+/// assert_eq!(decode(&file)?.json, "{}");
+///
+/// let bad = Container { bom: false, trailer: b"x".to_vec() };
+/// assert!(matches!(seal(&stream, &bad), Err(CodecError::Trailer { index: 0 })));
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn seal(stream: &[u8], container: &Container) -> Result<Vec<u8>, CodecError> {
     if let Some(index) = container.trailer.iter().position(|&byte| !text::is_trailer_byte(byte)) {
         return Err(CodecError::Trailer { index });

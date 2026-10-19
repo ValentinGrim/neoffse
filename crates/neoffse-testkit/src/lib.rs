@@ -54,10 +54,10 @@ pub fn resolve_saves_root(env_value: Option<&OsStr>, workspace_root: &Path) -> P
     }
 }
 
-/// Lists the regular files directly inside `dir`, sorted by path.
+/// Lists the regular files inside `dir`, sorted by path.
 ///
-/// Subfolders are left out and nothing is read recursively. An empty
-/// folder gives an empty list.
+/// Subfolders are left out and the listing does not descend into them. An
+/// empty folder gives an empty list.
 ///
 /// # Errors
 ///
@@ -80,6 +80,16 @@ pub fn list_save_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
 /// Looks in `<saves root>/<game>`, where the saves root comes from
 /// [`SAVES_ENV`] or defaults to `fixtures/private`. Returns `None` after
 /// calling [`skip`] when the folder is missing, unreadable or empty.
+///
+/// # Examples
+///
+/// The doctest passes with or without private saves: without them the call
+/// returns `None` and the example returns.
+///
+/// ```
+/// let Some(files) = neoffse_testkit::private_saves("ff1") else { return };
+/// assert!(files.iter().all(|path| path.is_file()));
+/// ```
 #[must_use]
 pub fn private_saves(game: &str) -> Option<Vec<PathBuf>> {
     let env_value = std::env::var_os(SAVES_ENV);

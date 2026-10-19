@@ -8,10 +8,12 @@ use std::path::PathBuf;
 
 use neoffse_format_pr::document::Segment;
 
-/// The six game folders under the saves root.
+/// The six game folders under the saves root, one per game of
+/// `docs/formats/pixel-remaster.md#games`.
 pub(crate) const GAMES: [&str; 6] = ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"];
 
-/// Steam writes this file beside the saves; it is not a save.
+/// Steam writes this file beside the saves; it is not a save
+/// (`docs/formats/pixel-remaster.md#other-files-in-the-folder`).
 pub(crate) const STEAM_CLOUD_MARKER: &str = "steam_autocloud.vdf";
 
 /// The private save files of `game` without the Steam cloud marker.
@@ -47,13 +49,15 @@ pub(crate) fn segments(steps: &[Step]) -> Vec<Segment<'_>> {
         .collect()
 }
 
-/// Wraps `doc` in quotes and escapes `\` and `"`, as the game embeds a document.
+/// Wraps `doc` in quotes and escapes `\` and `"`, as the game embeds a document
+/// (`docs/formats/pixel-remaster.md#documents-inside-strings`).
 pub(crate) fn embed(doc: &str) -> String {
     embed_with(doc, false)
 }
 
 /// Like [`embed`]; with `unicode_quote` each `"` becomes `\u0022`, a form the
-/// game's writer does not produce but a reader must accept.
+/// game's writer does not produce but a reader must accept: the game writes
+/// only `\"` and `\\` escapes (`docs/formats/pixel-remaster.md#json-text`).
 pub(crate) fn embed_with(doc: &str, unicode_quote: bool) -> String {
     let quote = if unicode_quote { "\\u0022" } else { "\\\"" };
     format!("\"{}\"", doc.replace('\\', "\\\\").replace('"', quote))

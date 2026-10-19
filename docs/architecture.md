@@ -2,8 +2,7 @@
 
 NeoFFSE is a Rust library that edits Final Fantasy save files, and a desktop app built with Slint on top of it.  
 You can depend on the `neoffse` library and edit saves without the app.  
-Each save format has its own reference under `docs/formats/`, starting with [`pixel-remaster.md`](formats/pixel-remaster.md).  
-This file describes the code around the formats.
+Each save format has its own reference under `docs/formats/`, starting with [`pixel-remaster.md`](formats/pixel-remaster.md).
 
 ## Goals and scope
 
@@ -25,11 +24,12 @@ and starts with the Pixel Remaster (PR) of I to VI on Steam PC.
   Applications License 2.0. That license requires the `AboutSlint`
   widget in the app's About dialog, and the user reaches that dialog
   from the top-level menu.
-- The PR codec and the first ID tables derive from KiameV's MIT-licensed
-  Go code: the archived editor
+- The first ID tables will derive from the tables of KiameV's archived,
+  MIT-licensed editor
   [final-fantasy-pr-save-editor](https://github.com/KiameV/final-fantasy-pr-save-editor)
-  and [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher).
-- The Rijndael-256 cipher is a hand port of ffpr-save-cypher. That library
+  (M3).
+- The Rijndael-256 cipher is a hand port of KiameV's MIT-licensed
+  [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher). That library
   is based on Meyti's MIT-licensed
   [py3rijndael](https://github.com/meyt/py3rijndael), whose origin is a
   gist that ports Bram Cohen's public-domain Java reference code of 2001.
@@ -92,33 +92,43 @@ Another Rust project uses the same facade.
 ```
 neoffse/
 ├── Cargo.toml                  workspace root, shared lints
-├── .github/workflows/          CI: fmt, lock check, clippy, tests, rustdoc, MSRV
+├── Cargo.lock                  committed, so CI builds the locked versions
+├── clippy.toml                 clippy settings (project names for doc_markdown)
+├── rustfmt.toml                rustfmt settings (max_width = 160)
+├── .gitattributes              LF line endings, binary fixtures
+├── .gitignore                  build output, private saves, local tool files
+├── LICENSE-MIT, LICENSE-APACHE
+├── README.md
+├── .github/workflows/          CI: fmt, lock check, clippy, tests,
+│                               format crate alone, rustdoc, MSRV
 ├── scripts/                    clippy.sh, the strict clippy gate
 ├── crates/
-│   ├── neoffse-core/           domain: Game, Platform, Character, Item,
-│   │                           Spell, Edit with its inverse, ChangeSet,
-│   │                           FieldMeta, Capability, the format traits
-│   ├── neoffse-data/           ID tables per game, from data/*.toml
-│   ├── neoffse-io/             discovery, verified atomic write,
+│   ├── neoffse-core/           (M3) domain: Game, Platform, Character,
+│   │                           Item, Spell, Edit with its inverse,
+│   │                           ChangeSet, FieldMeta, Capability, the
+│   │                           format traits
+│   ├── neoffse-data/           (M3) ID tables per game, from data/*.toml
+│   ├── neoffse-io/             (M2) discovery, verified atomic write,
 │   │                           backups, restore, game-running check
 │   ├── neoffse-format-pr/      FF I to VI Pixel Remaster: codec,
-│   │                           lossless document, domain mapping
-│   │                           (the mapping lands with M3)
-│   ├── neoffse/                public facade: re-exports, format
+│   │                           lossless document; the domain mapping
+│   │                           lands with M3
+│   ├── neoffse/                (M4) public facade: re-exports, format
 │   │                           registry, save pipeline
-│   ├── neoffse-app/            Slint desktop app
+│   ├── neoffse-app/            Slint desktop app: window, menu and About
+│   │   │                       dialog today, the screens with M4
 │   │   ├── build.rs            compiles ui/app.slint (style fluent)
 │   │   ├── ui/                 .slint markup: windows, menu, dialogs
 │   │   ├── src/lib.rs          UI layer: window types, callback wiring
 │   │   ├── src/main.rs         binary entry point, calls run()
 │   │   └── tests/              offscreen UI tests
 │   └── neoffse-testkit/        fixtures and private-save locator,
-│                               dev-dependency, never published
-├── data/                       TOML ID tables (data/pr/ff1/, ...)
+│                               dev-dependency
+├── data/                       (M3) TOML ID tables (data/pr/ff1/, ...)
 ├── fixtures/                   synthetic test saves, committed (pr/)
 │                               and private real saves, ignored (private/)
 ├── tools/cipher-vectors/       Go program that writes the cipher test vectors
-├── assets/                     original art, free-license art
+├── assets/                     (M4) original art, free-license art
 ├── licenses/                   third-party notices
 └── docs/                       this file, roadmap, formats/
 ```
@@ -133,16 +143,16 @@ app depends on Slint, so their tests run without opening a window.
 
 ### Crate roles
 
-- **`neoffse-core`** holds the domain and the traits every format
+- **`neoffse-core`** (M3) holds the domain and the traits every format
   implements. No format code, no file access, no UI. An `Edit` names a
   field and a new value; applying it returns the inverse `Edit`, which
   is how undo works. A `ChangeSet` groups the edits of one user action.
   A `Capability` (party, inventory, magic, bestiary, ...) tells the UI
   which editor sections a save supports.
-- **`neoffse-data`** loads the ID tables (items, spells, maps, monsters,
+- **`neoffse-data`** (M3) loads the ID tables (items, spells, maps, monsters,
   jobs) from the TOML files under `data/`. The build embeds them, so a
   library caller needs no data directory. Names and IDs only.
-- **`neoffse-io`** touches the user's files. It finds save roots (Steam
+- **`neoffse-io`** (M2) touches the user's files. It finds save roots (Steam
   native and Flatpak, extra libraries from `libraryfolders.vdf`, Proton
   `compatdata` prefixes, Windows Documents including OneDrive), writes
   through the verified atomic pipeline, manages backups and their
@@ -160,7 +170,7 @@ app depends on Slint, so their tests run without opening a window.
   [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md) holds
   every byte-level rule, with the codec layers under
   [Container encoding](formats/pixel-remaster.md#container-encoding).
-- **`neoffse`** re-exports the crates above so a caller depends on one
+- **`neoffse`** (M4) re-exports the crates above so a caller depends on one
   crate. It also holds the glue the dependency rule keeps out of the
   lower crates: the registry that asks each format to detect a file, the
   edit history, and the save pipeline that joins a format's encoder and
@@ -207,9 +217,8 @@ when two formats could claim a file.
 
 ### Technology stack
 
-The workspace uses the crates below. Each `Cargo.toml` pins the version
-when code first uses the crate, so this table names no version. A new
-dependency outside this table gets a row here first.
+The workspace uses the crates below; each `Cargo.toml` pins the version.
+A crate tagged with a milestone enters the workspace with it.
 
 The three Slint crates (`slint`, `slint-build`, `i-slint-backend-testing`)
 are the exception: `crates/neoffse-app/Cargo.toml` pins each with `=` to
@@ -222,20 +231,24 @@ all three together.
 | UI | `slint` | `.slint` markup, translations through `@tr`, FR and EN |
 | UI build | `slint-build` | build script of `neoffse-app` (`build.rs`) compiles `ui/app.slint` with the `fluent` style |
 | UI tests | `i-slint-backend-testing` | dev-dependency of `neoffse-app`: headless UI tests with no window and no event loop. Internal Slint crate |
-| File dialogs | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
+| File dialogs (M4) | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
 | JSON | `serde`, `serde_json` | `serde` with `std` only. `serde_json` with `preserve_order` (key order), `arbitrary_precision` (a number keeps its written text) and `raw_value` (an untouched value keeps its bytes). They sit under a lossless document layer |
 | Deflate | `flate2` (`rust_backend`) | raw deflate, no zlib header, pure Rust |
 | Base64 | `base64` (`std` only) | standard alphabet, `=` padding |
 | PR cipher | hand-ported Rijndael-256 | 32-byte block, 32-byte key, CBC, fixed key and IV, zero padding; AES fixes the block at 16 bytes, so AES crates cannot decrypt it. The port computes its S-box and lookup tables by `const fn` and expands the key schedule in `Rijndael256::new` |
 | Cipher test vectors | Go program in `tools/cipher-vectors/` | runs KiameV's ffpr-save-cypher (version pinned in its `go.mod`). Only a contributor who regenerates the vectors needs Go |
-| Binary formats | `binrw` | for the console and older PC formats after the PR |
-| Atomic write | `tempfile` | temp file in the target folder, then rename |
-| Config and cache dirs | `directories` | |
-| Steam library list | `keyvalues-parser` | reads `libraryfolders.vdf` |
-| Running game | `sysinfo` | process scan before a write |
-| Errors | `thiserror` in libraries, `anyhow` in the app | [Errors](#errors) |
-| Logging | `tracing` | |
-| Tests | `insta`, `proptest` (`std` only) | snapshots, property tests on codecs and on the document |
+| Binary formats (after M5) | `binrw` | for the console and older PC formats after the PR |
+| Atomic write (M2) | `tempfile` | temp file in the target folder, then rename |
+| Config and cache dirs (M2) | `directories` | |
+| Steam library list (M2) | `keyvalues-parser` | reads `libraryfolders.vdf` |
+| Running game (M2) | `sysinfo` | process scan before a write |
+| Errors | `thiserror` in libraries, `anyhow` in the app (M4) | [Errors](#errors) |
+| Logging (M4) | `tracing` | |
+| Tests | `proptest` (`std` only); `insta` (M4) | property tests on codecs and on the document; snapshots |
+
+Cargo unifies the features of a dependency across a workspace build, and
+the app's dependency tree turns on features that `neoffse-format-pr` does
+not request. For that reason CI runs the tests of `neoffse-format-pr` alone.
 
 ## Errors
 
@@ -247,18 +260,27 @@ a file.
   `DocumentError` (reads and edits of the JSON document). M3 adds
   `FormatError` in `neoffse-core`, next to the `SaveFormat` trait; a
   format crate converts its own errors into it and keeps them as the
-  source. `EditError` and `IoError` follow with their crates. The app
-  uses `anyhow` and adds context at the boundary.
+  source. `EditError` (M3) and `IoError` (M2) follow with their crates.
+  The app (M4) uses `anyhow` and adds context at the boundary.
+- Both enums are `#[non_exhaustive]`, so a `match` needs a wildcard arm
+  and a later version may add a variant. `neoffse-io` (M2) follows the
+  same rule.
+- `Display` never repeats the source error, so an `anyhow` chain prints
+  each cause once.
 - No panic path on input data. The workspace lints deny `unwrap_used`
   and `expect_used`; a test root allows both, since a test asserts by
   panicking.
 - An error carries the position when the code knows it, and its variant
   names the step that failed. `CodecError::Base64` holds the byte offset
   in the file, `CodecError::Inflate` the offset in the decrypted stream.
-  `DocumentError` holds a rendered path, for example
+  Every `DocumentError` variant except `TooDeep` (which holds the limit)
+  carries a rendered path, for example
   `userData.ownedCharacterList.target[2].parameter`: keys join with dots,
   an index shows in brackets, and the step into a string's document shows
-  nothing.
+  nothing. `InvalidJson` also keeps the parser's error, whose line and
+  column count from the first byte the caller passed.
+- `CodecError::PayloadTooLarge` holds in `limit` the cap that fired, the
+  payload cap or the base64 text cap.
 - A refused edit returns an error with the field and the reason, and the
   document stays as it was before the call. `Document::set` already
   behaves so with `DocumentError`; `EditError` will carry the bound an
@@ -275,43 +297,59 @@ a file.
   module. Helpers that several test files share sit in
   `tests/common/mod.rs`, which Cargo does not build as a test target.
 - **Round trip on every fixture.** Decode, encode, decode again: the two
-  decoded documents must match. The game's deflate encoder and `flate2`
-  choose different streams for the same input, so a PR save never
-  re-encodes to the game's bytes, and PR round trips compare the
-  inflated JSON text byte for byte. The game accepts a deflate stream
-  that differs from its own: FF I loads a bestiary file the Go editor
-  re-encoded.
+  decoded documents and their containers must match. The game's deflate
+  encoder and `flate2` choose different streams for the same input, so a
+  PR save never re-encodes to the game's bytes, and PR round trips
+  compare the inflated JSON text byte for byte. The game accepts a
+  deflate stream that differs from its own: FF I loads a bestiary file
+  the Go editor re-encoded. On real saves, the round trip also compares
+  the BOM and the trailing whitespace of the re-encoded file with the
+  original file.
 - **Edit tests.** An edit, then encode and decode, yields the intended
   change and no other difference in the JSON text.
 - **Properties.** `proptest` drives each codec stage (framing, base64,
   the cipher with its padding, deflate), the whole pipeline and the
   document with generated input. Decode inverts encode, an integer edit
-  changes only its own digits, and no input makes a stage panic.
+  changes only its own digits, and no input makes a stage panic. A failing
+  case lands in `tests/*.proptest-regressions`; commit that file with the
+  fix that makes the case pass.
 - **Cipher vectors.** A Go program in `tools/cipher-vectors/` runs
   KiameV's ffpr-save-cypher and writes Rijndael-256 vectors (single
   blocks, CBC encryption, CBC decryption with the length the Go `Decrypt`
   returns) to `crates/neoffse-format-pr/tests/data/rijndael256-vectors.txt`.
   The repository commits that file and the Rust port must reproduce every
   vector. The output depends only on the pinned library version and a
-  fixed seed. To regenerate it, run, with Go installed:
+  fixed seed. Before it writes, the generator checks that the library's
+  CBC IV equals the IV documented in
+  [Cipher](formats/pixel-remaster.md#cipher). To regenerate the file, run,
+  with Go installed:
   `cd tools/cipher-vectors && go run . -o ../../crates/neoffse-format-pr/tests/data/rijndael256-vectors.txt`.
 - **Fixtures.** Synthetic fixtures are committed under `fixtures/`, and
   `neoffse-testkit` locates and reads them. The six container fixtures
-  of `fixtures/pr/` come from one test; to regenerate them, run
+  of `fixtures/pr/` come from one test, which fails when a committed file
+  differs from what the generator writes, then decodes, encodes and
+  decodes each file again. A compression update that changes the stream
+  fails the first check; regenerate the files with
   `NEOFFSE_WRITE_FIXTURES=1 cargo test -p neoffse-format-pr --test container_fixtures write_fixtures`.
 - **Real saves.** They are personal data and stay out of the repository.
   A test asks the testkit for the saves of one game, for example
   `neoffse_testkit::private_saves("ff1")`. The testkit reads the folder
-  named by `NEOFFSE_SAVES`, `fixtures/private/` by default. When it holds
-  nothing for that game, the call returns `None` after
+  named by `NEOFFSE_SAVES`, `fixtures/private/` by default. A relative
+  value resolves from the workspace root, and `~` is not expanded. When
+  the folder holds nothing for that game, the call returns `None` after
   `neoffse_testkit::skip` writes the reason on stderr; the test returns
-  early and passes. `cargo test -- --nocapture` shows the reason. The PR
+  early and passes. A wrong `NEOFFSE_SAVES` path skips every real-save
+  test, and the run stays green; `cargo test -- --nocapture` shows the
+  reasons. The testkit tests its skip path through a child process,
+  because editing the environment of a running test needs `unsafe` in
+  edition 2024 and the workspace denies `unsafe_code`. The PR
   tests ignore `steam_autocloud.vdf`, the marker Steam writes beside
   saves, and treat a game folder that holds only that file as absent.
   Real-save tests only read.
-- **Snapshots.** `insta` pins change summaries and view model state.
-- **UI.** View models carry the UI logic and run in plain Rust tests.
-  The Slint layer runs on Slint's testing backend, through
+- **Snapshots (M4).** `insta` will pin change summaries and view model
+  state.
+- **UI.** View models (M4) carry the UI logic and run in plain Rust
+  tests. The Slint layer runs on Slint's testing backend, through
   `i-slint-backend-testing`: its tests call `init_no_event_loop`, so
   they create no window and no event loop. No test opens a window on the
   developer's desktop.
@@ -321,6 +359,8 @@ a file.
   `cargo fmt --all --check`, `cargo fetch --locked` (fails when
   `Cargo.lock` no longer matches the manifests), `scripts/clippy.sh`,
   then `cargo test --workspace --locked`. On Linux, it also runs
+  `cargo test -p neoffse-format-pr --locked`, because feature unification
+  across the workspace can hide a missing feature of that crate, and
   `cargo doc --workspace --no-deps --locked` with
   `RUSTDOCFLAGS=-D warnings`, so a broken intra-doc link fails the build.
   The `msrv` job runs `cargo check --workspace --all-targets --locked`
@@ -341,21 +381,25 @@ line.
 - A comment cites what a reader can still resolve in a year: a
   `docs/formats` heading, a test name, a milestone number. A task or
   review number means nothing outside the tracker that issued it.
-- A source or test file holds 300 lines at most. Split it into modules
-  before it gets there.
+- A Rust source or test file of the workspace holds 300 lines at most.
+  Split it into modules before it gets there. The Go program under
+  `tools/` is outside the rule.
 - The lint set lives in the root `Cargo.toml` under `[workspace.lints]`:
-  clippy `pedantic` and `cargo` as groups, `unwrap_used`, `expect_used`,
-  `print_stdout` and `print_stderr` by name, and rustc's `missing_docs`,
-  `missing_debug_implementations`, `unreachable_pub` and `unsafe_code`,
-  all deny. `scripts/clippy.sh` runs clippy with `-D warnings` over
-  every target. An exception lives in the code as
-  `#[allow(..., reason = "...")]`, never as a script flag.
+  clippy `pedantic` and `cargo` as groups, `allow_attributes_without_reason`,
+  `unwrap_used`, `expect_used`, `print_stdout` and `print_stderr` by name,
+  and rustc's `missing_docs`, `missing_debug_implementations`,
+  `unreachable_pub` and `unsafe_code`, all deny. `scripts/clippy.sh` runs
+  clippy with `-D warnings` over every target. An exception lives in the
+  code as `#[allow(..., reason = "...")]`, and every `allow` carries its
+  reason; a script flag never serves as an exception.
 - Run `cargo fmt` with the committed `rustfmt.toml` (`max_width = 160`)
   before every commit.
 
 ## UI architecture
 
-The `.slint` files draw; Rust view models decide. A view model turns
+The screens below land with M4; M0 ships the window, the top-level menu
+and the About dialog. The `.slint` files draw; Rust view models decide.
+A view model turns
 domain data into Slint models and turns user actions into `Edit`s, and
 it runs without a window.
 
@@ -387,25 +431,27 @@ it runs without a window.
 
 ## Visual assets
 
-The app picks each image from the best of three providers, and the
-repository never holds an asset extracted from a game. One `AssetProvider` trait in the app layer hides the
-choice, so no library crate depends on it. The providers, in order of
-preference:
+The app (M4) picks each image from the best of three providers, and the
+repository never holds an asset extracted from a game. One
+`AssetProvider` trait in the app layer hides the choice, so no library
+crate depends on it. The providers, in order of preference:
 
 1. **Local extraction.** The app extracts portraits from the user's own
    game installation into the user cache directory
    (`~/.cache/neoffse/assets/<game>/` on Linux). NeoFFSE never commits
-   or redistributes these files. The provider sits behind the
+   or redistributes these files. The provider will sit behind the
    `local-assets` cargo feature of `neoffse-app`, off by default, so
-   public builds leave it out. Save discovery in `neoffse-io` locates
-   the game install, and `NEOFFSE_GAME_DIR` overrides it. The Pixel
-   Remaster games store their art in Unity asset bundles, and the
-   provider needs research on that format before any code.
+   public builds leave it out. Save discovery in `neoffse-io` (M2)
+   locates the game install, and `NEOFFSE_GAME_DIR` will override it. The
+   Pixel Remaster games store their art in Unity asset bundles, and the
+   provider needs research on that format before any code. No milestone
+   schedules it.
 2. **Bundled free art.** Files in `assets/` with a known author and a
    free license, attributed per file in REUSE style (`REUSE.toml`), the
    way ff7tk does for Black Chocobo. The folder holds no such file yet.
-3. **Silhouettes.** Original generic images in `assets/`. They replace
-   any missing portrait, and public builds show no other images for now.
+3. **Silhouettes (M4).** Original generic images in `assets/`. They
+   replace any missing portrait, and public builds show no other images
+   for now.
 
 A user who owns the game sees real portraits on their own machine, and a
 public build redistributes nothing the project has no right to ship.
@@ -414,6 +460,9 @@ public build redistributes nothing the project has no right to ship.
 
 A save reaches disk through one pipeline in the `neoffse` facade, and
 any failure before the final rename leaves the original file as it was.
+`neoffse-io` (M2) will provide the backup, write, rename and process
+steps, and the facade (M4) will join them to the format's encoder and
+decoder.
 
 1. The facade checks for a running game process, and the app warns when
    it finds one. The user may cancel or continue.
@@ -476,15 +525,16 @@ closed crate before the next milestone opens. The
 | M3 PR domain | `neoffse-core`, `neoffse-data`, domain mapping of `neoffse-format-pr` | yes |
 | M4 App, FF I | `neoffse-app` v1, the `neoffse` facade (registry, history, save pipeline) | yes |
 | M5 FF II to VI | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` for per-game capabilities | yes |
-| v0.1 | release packaging, translations | full repository |
+| Release (v0.7.0) | release packaging, translations | full repository |
 
 ## Open points
 
 - **Localized game names.** The UI ships FR and EN, and the ID tables
   carry English names. A French item list needs a source the project
-  may use. v0.1 needs it.
+  may use. The release needs it.
 - **macOS.** CI covers Linux and Windows. macOS builds need a third CI
   runner and a tester on that system.
 - **crates.io.** Publishing `neoffse` and its internal crates on
-  crates.io remains open. The manifests carry the metadata
-  `clippy::cargo` requires, so either choice costs no rework.
+  crates.io remains open. Every crate sets `publish = false` until that
+  choice, and the manifests carry the metadata `clippy::cargo` requires,
+  so either outcome costs no rework.
