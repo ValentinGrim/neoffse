@@ -10,8 +10,9 @@ lists the crates each milestone closes.
 
 **Scope.**
 - Cargo workspace with the seven crates and the shared lint set (done).
-- CI on Linux and Windows: `cargo fmt --check`, `scripts/clippy.sh`,
-  `cargo test --workspace`.
+- CI on Linux and Windows: `cargo fmt --check`, a `Cargo.lock` check,
+  `scripts/clippy.sh`, `cargo test --workspace --locked`; plus a
+  `cargo check` job at Rust 1.92, the workspace `rust-version`.
 - A Slint skeleton window with a top-level menu and an About dialog that
   shows the `AboutSlint` widget.
 - `LICENSE-MIT`, `LICENSE-APACHE`, and a `licenses/` folder for
@@ -104,6 +105,5 @@ its system in French and in English.
 
 ## After v0.1
 
-A guide on adding a format comes first, so a contributor can add a game
-without reading the whole codebase. More games follow, then the
-platform variants (GBA, memory cards, NDS, consoles).
+A guide on adding a format comes first, so a contributor can add a game without reading the whole codebase.  
+TBD: More games follow, then the platform variants (GBA, memory cards, NDS, consoles).

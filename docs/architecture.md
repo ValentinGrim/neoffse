@@ -1,26 +1,22 @@
 # NeoFFSE architecture
 
-NeoFFSE is a Rust library that edits Final Fantasy save files, and a
-desktop app built with Slint on top of it. The app is the only client in
-this repository; other Rust projects can depend on the `neoffse` library
-and edit saves without the app. Each save format has its own reference
-under `docs/formats/`, starting with
-[`pixel-remaster.md`](formats/pixel-remaster.md); this file describes
-the code around the formats.
+NeoFFSE is a Rust library that edits Final Fantasy save files, and a desktop app built with Slint on top of it.  
+You can depend on the `neoffse` library and edit saves without the app.  
+Each save format has its own reference under `docs/formats/`, starting with [`pixel-remaster.md`](formats/pixel-remaster.md).  
+This file describes the code around the formats.
 
 ## Goals and scope
 
-NeoFFSE edits the saves of Final Fantasy I to XVI, XIV excepted, and
-starts with the Pixel Remaster (PR) of I to VI on Steam PC.
+NeoFFSE's goal is to edit the saves of Final Fantasy I to XVI, XI and XIV excepted,
+and starts with the Pixel Remaster (PR) of I to VI on Steam PC.
 
 - **Library first.** Any Rust project can edit a save through the
-  `neoffse` crate. The desktop app calls that crate and holds no save
-  logic of its own.
+  `neoffse` crate.
 - **First target.** FF I to VI PR, Steam release, on Windows and on
   Linux (native Steam, Flatpak Steam, Proton).
-- **Other platforms.** Per-platform versions follow the PC ones.
+- **Other platforms.** Per-platform versions might follow the PC ones.
 - **Console encryption.** PS4, PS5, Switch and Xbox encrypt their saves,
-  and NeoFFSE does not decrypt them.
+  and NeoFFSE does not plan to decrypt them.
 
 ### Licensing constraints
 
@@ -89,6 +85,8 @@ Another Rust project uses the same facade.
 ```
 neoffse/
 ├── Cargo.toml                  workspace root, shared lints
+├── .github/workflows/          CI: fmt, lock check, clippy, tests, MSRV
+├── scripts/                    clippy.sh, the strict clippy gate
 ├── crates/
 │   ├── neoffse-core/           domain: Game, Platform, Character, Item,
 │   │                           Spell, Edit with its inverse, ChangeSet,
@@ -101,6 +99,11 @@ neoffse/
 │   ├── neoffse/                public facade: re-exports, format
 │   │                           registry, save pipeline
 │   ├── neoffse-app/            Slint desktop app
+│   │   ├── build.rs            compiles ui/app.slint (style fluent)
+│   │   ├── ui/                 .slint markup: windows, menu, dialogs
+│   │   ├── src/lib.rs          UI layer: window types, callback wiring
+│   │   ├── src/main.rs         binary entry point, calls run()
+│   │   └── tests/              offscreen UI tests
 │   └── neoffse-testkit/        fixtures and private-save locator,
 │                               dev-dependency, never published
 ├── data/                       TOML ID tables (data/pr/ff1/, ...)
@@ -149,6 +152,11 @@ app depends on Slint, so their tests run without opening a window.
   lower crates: the registry that asks each format to detect a file, the
   edit history, and the save pipeline that joins a format's encoder and
   decoder to `neoffse-io`'s verified write.
+- **`neoffse-app`** is the Slint desktop app. Its library target
+  (`src/lib.rs`) holds the window types that `ui/app.slint` generates
+  and the code that wires their callbacks; the `neoffse-app` binary
+  (`src/main.rs`) only calls `run`. The library target lets integration
+  tests drive the windows (see [Test policy](#test-policy)).
 - **`neoffse-testkit`** builds synthetic fixtures and locates private
   real saves through `NEOFFSE_SAVES` (see [Test policy](#test-policy)).
 
@@ -189,9 +197,17 @@ The workspace uses the crates below. Each `Cargo.toml` pins the version
 when code first uses the crate, so this table names no version. A new
 dependency outside this table gets a row here first.
 
+The three Slint crates (`slint`, `slint-build`, `i-slint-backend-testing`)
+are the exception: `crates/neoffse-app/Cargo.toml` pins each with `=` to
+the same exact version. `i-slint-backend-testing` is an internal Slint
+crate and requires the exact version of `slint`, so a Slint update moves
+all three together.
+
 | Need | Crate | Notes |
 |---|---|---|
 | UI | `slint` | `.slint` markup, translations through `@tr`, FR and EN |
+| UI build | `slint-build` | build script of `neoffse-app` (`build.rs`) compiles `ui/app.slint` with the `fluent` style |
+| UI tests | `i-slint-backend-testing` | dev-dependency of `neoffse-app`: headless UI tests with no window and no event loop. Internal Slint crate |
 | File dialogs | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
 | JSON | `serde`, `serde_json` (`preserve_order`) | under a lossless document layer that keeps number text and nesting |
 | Deflate | `flate2` (`rust_backend`) | raw deflate, no zlib header, pure Rust |
@@ -228,6 +244,11 @@ a file.
 
 `cargo test --workspace` passes on a fresh clone without any game file.
 
+- **Tests live in `tests/`.** No source file holds test code, in any
+  crate. A crate's tests sit in its `tests/` directory as integration
+  tests and use the public API. An internal stage that needs tests, such
+  as a codec step or the cipher, is exposed in a documented public
+  module.
 - **Round trip on every fixture.** Decode, encode, decode again: the two
   decoded documents must match. The game's deflate encoder and `flate2`
   choose different streams for the same input, so a PR save never
@@ -250,10 +271,19 @@ a file.
   unset.
 - **Snapshots.** `insta` pins change summaries and view model state.
 - **UI.** View models carry the UI logic and run in plain Rust tests.
-  The Slint layer runs under Slint's testing backend or renders
-  screenshots. No test opens a window on the developer's desktop.
-- **Platforms.** CI runs fmt, strict clippy and the tests on Linux and
-  Windows.
+  The Slint layer runs on Slint's testing backend, through
+  `i-slint-backend-testing`: its tests call `init_no_event_loop`, so
+  they create no window and no event loop. No test opens a window on the
+  developer's desktop.
+- **Platforms.** CI (`.github/workflows/ci.yml`) runs on each push to
+  `develop` and to a milestone branch (`v*.*.*`), and on each pull
+  request into `develop`. The `checks` job runs on Linux and on Windows:
+  `cargo fmt --all --check`, `cargo fetch --locked` (fails when
+  `Cargo.lock` no longer matches the manifests), `scripts/clippy.sh`,
+  then `cargo test --workspace --locked`. The `msrv` job runs
+  `cargo check --workspace --all-targets --locked` on Linux with Rust
+  1.92.0, the `rust-version` of the workspace. CI leaves `NEOFFSE_SAVES`
+  unset, so tests that need real saves skip there.
 
 ## Comment doctrine and source hygiene
 
