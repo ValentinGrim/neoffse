@@ -10,6 +10,7 @@ readme.workspace = true
 authors.workspace = true
 keywords = ["final-fantasy", "save-editor", "gamedev", "gui"]
 categories = ["game-development", "gui"]
+publish = false
 
 [dependencies]
 neoffse = { workspace = true }

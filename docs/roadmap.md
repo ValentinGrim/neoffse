@@ -1,18 +1,23 @@
 # NeoFFSE roadmap
 
-NeoFFSE reaches v0.1 in six milestones: foundations, the PR codec, file
-safety, the PR domain, the app on FF I, then FF II to VI. A milestone
-closes when its exit checks pass, and the next one opens after that.
+NeoFFSE reaches its first release, v0.7.0, in six milestones and a release
+stage: foundations, the PR codec, file safety, the PR domain, the app on
+FF I, FF II to VI, then the release. Each step moves the crates it touches
+to the next minor version: M0 delivers 0.1.0, M1 0.2.0, and so on up to
+0.6.0 for M5, then the release stage delivers v0.7.0. A step closes when
+its exit checks pass, and the next one opens after that.
 [Layers and milestone boundaries](architecture.md#layers-and-milestone-boundaries)
 lists the crates each milestone closes.
 
 ## M0 Foundations
 
 **Scope.**
-- Cargo workspace with the seven crates and the shared lint set (done).
-- CI on Linux and Windows: `cargo fmt --check`, a `Cargo.lock` check,
-  `scripts/clippy.sh`, `cargo test --workspace --locked`; plus a
-  `cargo check` job at Rust 1.92, the workspace `rust-version`.
+- Cargo workspace with the seven crates and the shared lint set.
+- CI on Linux and Windows: `cargo fmt --all --check`, a `Cargo.lock` check,
+  `scripts/clippy.sh`, `cargo test --workspace --locked`; on Linux also
+  the tests of `neoffse-format-pr` alone and `cargo doc` with warnings
+  denied; plus a `cargo check` job at Rust 1.92, the workspace
+  `rust-version`.
 - A Slint skeleton window with a top-level menu and an About dialog that
   shows the `AboutSlint` widget.
 - `LICENSE-MIT`, `LICENSE-APACHE`, and a `licenses/` folder for
@@ -26,18 +31,20 @@ both.
 
 **Scope.**
 - A hand port of Rijndael-256 from KiameV's Go implementation. The
-  port adds KiameV's copyright notice to `licenses/`.
-- Test vectors from the Go implementation, committed.
-- The codec, decode and encode: BOM, base64 that ignores a trailing CR
-  or LF, decryption, restoration of the trailing zero bytes the
-  decryption strips, raw inflate, JSON text (see
+  port adds the notices of KiameV and Meyti to `licenses/`.
+- Test vectors from the Go implementation, committed, with the Go
+  program that generates them (`tools/cipher-vectors/`).
+- The codec, decode and encode: BOM, base64 that ignores trailing
+  whitespace, decryption that keeps the zero padding, raw inflate that
+  stops at the final block, JSON text (see
   [Container encoding](formats/pixel-remaster.md#container-encoding)).
 - The lossless JSON document (rule 1 of
   [Principles](architecture.md#principles)).
 - [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md), the
   source of truth for each rule above.
 - Library tests on synthetic fixtures, and on private real saves that
-  the tests find through `NEOFFSE_SAVES`.
+  the tests find through `NEOFFSE_SAVES`, with `neoffse-testkit` to
+  locate both (see [Test policy](architecture.md#test-policy)).
 
 **Exit.** The Rust cipher reproduces every Go test vector. Real FF I and
 FF II saves, read through `NEOFFSE_SAVES`, survive decode, encode and
@@ -93,7 +100,7 @@ the Unity asset bundles.
 **Exit.** For each game from FF II to FF VI, a real save edited in the
 app loads in the game and shows the edit.
 
-## v0.1 release
+## v0.7.0 release
 
 **Scope.** Polish, French and English translations, user documentation,
 and CI release builds: a Linux `tar.xz`, a Windows `zip`, and
@@ -103,7 +110,7 @@ and CI release builds: a Linux `tar.xz`, a Windows `zip`, and
 the checksums match, and the app from each archive opens a real save on
 its system in French and in English.
 
-## After v0.1
+## After v0.7.0
 
 A guide on adding a format comes first, so a contributor can add a game without reading the whole codebase.  
-TBD: More games follow, then the platform variants (GBA, memory cards, NDS, consoles).
+More games follow, then the platform variants (GBA, memory cards, NDS, consoles).

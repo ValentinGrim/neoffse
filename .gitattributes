@@ -1,0 +1,17 @@
+# Text files are stored and checked out with LF on every OS, so rustfmt
+# and byte-exact tests see the same bytes on Linux and Windows.
+* text=auto eol=lf
+
+# Save fixtures are compared byte for byte: a PR save carries a BOM and a
+# trailing CRLF that no checkout may rewrite. They are binary to git, so
+# diff prints no text and a merge never writes conflict markers into them.
+fixtures/** binary
+*.sav binary
+
+# The cipher vector file is byte-exact too, but its diff helps a reader.
+# Keep it out of line-ending conversion and out of textual merges.
+crates/*/tests/data/** -text -merge
+
+# Images and other binary assets.
+*.png binary
+*.ico binary
