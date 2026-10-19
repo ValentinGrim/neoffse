@@ -13,6 +13,7 @@ use std::rc::Rc;
 use neoffse_io::atomic::{FileOps, RealFileOps};
 
 pub(crate) mod backup;
+pub(crate) mod discovery;
 
 /// The message of every error a `Probe` injects.
 pub(crate) const INJECTED: &str = "injected-3c1d";
