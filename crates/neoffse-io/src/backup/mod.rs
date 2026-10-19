@@ -11,7 +11,14 @@
 //! `ErrorKind::AlreadyExists`. The stamp is the local time of the [`Moment`];
 //! [`Moment::now`] gives UTC.
 //!
-//! This version keeps every backup and deletes none.
+//! [`list()`] reads the backups of a game back, newest first. A folder
+//! whose name is a backup stamp but that holds no readable `backup.json` is
+//! incomplete or invalid: `list` reports it in [`Listing::unreadable`] and
+//! leaves it on disk.
+//!
+//! After a successful [`create()`], the oldest backups go until
+//! [`MAX_BACKUPS`] (20) remain for the game. Only readable backups count and
+//! only they are deleted. The backup just made always stays.
 //!
 //! The file `backup.json` of a backup folder lists the files by plain name.
 //! The path of file `name` in a [`Backup`] is `backup.dir.join(name)`, for a
@@ -21,6 +28,7 @@
 //! on the local disk. No function of this module logs it or prints it in an
 //! error.
 
+mod list;
 mod manifest;
 
 use std::error::Error;
@@ -32,6 +40,7 @@ use crate::atomic::{self, FileOps, RealFileOps};
 use crate::dirs::DataDir;
 use crate::error::{IoError, Operation};
 
+pub use list::{Listing, MAX_BACKUPS, list};
 pub use manifest::{MANIFEST_VERSION, Manifest, Moment};
 
 use manifest::MANIFEST_FILE;
@@ -93,7 +102,9 @@ pub fn create(data: &DataDir, request: &Request<'_>) -> Result<Backup, IoError> 
 ///   temporary file differs from the one written, and [`IoError::Io`] for a
 ///   failed step of the manifest write.
 ///
-/// After the backup folder exists, every error removes it.
+/// After the backup folder exists, every error removes it. A success then
+/// deletes the oldest readable backups beyond [`MAX_BACKUPS`]; a failure of
+/// that cleanup is not reported.
 pub fn create_with<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Request<'_>, now: Moment) -> Result<Backup, IoError> {
     let game_dir = data.game_backups_dir(request.game)?;
     let stamp = now.stamp();
@@ -123,8 +134,12 @@ pub fn create_with<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Reque
         return Err(error);
     }
 
+    let backup = Backup { dir, manifest };
+    // The backup exists and the save pipeline goes on. A failed deletion
+    // leaves an extra old backup, and the next successful call prunes again.
+    let _ = list::prune(&game_dir, &backup);
     let _ = ops.sync_dir(&game_dir);
-    Ok(Backup { dir, manifest })
+    Ok(backup)
 }
 
 /// Creates the first free folder of `<stamp>`, `<stamp>-01` ... `<stamp>-99`.
