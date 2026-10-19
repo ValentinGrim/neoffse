@@ -53,8 +53,11 @@ fn about_request_shows_dialog() -> Result<(), slint::PlatformError> {
     let main_window = MainWindow::new()?;
     let about = new_about_dialog()?;
     connect_about(&main_window, &about);
+    // Keep only a weak handle: the glue must own the dialog by itself.
+    let weak = about.as_weak();
+    drop(about);
     main_window.invoke_about_requested();
-    assert!(about.window().is_visible());
+    assert!(weak.upgrade().is_some_and(|dialog| dialog.window().is_visible()));
     Ok(())
 }
 
@@ -77,10 +80,17 @@ fn about_dialog_reopens_after_dismiss() -> Result<(), slint::PlatformError> {
     let main_window = MainWindow::new()?;
     let about = new_about_dialog()?;
     connect_about(&main_window, &about);
+    // Keep only a weak handle: the glue must own the dialog by itself.
+    let weak = about.as_weak();
+    drop(about);
     main_window.invoke_about_requested();
-    about.invoke_dismiss();
+    let Some(dialog) = weak.upgrade() else {
+        return Err(slint::PlatformError::Other("the dialog did not outlive the caller's handle".into()));
+    };
+    dialog.invoke_dismiss();
+    drop(dialog);
     main_window.invoke_about_requested();
-    assert!(about.window().is_visible());
+    assert!(weak.upgrade().is_some_and(|dialog| dialog.window().is_visible()));
     Ok(())
 }
 
