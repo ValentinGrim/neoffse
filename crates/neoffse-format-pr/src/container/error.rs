@@ -45,7 +45,10 @@ pub enum CodecError {
         /// Bytes the inflater took before it ran dry.
         consumed: usize,
     },
-    /// The inflated payload is larger than the limit.
+    /// The inflated payload is larger than the limit, or the file is too
+    /// large to carry one: the base64 text exceeds `MAX_TEXT_LEN`, a margin
+    /// of twice the payload cap that sits far above the measured streams
+    /// (`docs/formats/pixel-remaster.md#raw-deflate`).
     #[error("the payload exceeds {limit} bytes")]
     PayloadTooLarge {
         /// The limit in bytes.

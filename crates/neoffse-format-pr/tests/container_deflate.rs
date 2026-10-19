@@ -95,6 +95,11 @@ fn inflate_enforces_the_output_limit() {
 }
 
 #[test]
-fn deflate_level_is_six() {
-    assert_eq!(LEVEL, 6);
+fn deflate_uses_the_documented_level() {
+    let input: Vec<u8> = (0..4_000)
+        .flat_map(|number: u32| format!("{{\"id\":{number},\"name\":\"item{}\"}}", number % 37).into_bytes())
+        .collect();
+    let mut encoder = DeflateEncoder::new(Vec::new(), Compression::new(LEVEL));
+    encoder.write_all(&input).unwrap();
+    assert_eq!(deflate(&input).unwrap(), encoder.finish().unwrap());
 }

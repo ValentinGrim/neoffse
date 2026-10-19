@@ -14,12 +14,27 @@ pub mod text;
 
 pub use error::CodecError;
 
-use crate::cipher::{PR_IV, Rijndael256, pad_zeros};
+use crate::cipher::{BLOCK_SIZE, PR_IV, Rijndael256, pad_zeros};
 
 /// Largest inflated payload [`decode`] accepts: 16 MiB. The measured
 /// payloads run from 80 to 235 KB
 /// (`docs/formats/pixel-remaster.md#raw-deflate`).
 pub const MAX_PAYLOAD_LEN: usize = 16 * 1024 * 1024;
+
+/// Largest raw DEFLATE stream [`decode`] expects: twice [`MAX_PAYLOAD_LEN`].
+/// DEFLATE bounds a stream by no function of its payload (stored blocks may
+/// be any length, empty ones included), so this is a margin: a stored-block
+/// stream costs 5 bytes per block, about 0.02% of the payload at the 31 745
+/// bytes per block flate2 writes at level 0.
+const MAX_STREAM_LEN: usize = 2 * MAX_PAYLOAD_LEN;
+
+/// Longest base64 text [`decode`] accepts: [`MAX_STREAM_LEN`] padded to 32
+/// bytes, in base64 (4 characters per 3 bytes). It is a margin, not an exact
+/// bound: any practical encoder stays under it for a payload within
+/// [`MAX_PAYLOAD_LEN`], and a file far larger is refused before base64. The
+/// measured streams run from 6 to 84 KB
+/// (`docs/formats/pixel-remaster.md#raw-deflate`).
+pub const MAX_TEXT_LEN: usize = MAX_STREAM_LEN.next_multiple_of(BLOCK_SIZE).div_ceil(3) * 4;
 
 /// Most zero bytes the Go `padder.Decode` strips, which the Fallback
 /// mimics (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
@@ -76,16 +91,24 @@ pub struct Decoded {
 /// (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
 /// Bytes after the final block are ignored.
 ///
+/// A base64 text longer than [`MAX_TEXT_LEN`] is refused before any decoding,
+/// so a file far larger than any payload within [`MAX_PAYLOAD_LEN`] needs
+/// costs no memory.
+///
 /// # Errors
 ///
 /// A [`CodecError`] naming the failed step: [`CodecError::Empty`],
 /// [`CodecError::Base64`], [`CodecError::CipherLength`], [`CodecError::Inflate`],
-/// [`CodecError::InflateTruncated`], [`CodecError::PayloadTooLarge`] or
-/// [`CodecError::Utf8`].
+/// [`CodecError::InflateTruncated`], [`CodecError::PayloadTooLarge`] (an
+/// inflated payload above [`MAX_PAYLOAD_LEN`], or a text above
+/// [`MAX_TEXT_LEN`]) or [`CodecError::Utf8`].
 pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
     let framing = text::split(file);
     if framing.text.is_empty() {
         return Err(CodecError::Empty);
+    }
+    if framing.text.len() > MAX_TEXT_LEN {
+        return Err(CodecError::PayloadTooLarge { limit: MAX_PAYLOAD_LEN });
     }
     let base_offset = if framing.bom { text::BOM.len() } else { 0 };
     let mut plain = text::decode_base64(framing.text, base_offset)?;
@@ -130,7 +153,7 @@ pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> 
 /// [`CodecError::Trailer`] when the trailer holds a byte other than space,
 /// tab, CR or LF: such a trailer would not decode again.
 pub fn seal(stream: &[u8], container: &Container) -> Result<Vec<u8>, CodecError> {
-    if let Some(index) = container.trailer.iter().position(|byte| !matches!(byte, b' ' | b'\t' | b'\r' | b'\n')) {
+    if let Some(index) = container.trailer.iter().position(|&byte| !text::is_trailer_byte(byte)) {
         return Err(CodecError::Trailer { index });
     }
     let mut cipher = stream.to_vec();
