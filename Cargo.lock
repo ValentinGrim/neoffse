@@ -2689,8 +2689,12 @@ version = "0.1.0"
 name = "neoffse-format-pr"
 version = "0.2.0"
 dependencies = [
+ "base64",
+ "flate2",
  "neoffse-core",
+ "neoffse-testkit",
  "proptest",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

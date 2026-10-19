@@ -13,9 +13,13 @@ categories = ["game-development", "parser-implementations"]
 
 [dependencies]
 neoffse-core = { workspace = true }
+base64 = { version = "0.23.1", default-features = false, features = ["std"] }
+flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
+thiserror = "2.0.21"
 
 [lints]
 workspace = true
 
 [dev-dependencies]
+neoffse-testkit = { workspace = true }
 proptest = { version = "1.12.0", default-features = false, features = ["std"] }

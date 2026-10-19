@@ -5,5 +5,8 @@
 //!
 //! - [`cipher`]: Rijndael with a 256-bit block, CBC mode, the PR key and IV,
 //!   and the PR zero padding.
+//! - [`container`]: the file around the JSON text (BOM, base64, cipher, raw
+//!   deflate, CRLF), with `decode` and `encode`.
 
 pub mod cipher;
+pub mod container;
