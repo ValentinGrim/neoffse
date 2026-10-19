@@ -1,0 +1,13 @@
+# Text files are stored and checked out with LF on every OS, so rustfmt
+# and byte-exact tests see the same bytes on Linux and Windows.
+* text=auto eol=lf
+
+# Save fixtures and test data are compared byte for byte: a PR save
+# carries a BOM and a trailing CRLF that no checkout may rewrite.
+fixtures/** -text
+crates/*/tests/data/** -text
+*.sav -text
+
+# Images and other binary assets.
+*.png binary
+*.ico binary
