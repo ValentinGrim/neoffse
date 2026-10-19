@@ -121,10 +121,13 @@ fn split_outer(text: &str) -> (&str, &str, &str) {
     (lead, body, tail)
 }
 
-fn parse_value(json: &str, path: &[Segment<'_>]) -> Result<Box<RawValue>, DocumentError> {
-    RawValue::from_string(json.to_owned()).map_err(|source| DocumentError::InvalidJson {
+/// Parses `body`, the value text of `whole` without its outer whitespace.
+/// On failure the error comes from `whole`, so its line and column count
+/// from the first byte the caller passed.
+fn parse_value(body: &str, whole: &str, path: &[Segment<'_>]) -> Result<Box<RawValue>, DocumentError> {
+    RawValue::from_string(body.to_owned()).map_err(|stripped| DocumentError::InvalidJson {
         path: render_path(path),
-        source,
+        source: RawValue::from_string(whole.to_owned()).err().unwrap_or(stripped),
     })
 }
 
@@ -143,12 +146,13 @@ impl Document {
     /// # Errors
     ///
     /// `InvalidJson` with path `<root>` for empty text, whitespace only, a
-    /// second value after the first, a truncated value or a leading BOM.
+    /// second value after the first, a truncated value or a leading BOM. Its
+    /// line and column count from the first byte of `text`.
     pub fn parse(text: &str) -> Result<Self, DocumentError> {
         let (lead, body, tail) = split_outer(text);
         Ok(Self {
             lead: lead.to_owned(),
-            root: Node::new(parse_value(body, &[])?),
+            root: Node::new(parse_value(body, text, &[])?),
             tail: tail.to_owned(),
         })
     }
@@ -227,7 +231,7 @@ impl Document {
             return Err(DocumentError::EndsInDoc { path: render_path(path) });
         }
         let (_, body, _) = split_outer(json);
-        let value = parse_value(body, path)?;
+        let value = parse_value(body, json, path)?;
         self.root.walk(path, false)?;
         *self.root.walk(path, true)? = Node::new(value);
         Ok(())

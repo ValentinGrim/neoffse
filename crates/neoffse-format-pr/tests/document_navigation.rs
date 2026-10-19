@@ -88,7 +88,7 @@ fn get_reads_a_u32_above_i32_as_int() {
 
 #[test]
 fn get_reads_an_integer_above_2_pow_53_exactly() {
-    assert_eq!(get("639278367168195674", &[]).unwrap(), Scalar::Int(639_278_367_168_195_674));
+    assert_eq!(get("600000000000000013", &[]).unwrap(), Scalar::Int(600_000_000_000_000_013));
     assert_eq!(get("18446744073709551615", &[]).unwrap(), Scalar::Uint(u64::MAX));
 }
 
