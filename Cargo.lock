@@ -2725,6 +2725,8 @@ name = "neoffse-io"
 version = "0.3.0"
 dependencies = [
  "directories",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.21",
 ]
