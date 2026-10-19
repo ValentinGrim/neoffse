@@ -1,12 +1,10 @@
 //! Parsing, reading and navigating a `Document`. No test here edits.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
-use neoffse_format_pr::document::{Document, DocumentError, MAX_DEPTH, Scalar, Segment, render_path};
+mod common;
 
-/// Wraps `doc` in quotes and escapes `\` and `"`, as the game embeds a document.
-fn embed(doc: &str) -> String {
-    format!("\"{}\"", doc.replace('\\', "\\\\").replace('"', "\\\""))
-}
+use common::embed;
+use neoffse_format_pr::document::{Document, DocumentError, MAX_DEPTH, Scalar, Segment, render_path};
 
 fn parse(text: &str) -> Document {
     Document::parse(text).unwrap()

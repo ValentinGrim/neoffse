@@ -4,36 +4,35 @@
 //! a failure names the game, the file and the rendered path, never a value.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
+use common::{Step, segments};
 use neoffse_format_pr::container;
-use neoffse_format_pr::document::{Document, DocumentError, Segment, render_path};
+use neoffse_format_pr::document::{Document, DocumentError, render_path};
 use serde_json::Value;
 
-#[derive(Clone)]
-enum Step {
-    Key(String),
-    Index(usize),
-    Doc,
+/// The string documents of `value`, counted by `serde_json` alone: a
+/// non-empty string that starts with `{` or `[` and parses, then the
+/// documents inside it. The walk below must enter exactly this many.
+fn count_oracle_docs(value: &Value) -> usize {
+    match value {
+        Value::Object(members) => members.values().map(count_oracle_docs).sum(),
+        Value::Array(items) => items.iter().map(count_oracle_docs).sum(),
+        Value::String(content) if is_document(content) => 1 + serde_json::from_str::<Value>(content).map_or(0, |inner| count_oracle_docs(&inner)),
+        _ => 0,
+    }
 }
 
-fn segments(steps: &[Step]) -> Vec<Segment<'_>> {
-    steps
-        .iter()
-        .map(|step| match step {
-            Step::Key(key) => Segment::Key(key),
-            Step::Index(index) => Segment::Index(*index),
-            Step::Doc => Segment::Doc,
-        })
-        .collect()
+fn is_document(content: &str) -> bool {
+    content.starts_with(['{', '[']) && serde_json::from_str::<Value>(content).is_ok()
 }
 
 /// Walks the oracle `Value` and the document side by side. `entered` counts
-/// the string documents the document entered, `oracle_docs` those the oracle
-/// found.
+/// the `Doc` steps the document accepted.
 struct Walk<'a> {
     document: &'a mut Document,
     label: &'a str,
     entered: usize,
-    oracle_docs: usize,
 }
 
 impl Walk<'_> {
@@ -72,8 +71,7 @@ impl Walk<'_> {
                 matches!(step, Err(DocumentError::EmptyDocument { .. })),
                 "{label} {rendered}: an empty string must give EmptyDocument"
             );
-        } else if content.starts_with(['{', '[']) && serde_json::from_str::<Value>(content).is_ok() {
-            self.oracle_docs += 1;
+        } else if is_document(content) {
             assert!(step.is_ok(), "{label} {rendered}: Doc step failed");
             self.entered += 1;
             if let Ok(inner) = serde_json::from_str::<Value>(content) {
@@ -88,7 +86,7 @@ impl Walk<'_> {
 fn private_saves_round_trip_without_edits() {
     for game in ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"] {
         let Some(files) = neoffse_testkit::private_saves(game) else {
-            return;
+            continue;
         };
         let mut total = 0;
         for file in files {
@@ -103,14 +101,14 @@ fn private_saves_round_trip_without_edits() {
             assert!(document.to_json() == decoded.json, "{label}: before access");
 
             let oracle: Value = serde_json::from_str(&decoded.json).unwrap();
+            let oracle_docs = count_oracle_docs(&oracle);
             let mut walk = Walk {
                 document: &mut document,
                 label: &label,
                 entered: 0,
-                oracle_docs: 0,
             };
             walk.visit(&oracle, &mut Vec::new());
-            let (entered, oracle_docs) = (walk.entered, walk.oracle_docs);
+            let entered = walk.entered;
             assert!(entered == oracle_docs, "{label}: documents entered differ from the oracle");
             assert!(document.to_json() == decoded.json, "{label}: after the walk");
             total += entered;
