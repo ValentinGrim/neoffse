@@ -4,14 +4,17 @@ use crate::cipher::UnalignedLength;
 ///
 /// The type derives `Debug` only: `flate2::DecompressError` and
 /// `std::io::Error` are not `PartialEq`. Tests match with `matches!`.
+///
+/// A later version may add variants, so a `match` needs a wildcard arm.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum CodecError {
     /// The file holds no base64 text: it is empty, a lone BOM, or only
     /// whitespace.
     #[error("the file holds no base64 text")]
     Empty,
     /// The base64 text is damaged.
-    #[error("invalid base64 near byte {offset}: {source}")]
+    #[error("invalid base64 near byte {offset}")]
     Base64 {
         /// Byte offset in the file, BOM included. For an invalid byte or an
         /// invalid last symbol it is the offending byte. For every other
@@ -29,7 +32,7 @@ pub enum CodecError {
         len: usize,
     },
     /// The DEFLATE stream holds invalid data.
-    #[error("inflate failed after {offset} bytes of the stream: {source}")]
+    #[error("inflate failed after {offset} bytes of the stream")]
     Inflate {
         /// Bytes of the decrypted stream consumed when the error occurred. It
         /// indexes the plaintext, not the file.
@@ -46,22 +49,22 @@ pub enum CodecError {
         consumed: usize,
     },
     /// The inflated payload exceeds [`MAX_PAYLOAD_LEN`](super::MAX_PAYLOAD_LEN),
-    /// or the base64 text exceeds [`MAX_TEXT_LEN`](super::MAX_TEXT_LEN) and
-    /// cannot carry a payload within that cap. Both cases report the payload
-    /// cap in `limit`.
-    #[error("the payload exceeds {limit} bytes")]
+    /// or the base64 text exceeds [`MAX_TEXT_LEN`](super::MAX_TEXT_LEN), a
+    /// margin above any text a payload within that cap needs. `limit` holds
+    /// the cap that fired.
+    #[error("the payload or its base64 text exceeds the size limit ({limit} bytes)")]
     PayloadTooLarge {
         /// The limit in bytes.
         limit: usize,
     },
     /// The inflated payload is not UTF-8.
-    #[error("the payload is not valid UTF-8: {source}")]
+    #[error("the payload is not valid UTF-8")]
     Utf8 {
         /// The validation error, which holds the length of the valid prefix.
         source: std::str::Utf8Error,
     },
     /// The compressor failed to write.
-    #[error("deflate failed: {source}")]
+    #[error("deflate failed")]
     Deflate {
         /// The I/O error of the compressor.
         source: std::io::Error,

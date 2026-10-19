@@ -60,10 +60,10 @@ pub fn decode_base64(text: &[u8], base_offset: usize) -> Result<Vec<u8>, CodecEr
         padded.push(b'=');
     }
     STANDARD.decode(&padded).map_err(|source| {
-        let end = base_offset + text.len();
+        let end = base_offset.saturating_add(text.len());
         let offset = match source {
             base64::DecodeError::InvalidByte(position, _) | base64::DecodeError::InvalidLastSymbol { offset: position, .. } => {
-                base_offset + position.min(text.len())
+                base_offset.saturating_add(position.min(text.len()))
             }
             _ => end,
         };

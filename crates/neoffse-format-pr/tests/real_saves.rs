@@ -48,8 +48,8 @@ fn parsed(label: &str, json: &str) -> Document {
 }
 
 /// Runs `check` on every file of every present game and returns, per game,
-/// the file count the listing held and the number of files `check` accepted.
-fn for_each_save(mut check: impl FnMut(&str, &str, &[u8]) -> bool) -> Vec<(&'static str, usize, usize)> {
+/// the number of files `check` accepted.
+fn for_each_save(mut check: impl FnMut(&str, &[u8]) -> bool) -> Vec<(&'static str, usize)> {
     present_games()
         .into_iter()
         .map(|(game, files)| {
@@ -58,17 +58,27 @@ fn for_each_save(mut check: impl FnMut(&str, &str, &[u8]) -> bool) -> Vec<(&'sta
                 .filter(|path| {
                     let label = label(game, path);
                     let bytes = read(&label, path);
-                    check(game, &label, &bytes)
+                    check(&label, &bytes)
                 })
                 .count();
-            (game, files.len(), accepted)
+            (game, accepted)
         })
         .collect()
 }
 
+/// The longest suffix of space, tab, CR and LF, computed apart from the
+/// codec so a decoder bug cannot hide behind itself.
+fn trailing_whitespace(bytes: &[u8]) -> &[u8] {
+    let kept = bytes
+        .iter()
+        .rposition(|byte| !matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))
+        .map_or(0, |index| index + 1);
+    bytes.get(kept..).unwrap_or_default()
+}
+
 #[test]
 fn real_saves_survive_decode_encode_decode() {
-    let counts = for_each_save(|_, label, bytes| {
+    for_each_save(|label, bytes| {
         let d1 = decoded(label, bytes);
         let file = encoded(label, &d1.json, &d1);
         let d2 = decoded(label, &file);
@@ -76,19 +86,16 @@ fn real_saves_survive_decode_encode_decode() {
         assert!(d2.container == d1.container, "{label}: container changed");
         assert!(d2.inflate_path == InflatePath::FinalBlock, "{label}: not the final-block path");
         let bom = neoffse_format_pr::container::text::BOM;
-        assert!(file.starts_with(&bom) == bytes.starts_with(&bom), "{label}: BOM changed");
-        assert!(file.ends_with(&d1.container.trailer), "{label}: trailer lost");
-        assert!(bytes.ends_with(&d1.container.trailer), "{label}: trailer not from the file");
+        assert!(bytes.starts_with(&bom), "{label}: the file has no BOM");
+        assert!(file.starts_with(&bom), "{label}: BOM lost");
+        assert!(trailing_whitespace(&file) == trailing_whitespace(bytes), "{label}: trailing whitespace changed");
         true
     });
-    for (game, listed, accepted) in counts {
-        assert!(listed == accepted, "{game}: a file was skipped");
-    }
 }
 
 #[test]
 fn real_saves_survive_the_document_and_the_codec() {
-    let counts = for_each_save(|_, label, bytes| {
+    for_each_save(|label, bytes| {
         let d1 = decoded(label, bytes);
         let document = parsed(label, &d1.json);
         let text = document.to_json();
@@ -98,9 +105,6 @@ fn real_saves_survive_the_document_and_the_codec() {
         assert!(d2.json == d1.json, "{label}: json changed through the codec");
         true
     });
-    for (game, listed, accepted) in counts {
-        assert!(listed == accepted, "{game}: a file was skipped");
-    }
 }
 
 /// The token of the edited key at depth 1: the `userData` string holds the
@@ -113,7 +117,7 @@ fn token(value: i64) -> String {
 #[allow(clippy::match_wild_err_arm, reason = "the error text stays out of the message: privacy")]
 fn an_edit_changes_only_its_bytes_through_the_codec() {
     let path = [Segment::Key("userData"), Segment::Doc, Segment::Key("owendGil")];
-    let counts = for_each_save(|_, label, bytes| {
+    let counts = for_each_save(|label, bytes| {
         let d1 = decoded(label, bytes);
         let mut document = parsed(label, &d1.json);
         let old = match document.get(&path) {
@@ -133,6 +137,8 @@ fn an_edit_changes_only_its_bytes_through_the_codec() {
         assert!(document.set(&path, &Scalar::Int(new)).is_ok(), "{label}: set failed");
         let file = encoded(label, &document.to_json(), &d1);
         let d2 = decoded(label, &file);
+        assert!(d2.container == d1.container, "{label}: container changed");
+        assert!(trailing_whitespace(&file) == trailing_whitespace(bytes), "{label}: trailing whitespace changed");
 
         let new_token = token(new);
         assert!(d2.json.matches(&new_token).count() == 1, "{label}: new token not found once");
@@ -147,20 +153,17 @@ fn an_edit_changes_only_its_bytes_through_the_codec() {
         );
         true
     });
-    for (game, _, edited) in counts {
+    for (game, edited) in counts {
         assert!(edited > 0, "{game}: no file took the edit");
     }
 }
 
 #[test]
 fn real_saves_decode_with_the_strict_base64() {
-    let counts = for_each_save(|_, label, bytes| {
+    for_each_save(|label, bytes| {
         let result = decode(bytes);
         assert!(!matches!(result, Err(CodecError::Base64 { .. })), "{label}: strict base64 rejected the file");
         assert!(result.is_ok(), "{label}: decode failed");
         true
     });
-    for (game, listed, accepted) in counts {
-        assert!(listed == accepted, "{game}: a file was skipped");
-    }
 }

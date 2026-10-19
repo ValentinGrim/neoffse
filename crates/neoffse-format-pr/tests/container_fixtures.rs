@@ -11,6 +11,7 @@ use std::io::Write as _;
 
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
+use neoffse_format_pr::container::deflate::deflate;
 use neoffse_format_pr::container::{Container, InflatePath, decode, encode, seal};
 
 struct Fixture {
@@ -93,10 +94,16 @@ fn build(fixture: &Fixture) -> Vec<u8> {
 fn committed_fixtures_decode_to_their_expected_json() {
     for fixture in fixtures() {
         let file = neoffse_testkit::read_fixture(&format!("pr/{}", fixture.name)).unwrap();
+        assert!(build(&fixture) == file, "{}: the file differs from what the generator writes", fixture.name);
         let decoded = decode(&file).unwrap_or_else(|error| panic!("{}: {error}", fixture.name));
         assert_eq!(decoded.json, fixture.json, "{}", fixture.name);
         assert_eq!(decoded.container, fixture.container, "{}", fixture.name);
         assert_eq!(decoded.inflate_path, fixture.path, "{}", fixture.name);
+
+        let again = decode(&encode(&decoded.json, &decoded.container).unwrap()).unwrap();
+        assert_eq!(again.json, decoded.json, "{}", fixture.name);
+        assert_eq!(again.container, decoded.container, "{}", fixture.name);
+        assert_eq!(again.inflate_path, InflatePath::FinalBlock, "{}", fixture.name);
     }
 }
 
@@ -112,6 +119,11 @@ fn fixture_set_covers_the_container_variants() {
     assert!(set.iter().any(|fixture| fixture.json.len() > 15_000));
     assert!(set.iter().any(|fixture| fixture.path == InflatePath::FinalBlock));
     assert!(set.iter().any(|fixture| fixture.path == InflatePath::Fallback));
+    // `large.sav` carries the stripping trap: its stream ends in a zero byte
+    // and needs padding (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
+    let stream = deflate(large().as_bytes()).unwrap();
+    assert_eq!(stream.last(), Some(&0), "large.sav: the stream no longer ends in a zero byte");
+    assert_ne!(stream.len() % 32, 0, "large.sav: the stream is block-aligned");
 }
 
 #[test]
