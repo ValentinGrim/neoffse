@@ -1,7 +1,10 @@
 //! Property tests of `Document` over generated trees of nested string documents.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
-use neoffse_format_pr::document::{Document, Scalar, Segment};
+mod common;
+
+use common::{Step, changed_span, embed_with, segments};
+use neoffse_format_pr::document::{Document, Scalar};
 use proptest::collection::vec;
 use proptest::prelude::*;
 use proptest::sample::{Index, select};
@@ -18,24 +21,6 @@ enum Tree {
     /// An object rendered as text and embedded as a string. The flag writes
     /// each quote of the embedded text as `"` instead of `\"`.
     Doc(bool, Vec<Tree>),
-}
-
-#[derive(Debug, Clone)]
-enum Step {
-    Key(String),
-    Index(usize),
-    Doc,
-}
-
-fn segments(steps: &[Step]) -> Vec<Segment<'_>> {
-    steps
-        .iter()
-        .map(|step| match step {
-            Step::Key(key) => Segment::Key(key),
-            Step::Index(index) => Segment::Index(*index),
-            Step::Doc => Segment::Doc,
-        })
-        .collect()
 }
 
 fn tree() -> BoxedStrategy<Tree> {
@@ -65,11 +50,6 @@ struct Shape {
     replace: Option<(usize, i64)>,
     /// Writes every embedded quote as `\"`, the form an edit produces.
     canonical_quotes: bool,
-}
-
-fn embed(text: &str, unicode_quote: bool) -> String {
-    let quote = if unicode_quote { "\\u0022" } else { "\\\"" };
-    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', quote))
 }
 
 fn render_members(members: &[Tree], keyed: bool, spaced: bool, path: &mut Vec<Step>, shape: &mut Shape) -> String {
@@ -112,21 +92,13 @@ fn render(tree: &Tree, spaced: bool, path: &mut Vec<Step>, shape: &mut Shape) ->
             path.push(Step::Doc);
             let inner = format!("{{{}}}", render_members(members, true, spaced, path, shape));
             path.pop();
-            embed(&inner, *unicode_quote && !shape.canonical_quotes)
+            embed_with(&inner, *unicode_quote && !shape.canonical_quotes)
         }
     }
 }
 
 fn render_root(tree: &Tree, spaced: bool, shape: &mut Shape) -> String {
     render(tree, spaced, &mut Vec::new(), shape)
-}
-
-/// A prefix and suffix strip: what remains of `a` and `b`.
-fn changed_span<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
-    let prefix = a.bytes().zip(b.bytes()).take_while(|(x, y)| x == y).count();
-    let (a, b) = (&a[prefix..], &b[prefix..]);
-    let suffix = a.bytes().rev().zip(b.bytes().rev()).take_while(|(x, y)| x == y).count();
-    (&a[..a.len() - suffix], &b[..b.len() - suffix])
 }
 
 fn segment_strategy() -> impl Strategy<Value = Step> {

@@ -4,10 +4,14 @@
 //! A [`Document`] keeps the raw text of every value. A level is parsed only
 //! when a path walks through it, and the JSON that a string holds only when
 //! a path asks for it with [`Segment::Doc`]. An edit re-serializes the
-//! levels it touched and their parent strings up to the root. Every other
-//! byte stays as read, in whatever form: number spellings, escapes and
-//! whitespace inside an untouched member survive. The module knows no domain
-//! type.
+//! levels it touched and their parent strings up to the root. Untouched
+//! members keep their bytes at every level the edit does not cross: number
+//! spellings, escapes and whitespace stay as read. A string document on the
+//! edit's path is re-serialized as a whole and re-escaped by `serde_json`,
+//! which writes only `\"` and `\\` for the characters the game escapes
+//! (`docs/formats/pixel-remaster.md#json-text`): an escape in the token of
+//! that string, such as `\/` or `\u0022`, comes back canonical. The module
+//! knows no domain type.
 //!
 //! [`container::decode`]: crate::container::decode
 
@@ -161,9 +165,13 @@ impl Document {
     }
 
     /// Writes `value` at `path` (see [`set_raw`](Self::set_raw)). An integer
-    /// is plain decimal text, a float keeps a decimal point
-    /// (`docs/formats/pixel-remaster.md#numbers`), a string is escaped by
-    /// `serde_json`.
+    /// is plain decimal text and a string is escaped by `serde_json`. A float
+    /// is written by `serde_json` (`Number::from_f64`): it keeps `.0` on a
+    /// whole value in the range the saves use and switches to an exponent
+    /// outside it (`1e16` writes `1e+16`, `1e-7` writes `1e-7`). No number in
+    /// the game files uses an exponent
+    /// (`docs/formats/pixel-remaster.md#numbers`), so callers keep floats in
+    /// that range.
     ///
     /// # Errors
     ///
