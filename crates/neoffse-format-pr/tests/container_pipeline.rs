@@ -220,6 +220,15 @@ fn fallback_rejects_an_incomplete_json_object() {
         }
     }
     assert!(dry && bad_block);
+
+    // The depth reaches zero before the last byte: the stripped view is no
+    // single object, so the primary error stands.
+    let stream = sync_flushed(b"{\"a\":1}x");
+    let outcome = decode(&seal(&stream, &Container::game()).unwrap());
+    assert!(
+        matches!(outcome, Err(CodecError::InflateTruncated { .. } | CodecError::Inflate { .. })),
+        "{outcome:?}"
+    );
 }
 
 #[test]

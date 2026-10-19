@@ -46,7 +46,7 @@ fn unaligned_length_maps_to_cipher_length() {
 #[test]
 fn decode_reports_inflate_garbage() {
     let outcome = decode(&seal(&[0x07], &Container::game()).unwrap());
-    assert!(matches!(outcome, Err(CodecError::Inflate { .. })));
+    assert!(matches!(outcome, Err(CodecError::Inflate { offset: 1, .. })), "{outcome:?}");
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn decode_refuses_a_payload_above_the_limit() {
 #[test]
 fn decode_refuses_a_text_longer_than_any_capped_payload() {
     let file = vec![b'A'; MAX_TEXT_LEN + 4];
-    assert!(matches!(decode(&file), Err(CodecError::PayloadTooLarge { limit: MAX_PAYLOAD_LEN })));
+    assert!(matches!(decode(&file), Err(CodecError::PayloadTooLarge { limit: MAX_TEXT_LEN })));
 }
 
 /// The slowest test of the crate: it encrypts and decrypts about 16 MiB.
@@ -94,8 +94,11 @@ fn max_text_len_admits_the_worst_case_payload() {
 fn error_messages_name_the_step_and_the_position() {
     let mut file = BOM.to_vec();
     file.extend_from_slice(b"QU-D");
-    let message = decode(&file).unwrap_err().to_string();
-    assert!(message.contains('5'), "{message}");
+    let error = decode(&file).unwrap_err();
+    assert!(matches!(error, CodecError::Base64 { offset: 5, .. }));
+    assert!(std::error::Error::source(&error).is_some());
+    let message = error.to_string();
+    assert!(message.contains("byte 5"), "{message}");
     let message = CodecError::CipherLength { len: 33 }.to_string();
     assert!(message.contains("33") && message.contains("32"), "{message}");
 }

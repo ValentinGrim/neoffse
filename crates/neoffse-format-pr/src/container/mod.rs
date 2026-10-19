@@ -130,7 +130,7 @@ pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
         return Err(CodecError::Empty);
     }
     if framing.text.len() > MAX_TEXT_LEN {
-        return Err(CodecError::PayloadTooLarge { limit: MAX_PAYLOAD_LEN });
+        return Err(CodecError::PayloadTooLarge { limit: MAX_TEXT_LEN });
     }
     let base_offset = if framing.bom { text::BOM.len() } else { 0 };
     let mut plain = text::decode_base64(framing.text, base_offset)?;
@@ -169,6 +169,10 @@ pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> 
 /// (sync-flushed, zero-ending, with a tail). An aligned stream gets no extra
 /// block, as in the Go `padder.Encode`
 /// (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
+///
+/// An empty stream gives a file with no base64 text, which [`decode`]
+/// rejects as [`CodecError::Empty`]; [`encode`] never produces one because
+/// DEFLATE output is never empty.
 ///
 /// # Errors
 ///

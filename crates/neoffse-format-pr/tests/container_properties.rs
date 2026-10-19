@@ -89,6 +89,14 @@ proptest! {
     }
 
     #[test]
+    fn decode_never_panics_on_arbitrary_plaintext(bytes in vec(any::<u8>(), 0..=300)) {
+        let _ = decode(&seal(&bytes, &Container::game()).unwrap());
+        let mut braced = vec![b'{'];
+        braced.extend_from_slice(&bytes);
+        let _ = decode(&seal(&braced, &Container::game()).unwrap());
+    }
+
+    #[test]
     fn a_flipped_bit_never_panics(json in payloads(), position in any::<Index>(), bit in 0u32..8) {
         let mut file = encode(&json, &Container::game()).unwrap();
         let index = position.index(file.len());
