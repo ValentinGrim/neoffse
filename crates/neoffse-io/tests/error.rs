@@ -35,6 +35,10 @@ fn every_error() -> Vec<IoError> {
             path: PathBuf::from(PATH),
             source: boxed(),
         },
+        IoError::LibraryListInvalid {
+            path: PathBuf::from(PATH),
+            source: boxed(),
+        },
     ]
 }
 
@@ -85,6 +89,10 @@ fn display_never_repeats_the_source() {
             path: PathBuf::from(PATH),
             source: boxed(),
         },
+        IoError::LibraryListInvalid {
+            path: PathBuf::from(PATH),
+            source: boxed(),
+        },
     ];
     for error in &with_cause {
         assert!(!error.to_string().contains(MARKER), "{error}");
@@ -112,6 +120,10 @@ fn every_path_variant_shows_its_path() {
             path: PathBuf::from(PATH),
             source: boxed(),
         },
+        IoError::LibraryListInvalid {
+            path: PathBuf::from(PATH),
+            source: boxed(),
+        },
     ];
     for error in &with_path {
         assert!(error.to_string().contains(&shown), "{error}");
@@ -134,10 +146,11 @@ fn match_needs_a_wildcard_arm() {
             IoError::InvalidGameId { .. } => 3,
             IoError::VerificationFailed { .. } => 4,
             IoError::ManifestInvalid { .. } => 5,
+            IoError::LibraryListInvalid { .. } => 6,
             _ => 0,
         });
     }
-    assert_eq!(seen, [1, 2, 3, 4, 5]);
+    assert_eq!(seen, [1, 2, 3, 4, 5, 6]);
 
     let mut seen = Vec::new();
     for operation in every_operation() {

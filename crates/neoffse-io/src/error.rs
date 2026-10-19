@@ -97,6 +97,18 @@ pub enum IoError {
         /// type appears in this crate's public API.
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// A Steam library list does not parse.
+    ///
+    /// The text of `source` can quote a line of the file, and the file holds
+    /// paths of the user's home: do not log it.
+    #[error("invalid Steam library list: {path}")]
+    LibraryListInvalid {
+        /// The library list file.
+        path: PathBuf,
+        /// The parser error, boxed so that no third-party type appears in
+        /// this crate's public API.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     /// A restore failed while it wrote files.
     ///
     /// The files in `written` hold the backup's version, the others hold their
