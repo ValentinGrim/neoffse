@@ -1,11 +1,12 @@
-//! Fixture paths, saves root resolution and folder listing.
+//! Fixture paths, saves root resolution, folder listing and the skip path.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
 use std::ffi::OsStr;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
 
-use neoffse_testkit::{fixture_path, list_save_files, private_saves, read_fixture, resolve_saves_root, workspace_root};
+use neoffse_testkit::{SAVES_ENV, fixture_path, list_save_files, private_saves, read_fixture, resolve_saves_root, workspace_root};
 
 /// A fresh, empty folder under the target tmp dir, named after the test.
 fn temp_dir(name: &str) -> PathBuf {
@@ -85,4 +86,80 @@ fn list_save_files_reports_a_missing_folder() {
 #[test]
 fn private_saves_of_an_unknown_game_is_none() {
     assert_eq!(private_saves("no-such-game-0"), None);
+}
+
+/// Environment variable that names the game a child probe asks for.
+const PROBE_GAME: &str = "NEOFFSE_TESTKIT_PROBE_GAME";
+
+fn probe_game() -> String {
+    std::env::var(PROBE_GAME).expect("runs only as a child of the skip tests")
+}
+
+/// Child of `run_probe`: `NEOFFSE_SAVES` points at a folder with no save.
+#[test]
+#[ignore = "runs only as a child of the skip tests"]
+fn child_probe_private_saves() {
+    assert_eq!(private_saves(&probe_game()), None);
+}
+
+/// Child of `run_probe`: `NEOFFSE_SAVES` points at a folder with one save.
+#[test]
+#[ignore = "runs only as a child of the skip tests"]
+fn child_probe_private_saves_lists() {
+    let files = private_saves(&probe_game()).expect("the game folder holds a file");
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].file_name(), Some(OsStr::new("a.sav")));
+}
+
+/// Runs this test binary again on one ignored probe, with `NEOFFSE_SAVES`
+/// set to `root`. Editing the variable in this process would need `unsafe`.
+fn run_probe(root: &Path, game: &str, probe: &str) -> Output {
+    Command::new(std::env::current_exe().unwrap())
+        .args(["--ignored", "--exact", probe, "--nocapture", "--test-threads=1"])
+        .env(SAVES_ENV, root)
+        .env(PROBE_GAME, game)
+        .output()
+        .unwrap()
+}
+
+/// Asserts that the child ran exactly one test and passed; returns its stderr.
+/// A renamed probe or a bad filter runs zero tests and still exits with success.
+fn child_stderr(output: &Output) -> String {
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success(), "child failed: {stderr}");
+    assert!(stdout.contains("1 passed"), "child did not run one test: {stdout}");
+    stderr
+}
+
+fn assert_skipped(output: &Output, expected: &[&str]) {
+    let stderr = child_stderr(output);
+    for part in expected {
+        assert!(stderr.contains(part), "stderr lacks {part:?}: {stderr}");
+    }
+}
+
+#[test]
+fn private_saves_skips_an_empty_game_folder_with_a_reason() {
+    let root = temp_dir("private_saves_skips_an_empty_game_folder_with_a_reason");
+    std::fs::create_dir(root.join("ff9")).unwrap();
+    let output = run_probe(&root, "ff9", "child_probe_private_saves");
+    assert_skipped(&output, &["skipped: no private saves for ff9", "no file"]);
+}
+
+#[test]
+fn private_saves_skips_a_missing_game_folder_with_a_reason() {
+    let root = temp_dir("private_saves_skips_a_missing_game_folder_with_a_reason");
+    let output = run_probe(&root, "ff9", "child_probe_private_saves");
+    assert_skipped(&output, &["skipped: no private saves for ff9"]);
+}
+
+#[test]
+fn private_saves_lists_a_folder_that_holds_a_file() {
+    let root = temp_dir("private_saves_lists_a_folder_that_holds_a_file");
+    std::fs::create_dir(root.join("ff9")).unwrap();
+    std::fs::write(root.join("ff9").join("a.sav"), b"x").unwrap();
+    let output = run_probe(&root, "ff9", "child_probe_private_saves_lists");
+    let stderr = child_stderr(&output);
+    assert!(!stderr.contains("skipped:"), "the folder holds a file, yet: {stderr}");
 }
