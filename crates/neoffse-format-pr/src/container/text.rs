@@ -25,7 +25,7 @@ pub struct Framing<'a> {
 /// The four bytes the Go decoder trims after the text
 /// (`docs/formats/pixel-remaster.md#bom-and-line-end`). Form feed and the
 /// other `trim_ascii_end` bytes stay in the text.
-const fn is_trailer_byte(byte: u8) -> bool {
+pub(super) const fn is_trailer_byte(byte: u8) -> bool {
     matches!(byte, b' ' | b'\t' | b'\r' | b'\n')
 }
 
