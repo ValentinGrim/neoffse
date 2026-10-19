@@ -17,19 +17,23 @@ espers and parties) come from the code of KiameV's Go editor and stay
 
 ### Games
 
-| Game | Steam app ID | Game folder under `My Games` |
-|---|---|---|
-| FF I PR | 1173770 | `FINAL FANTASY PR` |
-| FF II PR | 1173780 | `FINAL FANTASY II PR` |
-| FF III PR | 1173790 | `FINAL FANTASY III PR` |
-| FF IV PR | 1173800 | `FINAL FANTASY IV PR` |
-| FF V PR | 1173810 | `FINAL FANTASY V PR` |
-| FF VI PR | 1173820 | `FINAL FANTASY VI PR` |
+| Game | Steam app ID | Game folder under `My Games` | Executable |
+|---|---|---|---|
+| FF I PR | 1173770 | `FINAL FANTASY PR` | `FINAL FANTASY.exe` |
+| FF II PR | 1173780 | `FINAL FANTASY II PR` | `FINAL FANTASY II.exe` |
+| FF III PR | 1173790 | `FINAL FANTASY III PR` | `FINAL FANTASY III.exe` |
+| FF IV PR | 1173800 | `FINAL FANTASY IV PR` | `FINAL FANTASY IV.exe` |
+| FF V PR | 1173810 | `FINAL FANTASY V PR` | `FINAL FANTASY V.exe` |
+| FF VI PR | 1173820 | `FINAL FANTASY VI PR` | `FINAL FANTASY VI.exe` |
 
-The Go editor holds this table in `ui/forms/io/savedir.go` and
+The Go editor holds the first three columns in `ui/forms/io/savedir.go` and
 `saveSelect.go` [C]. Save folders copied from Proton installs confirm all
-six rows: `compatdata/<app ID>/…/My Games/<game folder>/Steam/<SteamID64>`
-[M]. FF I has no "I" in its folder name.
+six folder names: `compatdata/<app ID>/…/My Games/<game folder>/Steam/<SteamID64>`
+[M]. FF I has no "I" in its folder name. The `installdir` key of
+each game's `appmanifest_<app ID>.acf` equals the game folder, so the
+install folder under `steamapps/common/` carries the same name; each
+install folder holds the executable above and one `<name>_Data` folder
+[M, directory listings of six installs].
 
 Platforms covered:
 
@@ -45,7 +49,13 @@ Platforms covered:
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
-| Real saves | one Steam save folder per game, read-only copies | every [M] fact |
+| Real saves | one Steam save folder per game, read-only copies | every [M] fact about the files |
+| Steam's own files | `libraryfolders.vdf`, `appmanifest_<app ID>.acf`, `remotecache.vdf`, `loginusers.vdf` and the install folders of one Linux Steam install with two libraries; structure only, personal values masked | every [M] fact about roots, libraries and Steam Cloud |
+| steamlocate | [steamlocate](https://crates.io/crates/steamlocate) 2.1.1, MIT: `src/locate/linux.rs`, `src/locate/windows.rs`, `src/library.rs` | Steam roots, registry keys, library parsing |
+| Steam on Flatpak | [Flathub `com.valvesoftware.Steam` wiki](https://github.com/flathub/com.valvesoftware.Steam/wiki) | Flatpak data path and library overrides |
+| Proton prefixes | [GamingOnLinux, GE-Proton 9-3](https://www.gamingonlinux.com/2024/04/ge-proton-9-3-released-with-a-new-option-to-help-with-modded-games) | prefix in the game's library; Steam Deck session |
+| Windows folders | Microsoft documentation: [`KNOWNFOLDERID`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid), [`SHGetKnownFolderPath`](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath), [OneDrive known folders](https://learn.microsoft.com/en-us/sharepoint/redirect-known-folders) | `FOLDERID_Documents`, OneDrive redirection |
+| Steam Cloud roots | [SteamCloudFileManager `ROOT_PATH_MAPPING.md`](https://raw.githubusercontent.com/Fldicoahkiin/SteamCloudFileManager/master/ROOT_PATH_MAPPING.md), GPL-3.0; notes read, no code taken | root 2 is `WinMyDocuments` |
 | In-game checks | edited files loaded in the game | every [G] fact |
 
 The 34 measured files, sizes in bytes. "Editor" marks a file that
@@ -67,9 +77,9 @@ The 32 game files end with CRLF; the two editor files do not [M].
 
 | Tag | Meaning |
 |---|---|
-| [M] | Measured on the 32 game-written Steam files (FF I to VI); "[M, two editor files]" marks a measurement on the two editor-written files |
+| [M] | Measured on the 32 game-written Steam files (FF I to VI) or, for roots, libraries and Steam Cloud, on one Linux Steam install; "[M, two editor files]" marks a measurement on the two editor-written files |
 | [G] | Verified in game |
-| [C] | Taken from the code, tests or commit messages of KiameV's Go editor only; not measured |
+| [C] | Taken from the code, tests or commit messages of KiameV's Go editor, or from the code or documentation of another source named beside the tag; not measured |
 | [I] | Inferred from measurements; consistent with the data, not proven |
 
 ## Files on disk
@@ -85,16 +95,132 @@ more game files and one Steam file.
 | Windows | `<Documents>\My Games\<game folder>\Steam\<SteamID64>\` [C] |
 | Linux, Proton, native Steam | `~/.local/share/Steam/steamapps/compatdata/<app ID>/pfx/drive_c/users/steamuser/Documents/My Games/<game folder>/Steam/<SteamID64>/` [M for all six games] |
 | Linux, Proton, Flatpak Steam | the same path under `~/.var/app/com.valvesoftware.Steam/.local/share/Steam/` [C] |
-| Extra Steam library | `<library>/steamapps/compatdata/<app ID>/…`, with each library listed on a `"path"` line of `steamapps/libraryfolders.vdf` [C] |
+| Any Steam library | `<library>/steamapps/compatdata/<app ID>/…`: the prefix can sit in a library other than the one that installs the game ([Steam roots and libraries](#steam-roots-and-libraries)) [M, C] |
 
 - `<SteamID64>` is the 17-digit account ID, starting with `7656` [M].
-- On Windows the Go editor tries the Known Folder `Documents`, then
-  `%USERPROFILE%\Documents`, `%USERPROFILE%\OneDrive\Documents` and
-  `%OneDrive%\Documents` [C].
-- On Linux it also tries `~/.steam/steam` and `~/.steam/root` as Steam
-  roots [C].
+  Each of the six `Steam/` folders holds one entry of that shape and no
+  other [M]. To list the accounts without a Steam file, keep the
+  subfolders of `Steam/` whose names match `^7656\d{13}$` [M for the
+  pattern on six folders]. The rule works on both systems.
 - With several account folders, the Go editor picks one that holds a
-  slot file, then the most recent modification time [C].
+  slot file, then the most recent modification time [C]. A scanner can
+  list all of them and leave the choice to the caller [I].
+- Under Proton the Windows user is `steamuser` (GE-Proton 11-9 and Proton
+  11.0-100) [M]. `My Documents` there is a symlink to `Documents` [M].
+- On Windows `<Documents>` is the Known Folder `FOLDERID_Documents`,
+  which `SHGetKnownFolderPath` returns for the current user [C,
+  Microsoft]. OneDrive Known Folder Move redirects that folder to
+  OneDrive [C], so the call returns the OneDrive path [I]. The PR games
+  run on Unity (`<name>_Data` folders, `IL2CPP` thread names) [M], which
+  resolves "My Documents" through the shell, so the saves follow the
+  redirection [I]; a Windows install with Known Folder Move would settle
+  it. The Go editor tries the Known Folder, then `%USERPROFILE%\Documents`,
+  `%USERPROFILE%\OneDrive\Documents` and `%OneDrive%\Documents`, and
+  drops duplicates after it resolves links [C]. On a non-English
+  Windows the last fallback may miss, because the OneDrive folder name
+  can differ from `Documents`; the Known Folder call does not depend on
+  that name [I].
+- Steam Cloud confirms the Windows shape. Each `remotecache.vdf` lists
+  every file of the save folder as `My Games/<game folder>/Steam/<SteamID64>/<file>`
+  with `"root" "2"`, which a community table maps to `WinMyDocuments`,
+  the `Documents` folder [M, C].
+
+### Steam roots and libraries
+
+On Linux, find the saves in three steps: collect the Steam roots, read
+every library each root lists, then probe `compatdata/<app ID>` in every
+library. On Windows the save folder ignores Steam libraries and hangs off
+`<Documents>`.
+
+**Roots.** A candidate counts as a root only when it holds a `steamapps`
+folder [C, steamlocate]:
+
+| Root | Install |
+|---|---|
+| `~/.local/share/Steam`, or `$XDG_DATA_HOME/Steam` when set | native; the real install [M] |
+| `~/.steam/steam`, `~/.steam/root` | symlinks to `~/.local/share/Steam` on a native install [M] |
+| `~/.steam/debian-installation` | Debian `steam-installer` [C, steamlocate] |
+| `~/.var/app/com.valvesoftware.Steam/.local/share/Steam`, with `.steam/steam` and `.steam/root` beside it | Flatpak [C, Flathub wiki, steamlocate] |
+| `~/snap/steam/common/.local/share/Steam`, with `.steam/steam` and `.steam/root` beside it | Snap [C, steamlocate] |
+
+Three of the native candidates point at one folder [M]. Canonicalize each
+root and drop duplicates, or every save folder appears three times. The
+Go editor and steamlocate both drop duplicates after they resolve links
+[C]. On Windows the root comes from the registry value `InstallPath` under
+`HKLM\SOFTWARE\Wow6432Node\Valve\Steam`, then under `HKLM\SOFTWARE\Valve\Steam`
+[C, steamlocate]; save discovery does not need it.
+
+**Libraries.** Read `<root>/steamapps/libraryfolders.vdf`. Steam keeps a
+byte-identical copy at `<root>/config/libraryfolders.vdf`; the Go editor
+and steamlocate read the `steamapps/` one [M, C]. The file is text VDF,
+tab-indented, without a BOM [M]:
+
+```
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"<root>"
+		"apps"
+		{
+			"1173770"		"<bytes>"
+		}
+	}
+	"1"
+	{
+		"path"		"<library>"
+	}
+}
+```
+
+- The top key is `libraryfolders`. Each library is a child keyed `"0"`,
+  `"1"`, and so on, and `"0"` carries the Steam root as its `path` [M, two
+  libraries]. The real file holds more keys per library (`label`,
+  `contentid`, `totalsize`) than this sketch shows [M].
+- `apps` maps an app ID to a byte count. For the six PR games the value
+  equals `SizeOnDisk` in the game's `appmanifest_<app ID>.acf` [M]. The
+  lists matched the manifest files one to one on the measured install, but
+  steamlocate lists apps from the manifests and notes that the VDF values
+  may be stale [M, C].
+- steamlocate keeps the children whose key parses as `u32` and reads
+  `path` from each [C]. On Windows the VDF string doubles each backslash
+  and the Go editor replaces `\\` with `\` [C]; a VDF parser that
+  unescapes strings does the same job [I].
+- `<library>/steamapps/appmanifest_<app ID>.acf` exists in the library
+  that installs the game [M]. Its `AppState` block holds `appid`,
+  `installdir`, `SizeOnDisk`, `LastOwner` (a SteamID64, personal data)
+  and depot data [M]. `installdir` is the game folder of
+  [Games](#games). Save discovery does not need the install folder; an
+  asset provider or a process match does.
+
+**Prefixes outside the game's library.** By default Steam keeps the
+prefix in the library that installs the game [C, GamingOnLinux]: on the
+measured install 41 of 43 prefixes belong to an app whose manifest sits
+in the same library, and no app ID has a prefix in two libraries [M]. Two
+cases break the rule:
+
+- In the Steam Deck session (`-steamdeck`), Steam moves the default
+  prefix path to the default install, so a game on an SD card or an
+  external drive gets its prefix in the root library [C, GamingOnLinux].
+  No Deck sample exists.
+- Steam leaves a prefix behind when it uninstalls a game, so a save can
+  outlive its install [M for one non-PR app, I for the PR games]. The
+  two prefixes without a manifest on the measured install are
+  `compatdata/0` and the prefix of an uninstalled game [M].
+
+The rule: for each app ID, probe `compatdata/<app ID>` in every library
+of every root, whatever library the manifest names, and report every hit
+[M, C]. The Go editor already does this [C]. `STEAM_COMPAT_DATA_PATH`
+overrides the prefix path per launch [C, community guides]; a prefix
+moved that way lies outside every library and needs a folder the user
+picks.
+
+**Flatpak libraries.** The Flatpak app sees the host home under the same
+path but redirects `XDG_DATA_HOME` to
+`~/.var/app/com.valvesoftware.Steam/.local/share`; an extra library needs
+a `--filesystem` override and keeps its host path [C, Flathub wiki]. The
+`path` values of a Flatpak `libraryfolders.vdf` should therefore resolve
+from the host [I]; a Flatpak install would settle it.
 
 ### Slot files
 
@@ -161,7 +287,16 @@ which are legal on Windows and Linux; quote them in shells.
 - **`steam_autocloud.vdf`.** Steam writes it, not the game. `accountid`
   equals `SteamID64 − 76561197960265728`, the account part of the folder
   name [M]. Leave it alone. The FF III to VI folders hold one beside the
-  saves [M]; its size was not measured.
+  saves [M]; its size was not measured. Its presence marks a folder that
+  Steam Auto-Cloud syncs, so a tool may use it to warn about Cloud
+  conflicts [I].
+- **Steam Cloud.** `userdata/<account ID>/<app ID>/remotecache.vdf` under
+  the Steam root lists every file of the save folder except
+  `steam_autocloud.vdf`, with 7, 7, 5, 5, 5 and 5 entries for FF I to
+  FF VI [M]. Each key is relative to Cloud root 2, `WinMyDocuments`
+  ([Save folder](#save-folder)). `<account ID>` is the 32-bit account ID:
+  `SteamID64 − 76561197960265728` names an existing `userdata` folder
+  [M]. The same folder also holds `userdata/0` [M].
 
 ### Slot 2 of FF I and FF II
 
@@ -902,8 +1037,9 @@ safe write pipeline of [Save safety](../architecture.md#save-safety).
 10. The Go editor writes the slot, then the bestiary; a failure between
     the two leaves a new slot with the old bestiary [C].
 11. Back up every file you replace before the first write. The Go
-    editor copies them to `<config dir>/backups/FF<n>/<YYYYMMDD-HHMMSS>/`
-    with a `backup.json` manifest and keeps 20 backups per game [C].
+    editor copies them to `<config dir>/backups/FF<n>/<YYYYMMDD-HHMMSS>/`,
+    next to its own config file, with a `backup.json` manifest, and keeps
+    20 backups per game [C].
     [Save safety](../architecture.md#save-safety) gives NeoFFSE's layout.
 12. Steam Cloud may report a conflict on the next launch; the player
     must keep the local files ([Save safety](../architecture.md#save-safety)).
