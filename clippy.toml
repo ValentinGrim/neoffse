@@ -1,3 +1,8 @@
 # Project and product names clippy::doc_markdown must not take for code.
 # ".." keeps the default list.
 doc-valid-idents = ["NeoFFSE", "OneDrive", ".."]
+
+# syn is a proc-macro build dependency and never reaches a binary. The
+# `windows` 0.62 crate, pulled by sysinfo on Windows, builds its macros on
+# syn 2 while serde_derive and thiserror-impl build on syn 3.
+allowed-duplicate-crates = ["syn"]
