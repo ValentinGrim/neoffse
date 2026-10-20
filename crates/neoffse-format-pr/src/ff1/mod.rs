@@ -12,6 +12,7 @@
 
 mod apply;
 mod binding;
+mod game;
 mod lists;
 mod locate;
 mod meta;
@@ -22,6 +23,7 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 use binding::{Binding, Collection};
+pub use game::GameChange;
 use locate::{format_error, locate, read_int, read_text, row_keys};
 
 /// The game of this module.
