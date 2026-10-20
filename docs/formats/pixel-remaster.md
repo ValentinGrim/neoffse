@@ -15,6 +15,15 @@ the early-game FF III to VI saves do not exercise (ability offsets, FF VI
 espers and parties) come from the code of KiameV's Go editor and stay
 [C].
 
+The FF I domain rules ([ID spaces and tables](#id-spaces-and-tables),
+[Equipment slots](#equipment-slots)) rest on two independent game states:
+slot 1 and the Quick Save, four promoted characters each, from late game.
+The Auto Save equals slot 1 in every field those rules measure, and slot 2
+is the editor's copy of slot 1 [M]. Every [M] on an FF I character value
+in those sections rests on 8 character states. The ranges quoted there are
+observations, not bounds: no measured value comes from a new game (level 1,
+bare hands, low gil).
+
 ### Games
 
 | Game | Steam app ID | Game folder under `My Games` | Executable |
@@ -48,6 +57,7 @@ Platforms covered:
 | Source | Location | Used for |
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
+| ID tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | names and IDs of the FF I items, equipment, spells and jobs ([ID spaces and tables](#id-spaces-and-tables)) |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
 | Real saves | one Steam save folder per game, read-only copies | every [M] fact about the files |
 | Steam's own files | `libraryfolders.vdf`, `appmanifest_<app ID>.acf`, `remotecache.vdf`, `loginusers.vdf` and the install folders of one Linux Steam install with two libraries; structure only, personal values masked | every [M] fact about roots, libraries and Steam Cloud |
@@ -737,6 +747,76 @@ dictionaries in strings [M].
 Paths below use `.` for an object member and `→` for a step into a JSON
 string.
 
+### ID spaces and tables
+
+A save points into the game data through three ID spaces: `contentId`,
+`abilityId` and `jobId`. The Go editor names them in tables of its package
+`models/core/costs/ff1`, and NeoFFSE takes the FF I names and IDs from
+those tables ([Sources](#sources)). Facts about the tables are [C];
+comparisons with the saves are [M].
+
+| Space | Referenced by | Tables | IDs |
+|---|---|---|---|
+| `contentId` | rows of `normalOwnedItemList` and `importantOwendItemList`, equipment slots, the `contentId` of an ability object | `Items`, `ImportantItems`, `Weapons`, `Shields`, `Armors`, `Helmets`, `Gloves` | 2 to 202; spells 213 to 276 |
+| `abilityId` | `abilityList`, spell slots, `learnedAbilityList` | `Abilities` | 5 to 94 |
+| `jobId` | character `jobId`, `id` in `jobList`, `releasedJobs` | `Jobs` | 1 to 12 |
+
+Items, key items and equipment share one `contentId` space. The seven
+tables hold 116 entries over 115 distinct IDs, and no ID appears in two
+tables; the one collision, 165, sits inside `Shields`. Key items take 45
+to 61 [C], and every ID of `importantOwendItemList` falls in that range
+[M]. Spell content IDs (`abilityId + 208` in FF I) sit above every table
+ID, and none appears in the inventory [M].
+
+Each table is a package-level slice of `models.NameValue` (`Name string`,
+`Value int`) in `models/core/costs/ff1`, sorted by ID. The package imports
+no GUI code. Its module path is `pixel-remastered-save-editor`.
+
+| Go table | Entries | IDs | Serves |
+|---|---|---|---|
+| `Items` | 18 | 2 to 36 | consumables in `normalOwnedItemList` |
+| `ImportantItems` | 17 | 45 to 61 | `importantOwendItemList` |
+| `Weapons` | 38 | 62 to 123 | equipment key 1, inventory |
+| `Shields` | 10 | 130 to 173 | equipment key 2, inventory |
+| `Armors` | 16 | 131 to 160 | equipment key 3, inventory |
+| `Helmets` | 8 | 132 to 188 | equipment key 4, inventory |
+| `Gloves` | 9 | 133 to 202 | equipment key 5, inventory |
+| `Abilities` | 90 | 5 to 94 | `abilityId` |
+| `Jobs` | 12 | 1 to 12 | `jobId` |
+| `Commands` | 4 | 1 to 4 | `commandList` |
+| `Maps` | 120 | 1 to 120 | `mapData.mapId` |
+| `Bestiary` | 129 | 1 to 129 | `monsterDefeats` keys |
+
+- **Names.** All names are English ASCII, without `"` or `\`. Names
+  repeat: "Wizard's Staff" at 122 and 123, "Gaze" six times, "Blaze" five
+  times and "Icestorm" twice in `Abilities`, place names in `Maps` and boss
+  variants in `Bestiary`. Look an entry up by ID, never by name.
+- **Duplicate ID.** `Shields` lists 165 twice, as Ice Shield and Flame
+  Shield. The Go editor merges `Items` and the five equipment tables into
+  one ID-to-name map, and the later entry replaces the earlier one
+  ([Open questions](#open-questions)).
+- **Placeholders.** The first row of each equipment table is a
+  placeholder: `[Empty R. Hand]` (62), `[Empty L. Hand]` (130), `[Empty
+  Body]` (131), `[Empty Head]` (132) and `[Empty Arms]` (133). They are
+  content IDs the game uses for an empty slot, not items ([Equipment
+  slots](#equipment-slots)).
+- **Spells and monster abilities.** In `Abilities`, 5 to 68 are 64 spells,
+  8 levels of 8, and 69 to 94 are monster abilities that no character
+  holds. Only the names mark the split ([Abilities](#abilities)).
+- **Gaps** inside the ranges, placeholders aside. `Items` skips 4, 6, 9,
+  16, 20 to 31 and 33. `Weapons` skips 66 to 70, 84, 85, 88, 90, 91, 93
+  to 95, 98 to 100, 103 to 105, 108, 111 to 113 and 117. `Armors` skips
+  135, 138 to 144, 151, 152, 155 and 159. `Shields` skips 166, 167, 169,
+  171 and 172. `Helmets` skips 176 to 182. `Gloves` skips 196 and 199 to
+  201. No table holds 124 to 129, 174, 189 or 190.
+- **Comments.** The source comments out X-Potion, six daggers and Knight's
+  Armor. They have no ID in the tables.
+- **IDs the tables do not name.** The saves hold content IDs 67, 100, 103,
+  151 and 166, and command 5, that the source tables lack. The content IDs
+  sit inside the ranges of `Weapons` (67, 100, 103), `Armors` (151) and
+  `Shields` (166). All five appear in the inventory of slot 1, and four of
+  them in equipment ([Equipment slots](#equipment-slots)) [M].
+
 ### Characters
 
 `userData → ownedCharacterList → target[]` holds one JSON string per
@@ -746,16 +826,16 @@ character: 4 in FF I, 7 or 8 in FF II [M]. Identify a character by
 | Key | Type | Notes |
 |---|---|---|
 | `id` | int | 1 to N, unique [M] |
-| `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]; meaning not measured |
+| `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the status names the base class [I]. No other meaning measured |
 | `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
-| `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M] |
+| `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; IDs in `Jobs` ([ID spaces and tables](#id-spaces-and-tables)) |
 | `name` | string | raw UTF-8, may hold non-ASCII [M]; two FF I heroes may share a name, FF VI has two Mogs [C, `d8a6c6f`] |
 | `currentExp` | int | [M] |
 | `parameter` | JSON | stats, below |
-| `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C] |
+| `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C]. FF I value 5 has no entry in the editor's `Commands` table (1 to 4) [M, C] |
 | `abilityList`, `abilitySlotDataList`, `additionOrderOwnedAbilityIds`, `sortOrderOwnedAbilityIds`, `abilityDictionary`, `skillLevelTargets`, `learningAbilitys` | JSON | [Abilities](#abilities) |
-| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries, FF II 8 [M] |
-| `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4), meaning not measured |
+| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries (`id` 1 to 12), FF II 8 [M]. FF I: `level` 1 and `currentProficiency` 0 in every entry of the 8 character states [M]; FF I does not use them [I] |
+| `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4); slots and `count` in [Equipment slots](#equipment-slots) |
 | `equipmentAbilitys` | JSON list | `[0,0,0]` in FF I and FF II [M] |
 | `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C] |
 
@@ -772,6 +852,59 @@ in FF I and FF II), `addtionalLevel`, `addtionalMaxHp`, `addtionalMaxMp`,
 `addtionalAccuracyCount`, `addtionalEvasionCount`,
 `addtionalDefenseCount`, `addtionalMagicDefenseCount`,
 `currentConditionList` (`{"target":[]}` in all 35 measured characters).
+
+**FF I `parameter` fields.** Several `addtional…` names hold a gain on top
+of a base the file does not store:
+
+- `addtionalLevel` grows with `currentExp` in both game states [M]. The Go
+  editor labels it "Level" (`coreStats.go`) [C]. Whether the menu shows
+  the value or the value plus 1 is open ([Open questions](#open-questions)).
+- `addtionalMaxHp` is a gain over a per-character base, not the maximum.
+  `currentHP` exceeds it in 7 of 8 character states, by a difference that
+  stays constant per character across both game states [M]. In the
+  eighth state `currentHP` is 999 and `addtionalMaxHp` is 1 097; the same
+  character's difference in the other game state is 35, so base plus gain
+  would be 1 132. Reading: maximum HP = base + `addtionalMaxHp`, capped at
+  999 [I]. The Go editor labels the field "HP Max" (`coreStats.go`) [C],
+  which the data contradicts.
+- `currentMP` and `addtionalMaxMp` hold 0 in all 8 states. FF I stores
+  spell charges per spell level in `currentMpCountList` and
+  `addtionalMaxMpCountList` (keys 1 to 8, values 0 to 9) [M].
+  `addtionalMaxMpCountList` is a gain too: for the two spellcasters, level
+  1 shows `currentMpCountList` 9 against `addtionalMaxMpCountList` 7, and
+  every other level shows equal values [M]. Reading: maximum charges =
+  base + `addtionalMaxMpCountList`, capped at 9 [I].
+
+### Equipment slots
+
+FF I characters hold five equipment slots, keys 1 to 5 of `equipmentList`
+in that order. An empty slot holds the placeholder `contentId` of its slot,
+not 0.
+
+| Key | Slot (Go editor label) | Table | Placeholder |
+|---|---|---|---|
+| 1 | R. Hand | `Weapons` | 62 |
+| 2 | L. Hand | `Shields` | 130 |
+| 3 | Body | `Armors` | 131 |
+| 4 | Head | `Helmets` | 132 |
+| 5 | Arms | `Gloves` | 133 |
+
+- **Keys and slots.** The keys read `[1,2,3,4,5]` in that order for every
+  FF I character [M]. The Go editor labels the rows by position in
+  `values` (`coreEquipment.go`) [C]. 34 of 40 slot entries (slot 1 and
+  Quick Save, 20 each) resolve to the table of their slot [M]. The other
+  6 hold IDs that no table names, each inside the ID range of its slot's
+  table [M]. FF I has no accessory slot.
+- **Empty slots.** One slot entry holds a placeholder: 130 in a left hand
+  of the Quick Save [M, 1 entry]. The tables list 62, 131, 132 and 133 as
+  the placeholders of the other slots [C]; no sample holds one in a slot.
+- **`count` copies the inventory count.** In FF I, `count` equals the
+  inventory count of the same `contentId` in 40 of 40 slot entries,
+  placeholder 130 included (count 9, inventory 9) [M]. In FF II, 54 of 75
+  entries match and all 21 others sit below the inventory count [M].
+  Reading: the game copies the inventory count when a character equips
+  and does not refresh it [I]. Whether the game reads `count` at all is
+  open.
 
 ### Abilities
 
@@ -821,6 +954,21 @@ FF I writer rule [C, `375f916`; consistent with M]: for each spell in a
 slot, set `contentId = abilityId + 208`, list it once in `abilityList`,
 and list its content ID once in `additionOrderOwnedAbilityIds`.
 
+**FF I spell level and school** [M, 47 of 47 slot spells]. `abilityId`
+fixes both. The two spellcasters hold 47 spells in all, `abilityId` 5 to
+68, every one in `Abilities`.
+
+- Level = (`abilityId` − 5) / 8 + 1, with integer division. It equals the
+  `level` of the `abilitySlotDataList` entry that holds the spell.
+- In each level, offsets 0 to 3 (`(abilityId − 5) % 8`) hold the White
+  Wizard's spells (24 of 24) and offsets 4 to 7 the Black Wizard's (23 of
+  23). The names agree: 5 to 8 are Cure, Protect, Dia and Blink, and 9 to
+  12 are Fire, Focus, Sleep and Thunder [C].
+- Knight and Ninja hold no spell, so the corpus does not test their access
+  to white or black magic.
+- `Abilities` lists 5 to 68 as spells and 69 to 94 as monster abilities
+  [C]; no character holds an ID above 68 [M].
+
 **`skillLevel`.** FF I: `0` [M]. FF II: spell proficiency, 0 to 456
 measured; the Go editor edits it as a level [M, C]. FF VI: learning
 percentage, 100 means learned [C].
@@ -848,7 +996,19 @@ never row numbers.
 
 - Normal items: 47 to 56 entries, no duplicate `contentId`, no `count`
   of 0, not sorted by ID [M].
-- `importantOwendItemList`: same shape, `count` 1 [M].
+- `importantOwendItemList`: same shape, `count` 1 [M]. In FF I it holds 9
+  or 10 entries, IDs 45 to 61, all in `ImportantItems` [M].
+- **The inventory includes equipped items.** In FF I, each equipped
+  `contentId` appears in `normalOwnedItemList` with a count at least the
+  number of characters who equip it. A ring worn by all 4 characters has
+  count 7 in slot 1 and 6 in the Quick Save [M]. No equipped ID is
+  missing or under-counted [M].
+- **The inventory holds the five placeholders.** In FF I, 62, 130, 131, 132
+  and 133 sit in the list in both game states, as its first five rows, with
+  counts 5, 9, 5, 9 and 9 [M]. What those counts mean is unknown.
+- **IDs the tables do not name.** The FF I list holds 5 IDs (4 in the Quick
+  Save) that no source table names: 67, 100, 103, 151 and 166 ([ID spaces
+  and tables](#id-spaces-and-tables)) [M]. Keep them as read.
 - `normalOwnedItemSortIdList → target`: content IDs. FF II slot 1 and
   FF II Auto Save hold 23, each one an owned item; the other four slots
   hold none [M]. The Go editor's "Reset Sort" wrote `1..N` with empty rows
@@ -1077,6 +1237,8 @@ gives the source; a commit ID points to the fix.
 24. A switch to an empty folder kept slot buttons bound to the old folder, and "save" overwrote the real game save [C, `7a83b22`].
 25. A crash during a non-atomic write left an empty or partial slot [C, `375f916`].
 26. An empty nested document is `""`; writing `"{}"` changes the file [M].
+27. The Go editor labels `addtionalMaxHp` "HP Max", but the field is a gain over a base ([Characters](#characters)) [M, C].
+28. The `Shields` table lists ID 165 twice, and the editor's ID-to-name map keeps the later entry [C].
 
 ## Open questions
 
@@ -1100,11 +1262,25 @@ an in-game test.
    holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level
    `playTime` (`0.0` in all 14 game slots), of `characterStatusId`, `pointIn`,
    `playableCharacterCorpsId`, `skillLevelTargets`, `abilityDictionary`,
-   `scenarioFlags`, equipment `count`, and the FF II
-   `learnedAbilityList`.
+   `scenarioFlags`, and the FF II `learnedAbilityList`.
 8. Does the game accept an inventory item missing from a non-empty
    `normalOwnedItemSortIdList`?
 9. The PlayStation variant: file layout after extraction, presence of
    a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not
     measured.
+11. Which name belongs to the `Shields` ID 165, Ice Shield or Flame
+    Shield. A save holds 166, the free ID next to it, in a left-hand slot,
+    so 166 may belong to one of the two [I]. An in-game look at that slot
+    would settle it.
+12. Three in-game readings for one FF I character. The menu level for
+    `addtionalLevel` 69: 69 or 70. The maximum HP when base plus
+    `addtionalMaxHp` reaches 1 132: 999 or 1 132. The maximum charges at
+    spell level 1, where `currentMpCountList` is 9 and
+    `addtionalMaxMpCountList` is 7.
+13. Does the game read equipment `count`, and what do the inventory counts
+    5 and 9 of the placeholders mean?
+14. An FF I save from before the class change: which `jobId` does a
+    character hold (1 to 6, if `characterStatusId` names the base class),
+    and do the placeholders 62, 131, 132 and 133 fill bare slots? No
+    measured file comes from a new game.
