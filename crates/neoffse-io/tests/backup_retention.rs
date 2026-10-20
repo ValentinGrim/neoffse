@@ -4,12 +4,15 @@
 
 mod common;
 
+use std::fs;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 
 use common::Step;
 use common::backup::{BESTIARY, SLOT, Snoop, T0, World, at, game_dir, make, manifest_text, plant, request, tree, world};
 use neoffse_io::atomic::RealFileOps;
 use neoffse_io::backup::{create_with, list};
+use neoffse_io::error::{IoError, Operation};
 
 /// The folders `make` created, oldest first, for `count` instants from `T0`.
 fn make_many(w: &World, game: &str, count: i64) -> Vec<PathBuf> {
@@ -113,10 +116,48 @@ fn a_failed_backup_prunes_nothing() {
     assert_eq!(tree(&game_dir(&w, "ff1-pr")), before);
 }
 
+#[test]
+fn a_burst_in_one_second_keeps_the_newest_backups_and_never_reuses_a_name() {
+    const STAMP: &str = "20261018-201403";
+    let w = world("a_burst_in_one_second_keeps_the_newest_backups_and_never_reuses_a_name");
+    for n in 0..100 {
+        fs::write(w.source.join(SLOT), format!("gen-{n}")).unwrap();
+        make(&w, "ff1-pr", T0);
+    }
+
+    let game = game_dir(&w, "ff1-pr");
+    let listed = listed_dirs(&w, "ff1-pr");
+    let expected: Vec<PathBuf> = (80..100).rev().map(|n| game.join(format!("{STAMP}-{n}"))).collect();
+    assert_eq!(listed, expected);
+    for (dir, n) in listed.iter().zip((80..100).rev()) {
+        assert_eq!(fs::read(dir.join(SLOT)).unwrap(), format!("gen-{n}").into_bytes());
+    }
+
+    let before = tree(&game);
+    let files = [SLOT, BESTIARY];
+    let error = create_with(&RealFileOps, &w.data, &request(&w, "ff1-pr", &files), at(T0)).unwrap_err();
+    let IoError::Io { operation, path, source } = &error else {
+        panic!("{error:?}");
+    };
+    assert_eq!(*operation, Operation::CreateDir);
+    assert_eq!(*path, game.join(format!("{STAMP}-99")));
+    assert_eq!(source.kind(), ErrorKind::AlreadyExists);
+    assert_eq!(tree(&game), before);
+}
+
+#[test]
+fn the_highest_existing_suffix_wins_over_a_free_lower_name() {
+    let w = world("the_highest_existing_suffix_wins_over_a_free_lower_name");
+    let game = game_dir(&w, "ff1-pr");
+    fs::create_dir_all(game.join("20261018-201403-05")).unwrap();
+
+    let made = make(&w, "ff1-pr", T0);
+    assert_eq!(made.dir, game.join("20261018-201403-06"));
+}
+
 #[cfg(unix)]
 #[test]
 fn retention_failure_does_not_fail_the_backup() {
-    use std::fs;
     use std::os::unix::fs::PermissionsExt as _;
 
     fn set_mode(path: &std::path::Path, mode: u32) {

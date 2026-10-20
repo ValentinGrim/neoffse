@@ -14,6 +14,7 @@ use neoffse_io::atomic::{FileOps, RealFileOps};
 
 pub(crate) mod backup;
 pub(crate) mod discovery;
+pub(crate) mod gate;
 
 /// The message of every error a `Probe` injects.
 pub(crate) const INJECTED: &str = "injected-3c1d";
@@ -55,6 +56,7 @@ pub(crate) enum Step {
     Rename,
     RemoveFile,
     SyncDir,
+    CopyFile,
 }
 
 /// The call log a `Probe` and the hook share. An entry is the method name,

@@ -12,9 +12,9 @@ pub(crate) const MANIFEST_FILE: &str = "backup.json";
 /// The format version this crate writes and reads.
 pub const MANIFEST_VERSION: u32 = 1;
 
-/// Largest local time `Moment` holds: 9999-12-31T23:59:59, so the year keeps
-/// four digits in the folder name and in `created`.
-const MAX_LOCAL_SECONDS: i64 = 253_402_300_799;
+/// Largest time `Moment` holds, in UTC and in local time: 9999-12-31T23:59:59,
+/// so the year keeps four digits in the folder name and in `created`.
+const MAX_SECONDS: i64 = 253_402_300_799;
 
 /// Largest offset from UTC `Moment` holds: 23:59.
 const MAX_OFFSET_SECONDS: u32 = 86_340;
@@ -32,16 +32,17 @@ impl Moment {
     /// offset of `offset_seconds` from UTC.
     ///
     /// Returns `None` unless `offset_seconds` is a whole number of minutes
-    /// with an absolute value of at most 86 340 (23:59) and the local time,
-    /// `unix_seconds + offset_seconds`, lies in 0 ..= 253 402 300 799
-    /// (1970-01-01T00:00:00 to 9999-12-31T23:59:59).
+    /// with an absolute value of at most 86 340 (23:59) and both `unix_seconds`
+    /// and the local time, `unix_seconds + offset_seconds`, lie in
+    /// 0 ..= 253 402 300 799 (1970-01-01T00:00:00 to 9999-12-31T23:59:59).
+    /// The folder name shows the UTC time, the `created` text the local time.
     #[must_use]
     pub fn new(unix_seconds: i64, offset_seconds: i32) -> Option<Self> {
         if offset_seconds % 60 != 0 || offset_seconds.unsigned_abs() > MAX_OFFSET_SECONDS {
             return None;
         }
         let local = unix_seconds.checked_add(i64::from(offset_seconds))?;
-        if !(0..=MAX_LOCAL_SECONDS).contains(&local) {
+        if !(0..=MAX_SECONDS).contains(&unix_seconds) || !(0..=MAX_SECONDS).contains(&local) {
             return None;
         }
         Some(Self { unix_seconds, offset_seconds })
@@ -61,23 +62,16 @@ impl Moment {
         })
     }
 
-    /// The local date and time as `(year, month, day, hour, minute, second)`.
-    fn civil(self) -> (i64, i64, i64, i64, i64, i64) {
-        let local = self.unix_seconds + i64::from(self.offset_seconds);
-        let (year, month, day) = civil_from_days(local.div_euclid(86_400));
-        let second_of_day = local.rem_euclid(86_400);
-        (year, month, day, second_of_day / 3_600, second_of_day % 3_600 / 60, second_of_day % 60)
-    }
-
-    /// The backup folder name, `YYYYMMDD-HHMMSS`, in local time.
+    /// The backup folder name, `YYYYMMDD-HHMMSS`, in UTC whatever the offset.
     pub(crate) fn stamp(self) -> String {
-        let (year, month, day, hour, minute, second) = self.civil();
+        let (year, month, day, hour, minute, second) = civil(self.unix_seconds);
         format!("{year:04}{month:02}{day:02}-{hour:02}{minute:02}{second:02}")
     }
 
-    /// The RFC 3339 text: `Z` for offset 0, else `+HH:MM` or `-HH:MM`.
+    /// The RFC 3339 text in local time: `Z` for offset 0, else `+HH:MM` or
+    /// `-HH:MM`.
     pub(crate) fn rfc3339(self) -> String {
-        let (year, month, day, hour, minute, second) = self.civil();
+        let (year, month, day, hour, minute, second) = civil(self.unix_seconds + i64::from(self.offset_seconds));
         let zone = if self.offset_seconds == 0 {
             "Z".to_owned()
         } else {
@@ -87,6 +81,14 @@ impl Moment {
         };
         format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}{zone}")
     }
+}
+
+/// The date and time of `seconds` after 1970-01-01T00:00:00 as `(year, month,
+/// day, hour, minute, second)`.
+fn civil(seconds: i64) -> (i64, i64, i64, i64, i64, i64) {
+    let (year, month, day) = civil_from_days(seconds.div_euclid(86_400));
+    let second_of_day = seconds.rem_euclid(86_400);
+    (year, month, day, second_of_day / 3_600, second_of_day % 3_600 / 60, second_of_day % 60)
 }
 
 /// Converts days since 1970-01-01 to a proleptic Gregorian `(year, month,
@@ -144,7 +146,9 @@ impl Manifest {
         if self.files.is_empty() {
             return Err("a backup needs at least one file".into());
         }
-        // Windows folds case, so two names that differ by case are one file.
+        // Windows folds case, so names that differ by ASCII case are one file.
+        // A case-insensitive file system also folds non-ASCII letters, which
+        // this check does not.
         let mut seen = BTreeSet::new();
         for name in &self.files {
             if !is_plain_file_name(name) {

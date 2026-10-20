@@ -8,9 +8,9 @@ use std::error::Error as _;
 use std::fs;
 use std::io::ErrorKind;
 
-use common::Step;
 use common::backup::{BESTIARY, Corrupt, SLOT, Snoop, T0, World, at, game_dir, make, request, tree, world};
-use neoffse_io::atomic::RealFileOps;
+use common::{INJECTED, Probe, Step, names, test_dir};
+use neoffse_io::atomic::{FileOps as _, RealFileOps};
 use neoffse_io::backup::create_with;
 use neoffse_io::error::{IoError, Operation};
 
@@ -34,7 +34,7 @@ fn missing_source_file_leaves_no_folder() {
     let source_before = tree(&w.source);
     let error = failed(&w, &[SLOT, "missing"]);
     let (operation, path, kind) = io_parts(&error);
-    assert_eq!(operation, Operation::Read);
+    assert_eq!(operation, Operation::Copy);
     assert_eq!(path, w.source.join("missing"));
     assert_eq!(kind, ErrorKind::NotFound);
     assert!(tree(&game_dir(&w, "ff1-pr")).is_empty());
@@ -47,8 +47,7 @@ fn directory_as_source_file_fails_the_copy() {
     fs::create_dir(w.source.join("sub")).unwrap();
     let error = failed(&w, &[SLOT, "sub"]);
     let (operation, path, _) = io_parts(&error);
-    let expected = if cfg!(unix) { Operation::Copy } else { Operation::Read };
-    assert_eq!(operation, expected);
+    assert_eq!(operation, Operation::Copy);
     assert_eq!(path, w.source.join("sub"));
     assert!(tree(&game_dir(&w, "ff1-pr")).is_empty());
 }
@@ -144,9 +143,61 @@ fn a_failed_backup_leaves_earlier_backups_intact() {
     assert!(matches!(
         error,
         IoError::Io {
-            operation: Operation::Read,
+            operation: Operation::Copy,
             ..
         }
     ));
     assert_eq!(tree(&game_dir(&w, "ff1-pr")), before);
+}
+
+#[test]
+fn a_failed_flush_of_a_copy_removes_the_folder() {
+    let w = world("a_failed_flush_of_a_copy_removes_the_folder");
+    let source_before = tree(&w.source);
+    let (snoop, log) = Snoop::new(&[Step::SyncFile], false);
+    let files = [SLOT, BESTIARY];
+    let error = create_with(&snoop, &w.data, &request(&w, "ff1-pr", &files), at(T0)).unwrap_err();
+    let (operation, path, _) = io_parts(&error);
+    assert_eq!(operation, Operation::Copy);
+    assert_eq!(path, w.source.join(SLOT));
+    assert!(error.source().is_some_and(|source| source.to_string().contains(INJECTED)));
+    assert!(tree(&game_dir(&w, "ff1-pr")).is_empty());
+    assert_eq!(tree(&w.source), source_before);
+    assert_eq!(names(&log), ["sync_file"]);
+}
+
+#[test]
+fn copy_file_flushes_the_new_file_through_sync_file() {
+    let dir = test_dir("copy_file_flushes_the_new_file_through_sync_file");
+    let from = dir.join("from");
+    fs::write(&from, b"payload").unwrap();
+
+    let (probe, log) = Probe::new(&[]);
+    let to = dir.join("copy-ok");
+    probe.copy_file(&from, &to).unwrap();
+    assert_eq!(fs::read(&to).unwrap(), b"payload");
+    assert_eq!(names(&log), ["sync_file"]);
+
+    let (probe, log) = Probe::new(&[Step::SyncFile]);
+    let error = probe.copy_file(&from, &dir.join("copy-failed")).unwrap_err();
+    assert_eq!(error.to_string(), INJECTED);
+    assert_eq!(names(&log), ["sync_file"]);
+}
+
+#[test]
+fn copy_file_never_overwrites() {
+    let dir = test_dir("copy_file_never_overwrites");
+    let from = dir.join("from");
+    let existing = dir.join("existing");
+    fs::write(&from, b"payload").unwrap();
+    fs::write(&existing, b"keep me").unwrap();
+
+    let error = RealFileOps.copy_file(&from, &existing).unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::AlreadyExists);
+    assert_eq!(fs::read(&existing).unwrap(), b"keep me");
+
+    let absent = dir.join("absent");
+    let error = RealFileOps.copy_file(&dir.join("missing"), &absent).unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::NotFound);
+    assert!(!absent.exists());
 }

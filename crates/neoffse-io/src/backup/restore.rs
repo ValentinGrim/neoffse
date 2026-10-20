@@ -51,8 +51,8 @@ pub fn restore(data: &DataDir, game: &str, backup: &Backup, target_dir: &Path) -
 /// and the restore never creates it. The restore accepts any such folder and
 /// does not compare it with the `source_dir` of the manifest, which can be
 /// stale; the caller derives `target_dir` from a fresh discovery or from that
-/// manifest. `ops` serves the writes of the target files and the manifest of
-/// the safety backup; the copies of the safety backup use `std::fs`. `now`
+/// manifest. `ops` serves the writes of the target files, the copies of the
+/// safety backup and its manifest; the folder operations use `std::fs`. `now`
 /// names the safety backup.
 ///
 /// The backup being restored is not removed by the retention pass of the
@@ -72,6 +72,8 @@ pub fn restore(data: &DataDir, game: &str, backup: &Backup, target_dir: &Path) -
 ///   belongs to another game.
 /// - [`IoError::Io`] with [`Operation::ListDir`] when `target_dir` is not a
 ///   folder.
+/// - [`IoError::Io`] with [`Operation::Read`] when a file name of the manifest
+///   cannot be looked up in `target_dir` for a reason other than absence.
 /// - The errors of [`create_with`](super::create_with) when the safety backup
 ///   fails; the call removes its folder.
 ///
@@ -154,8 +156,10 @@ fn read_regular_file(path: &Path) -> Result<Vec<u8>, IoError> {
 }
 
 /// Splits the manifest names into those present in `target_dir` and those
-/// absent. A folder or a link counts as present: the safety backup then
-/// fails with its own error.
+/// absent. Any entry counts as present, a link included, because the lookup
+/// does not follow links. The safety backup then decides: it reads a live
+/// link as the file behind it, and the atomic write replaces the link with a
+/// regular file. A dangling link and a folder fail the safety backup.
 fn split_present<'m>(target_dir: &Path, names: &'m [String]) -> Result<(Vec<&'m str>, Vec<String>), IoError> {
     let mut present = Vec::new();
     let mut absent = Vec::new();

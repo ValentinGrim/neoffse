@@ -9,7 +9,7 @@
 //! Each file operation goes through [`FileOps`], so a test can make any one
 //! step fail. [`RealFileOps`] is the operating system implementation.
 
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
@@ -76,6 +76,26 @@ pub trait FileOps {
     ///
     /// Returns the operating system error.
     fn sync_dir(&self, dir: &Path) -> io::Result<()>;
+
+    /// Copies the content of the file at `from` into a new file at `to`, then
+    /// flushes the new file through [`sync_file`](Self::sync_file).
+    ///
+    /// The default implementation opens `from`, creates `to` with
+    /// `create_new` (an existing file is never overwritten), copies the bytes
+    /// with [`io::copy`] and calls `self.sync_file` on the new file. A test
+    /// implementor that fails `sync_file` therefore fails the copy.
+    ///
+    /// # Errors
+    ///
+    /// Returns the operating system error of the step that failed, for
+    /// example `NotFound` for a missing `from` and `AlreadyExists` when `to`
+    /// exists.
+    fn copy_file(&self, from: &Path, to: &Path) -> io::Result<()> {
+        let mut source = File::open(from)?;
+        let mut destination = OpenOptions::new().write(true).create_new(true).open(to)?;
+        io::copy(&mut source, &mut destination)?;
+        self.sync_file(&destination)
+    }
 }
 
 /// The operating system implementation of [`FileOps`].
