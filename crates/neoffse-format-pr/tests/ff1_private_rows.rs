@@ -42,6 +42,7 @@ fn real_insert_survives_encode_and_decode() {
         let Ok(again) = decode(&bytes) else { panic!("{label}: second decode failed") };
         let mut rebuilt = RealSlot {
             label: label.clone(),
+            name: slot.name.clone(),
             bytes,
             json: again.json,
         }

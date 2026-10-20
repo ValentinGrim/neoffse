@@ -9,6 +9,11 @@
 //! its `id`, an item by its `contentId` and a dictionary entry by its key,
 //! never by position. The model keeps no state beside the document: every
 //! key it does not map stays as read.
+//!
+//! [`Ff1Model::summary`] and [`Ff1Model::view`] read the slot for the Home
+//! screen and the editor: the first gives the slot, play time, place and
+//! party, the second a snapshot of every character, item row and gil. Both
+//! leave the document untouched.
 
 mod apply;
 mod binding;
@@ -17,6 +22,8 @@ mod lists;
 mod locate;
 mod meta;
 pub mod names;
+mod summary;
+mod view;
 
 use neoffse_core::{Capability, CollectionMeta, EditError, FieldId, FieldMeta, Game, Value};
 use neoffse_data::GameTables;
