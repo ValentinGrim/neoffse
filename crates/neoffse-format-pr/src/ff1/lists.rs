@@ -4,15 +4,16 @@
 //! A row of `inventory` or `key_items` is a string document
 //! `{"contentId":<K>,"count":<N>}` (`docs/formats/pixel-remaster.md#inventory`,
 //! `docs/formats/pixel-remaster.md#container-shapes`). The model rebuilds a row
-//! only in that compact form, so it removes only a row that already has it:
-//! the inverse `Insert` then restores the same bytes.
+//! only in that compact form, so it removes only a row whose stored token is
+//! the token the inverse `Insert` writes: same text and same escapes. The
+//! inverse then restores the same bytes.
 
 use neoffse_core::{CapPolicy, CollectionMeta, Edit, EditError, RowId, Value};
 
 use super::binding::{Collection, List};
 use super::locate::{find_row, format_error, read_text};
 use super::{Ff1Model, Scalar, names};
-use crate::document::{DocumentError, Segment};
+use crate::document::{DocumentError, Segment, string_token};
 
 /// The canonical text of a row.
 fn canonical(content_id: u32, count: i64) -> String {
@@ -45,11 +46,19 @@ impl Ff1Model {
             .ok_or_else(|| EditError::MissingRow { row: row.id().clone() })
     }
 
-    /// The text of the element `index` of `list`.
-    fn row_text(&mut self, row: &RowId, list: List, index: usize) -> Result<String, EditError> {
+    /// The `count` of the element `index` of `list` when its stored token is
+    /// the one `insert` writes for the canonical row: the decoded text is
+    /// canonical and the token carries no other escape than `serde_json`'s.
+    fn canonical_row(&mut self, row: &RowId, list: List, index: usize) -> Result<Option<i64>, EditError> {
         let mut path = list.target();
         path.push(Segment::Index(index));
-        read_text(&mut self.document, &path).map_err(|source| format_error(row.id(), source))
+        let failed = |source| format_error(row.id(), source);
+        let text = read_text(&mut self.document, &path).map_err(failed)?;
+        let Some(count) = canonical_count(&text, row.key()) else {
+            return Ok(None);
+        };
+        let token = self.document.raw(&path).map_err(failed)?;
+        Ok((*token == string_token(&canonical(row.key(), count))).then_some(count))
     }
 
     pub(super) fn insert(&mut self, row: &RowId, position: Option<usize>, values: &[(&'static str, Value)], policy: CapPolicy) -> Result<Edit, EditError> {
@@ -94,8 +103,7 @@ impl Ff1Model {
             return Err(EditError::ReadOnly { field: row.id().clone() });
         };
         let index = self.row_index(row, collection)?;
-        let text = self.row_text(row, list, index)?;
-        let Some(count) = canonical_count(&text, row.key()) else {
+        let Some(count) = self.canonical_row(row, list, index)? else {
             return Err(EditError::ReadOnly { field: row.id().clone() });
         };
         let values = vec![(names::COUNT, Value::Int(count))];
@@ -107,8 +115,8 @@ impl Ff1Model {
     /// True when the game interface refuses to remove `row` whatever the
     /// values are: a `character` row (the collection is not removable), a
     /// placeholder row of `inventory`, a row whose id a character wears, or a
-    /// row whose text is not canonical
-    /// (`docs/formats/pixel-remaster.md#inventory`). A stored `count` of 0 is
+    /// row whose stored token is not canonical, whether by its text or by its
+    /// escapes (`docs/formats/pixel-remaster.md#inventory`). A stored `count` of 0 is
     /// canonical and does not lock: the raw `Remove` refuses it with
     /// `OutOfRange`.
     ///
@@ -128,7 +136,6 @@ impl Ff1Model {
         if self.is_placeholder(list, row.key()) || self.wearers_of(row.key(), row.id())? > 0 {
             return Ok(true);
         }
-        let text = self.row_text(row, list, index)?;
-        Ok(canonical_count(&text, row.key()).is_none())
+        Ok(self.canonical_row(row, list, index)?.is_none())
     }
 }

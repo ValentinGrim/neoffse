@@ -28,6 +28,7 @@ use serde_json::value::RawValue;
 
 pub use error::DocumentError;
 pub use scalar::Scalar;
+pub(crate) use scalar::string_token;
 
 use node::Node;
 

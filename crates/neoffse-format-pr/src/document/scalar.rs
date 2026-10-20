@@ -77,6 +77,6 @@ impl Scalar {
 /// The JSON string token of `text`, escaped by `serde_json`: `"`, `\` and the
 /// bytes 0x00 to 0x1F are escaped; `/` and non-ASCII stay raw
 /// (`docs/formats/pixel-remaster.md#json-text`).
-pub(super) fn string_token(text: &str) -> String {
+pub(crate) fn string_token(text: &str) -> String {
     Value::String(text.to_owned()).to_string()
 }

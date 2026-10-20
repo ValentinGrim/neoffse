@@ -9,7 +9,7 @@
 //! fields let a test twist one value; numbers a test breaks are raw text.
 
 use neoffse_core::FieldId;
-use neoffse_format_pr::document::Document;
+use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
 /// One entry of `equipmentList`.
@@ -183,6 +183,32 @@ impl SlotData {
 pub(crate) fn model(text: &str) -> Ff1Model {
     let document = Document::parse(text).unwrap();
     Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap())
+}
+
+/// A model whose inventory ends with the canonical row `(canonical_key, 3)`
+/// and then the canonical row `(escaped_key, 1)` stored with `\u0022`
+/// escapes for its quotes: the decoded text is canonical, the stored token is
+/// not what the model writes. Returns the model and the slot text.
+pub(crate) fn model_with_escaped_row(canonical_key: u32, escaped_key: u32) -> (Ff1Model, String) {
+    let mut data = SlotData::standard();
+    data.inventory.push(Row::new(canonical_key, 3));
+    let row = Row::new(escaped_key, 1);
+    data.inventory.push(row.clone());
+    let mut document = Document::parse(&data.render()).unwrap();
+    let path = [
+        Segment::Key("userData"),
+        Segment::Doc,
+        Segment::Key("normalOwnedItemList"),
+        Segment::Doc,
+        Segment::Key("target"),
+        Segment::Index(data.inventory.len() - 1),
+    ];
+    let token = super::embed_with(&row.text, true);
+    document.set_raw(&path, &token).unwrap();
+    assert_eq!(document.raw(&path).unwrap(), token);
+    assert!(token.contains(&format!("{}u0022", char::from(92))), "{token}");
+    let text = document.to_json();
+    (Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap()), text)
 }
 
 /// A model over the standard slot.

@@ -28,9 +28,10 @@ impl Ff1Model {
     /// and returns the `Remove` or `Insert` that restores the row at its
     /// place, bytes included. `Insert` checks the collection, the key bounds,
     /// the `count` value, under `Enforce` the ID tables of the list, then
-    /// duplicates and the position. `Remove` refuses a row whose text is not
-    /// the canonical `{"contentId":K,"count":N}` (`ReadOnly`) and a row whose
-    /// inverse would not apply. Neither holds a game rule: a placeholder row
+    /// duplicates and the position. `Remove` refuses a row whose stored token
+    /// is not the string token of the canonical `{"contentId":K,"count":N}`
+    /// that the inverse `Insert` writes (`ReadOnly`: another text, order,
+    /// spacing or escape) and a row whose inverse would not apply. Neither holds a game rule: a placeholder row
     /// and a worn row go like any other. A `character` row is `ReadOnly`.
     ///
     /// # Errors

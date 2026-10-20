@@ -80,8 +80,9 @@ fn table() -> Vec<Row> {
         rows.push(row(slot(number), label, None, &[table]));
         rows.push(row(slot(number).with_name(names::COUNT), &format!("Count in slot {number}"), None, &[]));
     }
-    for list in [names::INVENTORY, names::KEY_ITEMS] {
-        let mut count = row(FieldId::new(list).with_id(45).with_name(names::COUNT), "Count", Some(99), &[]);
+    // MAX_ITEM caps the normal inventory only; a key-item count has no game cap.
+    for (list, cap) in [(names::INVENTORY, Some(99)), (names::KEY_ITEMS, None)] {
+        let mut count = row(FieldId::new(list).with_id(45).with_name(names::COUNT), "Count", cap, &[]);
         count.min = 1;
         rows.push(count);
     }
@@ -170,9 +171,9 @@ fn equipment_tables_follow_the_slot() {
     }
 }
 
-fn count_row(meta: &FieldMeta) {
+fn count_row(meta: &FieldMeta, cap: Option<i64>) {
     assert_eq!(meta.shape, Shape::Int { min: 1, max: STORAGE });
-    assert_eq!(meta.cap, Some(99));
+    assert_eq!(meta.cap, cap);
 }
 
 #[test]
@@ -205,11 +206,11 @@ fn collection_meta_of_the_three_collections() {
     assert_eq!(key_items.key.shape, Shape::Int { min: 1, max: STORAGE });
     assert_eq!(key_items.key.tables, [TableKind::KeyItem]);
 
-    for collection in [&inventory, &key_items] {
+    for (collection, cap) in [(&inventory, Some(99)), (&key_items, None)] {
         assert_eq!(collection.fields.len(), 1);
         assert_eq!(collection.fields[0].name, names::COUNT);
         assert_eq!(collection.fields[0].initial, Value::Int(1));
-        count_row(&collection.fields[0].meta);
+        count_row(&collection.fields[0].meta, cap);
     }
     assert!(model.collection_meta(&FieldId::new(names::GIL)).is_none());
     assert!(model.collection_meta(&FieldId::new(names::INVENTORY).with_id(7)).is_none());
