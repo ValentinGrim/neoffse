@@ -1097,13 +1097,17 @@ The game states six caps and several stat caps in `game_constant_int.csv`
 | Save field | `key_name` | `value1` |
 |---|---|---|
 | `owendGil` | `MAX_GIL` | 999 999 |
-| inventory `count` | `MAX_ITEM` | 99 |
+| `normalOwnedItemList` `count` | `MAX_ITEM` | 99 |
 | level (`addtionalLevel`) | `MAX_LV` | 99 |
 | `currentExp` | `MAX_EXP` | 9 999 999 |
 | HP | `MAX_HP` | 999 |
 | spell charges per level | `MAX_MAGICAL_TIMES` | 9 |
 | strength, vitality, agility, intelligence, spirit, luck | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` | 99 each |
 | attack, defense, ability attack, ability defense, accuracy, evasion | `MAX_ATTACK`, `MAX_DEFENSE` and the matching rows | 255 each |
+
+`MAX_ITEM` is one row with no list name [D]. NeoFFSE reads it as the cap
+of the normal inventory and not of the key items, which hold `count` 1
+([Inventory](#inventory)) [I].
 
 The key names keep the game's spelling. `exp_table.csv` (99 rows: `id`,
 `type_id`, `group_id`, `lv`, `total_exp`) ends at level 99 with a
@@ -1455,11 +1459,17 @@ JSON strings in the game's own order; the sort list holds content IDs,
 never row numbers.
 
 - Normal items: 47 to 56 entries, no duplicate `contentId`, no `count`
-  of 0, not sorted by ID [M]. The game caps a `count` at 99 (`MAX_ITEM`)
-  [D].
-- `importantOwendItemList`: same shape, `count` 1 [M]. In FF I it holds 9
-  or 10 entries, IDs 45 to 61, all in `ImportantItems` [M]. In the game's
-  data these IDs are the key items, `item.csv` `type_id` 2 [D].
+  of 0, not sorted by ID [M]. `MAX_ITEM` (99) is the master-data cap on
+  this list's `count` [D, I]: the cap exists in the data [D], and its
+  scope follows from the key items below holding one each [I]
+  ([Bounds in the master data](#bounds-in-the-master-data)).
+- `importantOwendItemList`: same shape. Every measured row holds `count`
+  1 [M]. In FF I it holds 9 or 10 entries, IDs 45 to 61, all in
+  `ImportantItems` [M]. In the game's data these IDs are the key items,
+  `item.csv` `type_id` 2 [D]. The game holds one of each key item and
+  never shows a key-item count above 1 [I], so `MAX_ITEM` does not apply
+  to this list. A format that edits the way the game does keeps every
+  key-item `count` at 1.
 - **The inventory includes equipped items.** In FF I, each equipped
   `contentId` appears in `normalOwnedItemList` with a count at least the
   number of characters who equip it. A ring worn by all 4 characters has
