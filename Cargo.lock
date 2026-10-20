@@ -2718,6 +2718,12 @@ dependencies = [
 [[package]]
 name = "neoffse-data"
 version = "0.4.0"
+dependencies = [
+ "neoffse-core",
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
+]
 
 [[package]]
 name = "neoffse-format-pr"

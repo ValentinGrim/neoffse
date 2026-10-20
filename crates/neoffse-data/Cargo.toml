@@ -1,6 +1,6 @@
 [package]
 name = "neoffse-data"
-description = "ID tables of NeoFFSE (items, spells, maps, monsters) loaded from TOML"
+description = "ID tables of NeoFFSE (items, abilities, jobs, commands, monsters) and game caps, embedded from TOML"
 version = "0.4.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -13,6 +13,10 @@ categories = ["game-development"]
 publish = false
 
 [dependencies]
+neoffse-core = { workspace = true }
+serde = { version = "1.0.229", default-features = false, features = ["std", "derive"] }
+thiserror = "2.0.21"
+toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
 
 [lints]
 workspace = true
