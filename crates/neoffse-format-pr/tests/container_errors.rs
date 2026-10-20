@@ -6,7 +6,7 @@ use std::io::Write as _;
 
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
-use neoffse_format_pr::cipher::UnalignedLength;
+use neoffse_format_pr::cipher::{PR_IV, Rijndael256};
 use neoffse_format_pr::container::deflate::deflate;
 use neoffse_format_pr::container::text::{BOM, encode_base64};
 use neoffse_format_pr::container::{CodecError, Container, MAX_PAYLOAD_LEN, MAX_TEXT_LEN, MAX_TRAILER_LEN, decode, encode, seal};
@@ -40,7 +40,8 @@ fn decode_rejects_unaligned_ciphertext() {
 
 #[test]
 fn unaligned_length_maps_to_cipher_length() {
-    assert!(matches!(CodecError::from(UnalignedLength { len: 33 }), CodecError::CipherLength { len: 33 }));
+    let error = Rijndael256::pr().cbc_encrypt(&PR_IV, &mut [0_u8; 33]).unwrap_err();
+    assert!(matches!(CodecError::from(error), CodecError::CipherLength { len: 33 }));
 }
 
 #[test]
@@ -100,6 +101,25 @@ fn decode_refuses_a_megabyte_of_trailing_spaces() {
     file.resize(file.len() + 1_048_576, b' ');
     let outcome = decode(&file);
     assert!(matches!(outcome, Err(CodecError::TrailerTooLong { len: 1_048_576, .. })), "{outcome:?}");
+}
+
+/// A text over the cap, then `trailer_len` spaces.
+fn oversized_text_with_trailer(trailer_len: usize) -> Vec<u8> {
+    let mut file = vec![b'A'; MAX_TEXT_LEN + 4];
+    file.resize(file.len() + trailer_len, b' ');
+    file
+}
+
+#[test]
+fn the_trailer_check_comes_before_the_text_cap() {
+    let outcome = decode(&oversized_text_with_trailer(MAX_TRAILER_LEN + 1));
+    assert!(matches!(outcome, Err(CodecError::TrailerTooLong { len: 65, limit: 64 })), "{outcome:?}");
+}
+
+#[test]
+fn the_text_cap_still_fires_with_a_trailer_at_the_cap() {
+    let outcome = decode(&oversized_text_with_trailer(MAX_TRAILER_LEN));
+    assert!(matches!(outcome, Err(CodecError::PayloadTooLarge { limit: MAX_TEXT_LEN })), "{outcome:?}");
 }
 
 #[test]

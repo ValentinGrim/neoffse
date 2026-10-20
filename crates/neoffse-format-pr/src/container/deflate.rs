@@ -15,8 +15,10 @@ pub const LEVEL: u32 = 6;
 /// Size of the output buffer of one inflate call.
 const CHUNK_LEN: usize = 16 * 1024;
 
-/// The result of [`inflate`].
+/// The result of [`inflate`]. A later version may add fields, and only
+/// [`inflate`] builds one.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Inflated {
     /// Every byte the stream produced before it ended or ran dry.
     pub output: Vec<u8>,
