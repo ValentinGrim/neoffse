@@ -131,8 +131,9 @@ fn is_stamp(name: &str) -> bool {
 /// [`MAX_BACKUPS`]. A restore protects the backup it reads from, which would
 /// otherwise be the oldest one and the first to go. The match is on the
 /// folder name, because every backup of the game sits in `game_dir` and a
-/// caller may spell the data root differently when it lists and when it
-/// restores (`..`, a symbolic link). A false match keeps one extra backup.
+/// caller may reach the data root through two paths, one when it lists and
+/// one when it restores (`..`, a symbolic link). A false match keeps one
+/// extra backup.
 pub(super) fn prune(game_dir: &Path, keep: &Backup, protect: Option<&Path>) -> Result<(), IoError> {
     let valid = scan(game_dir, &keep.manifest.game)?.backups;
     let name = protect.and_then(Path::file_name);

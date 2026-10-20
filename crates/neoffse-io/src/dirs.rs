@@ -11,23 +11,28 @@ const BACKUPS: &str = "backups";
 
 /// Where NeoFFSE keeps its own files: the backups.
 ///
-/// The type builds paths and creates nothing on disk.
+/// The type builds paths and creates nothing on disk. Its `Debug` output holds
+/// the data folder, a path under the user's home: do not log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataDir {
     root: PathBuf,
 }
 
 impl DataDir {
-    /// Asks the operating system for the data folder of NeoFFSE: the XDG data
-    /// home on Linux, the roaming application data on Windows.
+    /// Asks the operating system for the data folder of NeoFFSE.
+    ///
+    /// On Linux the folder is `$XDG_DATA_HOME/neoffse` when that variable
+    /// holds an absolute path, else `~/.local/share/neoffse`. On Windows it is
+    /// `%APPDATA%\neoffse\data`: `neoffse\data` inside the roaming
+    /// application data folder.
     ///
     /// The call reads the environment and touches no file.
     ///
     /// # Errors
     ///
-    /// [`IoError::NoDataDir`] when the system reports no home directory or a
-    /// relative one. On Unix a relative `HOME` would put the backups under the
-    /// current folder of the process.
+    /// [`IoError::NoDataDir`] when the system reports no home directory, or
+    /// when the folder it computes is relative. On Unix a relative `HOME`
+    /// would put the backups under the current folder of the process.
     pub fn platform() -> Result<Self, IoError> {
         ProjectDirs::from("", "", APPLICATION)
             .map(|dirs| dirs.data_dir().to_path_buf())

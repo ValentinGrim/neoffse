@@ -42,6 +42,8 @@ pub struct SteamGame<'a> {
 /// path would resolve against the current folder of the process.
 /// `home: None` switches off the Linux search; each Windows candidate needs
 /// its own field.
+///
+/// The `Debug` output holds personal paths: do not log it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Environment {
     /// The user's home directory (Linux searches).

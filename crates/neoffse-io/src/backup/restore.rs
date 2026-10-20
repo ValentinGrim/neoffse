@@ -183,8 +183,8 @@ fn split_present<'m>(target_dir: &Path, names: &'m [String]) -> Result<(Vec<&'m 
 /// Writes the staged files in order. On the first error it returns the index
 /// of the failed file and the error.
 ///
-/// The loop stops there and does not roll back: a rollback writes to a disk
-/// that just failed. The safety backup is the recovery path.
+/// The loop stops there and does not roll back: a rollback would write to the
+/// disk that refused the last write. The safety backup is the recovery path.
 fn write_files<O: FileOps + ?Sized>(ops: &O, target_dir: &Path, staged: &[Staged]) -> Result<(), (usize, IoError)> {
     for (index, file) in staged.iter().enumerate() {
         let verify = |temp: &Path| -> Result<(), Box<dyn Error + Send + Sync>> {

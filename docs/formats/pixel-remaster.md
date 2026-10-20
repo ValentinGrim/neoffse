@@ -375,8 +375,8 @@ zero or not.
   the BOM and the trailer of the container it receives. `Container::game()`
   holds the BOM and the CRLF the game writes. A container decoded from an
   editor file holds the BOM and no CRLF, and `encode` keeps it that way.
-  The file-safety layer (M2) chooses which container the save pipeline
-  passes.
+  The save pipeline of the `neoffse` facade (M4) chooses which container
+  it passes; `neoffse-io` knows no format.
 
 ### Base64
 
