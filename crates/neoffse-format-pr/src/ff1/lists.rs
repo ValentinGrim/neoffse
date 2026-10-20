@@ -20,12 +20,14 @@ fn canonical(content_id: u32, count: i64) -> String {
     format!("{{\"contentId\":{content_id},\"count\":{count}}}")
 }
 
-/// The `count` of `text` when `text` is exactly the canonical row of
-/// `content_id`: no other key, no other order, plain decimal, no whitespace.
+/// The `count` of `text` when `text` has the shape of the canonical row of
+/// `content_id`: the prefix `{"contentId":K,"count":`, an integer and the
+/// closing brace. It does not decide canonicity: `canonical_row` compares the
+/// stored token with the token of `canonical(..)`, which also rejects a sign,
+/// other spacing and other escapes.
 fn canonical_count(text: &str, content_id: u32) -> Option<i64> {
     let head = format!("{{\"contentId\":{content_id},\"count\":");
-    let count: i64 = text.strip_prefix(&head)?.strip_suffix('}')?.parse().ok()?;
-    (canonical(content_id, count) == text).then_some(count)
+    text.strip_prefix(&head)?.strip_suffix('}')?.parse().ok()
 }
 
 impl Ff1Model {

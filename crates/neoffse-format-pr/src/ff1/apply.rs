@@ -31,8 +31,9 @@ impl Ff1Model {
     /// duplicates and the position. `Remove` refuses a row whose stored token
     /// is not the string token of the canonical `{"contentId":K,"count":N}`
     /// that the inverse `Insert` writes (`ReadOnly`: another text, order,
-    /// spacing or escape) and a row whose inverse would not apply. Neither holds a game rule: a placeholder row
-    /// and a worn row go like any other. A `character` row is `ReadOnly`.
+    /// spacing or escape) and a row whose inverse would not apply. Neither
+    /// holds a game rule: a placeholder row and a worn row go like any other.
+    /// A `character` row is `ReadOnly`.
     ///
     /// # Errors
     ///
