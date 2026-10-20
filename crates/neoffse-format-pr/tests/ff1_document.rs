@@ -7,7 +7,7 @@ mod common;
 use common::ff1_format::{one_file, open, sav, slot_name, standard_files};
 use common::ff1_save::SlotData;
 use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FormatError, RowId, SaveDocument, SaveFiles, Value};
-use neoffse_format_pr::container::{CodecError, Container, decode};
+use neoffse_format_pr::container::{CodecError, Container, MAX_PAYLOAD_LEN, decode};
 use neoffse_format_pr::ff1::{Ff1Document, Ff1Format, names};
 
 const ENFORCE: CapPolicy = CapPolicy::Enforce;
@@ -204,20 +204,22 @@ fn verify_ignores_other_files() {
     document.verify(&files).unwrap();
 }
 
-/// `container::encode` does not check the size of the text, so a document
-/// above `MAX_PAYLOAD_LEN` encodes to a file the codec cannot decode. `verify`
-/// is the check that stops such a file before it replaces a save.
+/// `container::encode` refuses a text above `MAX_PAYLOAD_LEN`, so a document
+/// that large is refused before any file exists. After the inverse edit, the
+/// document encodes again.
 #[test]
-fn an_oversized_document_encodes_but_verify_refuses_it() {
+fn an_oversized_document_is_refused_by_encode() {
     let mut document = opened(&original());
     let name = FieldId::new(names::CHARACTER).with_id(1).with_name(names::NAME);
     let huge = Edit::set(name, Value::Text("x".repeat(17 * 1024 * 1024)));
     let inverse = document.apply(&huge, ENFORCE).unwrap();
-    let files = document.encode().unwrap();
-    let Err(FormatError::Decode { source }) = document.verify(&files) else {
-        panic!("expected Decode")
+    let Err(FormatError::Encode { source }) = document.encode() else {
+        panic!("expected Encode")
     };
-    assert!(matches!(source.downcast_ref::<CodecError>(), Some(CodecError::PayloadTooLarge { .. })));
+    assert!(matches!(
+        source.downcast_ref::<CodecError>(),
+        Some(CodecError::PayloadTooLarge { limit: MAX_PAYLOAD_LEN })
+    ));
     document.apply(&inverse, STORAGE_ONLY).unwrap();
     assert_eq!(decoded_text(&document.encode().unwrap(), slot_name(1)), original());
     assert!(document.summary().is_ok());

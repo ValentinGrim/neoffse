@@ -167,3 +167,24 @@ fn error_messages_name_the_step_and_the_position() {
     let message = CodecError::TrailerTooLong { len: 65, limit: 64 }.to_string();
     assert!(message.contains("65") && message.contains("64"), "{message}");
 }
+
+/// A JSON string literal of exactly `len` bytes.
+fn string_literal(len: usize) -> String {
+    format!("\"{}\"", "a".repeat(len - 2))
+}
+
+#[test]
+fn encode_refuses_a_payload_decode_would_refuse() {
+    let json = string_literal(MAX_PAYLOAD_LEN + 1);
+    assert!(matches!(
+        encode(&json, &Container::game()),
+        Err(CodecError::PayloadTooLarge { limit: MAX_PAYLOAD_LEN })
+    ));
+}
+
+#[test]
+fn encode_accepts_the_largest_payload_decode_accepts() {
+    let json = string_literal(MAX_PAYLOAD_LEN);
+    let file = encode(&json, &Container::game()).unwrap();
+    assert_eq!(decode(&file).unwrap().json, json);
+}
