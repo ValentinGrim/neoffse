@@ -200,3 +200,17 @@ fn the_language_reaches_the_view() {
     assert_eq!(Ff1Format::with_language(Language::Fr).language(), Language::Fr);
     assert_eq!(Ff1Format::default().language(), Language::En);
 }
+
+#[test]
+fn open_errors_name_no_game_but_the_detected_one() {
+    assert_eq!(OpenError::FileCount { found: 2 }.to_string(), "a Pixel Remaster save is one file, found 2");
+    let source = Box::new(std::io::Error::other("invented cause"));
+    assert_eq!(OpenError::NotASlot { source }.to_string(), "the file holds no Pixel Remaster slot");
+    let other = OpenError::OtherGame {
+        found: Some(Game::Ff3Pr),
+        vehicles: 4,
+    };
+    assert_eq!(other.to_string(), "the file is a slot of ff3-pr (4 vehicles)");
+    let unknown = OpenError::OtherGame { found: None, vehicles: 5 };
+    assert_eq!(unknown.to_string(), "the file is a slot of an unknown game (5 vehicles)");
+}
