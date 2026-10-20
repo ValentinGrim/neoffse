@@ -175,3 +175,77 @@ fn a_restore_uses_a_backup_taken_from_list() {
     assert_eq!(read(&w, SLOT), b"slot-one");
     assert_eq!(read(&w, BESTIARY), b"bestiary-one");
 }
+
+#[test]
+fn an_undo_keeps_the_files_the_restore_created() {
+    let w = world("restore-an_undo_keeps_the_files_the_restore_created");
+    let backup = make(&w, "ff1-pr", T0);
+    edit(&w);
+    fs::remove_file(w.source.join(BESTIARY)).unwrap();
+
+    let restored = restore_at(&w, &backup, T0 + 60).unwrap();
+    assert_eq!(restored.created, [BESTIARY]);
+    let safety = restored.safety.unwrap();
+    assert_eq!(safety.manifest.files, [SLOT]);
+
+    let undone = restore_at(&w, &safety, T0 + 120).unwrap();
+    assert_eq!(undone.created, Vec::<String>::new());
+    assert_eq!(read(&w, SLOT), EDITED_SLOT);
+    assert_eq!(read(&w, BESTIARY), b"bestiary-one");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_at_a_target_name_is_replaced_by_the_restored_file() {
+    use std::os::unix::fs::symlink;
+
+    let w = world("restore-a_link_at_a_target_name_is_replaced_by_the_restored_file");
+    let backup = make(&w, "ff1-pr", T0);
+    let outside = w.root.join("outside");
+    fs::write(&outside, b"linked-content").unwrap();
+    fs::remove_file(w.source.join(SLOT)).unwrap();
+    symlink(&outside, w.source.join(SLOT)).unwrap();
+
+    let restored = restore_at(&w, &backup, T0 + 60).unwrap();
+    let entry = fs::symlink_metadata(w.source.join(SLOT)).unwrap();
+    assert!(entry.is_file() && !entry.file_type().is_symlink());
+    assert_eq!(read(&w, SLOT), b"slot-one");
+    assert_eq!(fs::read(&outside).unwrap(), b"linked-content");
+    assert_eq!(restored.created, Vec::<String>::new());
+    let safety = restored.safety.unwrap();
+    assert_eq!(fs::read(safety.dir.join(SLOT)).unwrap(), b"linked-content");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_dangling_link_at_a_target_name_fails_the_safety_backup() {
+    use std::os::unix::fs::symlink;
+
+    use neoffse_io::error::{IoError, Operation};
+
+    let w = world("restore-a_dangling_link_at_a_target_name_fails_the_safety_backup");
+    let backup = make(&w, "ff1-pr", T0);
+    fs::remove_file(w.source.join(SLOT)).unwrap();
+    let nowhere = w.root.join("nowhere");
+    symlink(&nowhere, w.source.join(SLOT)).unwrap();
+    // `tree` follows links and cannot read a dangling one.
+    let names = |w: &World| {
+        let mut found: Vec<String> = fs::read_dir(&w.source)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        found.sort();
+        found
+    };
+    let before = (names(&w), tree(&game_dir(&w, "ff1-pr")));
+
+    let error = restore_at(&w, &backup, T0 + 60).unwrap_err();
+    let IoError::Io { operation, path, .. } = &error else {
+        panic!("{error:?}");
+    };
+    assert_eq!(*operation, Operation::Copy);
+    assert_eq!(*path, w.source.join(SLOT));
+    assert_eq!((names(&w), tree(&game_dir(&w, "ff1-pr"))), before);
+    assert_eq!(fs::read_link(w.source.join(SLOT)).unwrap(), nowhere);
+    assert_eq!(read(&w, BESTIARY), b"bestiary-one");
+}

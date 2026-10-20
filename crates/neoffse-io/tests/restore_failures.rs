@@ -4,106 +4,20 @@
 
 mod common;
 
-use std::cell::{Cell, RefCell};
 use std::error::Error as _;
-use std::fs::{self, File};
-use std::io;
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::Path;
 
-use common::backup::{BESTIARY, EDITED_BESTIARY, EDITED_SLOT, SLOT, T0, World, at, edit, game_dir, make, restore_at, tree, world};
+use common::backup::{BESTIARY, EDITED_BESTIARY, EDITED_SLOT, SLOT, T0, World, at, edit, game_dir, make, request, restore_at, tree, world};
+use common::gate::Gate;
 use common::{INJECTED, Step, is_temp_name};
-use neoffse_io::atomic::{FileOps, RealFileOps};
-use neoffse_io::backup::{Backup, Restored, restore_with};
+use neoffse_io::atomic::RealFileOps;
+use neoffse_io::backup::{Backup, Restored, create_with, restore_with};
 use neoffse_io::error::{IoError, Operation};
 
 const SAFETY_STAMP: &str = "20261018-201503";
 
 const FIVE_STEPS: [Step; 5] = [Step::CreateTemp, Step::WriteAll, Step::CopyPermissions, Step::SyncFile, Step::Rename];
-
-/// A `FileOps` over `RealFileOps` that fails the `n`th call (1-based) of one
-/// step, or writes `corrupt` in place of the bytes of one `write_all` call.
-#[derive(Debug)]
-struct Gate {
-    fail: Option<(Step, usize)>,
-    corrupt_write: Option<usize>,
-    calls: RefCell<Vec<Step>>,
-    fired: Cell<bool>,
-    renamed: RefCell<Vec<PathBuf>>,
-}
-
-impl Gate {
-    fn new(fail: Option<(Step, usize)>, corrupt_write: Option<usize>) -> Self {
-        Self {
-            fail,
-            corrupt_write,
-            calls: RefCell::default(),
-            fired: Cell::new(false),
-            renamed: RefCell::default(),
-        }
-    }
-
-    /// Records the call and returns its number among the calls of `step`.
-    fn enter(&self, step: Step) -> io::Result<usize> {
-        let mut calls = self.calls.borrow_mut();
-        calls.push(step);
-        let n = calls.iter().filter(|called| **called == step).count();
-        if self.fail == Some((step, n)) {
-            self.fired.set(true);
-            return Err(io::Error::other(INJECTED));
-        }
-        Ok(n)
-    }
-
-    fn fired(&self) -> bool {
-        self.fired.get()
-    }
-
-    fn renamed(&self) -> Vec<PathBuf> {
-        self.renamed.borrow().clone()
-    }
-}
-
-impl FileOps for Gate {
-    fn create_temp(&self, dir: &Path) -> io::Result<(File, PathBuf)> {
-        self.enter(Step::CreateTemp)?;
-        RealFileOps.create_temp(dir)
-    }
-
-    fn write_all(&self, file: &mut File, bytes: &[u8]) -> io::Result<()> {
-        let n = self.enter(Step::WriteAll)?;
-        if self.corrupt_write == Some(n) {
-            self.fired.set(true);
-            return RealFileOps.write_all(file, b"corrupt");
-        }
-        RealFileOps.write_all(file, bytes)
-    }
-
-    fn copy_permissions(&self, from: &Path, file: &File) -> io::Result<()> {
-        self.enter(Step::CopyPermissions)?;
-        RealFileOps.copy_permissions(from, file)
-    }
-
-    fn sync_file(&self, file: &File) -> io::Result<()> {
-        self.enter(Step::SyncFile)?;
-        RealFileOps.sync_file(file)
-    }
-
-    fn rename(&self, from: &Path, to: &Path) -> io::Result<()> {
-        self.enter(Step::Rename)?;
-        self.renamed.borrow_mut().push(to.to_path_buf());
-        RealFileOps.rename(from, to)
-    }
-
-    fn remove_file(&self, path: &Path) -> io::Result<()> {
-        self.enter(Step::RemoveFile)?;
-        RealFileOps.remove_file(path)
-    }
-
-    fn sync_dir(&self, dir: &Path) -> io::Result<()> {
-        self.enter(Step::SyncDir)?;
-        RealFileOps.sync_dir(dir)
-    }
-}
 
 /// A world with a backup of the old files, then both files edited.
 fn setup(name: &str) -> (World, Backup) {
@@ -151,6 +65,7 @@ fn operation_of(step: Step) -> Operation {
         Step::WriteAll | Step::CopyPermissions => Operation::Write,
         Step::SyncFile => Operation::Sync,
         Step::Rename => Operation::Rename,
+        Step::CopyFile => Operation::Copy,
         other => panic!("no operation for {other:?}"),
     }
 }
@@ -292,8 +207,46 @@ fn a_folder_in_place_of_a_target_file_fails_the_safety_backup() {
 
     let error = restore_at(&w, &backup, T0 + 60).unwrap_err();
     let (operation, path) = io_parts(&error);
-    assert_eq!(operation, if cfg!(unix) { Operation::Copy } else { Operation::Read });
+    assert_eq!(operation, Operation::Copy);
     assert_eq!(path, w.source.join(SLOT));
     assert_eq!(fs::read(w.source.join(BESTIARY)).unwrap(), EDITED_BESTIARY);
     assert_eq!((tree(&w.source), tree(&game_dir(&w, "ff1-pr"))), before);
+}
+
+#[test]
+fn a_failed_safety_copy_writes_nothing() {
+    let (w, backup) = setup("a_failed_safety_copy_writes_nothing");
+    let source_before = tree(&w.source);
+    let games_before = tree(&game_dir(&w, "ff1-pr"));
+    let gate = Gate::new(Some((Step::CopyFile, 2)), None);
+
+    let error = run(&gate, &w, &backup).unwrap_err();
+    assert!(gate.fired());
+    let (operation, path) = io_parts(&error);
+    assert_eq!(operation, Operation::Copy);
+    assert_eq!(path, w.source.join(BESTIARY));
+    assert_eq!(tree(&w.source), source_before);
+    assert_eq!(tree(&game_dir(&w, "ff1-pr")), games_before);
+    assert_no_temp_file(&w);
+}
+
+#[test]
+fn a_failed_third_write_reports_the_files_in_write_order() {
+    // Call 1 of `rename` is the manifest of the safety backup, calls 2 to 4
+    // are the three files in manifest order.
+    for (failed_rename, written, remaining) in [(4, vec![SLOT, BESTIARY], vec!["extra"]), (3, vec![SLOT], vec![BESTIARY, "extra"])] {
+        let w = world("a_failed_third_write_reports_the_files_in_write_order");
+        fs::write(w.source.join("extra"), b"extra-one").unwrap();
+        let files = [SLOT, BESTIARY, "extra"];
+        let backup = create_with(&RealFileOps, &w.data, &request(&w, "ff1-pr", &files), at(T0)).unwrap();
+        edit(&w);
+        fs::write(w.source.join("extra"), b"extra-edited").unwrap();
+        let gate = Gate::new(Some((Step::Rename, failed_rename)), None);
+
+        let (got_written, got_remaining, safety, _) = failed_parts(run(&gate, &w, &backup).unwrap_err());
+        assert!(gate.fired());
+        assert_eq!(got_written, written, "rename {failed_rename}");
+        assert_eq!(got_remaining, remaining, "rename {failed_rename}");
+        assert!(safety.is_some());
+    }
 }

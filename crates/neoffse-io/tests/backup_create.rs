@@ -22,7 +22,7 @@ fn backup_lands_in_the_documented_layout() {
     let now = Moment::new(T0, 7_200).unwrap();
     let backup = create_with(&RealFileOps, &w.data, &request(&w, "ff1-pr", &files), now).unwrap();
 
-    let expected = w.root.join("data").join("backups").join("ff1-pr").join("20261018-221403");
+    let expected = w.root.join("data").join("backups").join("ff1-pr").join("20261018-201403");
     assert_eq!(backup.dir, expected);
     let found = tree(&backup.dir);
     let keys: BTreeSet<&str> = found.keys().map(String::as_str).collect();
@@ -49,6 +49,8 @@ fn manifest_holds_the_documented_fields() {
     let keys: BTreeSet<&str> = object.keys().map(String::as_str).collect();
     let expected = ["version", "game", "sourceDir", "created", "files", "saveType", "reason"];
     assert_eq!(keys, BTreeSet::from(expected));
+    let positions: Vec<usize> = expected.iter().map(|key| text.find(&format!("\n  \"{key}\":")).unwrap()).collect();
+    assert!(positions.is_sorted(), "keys out of order: {positions:?}");
     assert_eq!(object["version"], 1);
     assert_eq!(object["sourceDir"], w.source.to_string_lossy().as_ref());
     assert_eq!(object["created"], "2026-10-18T22:14:03+02:00");
@@ -68,10 +70,10 @@ fn moment_formats_known_instants() {
         (4_107_542_400, 0, "21000301-000000", "2100-03-01T00:00:00Z"),
         (253_402_300_799, 0, "99991231-235959", "9999-12-31T23:59:59Z"),
         (T0, 0, "20261018-201403", "2026-10-18T20:14:03Z"),
-        (T0, 7_200, "20261018-221403", "2026-10-18T22:14:03+02:00"),
-        (T0, -3_600, "20261018-191403", "2026-10-18T19:14:03-01:00"),
-        (T0, 19_800, "20261019-014403", "2026-10-19T01:44:03+05:30"),
-        (18_000, -18_000, "19700101-000000", "1970-01-01T00:00:00-05:00"),
+        (T0, 7_200, "20261018-201403", "2026-10-18T22:14:03+02:00"),
+        (T0, -3_600, "20261018-201403", "2026-10-18T19:14:03-01:00"),
+        (T0, 19_800, "20261018-201403", "2026-10-19T01:44:03+05:30"),
+        (18_000, -18_000, "19700101-050000", "1970-01-01T00:00:00-05:00"),
     ];
     for (n, (unix, offset, folder, created)) in rows.into_iter().enumerate() {
         let w = world(&format!("moment_formats_known_instants-{n}"));
@@ -87,10 +89,19 @@ fn moment_formats_known_instants() {
 
 #[test]
 fn moment_new_rejects_instants_the_name_cannot_hold() {
-    for (unix, offset) in [(-1, 0), (0, -60), (0, 90), (0, 86_400), (0, -86_400), (253_402_300_800, 0)] {
+    for (unix, offset) in [
+        (-1, 0),
+        (0, -60),
+        (0, 90),
+        (0, 86_400),
+        (0, -86_400),
+        (253_402_300_800, 0),
+        (-1, 3_600),
+        (253_402_300_800, -60),
+    ] {
         assert!(Moment::new(unix, offset).is_none(), "({unix}, {offset})");
     }
-    for (unix, offset) in [(0, 0), (0, 86_340), (86_340, -86_340), (253_402_300_799, 0)] {
+    for (unix, offset) in [(0, 0), (0, 86_340), (86_340, -86_340), (253_402_300_799, 0), (253_402_300_799, -60)] {
         assert!(Moment::new(unix, offset).is_some(), "({unix}, {offset})");
     }
 }
@@ -134,7 +145,7 @@ fn invalid_requests_fail_before_any_disk_access() {
     type Case = (Vec<&'static str>, &'static str, &'static str, &'static str);
     let plain = "not a plain file name";
     let mut cases: Vec<Case> = vec![(vec![], "slot", "before-save", "at least one file")];
-    for name in ["", ".", "..", "../x", "a/b", "a\\b", "c:x", "backup.json", "BACKUP.JSON"] {
+    for name in ["", ".", "..", "../x", "a/b", "a\\b", "c:x", "a\0b", "backup.json", "BACKUP.JSON"] {
         cases.push((vec![name], "slot", "before-save", plain));
     }
     cases.push((vec![SLOT, SLOT], "slot", "before-save", "appears twice"));
@@ -183,6 +194,8 @@ fn manifest_is_written_last_through_the_atomic_pipeline() {
     copies.sort();
     assert_eq!(listing(&log), copies);
     let order = [
+        "sync_file",
+        "sync_file",
         "listing",
         "create_temp",
         "write_all",

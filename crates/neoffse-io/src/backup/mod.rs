@@ -7,9 +7,11 @@
 //! backup. A failed call removes the folder it claimed.
 //!
 //! Two backups in the same second get a suffix: `<stamp>-01`, then `-02`, up
-//! to `-99`. A 101st backup in one second fails with
-//! `ErrorKind::AlreadyExists`. The stamp is the local time of the [`Moment`];
-//! [`Moment::now`] gives UTC.
+//! to `-99`. A call takes the name after the highest suffix on disk, so a name
+//! that retention freed is not reused in that second. The 101st backup in one
+//! second fails with `ErrorKind::AlreadyExists`, even when retention left
+//! fewer folders. The stamp is the UTC time of the [`Moment`] whatever its
+//! offset; `created` in the manifest keeps the offset.
 //!
 //! [`list()`] reads the backups of a game back, newest first. A folder
 //! whose name is a backup stamp but that holds no readable `backup.json` is
@@ -44,7 +46,7 @@ mod manifest;
 mod restore;
 
 use std::error::Error;
-use std::fs::{self, File, OpenOptions};
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -98,8 +100,8 @@ pub fn create(data: &DataDir, request: &Request<'_>) -> Result<Backup, IoError> 
 }
 
 /// The steps of [`create()`] with a chosen instant and a chosen
-/// [`FileOps`] for the manifest write. It exists for tests; callers use
-/// [`create()`]. The copies and the folder operations use `std::fs`.
+/// [`FileOps`] for the copies and the manifest write. It exists for tests;
+/// callers use [`create()`]. The folder operations use `std::fs`.
 ///
 /// # Errors
 ///
@@ -109,9 +111,11 @@ pub fn create(data: &DataDir, request: &Request<'_>) -> Result<Backup, IoError> 
 ///   (no file, a name that is not a plain file name, a repeated name, an
 ///   empty `save_type` or `reason`). Nothing exists on disk yet.
 /// - [`IoError::Io`] when a folder or a copy fails: `CreateDir` for the game
-///   folder or the backup folder (all 100 names taken: `AlreadyExists`),
-///   `Read` for a source file that does not open, `Write` for a destination
-///   that does not open, `Copy` for the transfer, `Sync` for the flush.
+///   folder or the backup folder (no name left for the second:
+///   `AlreadyExists`), `ListDir` for the scan of the game folder, `Copy` for
+///   any failed copy (the source does not open, the destination exists or
+///   does not open, the transfer or the flush fails), with the source file as
+///   path.
 /// - [`IoError::VerificationFailed`] when the manifest read back from its
 ///   temporary file differs from the one written, and [`IoError::Io`] for a
 ///   failed step of the manifest write.
@@ -163,13 +167,18 @@ fn create_protecting<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Req
     Ok(backup)
 }
 
-/// Creates the first free folder of `<stamp>`, `<stamp>-01` ... `<stamp>-99`.
+/// Creates the folder after the highest `<stamp>[-NN]` name on disk.
 ///
-/// The exclusive `create_dir` settles two callers that race for the same
-/// second: the loser sees `AlreadyExists` and takes the next name. An
-/// existence check followed by a create would let both win.
+/// A name is never taken twice in one second, whatever retention deleted in
+/// between: the freed bare stamp would sort as the oldest backup and the next
+/// retention pass would delete a newer one. The 101st call in one second
+/// fails with `AlreadyExists`, even when fewer folders remain.
+///
+/// The exclusive `create_dir` settles two callers that scan the same folder:
+/// the loser sees `AlreadyExists` and takes the next name. An existence check
+/// followed by a create would let both win.
 fn claim_folder(game_dir: &Path, stamp: &str) -> Result<PathBuf, IoError> {
-    for suffix in 0..=MAX_SUFFIX {
+    for suffix in next_suffix(game_dir, stamp)?..=MAX_SUFFIX {
         let candidate = if suffix == 0 {
             game_dir.join(stamp)
         } else {
@@ -194,6 +203,32 @@ fn claim_folder(game_dir: &Path, stamp: &str) -> Result<PathBuf, IoError> {
     })
 }
 
+/// The suffix after the highest one used by an entry of `game_dir` named
+/// `<stamp>` (suffix 0) or `<stamp>-NN` (`NN` is two ASCII digits), or 0 when
+/// none exists. Files count too, because `create_dir` collides with them.
+fn next_suffix(game_dir: &Path, stamp: &str) -> Result<u32, IoError> {
+    let list_error = |source| IoError::Io {
+        operation: Operation::ListDir,
+        path: game_dir.to_path_buf(),
+        source,
+    };
+    let mut next = 0;
+    for entry in fs::read_dir(game_dir).map_err(list_error)? {
+        let entry = entry.map_err(list_error)?;
+        let name = entry.file_name();
+        let Some(rest) = name.to_str().and_then(|name| name.strip_prefix(stamp)) else {
+            continue;
+        };
+        let suffix = match rest.strip_prefix('-') {
+            None if rest.is_empty() => 0,
+            Some(digits) if digits.len() == 2 && digits.bytes().all(|byte| byte.is_ascii_digit()) => digits.parse().unwrap_or(0),
+            _ => continue,
+        };
+        next = next.max(suffix + 1);
+    }
+    Ok(next)
+}
+
 /// Copies the files, then writes the manifest.
 ///
 /// The manifest comes last and goes through the atomic pipeline: a folder
@@ -201,7 +236,12 @@ fn claim_folder(game_dir: &Path, stamp: &str) -> Result<PathBuf, IoError> {
 /// reads the temporary file back and compares it with the manifest in memory.
 fn fill_folder<O: FileOps + ?Sized>(ops: &O, dir: &Path, request: &Request<'_>, manifest: &Manifest) -> Result<(), IoError> {
     for name in request.files {
-        copy_file(&request.source_dir.join(name), &dir.join(name))?;
+        let from = request.source_dir.join(name);
+        ops.copy_file(&from, &dir.join(name)).map_err(|source| IoError::Io {
+            operation: Operation::Copy,
+            path: from,
+            source,
+        })?;
     }
 
     let manifest_path = dir.join(MANIFEST_FILE);
@@ -218,16 +258,4 @@ fn fill_folder<O: FileOps + ?Sized>(ops: &O, dir: &Path, request: &Request<'_>, 
             Err("the manifest read back differs from the manifest written".into())
         }
     })
-}
-
-/// Copies the bytes of `from` into a new file `to` and flushes it to disk.
-fn copy_file(from: &Path, to: &Path) -> Result<(), IoError> {
-    let step = |operation, path: &Path| {
-        let path = path.to_path_buf();
-        move |source| IoError::Io { operation, path, source }
-    };
-    let mut source = File::open(from).map_err(step(Operation::Read, from))?;
-    let mut destination = OpenOptions::new().write(true).create_new(true).open(to).map_err(step(Operation::Write, to))?;
-    io::copy(&mut source, &mut destination).map_err(step(Operation::Copy, from))?;
-    destination.sync_all().map_err(step(Operation::Sync, to))
 }
