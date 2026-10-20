@@ -33,29 +33,43 @@ fn the_table_holds_the_six_games_in_order() {
     }
 }
 
-/// The cells of the Games table, backticks stripped, header and separator skipped.
-fn table_rows(document: &str) -> Vec<Vec<String>> {
+const HEADER: [&str; 4] = ["Game", "Steam app ID", "Game folder under My Games", "Executable"];
+
+/// The cells of every line of the Games table, header and separator
+/// included, backticks stripped.
+fn table_lines(document: &str) -> Vec<Vec<String>> {
     document
         .lines()
         .skip_while(|line| line.trim_end() != "### Games")
         .skip(1)
         .skip_while(|line| !line.starts_with('|'))
         .take_while(|line| line.starts_with('|'))
-        .skip(2)
         .map(|line| line.trim().trim_matches('|').split('|').map(|cell| cell.trim().replace('`', "")).collect())
         .collect()
+}
+
+/// The data rows of the Games table: no header, no separator.
+fn table_rows(document: &str) -> Vec<Vec<String>> {
+    table_lines(document).into_iter().skip(2).collect()
 }
 
 /// One message per disagreement between the document table and `GAMES`,
 /// naming the row and the field.
 fn mismatches(document: &str) -> Vec<String> {
+    let lines = table_lines(document);
     let rows = table_rows(document);
     let mut found = Vec::new();
+    if lines.first().map(Vec::as_slice) != Some(&HEADER.map(String::from)[..]) {
+        found.push(format!("the header is {:?}, expected {HEADER:?}", lines.first()));
+    }
     if rows.len() != GAMES.len() {
         found.push(format!("the table has {} rows, expected {}", rows.len(), GAMES.len()));
     }
     for ((row, game), numeral) in rows.iter().zip(GAMES).zip(NUMERALS) {
         let name = format!("FF {numeral} PR");
+        if row.len() != HEADER.len() {
+            found.push(format!("row {name}: {} cells, expected {}", row.len(), HEADER.len()));
+        }
         let cell = |index: usize| row.get(index).map_or("", String::as_str);
         if cell(0) != name {
             found.push(format!("row {name}: game cell is {:?}", cell(0)));
@@ -95,6 +109,16 @@ fn a_changed_document_row_is_detected() {
     assert_ne!(changed_folder, document, "the folder of FF V must appear after the heading");
     let found = mismatches(&changed_folder);
     assert!(found.iter().any(|message| message.contains("FF V PR")), "{found:?}");
+
+    let extra_cell = format!("{head}{}", table.replacen("`FINAL FANTASY III.exe` |", "`FINAL FANTASY III.exe` | extra |", 1));
+    assert_ne!(extra_cell, document, "the executable of FF III must appear after the heading");
+    let found = mismatches(&extra_cell);
+    assert!(found.iter().any(|message| message.contains("FF III PR")), "{found:?}");
+
+    let renamed_label = format!("{head}{}", table.replacen("| Executable |", "| Program |", 1));
+    assert_ne!(renamed_label, document, "the Executable label must appear after the heading");
+    let found = mismatches(&renamed_label);
+    assert!(found.iter().any(|message| message.contains("header")), "{found:?}");
 }
 
 #[test]

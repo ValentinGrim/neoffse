@@ -74,8 +74,10 @@ impl Container {
     }
 }
 
-/// Which inflate path produced the payload.
+/// Which inflate path produced the payload. A later version may add
+/// variants, so a `match` needs a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum InflatePath {
     /// A block with BFINAL set ended the stream (every measured file).
     FinalBlock,
@@ -89,8 +91,10 @@ pub enum InflatePath {
     Fallback,
 }
 
-/// The result of [`decode`].
+/// The result of [`decode`]. A later version may add fields, and only
+/// [`decode`] builds one.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Decoded {
     /// The payload, compact JSON text. It is valid UTF-8. On the final-block
     /// path the codec checks nothing more. On the Fallback path the text also

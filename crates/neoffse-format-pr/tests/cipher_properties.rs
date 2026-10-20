@@ -1,7 +1,7 @@
 //! Property tests of the cipher: inverses, CBC error propagation, padding.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
-use neoffse_format_pr::cipher::{BLOCK_SIZE, Rijndael256, UnalignedLength, pad_zeros};
+use neoffse_format_pr::cipher::{BLOCK_SIZE, Rijndael256, pad_zeros};
 use proptest::prelude::*;
 use proptest::{array::uniform32, collection::vec};
 
@@ -88,9 +88,9 @@ proptest! {
         prop_assume!(!len.is_multiple_of(32));
         let cipher = Rijndael256::new(&key);
         let mut buffer = data.clone();
-        prop_assert_eq!(cipher.cbc_encrypt(&iv, &mut buffer), Err(UnalignedLength { len }));
+        prop_assert_eq!(cipher.cbc_encrypt(&iv, &mut buffer).map_err(|error| error.len), Err(len));
         prop_assert_eq!(&buffer, &data);
-        prop_assert_eq!(cipher.cbc_decrypt(&iv, &mut buffer), Err(UnalignedLength { len }));
+        prop_assert_eq!(cipher.cbc_decrypt(&iv, &mut buffer).map_err(|error| error.len), Err(len));
         prop_assert_eq!(&buffer, &data);
     }
 }

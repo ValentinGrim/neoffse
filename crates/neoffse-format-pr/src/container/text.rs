@@ -11,8 +11,10 @@ use super::CodecError;
 pub const BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
 
 /// A file cut into its three framing parts. `bom + text + trailer` joins
-/// back to the input.
+/// back to the input. A later version may add fields, and only [`split`]
+/// builds one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Framing<'a> {
     /// The file began with [`BOM`].
     pub bom: bool,
