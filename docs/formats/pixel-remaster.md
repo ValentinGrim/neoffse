@@ -22,9 +22,10 @@ The Auto Save equals slot 1 in every field those rules measure, and slot 2
 is the editor's copy of slot 1 [M]. Every [M] on an FF I character value
 in those sections rests on 8 character states. The ranges quoted there are
 observations, not bounds: no measured value comes from a new game (level 1,
-bare hands, low gil). The names and IDs of FF I items and equipment come
-from the game's own master data, read from one install of FF I
-([Game master data](#game-master-data)).
+bare hands, low gil). The names and IDs of FF I items, equipment, abilities, jobs,
+commands, maps and monsters, and the bounds the game states, come from the
+game's own master data, read from one install of FF I ([Game master
+data](#game-master-data)).
 
 ### Games
 
@@ -59,8 +60,8 @@ Platforms covered:
 | Source | Location | Used for |
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
-| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix. Two Addressables bundles in `<install>/FINAL FANTASY_Data/StreamingAssets/aa/StandaloneWindows64/`: `master_assets_all_<hash>.bundle` → TextAsset `Assets/GameAssets/Serial/Data/Master/content.csv` (and 88 other CSV files), and `message_assets_all_<hash>.bundle` → TextAssets `Assets/GameAssets/Serial/Data/Message/system_en.txt` and `system_fr.txt` (and `system_ja.txt`). The `<hash>` part of each file name varies per build. Read with UnityPy 1.25.4 from copies of the bundles | IDs, kinds and English and French names of the FF I items and equipment ([Game master data](#game-master-data)) [D] |
-| Go editor tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | names of the FF I abilities and jobs; the historical source of the content names, compared with the game ([Go editor tables](#go-editor-tables)) |
+| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix. Two Addressables bundles in `<install>/FINAL FANTASY_Data/StreamingAssets/aa/StandaloneWindows64/`: `master_assets_all_<hash>.bundle` → TextAsset `Assets/GameAssets/Serial/Data/Master/content.csv` (and 88 other CSV files), and `message_assets_all_<hash>.bundle` → TextAssets `Assets/GameAssets/Serial/Data/Message/system_en.txt` and `system_fr.txt` (and `system_ja.txt`). The `<hash>` part of each file name varies per build. Read with UnityPy 1.25.4 from copies of the bundles | IDs, kinds and English and French names of the FF I items, equipment, abilities, jobs, commands, maps and monsters, and the bounds in `game_constant_int.csv` ([Game master data](#game-master-data) and the three sections after it) [D] |
+| Go editor tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | the historical source of the FF I names, compared with the game ([Go editor tables](#go-editor-tables)) |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
 | Real saves | one Steam save folder per game, read-only copies | every [M] fact about the files |
 | Steam's own files | `libraryfolders.vdf`, `appmanifest_<app ID>.acf`, `remotecache.vdf`, `loginusers.vdf` and the install folders of one Linux Steam install with two libraries; structure only, personal values masked | every [M] fact about roots, libraries and Steam Cloud |
@@ -753,12 +754,12 @@ string.
 
 ### Game master data
 
-The game stores its content IDs and their names in its own data files.
+The game stores its IDs and their names in its own data files.
 `content.csv` gives each `contentId` a type and a name key, and the
 message files turn the key into text in each language. NeoFFSE builds its
-`contentId` tables from these files. Every fact below comes from the FF I
-install, build 20249397 [D]. The installs of the other five games were not
-read.
+tables from these files. Every fact below and in the three sections after
+it comes from the FF I install, build 20249397 [D]. The installs of the
+other five games were not read.
 
 **Where the files sit.** `<install>` is
 `<library>/steamapps/common/FINAL FANTASY PR/`. Both files are TextAssets
@@ -770,8 +771,15 @@ inside Unity Addressables bundles in
 | `master_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Master/*.csv` | 89 CSV files; `content.csv` defines the content IDs |
 | `message_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Message/system_en.txt`, `system_fr.txt`, `system_ja.txt` | text per language, one file each |
 
-The `<hash>` part of the bundle names changes with the build, so match the
-prefix. UnityPy 1.25.4 opens the bundles [D].
+The `<hash>` part of the bundle names changes with the build. Match the
+exact prefixes `master_assets_all_` and `message_assets_all_`: a looser
+match on `message_assets_all_` hits
+`common_message_assets_all_<hash>.bundle` too, which holds UI sprites.
+`StreamingAssets/aa/catalog.json` (Addressables 1.16.10) gives another way
+in: its `m_InternalIds` lists every bundle path with its hash, and the
+asset paths inside the bundles. Those asset paths, such as
+`Assets/GameAssets/Serial/Data/Master/content.csv`, carry no hash [D].
+UnityPy 1.25.4 opens the bundles [D].
 
 **`content.csv`.** One row per content ID, with a header line. The measured
 build holds 221 rows [D]. Columns, in order:
@@ -791,21 +799,34 @@ build holds 221 rows [D]. Columns, in order:
 | 1 | item | row in `item.csv` | 36 |
 | 2 | weapon | row in `weapon.csv` | 41 |
 | 3 | armor | row in `armor.csv` | 44 |
-| 4 | ability or command | not measured | 99 |
+| 4 | ability | row in `ability.csv` | 99 |
 | 5 | gil | not measured | 1 |
 
-Types 1 to 3 hold 121 content IDs, from 2 to 202 [D]. The `id` column is
+Type 4 holds the names of the abilities ([Ability, job and command
+tables](#ability-job-and-command-tables)). Types 1 to 3 hold 121 content
+IDs, from 2 to 202 [D]. The `id` column is
 the `contentId` of saves: 111 entries of the Go editor's tables, which use
 save IDs, match it by ID and name ([Go editor tables](#go-editor-tables))
 [D, M].
 
 **Resolving a name.** Look up `mes_id_name` in the message file of the
 language. A message file holds one `key<TAB>text` pair per CRLF line, and
-no key repeats [D]. `system_fr.txt` carries the same keys as
-`system_en.txt`. Equipment names start with an icon tag such as
-`<IC_SHIELD>`; strip it before you show the name. The game resolves names
-this way [I]: the column name and the matches against the Go editor's
-tables say so, and no game code was read.
+no key repeats [D]. `system_en.txt` and `system_fr.txt` hold the same
+1 099 keys. Every name key of the tables in this document resolves in
+them, and in no other message file (`story_cha`, `story_mes` and
+`etc_text` do not hold them) [D]. The game resolves names this way [I]: the
+column name and the matches against the Go editor's tables say so, and no
+game code was read.
+
+- **Icon tags.** A name can start with an icon tag matching
+  `^<IC_[A-Z]+>`: `<IC_SHIELD>` on shields, `<IC_WMGC>` and `<IC_BMGC>` on
+  spells. The files hold 19 distinct tags. Strip the tag before you show
+  the name [D].
+- **Plain text.** After the tag, a name holds no `"`, `\`, tab, `<` or `>`,
+  and no space at either end. English names are ASCII. French names add
+  `É â è é ê ë î ï ô û Œ œ` [D].
+- **Descriptions.** A description holds a literal `\n` (a backslash and an
+  `n`), not a line break [D].
 
 A name key does not follow the content ID, so always read the key from the
 row. Rows 164 to 166, verbatim [D]:
@@ -846,35 +867,219 @@ Three readings rule out a swap between keys and rows [D]:
   the equipment slot of the row, with group 2 for the left hand [I]; the
   other groups were not read.
 - `attribute_group.csv` maps a `resistance_attribute` value to attributes.
-- `item.csv` and `weapon.csv` hold the rows that types 1 and 2 point to;
-  their columns were not read.
+- `item.csv` holds the rows that type 1 points to, and its `type_id`
+  separates items from key items (below). `weapon.csv` holds the rows that
+  type 2 points to; its columns were not read.
+
+**Item or key item.** `content.csv` gives both kinds `type_id` 1. The
+`type_id` of `item.csv` (36 rows) splits them, and a content row reaches its
+`item.csv` row through `type_value` [D]:
+
+| `item.csv` `type_id` | Rows | Content IDs | Name keys | Icon tags |
+|---|---|---|---|---|
+| 1 | 19 | 2 to 36, with gaps | `MSG_ITEM_NAME_*` | `<IC_DRAG>`, `<IC_BAG>`, `<IC_TENTO>` |
+| 2 | 17 | 45 to 61 | `MSG_KEY_NAME_*` | `<IC_IOBJ>` |
+
+Two rows show the link: `item.csv` row 1 (`1,1,1,1`: `id`, `sort_id`,
+`type_id`, `system_id`) is content 2, a Potion, and row 45 (`45,45,2,0`) is
+content 46, a Crown. Every type-2 row has `system_id` 0, a sell price of 0
+and both function groups at 0. Every type-1 row has a menu or battle
+function group other than 0. The labels "item" and "key item" come from the
+name-key prefixes and the icons, not from game code [I].
 
 **Limits.** One build and one game were read. A patch may renumber IDs, and
-the Pixel Remaster ports for other platforms were not checked. The check
-compared the seven content tables of the Go editor with `content.csv`.
-`abilityId`, `jobId`, commands, maps and monsters were not read from the
-game.
+the Pixel Remaster ports for other platforms were not checked. FF II to VI
+may use other columns or other bundle names. The kind columns
+(`ability.csv` `type_id`, `item.csv` `type_id`) take their meaning from name
+keys, icons and descriptions, not from game code [I].
+
+### Ability, job and command tables
+
+Abilities, jobs and commands each have a master file whose name keys
+resolve in `system_en.txt` and `system_fr.txt`. Abilities reach their names
+through `content.csv`; jobs and commands carry the key themselves. Every
+fact in this section is [D] unless a tag says otherwise.
+
+**Abilities.** `ability.csv` holds 96 rows: IDs 1 to 95 and 100. It has no
+name column. The columns that matter here are `id`, `sort_id`,
+`ability_lv`, `ability_group_id`, `type_id`, `use_job_group_id` and `buy`.
+
+The name of `abilityId` N sits in the `content.csv` row of type 4 whose
+`type_value` is N. Join on `type_value`, not on a fixed offset:
+
+- 98 of the 99 type-4 rows have a content ID equal to `type_value + 208`.
+  The exception is content 310, which points to ability 100, an offset of
+  210. Ability 100 is a second Curaja (`type_id` 1, `ability_lv` 7,
+  `use_job_group_id` 0).
+- Each `ability.csv` row matches one content row and no other.
+- Content 305, 306 and 307 (`type_value` 97, 98 and 99, all named "Attack")
+  point to no `ability.csv` row.
+
+`ability.csv` `type_id` sorts the 96 rows into kinds:
+
+| `type_id` | IDs | Rows | Name keys | Icon tag |
+|---|---|---|---|---|
+| 1 | offsets 0 to 3 of each level in 5 to 68, and 100 | 33 | `MSG_MAGIC_NAME_*` | `<IC_WMGC>` |
+| 2 | offsets 4 to 7 of each level in 5 to 68 | 32 | `MSG_MAGIC_NAME_*` | `<IC_BMGC>` |
+| 13 | 69 to 94 except 77 and 91 | 24 | `MSG_MON_ATK_*` | none |
+| 3 | 77 and 91 | 2 | `MSG_MON_ATK_*` | none |
+| 4, 5, 6, 8 | 1 (type 4), 2 (type 5), 3 and 95 (type 6), 4 (type 8) | 5 | `MSG_SYSTEM_*` (Attack, Defend, Flee, Back) | none |
+
+No table in the data names these kinds. Type 1 as white magic and type 2 as
+black magic rest on the icon tags and on the white and black offsets
+measured in the saves [I]. Types 3 and 13 are both monster abilities by
+their name keys; the data does not say what separates them [I].
+
+`ability_lv` holds the spell level, 1 to 8, and 0 for every non-spell. For
+IDs 5 to 68, `ability_lv` = (`id` − 5) / 8 + 1 with integer division, and
+`type_id` is 1 for offsets 0 to 3 and 2 for offsets 4 to 7, without
+exception. The formula measured in the saves ([Abilities](#abilities))
+holds for all 64 spells, not just the 47 the saves hold.
+`use_job_group_id` points into `job_group.csv` (50 rows, columns
+`job1_accept` to `job22_accept`), which says which jobs may learn the
+spell; its values were not decoded.
+
+Four entries of the Go editor's `Abilities` table disagree with the game
+([Go editor tables](#go-editor-tables)).
+
+**Jobs.** `job.csv` holds 12 rows, IDs 1 to 12, with the columns
+`id`, `mes_id_name`, `mes_id_description`, `change_command_1` to
+`change_command_5`, `initial_condition`, `strength`, `vitality`, `agility`
+and `magic`. The name keys are `MSG_JOB_NAME_01` to `MSG_JOB_NAME_12`, in ID
+order. Job 1 reads Warrior (Guerrier) and job 12 Black Wizard (Sage noir);
+job 7 reads Knight in English and Paladin in French. The promoted jobs
+carry no description key (`7,MSG_JOB_NAME_07,None`). All 12 names agree
+with the Go editor's `Jobs` table. `change_command_1` to `change_command_5`
+are 0 on all 12 rows.
+
+**Commands.** `command.csv` holds 6 rows, IDs 1 to 6, with the columns
+`id`, `command_lv`, `mes_id_name`, `mes_id_name2`, `mes_id_description`,
+`ability_id` and others:
+
+| ID | `mes_id_name` | English | French | `ability_id` |
+|---|---|---|---|---|
+| 1 | `MSG_SYSTEM_029` | Attack | Attaque | 1 |
+| 2 | `MSG_SYSTEM_030` | Defend | Défense | 2 |
+| 3 | `MSG_SYSTEM_043` | Magic | Magie | 0 |
+| 4 | `MSG_SYSTEM_042` | Items | Objets | 0 |
+| 5 | `MSG_SYSTEM_032` | Flee | Fuite | 3 |
+| 6 | `MSG_SYSTEM_002` | Back | Retour | 4 |
+
+`mes_id_name2` equals `mes_id_name` on all six rows. A save's
+`commandList` `[1,3,4,2,5]` reads Attack, Magic, Items, Defend, Flee
+[M, D]. `character_status.csv` (6 rows) gives every starting character
+`command_id1` to `command_id3` of 1, 3 and 4. The Go editor's `Commands`
+table names 3 "Flee" and 4 "Row" ([Go editor tables](#go-editor-tables)).
+
+### Map and monster tables
+
+Maps and monsters each have a master file with name keys. Map names need
+two joins, and both files repeat names, so key every table by ID. Every
+fact in this section is [D] unless a tag says otherwise.
+
+**Maps.** `map.csv` holds 130 rows: IDs 1 to 127 without a gap, then 800,
+801 and 802. The Go editor's `Maps` table stops at 120. A row carries two
+name keys:
+
+- `area_id` points into `area.csv` (29 rows: `id`, `map_type`,
+  `area_name`). `area_name` is a `MSG_MAP_NAME_*` key for a place such as
+  "Castle Cornelia" or "World Map".
+- `map_title` is a `MSGARA_NAME_*` key for a floor or a shop ("1F",
+  "Inn"), or `None`, which 39 rows hold.
+
+`map_name` (`Map_20011_1`) and `asset_name` (`map_20011`) are internal
+labels. Map 2 has `map_name` `Map_20011_1`, `map_title` `MSGARA_NAME_06`
+and `area_id` 16, whose `area_name` is `MSG_MAP_NAME_08`. Map 61 has
+`Map_20151_2`, `MSGARA_NAME_11` and `area_id` 19.
+
+Names repeat:
+
+- Joined as area name plus title, the 130 rows give 101 distinct English
+  names. 17 names repeat: Castle Cornelia seven times, Gaia six times and
+  World Map four times.
+- Two `area.csv` rows both read "Sunken Shrine".
+- `map_name` is unique per row, so it makes a stable internal label.
+- Rows 800 to 802 (`Map_00000_*`) sit in area 1 with no title, so they
+  read "World Map" too. The data does not say what they serve.
+- French titles start with a lower-case letter ("rez-de-chaussée",
+  "auberge"). The data does not hold the format the game uses to join area
+  name and title [I].
+
+**Monsters.** `monster.csv` holds 129 rows, IDs 1 to 129 without a gap, and
+`mes_id_name` is a `MSG_MON_NAME_*` key. The rows carry 124 distinct names:
+five keys each serve two rows.
+
+| Name | Monster IDs | `boss` | HP |
+|---|---|---|---|
+| Vampire | 61, 129 | 0, 1 | 280, 280 |
+| Lich | 120, 121 | 1, 1 | 1 200, 2 800 |
+| Marilith | 122, 123 | 1, 1 | 1 440, 3 200 |
+| Kraken | 124, 125 | 1, 1 | 1 800, 3 600 |
+| Tiamat | 126, 127 | 1, 1 | 2 400, 5 500 |
+
+The column `boss` is 1 on 12 rows: 106, 114 and 120 to 129. Monster 128 is
+Chaos. The Go editor's `Bestiary` table agrees with `monster.csv` on 128 of
+the 129 IDs. Its entry 129 reads "Vampire (Cavern of Earth)", where the game
+reads "Vampire". The keys of the saved bestiary are these monster IDs
+([Bestiary](#bestiary)).
+
+### Bounds in the master data
+
+The game states six caps and several stat caps in `game_constant_int.csv`
+(96 rows: `id`, `key_name`, `value1`, `value2`) [D]:
+
+| Save field | `key_name` | `value1` |
+|---|---|---|
+| `owendGil` | `MAX_GIL` | 999 999 |
+| inventory `count` | `MAX_ITEM` | 99 |
+| level (`addtionalLevel` plus the base) | `MAX_LV` | 99 |
+| `currentExp` | `MAX_EXP` | 9 999 999 |
+| HP | `MAX_HP` | 999 |
+| spell charges per level | `MAX_MAGICAL_TIMES` | 9 |
+| strength, vitality, agility, intelligence, spirit, luck | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` | 99 each |
+| attack, defense, ability attack, ability defense, accuracy, evasion | `MAX_ATTACK`, `MAX_DEFENSE` and the matching rows | 255 each |
+
+The key names keep the game's spelling. `exp_table.csv` (99 rows: `id`,
+`type_id`, `group_id`, `lv`, `total_exp`) ends at level 99 with a
+`total_exp` of 1 471 455, which agrees with `MAX_LV`.
+
+The master data does not state:
+
+- an MP cap: it holds no `MAX_MP` row, and FF I uses spell charges;
+- a cap on the magic stat: it holds no row for it;
+- a cap on the gain fields `addtionalMaxHp` and `addtionalMaxMpCountList`.
+
+`MAX_HP` caps HP at 999, yet the stored gain `addtionalMaxHp` reaches 1 097
+in the saves [M]. The cap applies to the sum of base and gain, not to the
+field [I]. How the game combines the two is not in the data
+([Open questions](#open-questions)).
 
 ### ID spaces and tables
 
-A save points into the game data through three ID spaces: `contentId`,
-`abilityId` and `jobId`. NeoFFSE takes the `contentId` IDs, kinds and names
-from `content.csv` and the message files ([Game master data](#game-master-data)).
-The names of `abilityId` and `jobId` come from the Go editor's tables,
-because the game's own files for them were not read ([Go editor
-tables](#go-editor-tables)). Facts about game data are [D], facts about the
-Go editor's tables [C], comparisons with the saves [M].
+A save points into the game data through six ID spaces: `contentId`,
+`abilityId`, `jobId`, commands, maps and monsters. NeoFFSE takes the IDs,
+kinds and names of all six from the game's master files and message files
+([Game master data](#game-master-data), [Ability, job and command
+tables](#ability-job-and-command-tables), [Map and monster
+tables](#map-and-monster-tables)). The Go editor's tables name the same IDs
+and serve as a historical source ([Go editor tables](#go-editor-tables)).
+Facts about game data are [D], facts about the Go editor's tables [C],
+comparisons with the saves [M].
 
 | Space | Referenced by | Names from | IDs |
 |---|---|---|---|
 | `contentId` | rows of `normalOwnedItemList` and `importantOwendItemList`, equipment slots, the `contentId` of an ability object | `content.csv` with `system_en.txt` and `system_fr.txt` [D] | 2 to 202; spells 213 to 276 |
-| `abilityId` | `abilityList`, spell slots, `learnedAbilityList` | Go `Abilities` [C] | 5 to 94 |
-| `jobId` | character `jobId`, `id` in `jobList`, `releasedJobs` | Go `Jobs` [C] | 1 to 12 |
+| `abilityId` | `abilityList`, spell slots, `learnedAbilityList` | the type-4 row of `content.csv` whose `type_value` is the ID [D] | 1 to 95 and 100 in the game [D]; 5 to 68 in the saves [M] |
+| `jobId` | character `jobId`, `id` in `jobList`, `releasedJobs` | `job.csv` [D] | 1 to 12 |
+| command | `commandList` | `command.csv` [D] | 1 to 6 in the game [D]; 1 to 5 in the saves [M] |
+| map | `mapData.mapId` [C] | `map.csv`, through `area.csv` and `map_title` [D] | 1 to 127 and 800 to 802 |
+| monster | `monsterDefeats` keys | `monster.csv` [D] | 1 to 129 in the game [D]; 1 to 128 in the saves [M] |
 
-Items, key items and equipment share one `contentId` space. Key items take
-45 to 61 [C], and every ID of `importantOwendItemList` falls in that range
-[M]. Spell content IDs (`abilityId + 208` in FF I) sit above every item and
-equipment ID, and none appears in the inventory [M].
+Items, key items and equipment share one `contentId` space. Key items are
+the content IDs 45 to 61, the rows of type 2 in `item.csv` [D], and every ID
+of `importantOwendItemList` falls in that range [M]. Spell content IDs
+(`abilityId + 208` in FF I, with one exception, [Abilities](#abilities)) sit
+above every item and equipment ID, and none appears in the inventory [M].
 
 - **Placeholders.** The game holds a row for each empty-slot ID: the name
   of 62 reads "Empty" (key `MSG_SYSTEM_069`) and the names of 130 to 133
@@ -883,10 +1088,11 @@ equipment ID, and none appears in the inventory [M].
 
 ### Go editor tables
 
-The Go editor lists names for the content, ability and job IDs in its
-package `models/core/costs/ff1`. For `contentId`, 111 of its 116 entries
-match the game, and the rest are a known pitfall ([Known
-pitfalls](#known-pitfalls)). Each table is a package-level slice of `models.NameValue`
+The Go editor lists names for the content, ability, job, command, map and
+monster IDs in its package `models/core/costs/ff1`. The game's files are the
+reference for all of them. For `contentId`, 111 of its 116 entries match the
+game; for `abilityId`, 86 of 90; the other differences are known pitfalls
+([Known pitfalls](#known-pitfalls)). Each table is a package-level slice of `models.NameValue`
 (`Name string`, `Value int`), sorted by ID. The package imports no GUI
 code. Its module path is `pixel-remastered-save-editor`.
 
@@ -919,7 +1125,9 @@ code. Its module path is `pixel-remastered-save-editor`.
   are the editor's; the game names these rows "Empty" and "None".
 - **Spells and monster abilities.** In `Abilities`, 5 to 68 are 64 spells,
   8 levels of 8, and 69 to 94 are monster abilities that no character
-  holds. Only the names mark the split ([Abilities](#abilities)).
+  holds. In the Go table the names alone mark the split; the game's
+  `ability.csv` marks it with `type_id` ([Ability, job and command
+  tables](#ability-job-and-command-tables)).
 - **Comments.** The source comments out X-Potion, six daggers and Knight's
   Armor. They have no ID in the tables, and the game holds rows for X-Potion
   and Knight's Armor.
@@ -957,6 +1165,33 @@ The other three are 4 (X-Potion), 104 (Nunchaku) and 105 (Iron Nunchaku).
 Apart from these eight, every gap inside the ranges of the Go tables is a
 gap in the game's IDs too [D].
 
+**Abilities, commands, jobs and monsters against the game** [D]. The
+comparison reads `Abilities`, `Jobs`, `Commands` and `Bestiary` at tag
+`v1.5.1` against `ability.csv`, `job.csv`, `command.csv` and `monster.csv`
+with the message files:
+
+`Abilities`: 86 of 90 entries agree. The other four are two swaps. The
+game numbers its name keys out of order, as it does for the shields, and
+its descriptions follow the rows:
+
+| `abilityId` | Content row | Name key | Game name | Go name |
+|---|---|---|---|---|
+| 13 | 221 | `MSG_MAGIC_NAME_08` | Invis (raises an ally's evasion) | Blindna |
+| 15 | 223 | `MSG_MAGIC_NAME_05` | Blindna (cures darkness) | Invis |
+| 66 | 274 | `MSG_MAGIC_NAME_63` | Warp (banishes enemies to another dimension) | Stop |
+| 67 | 275 | `MSG_MAGIC_NAME_62` | Stop (stops time and paralyzes all enemies) | Warp |
+
+The other tables:
+
+- `Commands`: the editor names 3 "Flee" and 4 "Row". The game names 3 Magic
+  and 4 Items, puts Flee at 5 and Back at 6, and has no "Row". The editor's
+  table stops at 4.
+- `Jobs`: 12 of 12 names agree.
+- `Bestiary`: 128 of 129 IDs agree. ID 129 reads "Vampire (Cavern of
+  Earth)" in the editor and "Vampire" in the game.
+- `Maps`: the editor's table ends at 120. The game's `map.csv` runs to 127
+  and adds 800 to 802.
+
 ### Characters
 
 `userData → ownedCharacterList → target[]` holds one JSON string per
@@ -968,11 +1203,11 @@ character: 4 in FF I, 7 or 8 in FF II [M]. Identify a character by
 | `id` | int | 1 to N, unique [M] |
 | `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the status names the base class [I]. No other meaning measured |
 | `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
-| `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; IDs in `Jobs` ([ID spaces and tables](#id-spaces-and-tables)) |
+| `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; names in `job.csv` ([ID spaces and tables](#id-spaces-and-tables)) |
 | `name` | string | raw UTF-8, may hold non-ASCII [M]; two FF I heroes may share a name, FF VI has two Mogs [C, `d8a6c6f`] |
-| `currentExp` | int | [M] |
+| `currentExp` | int | [M]; the game caps it at 9 999 999 (`MAX_EXP`) [D] ([Bounds in the master data](#bounds-in-the-master-data)) |
 | `parameter` | JSON | stats, below |
-| `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C]. FF I value 5 has no entry in the editor's `Commands` table (1 to 4) [M, C] |
+| `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C]. The FF I values read Attack, Magic, Items, Defend and Flee in `command.csv` [M, D]. The editor's `Commands` table gives 3 and 4 the wrong names and lacks 5 ([Go editor tables](#go-editor-tables)) [D, C] |
 | `abilityList`, `abilitySlotDataList`, `additionOrderOwnedAbilityIds`, `sortOrderOwnedAbilityIds`, `abilityDictionary`, `skillLevelTargets`, `learningAbilitys` | JSON | [Abilities](#abilities) |
 | `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries (`id` 1 to 12), FF II 8 [M]. FF I: `level` 1 and `currentProficiency` 0 in every entry of the 8 character states [M]; FF I does not use them [I] |
 | `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4); slots and `count` in [Equipment slots](#equipment-slots) |
@@ -999,13 +1234,17 @@ of a base the file does not store:
 - `addtionalLevel` grows with `currentExp` in both game states [M]. The Go
   editor labels it "Level" (`coreStats.go`) [C]. Whether the menu shows
   the value or the value plus 1 is open ([Open questions](#open-questions)).
+  The game caps the level at 99 (`MAX_LV`) [D].
 - `addtionalMaxHp` is a gain over a per-character base, not the maximum.
   `currentHP` exceeds it in 7 of 8 character states, by a difference that
   stays constant per character across both game states [M]. In the
   eighth state `currentHP` is 999 and `addtionalMaxHp` is 1 097; the same
   character's difference in the other game state is 35, so base plus gain
-  would be 1 132. Reading: maximum HP = base + `addtionalMaxHp`, capped at
-  999 [I]. The Go editor labels the field "HP Max" (`coreStats.go`) [C],
+  would be 1 132. The game states a maximum HP of 999 (`MAX_HP`) and no
+  bound for the gain field [D]. Reading: the cap bounds the sum of base and
+  gain, not the field, and maximum HP = base + `addtionalMaxHp`, capped at
+  999 [I]. The master data does not say how the game combines the two
+  ([Open questions](#open-questions)). The Go editor labels the field "HP Max" (`coreStats.go`) [C],
   which the data contradicts.
 - `currentMP` and `addtionalMaxMp` hold 0 in all 8 states. FF I stores
   spell charges per spell level in `currentMpCountList` and
@@ -1013,7 +1252,11 @@ of a base the file does not store:
   `addtionalMaxMpCountList` is a gain too: for the two spellcasters, level
   1 shows `currentMpCountList` 9 against `addtionalMaxMpCountList` 7, and
   every other level shows equal values [M]. Reading: maximum charges =
-  base + `addtionalMaxMpCountList`, capped at 9 [I].
+  base + `addtionalMaxMpCountList`, capped at 9 [I]. The game states 9
+  charges per spell level as the cap (`MAX_MAGICAL_TIMES`) [D], and the
+  observed 9 at level 1 equals it [M]. It states no MP cap, no cap on the
+  magic stat and no cap on the gain fields ([Bounds in the master
+  data](#bounds-in-the-master-data)) [D].
 
 ### Equipment slots
 
@@ -1051,15 +1294,16 @@ not 0.
 ### Abilities
 
 An ability carries two IDs. `abilityId` points into the game's ability
-table; `contentId` points into the content table that items and
-equipment share [I]. Each game links the two by a fixed offset for its
-spells, with exceptions, and a writer must fill both.
+table (`ability.csv`); `contentId` points into the content table that items
+and equipment share, at the type-4 row whose `type_value` is the
+`abilityId` [D]. Each game links the two by a fixed offset for its spells,
+with exceptions, and a writer must fill both.
 
 Ability object: `{"abilityId":int,"contentId":int,"skillLevel":int}`.
 
 | Game | `contentId − abilityId` | Tag |
 |---|---|---|
-| FF I | 208 | [M] 47 of 47 abilities and slot spells, slot 1 and Quick Save |
+| FF I | 208 | [M] 47 of 47 abilities and slot spells, slot 1 and Quick Save; [D] 95 of 96 `ability.csv` rows, the exception being ability 100 at content 310 (offset 210) |
 | FF II | 207 for spells; ability 711 maps to content 937 (offset 226) | [M] 35 spells at 207; each FF II character holds ability 711 |
 | FF III | 201 | [C] |
 | FF IV | 310 | [C] |
@@ -1096,8 +1340,8 @@ FF I writer rule [C, `375f916`; consistent with M]: for each spell in a
 slot, set `contentId = abilityId + 208`, list it once in `abilityList`,
 and list its content ID once in `additionOrderOwnedAbilityIds`.
 
-**FF I spell level and school** [M, 47 of 47 slot spells]. `abilityId`
-fixes both. The two spellcasters hold 47 spells in all, `abilityId` 5 to
+**FF I spell level and school** [M, 47 of 47 slot spells; D, all 64
+spells]. `abilityId` fixes both. The two spellcasters hold 47 spells in all, `abilityId` 5 to
 68, every one in `Abilities`.
 
 - Level = (`abilityId` − 5) / 8 + 1, with integer division. It equals the
@@ -1106,10 +1350,15 @@ fixes both. The two spellcasters hold 47 spells in all, `abilityId` 5 to
   Wizard's spells (24 of 24) and offsets 4 to 7 the Black Wizard's (23 of
   23). The names agree: 5 to 8 are Cure, Protect, Dia and Blink, and 9 to
   12 are Fire, Focus, Sleep and Thunder [C].
+- `ability.csv` holds the same rule for all 64 spells: `ability_lv` equals
+  the level above, and `type_id` is 1 for offsets 0 to 3 and 2 for offsets 4
+  to 7, without exception [D] ([Ability, job and command
+  tables](#ability-job-and-command-tables)).
 - Knight and Ninja hold no spell, so the corpus does not test their access
   to white or black magic.
 - `Abilities` lists 5 to 68 as spells and 69 to 94 as monster abilities
-  [C]; no character holds an ID above 68 [M].
+  [C], and the `type_id` of `ability.csv` agrees [D]; no character holds an
+  ID above 68 [M].
 
 **`skillLevel`.** FF I: `0` [M]. FF II: spell proficiency, 0 to 456
 measured; the Go editor edits it as a level [M, C]. FF VI: learning
@@ -1137,9 +1386,11 @@ JSON strings in the game's own order; the sort list holds content IDs,
 never row numbers.
 
 - Normal items: 47 to 56 entries, no duplicate `contentId`, no `count`
-  of 0, not sorted by ID [M].
+  of 0, not sorted by ID [M]. The game caps a `count` at 99 (`MAX_ITEM`)
+  [D].
 - `importantOwendItemList`: same shape, `count` 1 [M]. In FF I it holds 9
-  or 10 entries, IDs 45 to 61, all in `ImportantItems` [M].
+  or 10 entries, IDs 45 to 61, all in `ImportantItems` [M]. In the game's
+  data these IDs are the key items, `item.csv` `type_id` 2 [D].
 - **The inventory includes equipped items.** In FF I, each equipped
   `contentId` appears in `normalOwnedItemList` with a count at least the
   number of characters who equip it. A ring worn by all 4 characters has
@@ -1207,7 +1458,7 @@ per vehicle: 4 in FF I, 7 in FF II [M].
 
 | Key in `userData` | Type | Notes |
 |---|---|---|
-| `owendGil` | int | up to 999 999 measured |
+| `owendGil` | int | up to 999 999 measured [M]; the game caps it at 999 999 (`MAX_GIL`) [D] |
 | `totalGil` | int | `0` in all six slots |
 | `playTime` | float | seconds; an invented example is `13621.814333377138` |
 | `steps`, `escapeCount` | int | `0` in all six slots |
@@ -1218,7 +1469,7 @@ per vehicle: 4 in FF I, 7 in FF II [M].
 | `cheatSettingsData` | object | 9 keys: `isEnableEncount`, `expRate`, `gilRate`, `learningProficiencyRate`, `isHpIncreaseByFightCount`, `abpRate`, `magicProficiencyRate`, `parameterUpRate`, `magicLearningProficiencyRate`; FF III adds `jobProficiencyRate` |
 | `isOpenedGameBoosterWindow` | bool | |
 
-All rows [M].
+All rows [M], except the cap marked [D].
 
 ### Time stamp and progress flags
 
@@ -1264,9 +1515,45 @@ monster IDs to defeat counts in first-defeat order, and
   3458) [M], since one bestiary spans all slots [I].
 - A complete FF I bestiary holds IDs 1 to 128, each once [M]. The FF II
   file holds 75 IDs, the highest 118 [M].
-- The ID tables list boss variants above 128 (FF I 129, FF II 129 to
-  142); the game counts them under the base monster, and no measured
-  file holds an ID above 128 [C, M].
+- The Go editor's tables list boss variants above 128 (FF I 129, FF II 129
+  to 142) and treat them as counted under the base monster [C]. No measured
+  file holds an ID above 128 [M]. In FF I the key 129 would be the second
+  Vampire row; the other four repeated names (Lich, Marilith, Kraken,
+  Tiamat) hold both of their keys, 120 to 127 [M, D].
+
+**FF I key space.** The keys of `monsterDefeats` are `monster.csv` IDs [M, D]
+([Map and monster tables](#map-and-monster-tables)). The evidence comes from
+one FF I bestiary file of 689 bytes:
+
+- It holds 128 keys and 128 values, all keys distinct, from 1 to 128 without
+  a gap.
+- The first ten keys, in first-defeat order, are 3, 24, 1, 22, 2, 74, 44, 5,
+  4 and 106. As monster IDs they are Wolf, Gigas Worm, Goblin, Skeleton,
+  Goblin Guard, Black Widow, Zombie, Werewolf, Warg Wolf and Garland
+  (`boss` 1): the monsters of the opening area, then its boss. Their
+  picture-book entries are 3, 7, 1, 5, 2, 6, 10, 9, 8 and 12, all within
+  the first 12.
+- As picture-book entries, keys 24, 22, 74, 44 and 106 name Ghast, Bigeyes,
+  Remorazz, Ochre Jelly and Chimera, monsters of later regions, and the
+  list holds no boss.
+- Over all 128 keys in file order, the monster-ID reading leaves 428 order
+  inversions in the region order of the picture book, out of 8 128 pairs.
+  The picture-book reading leaves 2 467.
+- `picture_book_group.csv` cannot be the key space: its group IDs equal the
+  picture-book IDs up to 46, so it fails the same test.
+- Key 128 is Chaos, with count 1. Key 61 (Vampire) holds count 1, and no key
+  names monster 129, the boss Vampire. The data cannot say whether the game
+  files the boss Vampire's defeat under 61 or never counts it
+  ([Open questions](#open-questions)) [I].
+
+**Display order.** `picture_book.csv` (129 rows) lists monsters by region,
+not by monster ID: entry 4 is monster 117, entry 5 monster 22, entry 6
+monster 74, and 7 entries have `id` equal to `monster_id`. Entry 47 is
+monster 129. Entry 129 is Chaos, with `status_display` 0, the lone entry with that value.
+`picture_book_group.csv` (129 rows) folds entries 46 and 47, the two
+Vampires, into group 46 and so holds 128 groups [D]. The picture book gives
+the order in which the game lists monsters, so a list in the game's order
+sorts the keys by the entry whose `monster_id` is the key [I].
 
 "Defeat all" rules of the Go editor [C, `models/core/bestiary.go`]:
 
@@ -1382,6 +1669,9 @@ gives the source; a commit ID points to the fix.
 26. An empty nested document is `""`; writing `"{}"` changes the file [M].
 27. The Go editor labels `addtionalMaxHp` "HP Max", but the field is a gain over a base ([Characters](#characters)) [M, C].
 28. The Go editor's content tables lack 8 content IDs of the game (4, 67, 100, 103, 104, 105, 151, 166) and disagree with it on 5 entries (76, 101, 102, 122 and the second 165). `Shields` lists 165 twice, as Ice Shield and Flame Shield; the game numbers Flame Shield 166, and the editor's ID-to-name map keeps the later 165 entry ([Go editor tables](#go-editor-tables)) [D, C].
+29. The Go editor's `Abilities` swaps 13 and 15 (Invis and Blindna) and 66 and 67 (Warp and Stop), and its `Commands` names 3 "Flee" and 4 "Row" where the game has Magic and Items ([Go editor tables](#go-editor-tables)) [D, C].
+30. Names repeat in the game's own files: five monster name keys serve two rows each, map labels repeat, and two `area.csv` rows read "Sunken Shrine". Key every table by ID ([Map and monster tables](#map-and-monster-tables)) [D].
+31. A loose match on `message_assets_all_` finds `common_message_assets_all_<hash>.bundle` too, the UI sprite bundle ([Game master data](#game-master-data)) [D].
 
 ## Open questions
 
@@ -1412,14 +1702,22 @@ an in-game test.
    a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not
     measured.
-11. Three in-game readings for one FF I character. The menu level for
+11. Two in-game readings for one FF I character. The menu level for
     `addtionalLevel` 69: 69 or 70. The maximum HP when base plus
-    `addtionalMaxHp` reaches 1 132: 999 or 1 132. The maximum charges at
-    spell level 1, where `currentMpCountList` is 9 and
-    `addtionalMaxMpCountList` is 7.
+    `addtionalMaxHp` reaches 1 132: the master data caps HP at 999
+    (`MAX_HP`) and does not say how the cap meets base and gain, so the
+    menu may show 999 or 1 132.
 12. Does the game read equipment `count`, and what do the inventory counts
     5 and 9 of the placeholders mean?
 13. An FF I save from before the class change: which `jobId` does a
     character hold (1 to 6, if `characterStatusId` names the base class),
     and do the placeholders 62, 131, 132 and 133 fill bare slots? No
     measured file comes from a new game.
+14. Does the game count the boss Vampire (monster 129) under key 61, or not
+    at all? The FF I bestiary holds no key 129, and the master data does not
+    say.
+15. Caps the master data omits: MP, the magic stat and the gain fields
+    `addtionalMaxHp` and `addtionalMaxMpCountList`. An in-game test with an
+    edited value would show whether the game clamps it.
+16. The label the game shows for a map (area name and title joined), and the
+    use of the `map.csv` rows 800 to 802.
