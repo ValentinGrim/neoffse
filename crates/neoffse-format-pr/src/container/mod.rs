@@ -183,6 +183,8 @@ pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
 ///
 /// # Errors
 ///
+/// [`CodecError::PayloadTooLarge`] when `json` is longer than
+/// [`MAX_PAYLOAD_LEN`] bytes, since [`decode`] would refuse the file,
 /// [`CodecError::Deflate`] when compression fails, and the errors of [`seal`].
 ///
 /// # Examples
@@ -197,6 +199,9 @@ pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> {
+    if json.len() > MAX_PAYLOAD_LEN {
+        return Err(CodecError::PayloadTooLarge { limit: MAX_PAYLOAD_LEN });
+    }
     let stream = deflate::deflate(json.as_bytes())?;
     seal(&stream, container)
 }
