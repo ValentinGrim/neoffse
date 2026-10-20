@@ -47,6 +47,22 @@ struct Pair {
 /// Applies `edits` to a fresh document of `subject` and proves, step by step,
 /// that the file changed as `proof` says and nowhere else.
 ///
+/// The steps, in order:
+///
+/// 1. Open a fresh document and read its view as the reference.
+/// 2. Apply the edits through `how`.
+/// 3. Encode, decode independently, and check the container, `verify` and the
+///    document layer's load.
+/// 4. Diff the decoded tree against the subject's tree: the expected changes
+///    plus the `Layout` chain, nothing else.
+/// 5. Check the exact text at each path of `proof.texts`.
+/// 6. Reopen the encoding and check its view is the reference with
+///    `proof.view` applied.
+/// 7. Undo on the edited document and check the original text returns.
+/// 8. Redo and check the encoding equals the one of step 3.
+/// 9. Undo on the reopened document and check the original text returns.
+/// 10. For `How::Game`, check the edited slot against the game rules.
+///
 /// # Panics
 ///
 /// At the first step that fails, with `{subject} {case} {how:?}: {step}`.
@@ -110,7 +126,7 @@ impl Run<'_> {
         document.view().unwrap_or_else(|error| self.fail_with("view failed", &error))
     }
 
-    /// Step 2. A `Raw` run with several edits goes through one `apply_all`.
+    /// Step 2: applies the edits. A `Raw` run with several edits goes through one `apply_all`.
     fn apply(&self, document: &mut dyn SaveDocument, edits: &[Edit], how: How) -> Vec<Pair> {
         match (how, edits) {
             (How::Game, _) => edits
@@ -177,7 +193,7 @@ impl Run<'_> {
         after
     }
 
-    /// Step 5.
+    /// Step 5: the exact text at each path of `proof.texts`.
     fn check_texts(&self, after: &Tree) {
         for (path, text) in &self.proof.texts {
             if after.raw_at(path) != Some(text.as_str()) {
@@ -193,7 +209,7 @@ impl Run<'_> {
         }
     }
 
-    /// Steps 7 and 9: the inverses, newest pair first.
+    /// Steps 7 and 9: applies the inverses, newest pair first.
     fn undo(&self, document: &mut dyn SaveDocument, pairs: &[Pair], step: &str) {
         for pair in pairs.iter().rev() {
             if let Err(error) = document.apply_all(&pair.inverse, CapPolicy::StorageOnly) {
@@ -202,7 +218,7 @@ impl Run<'_> {
         }
     }
 
-    /// Step 8.
+    /// Step 8: applies the forward sets again, oldest pair first.
     fn redo(&self, document: &mut dyn SaveDocument, pairs: &[Pair]) {
         for pair in pairs {
             if let Err(error) = document.apply_all(&pair.forward, CapPolicy::StorageOnly) {
