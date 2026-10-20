@@ -36,7 +36,8 @@ pub trait SaveFormat: Send + Sync {
     /// # Errors
     ///
     /// `MissingFile` when a file the format needs is absent, `Decode` when it
-    /// cannot read them.
+    /// cannot read the files. A set of files the format cannot use, such as a
+    /// missing or an extra file, may also be reported as `Decode`.
     fn open(&self, files: &SaveFiles) -> Result<Box<dyn SaveDocument>, FormatError>;
 }
 
@@ -105,8 +106,8 @@ pub trait SaveDocument: Send {
     /// inverse set.
     ///
     /// The provided body calls [`ChangeSet::apply_with`]: forward edits get
-    /// `policy`, the rollback gets `StorageOnly`. A format overrides it only
-    /// for speed.
+    /// `policy`, the rollback gets `StorageOnly`. A format overrides it for
+    /// speed, or to restore the document byte for byte after a rollback.
     ///
     /// # Errors
     ///
