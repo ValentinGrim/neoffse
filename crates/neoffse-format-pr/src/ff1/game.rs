@@ -4,8 +4,9 @@
 //! rules of `docs/formats/pixel-remaster.md#inventory` and
 //! `docs/formats/pixel-remaster.md#equipment-slots` hold: an equipped id sits
 //! in the inventory with a count of at least its wearers, a slot `count`
-//! copies the inventory count, and the placeholder rows stay alone. A `Set` of
-//! an equipment slot expands into plain edits; every other edit passes as one.
+//! copies the inventory count, the placeholder rows stay alone, and a key item
+//! keeps a `count` of 1. A `Set` of an equipment slot expands into plain
+//! edits; every other edit passes as one.
 
 use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FieldMeta, GameChange, RowId, Shape, Value};
 
@@ -17,7 +18,7 @@ use super::{Ff1Model, meta, names};
 fn storage_max(meta: &FieldMeta) -> i64 {
     match meta.shape {
         Shape::Int { max, .. } => max,
-        _ => i64::from(i32::MAX),
+        _ => meta::STORAGE_MAX,
     }
 }
 
@@ -40,9 +41,11 @@ impl Ff1Model {
     /// applied with their inverses.
     ///
     /// Caps and tables are always enforced (`CapPolicy::Enforce`). The game
-    /// rules refuse, before any write: a `Set` of an equipment slot `count`
-    /// and any edit of a placeholder row of `inventory` (`ReadOnly`), a `Remove`
-    /// of a row whose id a character wears (`ReadOnly`), and a `Set` or an
+    /// rules refuse, before any write: a `Set` of an equipment slot `count`,
+    /// a `Set` of a key-item `count` and any edit of a placeholder row of
+    /// `inventory` (`ReadOnly`), a `Remove` of a row whose id a character
+    /// wears (`ReadOnly`), an `Insert` into `key_items` with a `count` other
+    /// than 1 (`OutOfRange` with `min` and `max` at 1), and a `Set` or an
     /// `Insert` of an inventory `count` below the number of wearers
     /// (`OutOfRange` with `min` set to that number). A `Set` of
     /// `character.<id>.equipment.<S>` expands into the equip plan: the slot
@@ -79,9 +82,10 @@ impl Ff1Model {
     }
 
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
-    /// value: the `count` of an equipment slot and the `count` of a
-    /// placeholder row of `inventory`, present in the list or not. A count that
-    /// only refuses values below the wearers is unlocked.
+    /// value: the `count` of an equipment slot, the `count` of a placeholder
+    /// row of `inventory`, present in the list or not, and the `count` of any
+    /// key item (the game holds one of each). A count that only refuses values
+    /// below the wearers is unlocked.
     ///
     /// It resolves the field and reads the tables, not the document.
     ///
@@ -91,7 +95,7 @@ impl Ff1Model {
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
             Binding::Character { part: Part::SlotCount(_), .. } => true,
-            Binding::Count { list, key } => self.is_placeholder(list, key),
+            Binding::Count { list, key } => list == List::KeyItems || self.is_placeholder(list, key),
             _ => false,
         })
     }
@@ -154,7 +158,8 @@ impl Ff1Model {
     }
 
     /// An `Insert` into `inventory` or `key_items`: a placeholder key is
-    /// `ReadOnly`, a `count` below the wearers is `OutOfRange`.
+    /// `ReadOnly`, a key-item `count` other than 1 and a `count` below the
+    /// wearers are `OutOfRange`.
     fn check_insert_rules(&mut self, row: &RowId, values: &[(&'static str, Value)]) -> Result<(), EditError> {
         let collection = row.collection();
         let (Some(Collection::Items(list)), Some(meta)) = (Collection::of(&collection), self.collection_meta(&collection)) else {
@@ -163,11 +168,21 @@ impl Ff1Model {
         if self.is_placeholder(list, row.key()) {
             return Err(EditError::ReadOnly { field: row.id().clone() });
         }
+        let given = values.iter().find(|(name, _)| *name == names::COUNT).map(|(_, value)| value);
+        if let (List::KeyItems, Some(Value::Int(count))) = (list, given)
+            && *count != 1
+        {
+            return Err(EditError::OutOfRange {
+                field: row.field(names::COUNT),
+                value: *count,
+                min: 1,
+                max: 1,
+            });
+        }
         meta.check_insert(row, values, CapPolicy::Enforce)?;
         let Some(count_field) = meta.fields.iter().find(|field| field.name == names::COUNT) else {
             return Ok(());
         };
-        let given = values.iter().find(|(name, _)| *name == names::COUNT).map(|(_, value)| value);
         if let Some(Value::Int(count)) = given.or(Some(&count_field.initial)) {
             let worn = self.wearers_of(row.key(), row.id())?;
             check_floor(&row.field(names::COUNT), *count, worn, &count_field.meta)?;

@@ -38,6 +38,16 @@ fn placeholder_row_counts_are_locked() {
 }
 
 #[test]
+fn key_item_counts_are_locked() {
+    let mut model = standard_model();
+    for key in model.rows(&FieldId::new(names::KEY_ITEMS)).unwrap() {
+        assert!(model.field_locked(&count(names::KEY_ITEMS, key)).unwrap(), "key_items.{key}");
+    }
+    // The lock needs no row: a key item the slot lacks is locked too.
+    assert!(model.field_locked(&count(names::KEY_ITEMS, 47)).unwrap());
+}
+
+#[test]
 fn every_other_field_is_unlocked() {
     let model = standard_model();
     let others = names::character_fields(1)
@@ -49,12 +59,7 @@ fn every_other_field_is_unlocked() {
         seen += 1;
     }
     assert_eq!(seen, 34);
-    for field in [
-        FieldId::new(names::GIL),
-        count(names::INVENTORY, 89),
-        count(names::INVENTORY, 202),
-        count(names::KEY_ITEMS, 45),
-    ] {
+    for field in [FieldId::new(names::GIL), count(names::INVENTORY, 89), count(names::INVENTORY, 202)] {
         assert!(!model.field_locked(&field).unwrap(), "{field}");
     }
 }
@@ -83,12 +88,17 @@ fn field_locked_agrees_with_the_game_set() {
             fields.push(count(list, key));
         }
     }
+    let mut key_item_counts = 0;
     for field in fields {
         let value = model.get(&field).unwrap();
         let edit = Edit::set(field.clone(), value);
         let mut raw = model.clone();
         assert!(raw.apply(&edit, CapPolicy::Enforce).is_ok(), "raw {field}");
         let locked = model.field_locked(&field).unwrap();
+        if field.to_string().starts_with(names::KEY_ITEMS) {
+            assert!(locked, "{field}");
+            key_item_counts += 1;
+        }
         let mut game = model.clone();
         match game.apply_game(&edit) {
             Err(EditError::ReadOnly { .. }) => assert!(locked, "{field}"),
@@ -96,6 +106,7 @@ fn field_locked_agrees_with_the_game_set() {
             Err(other) => panic!("{field}: {other}"),
         }
     }
+    assert_eq!(key_item_counts, 9);
 }
 
 #[test]

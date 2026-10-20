@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::ff1_save::{Row, SlotData, character_field, model, standard_model};
+use common::ff1_save::{Row, SlotData, character_field, model, model_with_escaped_row, standard_model};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::names;
 
@@ -59,6 +59,13 @@ fn a_non_canonical_row_is_locked() {
     let mut data = SlotData::standard();
     data.inventory.push(Row::new(4, 1));
     assert!(!model(&data.render()).row_locked(&item(4)).unwrap());
+}
+
+#[test]
+fn a_row_stored_with_other_escapes_is_locked() {
+    let (mut model, _) = model_with_escaped_row(7, 4);
+    assert!(model.row_locked(&item(4)).unwrap());
+    assert!(!model.row_locked(&item(7)).unwrap());
 }
 
 #[test]

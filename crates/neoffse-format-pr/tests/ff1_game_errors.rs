@@ -24,6 +24,14 @@ fn row(key: u32) -> RowId {
     RowId::new(FieldId::new(names::INVENTORY), key)
 }
 
+fn key_count(key: u32) -> FieldId {
+    FieldId::new(names::KEY_ITEMS).with_id(key).with_name(names::COUNT)
+}
+
+fn key_row(key: u32) -> RowId {
+    RowId::new(FieldId::new(names::KEY_ITEMS), key)
+}
+
 fn set(field: FieldId, value: i64) -> Edit {
     Edit::set(field, Value::Int(value))
 }
@@ -55,6 +63,52 @@ fn a_slot_count_cannot_be_set_directly() {
     let edit = set(field.clone(), 3);
     assert_read_only(&mut model, &edit, &field);
     raw_accepts(&model, &edit, ENFORCE);
+}
+
+#[test]
+fn a_key_item_count_cannot_be_set_directly() {
+    let mut model = standard_model();
+    let field = key_count(45);
+    for value in [1, 2, 99, 100, 0, -1, STORAGE_MAX + 1] {
+        assert_read_only(&mut model, &set(field.clone(), value), &field);
+    }
+    // The raw interface keeps the storage bounds and no game cap.
+    let mut raw = model.clone();
+    assert!(raw.apply(&set(field.clone(), 100), ENFORCE).is_ok());
+    assert!(raw.apply(&set(field.clone(), STORAGE_MAX), ENFORCE).is_ok());
+    for value in [0, -1, STORAGE_MAX + 1] {
+        let result = model.clone().apply(&set(field.clone(), value), ENFORCE);
+        assert!(matches!(result, Err(EditError::OutOfRange { min: 1, max: STORAGE_MAX, .. })), "{value}");
+    }
+}
+
+#[test]
+fn a_key_item_insert_holds_one() {
+    let mut model = standard_model();
+    for value in [2, 0, -1, 100] {
+        let insert = Edit::insert(key_row(47), None, vec![(names::COUNT, Value::Int(value))]);
+        match refused(&mut model, &insert) {
+            EditError::OutOfRange { field, value: got, min, max } => assert_eq!((field, got, min, max), (key_count(47), value, 1, 1)),
+            other => panic!("{other}"),
+        }
+        if value > 0 {
+            raw_accepts(&model, &insert, ENFORCE);
+        }
+    }
+    for values in [vec![(names::COUNT, Value::Int(1))], Vec::new()] {
+        let mut copy = model.clone();
+        assert!(copy.apply_game(&Edit::insert(key_row(47), None, values)).is_ok());
+        assert_eq!(copy.get(&key_count(47)).unwrap(), Value::Int(1));
+    }
+    // A wrong kind keeps its own error.
+    let text = Edit::insert(key_row(47), None, vec![(names::COUNT, Value::Text("x".to_owned()))]);
+    assert!(matches!(refused(&mut model, &text), EditError::WrongType { .. }));
+}
+
+#[test]
+fn a_key_item_can_still_be_removed() {
+    let mut model = standard_model();
+    assert!(model.apply_game(&Edit::remove(key_row(45))).is_ok());
 }
 
 #[test]

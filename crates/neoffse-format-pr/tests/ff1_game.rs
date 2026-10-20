@@ -269,7 +269,8 @@ fn pass_through_edits_become_one_plain_edit() {
         Edit::set(character_field(1, names::LEVEL), Value::Int(40)),
         Edit::insert(row(7), None, Vec::new()),
         Edit::remove(row(100)),
-        Edit::set(count(names::KEY_ITEMS, 45), Value::Int(2)),
+        Edit::remove(RowId::new(FieldId::new(names::KEY_ITEMS), 45)),
+        Edit::insert(RowId::new(FieldId::new(names::KEY_ITEMS), 47), None, Vec::new()),
     ];
     for edit in edits {
         let mut game = standard_model();

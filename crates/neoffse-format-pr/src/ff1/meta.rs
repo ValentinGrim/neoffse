@@ -14,7 +14,7 @@ use super::names;
 /// these fields: `i32::MAX` is the clamp of the Go editor
 /// (`docs/formats/pixel-remaster.md#known-pitfalls`, item 10) and holds
 /// every counter of FF I.
-const STORAGE_MAX: i64 = 2_147_483_647;
+pub(super) const STORAGE_MAX: i64 = 2_147_483_647;
 
 /// The slot names and their equipment tables, slot 1 to 5
 /// (`docs/formats/pixel-remaster.md#equipment-slots`).
@@ -26,7 +26,10 @@ const SLOTS: [(&str, TableKind); 5] = [
     ("Arms", TableKind::Gloves),
 ];
 
-/// The tables that an `inventory` row key may name.
+/// The tables that an `inventory` row key may name: items, weapons, shields,
+/// armor, helmets and gloves share one `contentId` space
+/// (`docs/formats/pixel-remaster.md#inventory`,
+/// `docs/formats/pixel-remaster.md#id-spaces-and-tables`).
 const INVENTORY_TABLES: [TableKind; 6] = [
     TableKind::Item,
     TableKind::Weapon,
@@ -66,7 +69,7 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
     let capped = |key| Some((tables, key));
     match *binding {
         Binding::Gil => int("Gil", 0, capped("MAX_GIL")),
-        Binding::Count { .. } => count_meta(tables),
+        Binding::Count { list, .. } => count_meta(list, tables),
         Binding::Character { part, .. } => match part {
             Part::Name => FieldMeta::new("Name", Shape::Text),
             Part::Job => {
@@ -92,9 +95,14 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
     }
 }
 
-/// The `count` of an item row: 1 to the storage bound, capped at `MAX_ITEM`.
-fn count_meta(tables: &GameTables) -> FieldMeta {
-    int("Count", 1, Some((tables, "MAX_ITEM")))
+/// The `count` of an item row: 1 to the storage bound. `inventory` also takes
+/// the `MAX_ITEM` cap. `key_items` takes none: `MAX_ITEM` caps the normal
+/// inventory only, and the game interface keeps a key-item `count` at 1 by its
+/// own rule (`docs/formats/pixel-remaster.md#inventory`,
+/// `docs/formats/pixel-remaster.md#bounds-in-the-master-data`).
+fn count_meta(list: List, tables: &GameTables) -> FieldMeta {
+    let cap = (list == List::Inventory).then_some((tables, "MAX_ITEM"));
+    int("Count", 1, cap)
 }
 
 /// The meta of a collection: row key, row fields and the insert and remove
@@ -116,7 +124,7 @@ pub(super) fn collection_meta(collection: Collection, tables: &GameTables) -> Co
             let mut key = int(key_label, 1, None);
             key.tables = key_tables;
             let mut meta = CollectionMeta::new(FieldId::new(list.section()), label, key);
-            meta.fields = vec![RowField::new(names::COUNT, count_meta(tables), Value::Int(1))];
+            meta.fields = vec![RowField::new(names::COUNT, count_meta(list, tables), Value::Int(1))];
             meta
         }
     }

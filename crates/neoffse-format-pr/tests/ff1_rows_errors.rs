@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::ff1_save::{Row, SlotData, model, standard_model};
+use common::ff1_save::{Row, SlotData, model, model_with_escaped_row, standard_model};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
@@ -144,6 +144,31 @@ fn remove_refuses_a_row_it_could_not_restore() {
     }
     let (mut model, _) = with_row(Row::new(4, 1));
     assert!(model.apply(&Edit::remove(item(4)), ENFORCE).is_ok());
+}
+
+#[test]
+fn remove_refuses_a_row_stored_with_other_escapes() {
+    for policy in [ENFORCE, STORAGE_ONLY] {
+        let (mut model, original) = model_with_escaped_row(7, 4);
+        let result = model.apply(&Edit::remove(item(4)), policy);
+        assert!(matches!(result, Err(EditError::ReadOnly { field }) if field == *item(4).id()));
+        assert_eq!(model.document().to_json(), original);
+    }
+    let (mut model, original) = model_with_escaped_row(7, 4);
+    let result = model.apply_game(&Edit::remove(item(4)));
+    assert!(matches!(result, Err(EditError::ReadOnly { field }) if field == *item(4).id()));
+    assert_eq!(model.document().to_json(), original);
+}
+
+#[test]
+fn a_canonical_row_next_to_an_escaped_one_restores_byte_for_byte() {
+    for policy in [ENFORCE, STORAGE_ONLY] {
+        let (mut model, original) = model_with_escaped_row(7, 4);
+        let inverse = model.apply(&Edit::remove(item(7)), policy).unwrap();
+        assert_ne!(model.document().to_json(), original);
+        model.apply(&inverse, policy).unwrap();
+        assert_eq!(model.document().to_json(), original);
+    }
 }
 
 #[test]
