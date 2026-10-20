@@ -19,6 +19,7 @@
 
 mod error;
 mod node;
+mod rows;
 mod scalar;
 
 use std::borrow::Cow;

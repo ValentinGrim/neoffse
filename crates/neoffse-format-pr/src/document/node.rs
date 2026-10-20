@@ -86,6 +86,26 @@ impl Node {
         }
     }
 
+    /// The elements of this node, parsed on first use. `walked` is the path
+    /// to this node, for errors.
+    pub(super) fn array_items(&mut self, walked: &[Segment<'_>]) -> Result<&mut Vec<Node>, DocumentError> {
+        let Self { raw, body, .. } = self;
+        expect_first(raw.get(), b'[', "array", walked)?;
+        if body.is_none() {
+            *body = Some(Body::Array(parse_items(raw.get(), walked)?));
+        }
+        match body {
+            Some(Body::Array(items)) => Ok(items),
+            _ => Err(wrong_kind(walked, "array")),
+        }
+    }
+
+    /// Marks an edit at or below this node. Call it after `array_items` or
+    /// another call that parsed the level, so `dirty` keeps implying `body`.
+    pub(super) fn touch(&mut self) {
+        self.dirty = true;
+    }
+
     /// Follows `path` from this node, parsing each level it crosses. With
     /// `mark`, every node left behind turns dirty. A failed walk may leave
     /// nodes dirty, so a caller marks only after a walk with `mark` unset
