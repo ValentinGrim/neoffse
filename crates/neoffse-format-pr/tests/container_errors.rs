@@ -93,7 +93,7 @@ fn decode_refuses_a_trailer_one_byte_above_the_cap() {
     assert!(matches!(outcome, Err(CodecError::TrailerTooLong { len: 65, limit: 64 })), "{outcome:?}");
 }
 
-/// The audit case N1: a file padded with megabytes of whitespace.
+/// A file padded with megabytes of whitespace.
 #[test]
 fn decode_refuses_a_megabyte_of_trailing_spaces() {
     let mut file = file_without_trailer();

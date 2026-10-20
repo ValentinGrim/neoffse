@@ -8,7 +8,8 @@ use std::fs;
 
 use common::backup::{BESTIARY, EDITED_BESTIARY, EDITED_SLOT, SLOT, T0, World, at, edit, game_dir, make, request, restore_at, tree, world};
 use neoffse_io::atomic::RealFileOps;
-use neoffse_io::backup::{create_with, list};
+use neoffse_io::backup::{MAX_BACKUPS, create_with, list, restore_with};
+use neoffse_io::dirs::DataDir;
 
 fn read(w: &World, name: &str) -> Vec<u8> {
     fs::read(w.source.join(name)).unwrap()
@@ -140,6 +141,27 @@ fn restoring_the_oldest_of_twenty_backups_keeps_it() {
     let listed = list(&w.data, "ff1-pr").unwrap().backups;
     assert_eq!(listed.len(), 20);
     assert!(!oldest.dir.exists());
+}
+
+#[test]
+fn restore_protects_its_backup_under_another_spelling_of_the_data_root() {
+    let w = world("restore-restore_protects_its_backup_under_another_spelling_of_the_data_root");
+    for n in 0..MAX_BACKUPS {
+        fs::write(w.source.join(SLOT), format!("gen-{n}")).unwrap();
+        make(&w, "ff1-pr", T0 + i64::try_from(n).unwrap());
+    }
+    edit(&w);
+    let root = w.data.root().to_path_buf();
+    fs::create_dir(root.join("sub")).unwrap();
+    let spelled = DataDir::at(root.join("sub").join(".."));
+    let oldest = list(&spelled, "ff1-pr").unwrap().backups.pop().unwrap();
+    assert_ne!(oldest.dir.parent(), Some(game_dir(&w, "ff1-pr").as_path()));
+
+    restore_with(&RealFileOps, &w.data, "ff1-pr", &oldest, &w.source, at(T0 + 100)).unwrap();
+
+    assert_eq!(read(&w, SLOT), b"gen-0");
+    assert!(oldest.dir.is_dir());
+    assert_eq!(list(&w.data, "ff1-pr").unwrap().backups.len(), MAX_BACKUPS + 1);
 }
 
 #[test]

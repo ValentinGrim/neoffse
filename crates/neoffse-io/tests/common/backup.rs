@@ -142,25 +142,42 @@ pub(crate) fn plant(world: &World, game: &str, name: &str, manifest: Option<&str
     dir
 }
 
+/// What `Snoop` does to the bytes of a write.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Corrupt {
+    /// Writes the bytes it receives.
+    None,
+    /// Writes `{}`, which no manifest parser accepts.
+    Garbage,
+    /// Writes the bytes with `before-save` changed to `before-sav3`: the
+    /// document still parses and differs in one field.
+    Field,
+}
+
 /// A `FileOps` that wraps a `Probe` and records the content of the folder at
-/// each `create_temp`. With `corrupt_write` it writes `{}` instead of the
-/// bytes it receives.
+/// each `create_temp`. Its `Corrupt` mode changes the bytes of a write.
 #[derive(Debug)]
 pub(crate) struct Snoop {
     probe: Probe,
     log: Log,
-    corrupt_write: bool,
+    corrupt: Corrupt,
 }
 
 impl Snoop {
-    /// A snoop that fails `fail_at`, with the log it writes to.
+    /// A snoop that fails `fail_at`, with the log it writes to. With
+    /// `corrupt_write` it writes `Corrupt::Garbage`.
     pub(crate) fn new(fail_at: &[Step], corrupt_write: bool) -> (Self, Log) {
+        Self::corrupting(fail_at, if corrupt_write { Corrupt::Garbage } else { Corrupt::None })
+    }
+
+    /// A snoop that fails `fail_at` and changes each write as `corrupt` says.
+    pub(crate) fn corrupting(fail_at: &[Step], corrupt: Corrupt) -> (Self, Log) {
         let (probe, log) = Probe::new(fail_at);
         (
             Self {
                 probe,
                 log: Log::clone(&log),
-                corrupt_write,
+                corrupt,
             },
             log,
         )
@@ -178,7 +195,14 @@ impl FileOps for Snoop {
     }
 
     fn write_all(&self, file: &mut File, bytes: &[u8]) -> io::Result<()> {
-        self.probe.write_all(file, if self.corrupt_write { b"{}\n" } else { bytes })
+        match self.corrupt {
+            Corrupt::None => self.probe.write_all(file, bytes),
+            Corrupt::Garbage => self.probe.write_all(file, b"{}\n"),
+            Corrupt::Field => {
+                let text = String::from_utf8_lossy(bytes).replace("before-save", "before-sav3");
+                self.probe.write_all(file, text.as_bytes())
+            }
+        }
     }
 
     fn copy_permissions(&self, from: &Path, file: &File) -> io::Result<()> {

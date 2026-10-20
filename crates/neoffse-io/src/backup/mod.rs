@@ -7,7 +7,7 @@
 //! backup. A failed call removes the folder it claimed.
 //!
 //! Two backups in the same second get a suffix: `<stamp>-01`, then `-02`, up
-//! to `-99`. A hundredth backup in one second fails with
+//! to `-99`. A 101st backup in one second fails with
 //! `ErrorKind::AlreadyExists`. The stamp is the local time of the [`Moment`];
 //! [`Moment::now`] gives UTC.
 //!
@@ -35,8 +35,9 @@
 //! `name` in `backup.manifest.files`.
 //!
 //! `source_dir` holds a path from the user's home, and the manifest keeps it
-//! on the local disk. No function of this module logs it or prints it in an
-//! error.
+//! on the local disk. An error names the failing file, whose path starts with
+//! `source_dir` or with the target folder of a restore, so a caller must not
+//! log the `Display` or the `Debug` of an error of this module.
 
 mod list;
 mod manifest;
@@ -57,7 +58,8 @@ pub use restore::{Restored, restore, restore_with};
 
 use manifest::MANIFEST_FILE;
 
-/// The highest collision suffix of a backup folder name.
+/// The highest collision suffix of a backup folder name: `[-NN]` has two
+/// digits (`docs/architecture.md#save-safety`).
 const MAX_SUFFIX: u32 = 99;
 
 /// What to back up.

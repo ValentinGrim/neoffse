@@ -129,15 +129,17 @@ fn is_stamp(name: &str) -> bool {
 ///
 /// `protect` is a backup folder that stays and does not count toward
 /// [`MAX_BACKUPS`]. A restore protects the backup it reads from, which would
-/// otherwise be the oldest one and the first to go.
+/// otherwise be the oldest one and the first to go. The match is on the
+/// folder name, because every backup of the game sits in `game_dir` and a
+/// caller may spell the data root differently when it lists and when it
+/// restores (`..`, a symbolic link). A false match keeps one extra backup.
 pub(super) fn prune(game_dir: &Path, keep: &Backup, protect: Option<&Path>) -> Result<(), IoError> {
     let valid = scan(game_dir, &keep.manifest.game)?.backups;
-    let protected = usize::from(protect.is_some_and(|dir| valid.iter().any(|backup| backup.dir == dir)));
+    let name = protect.and_then(Path::file_name);
+    let is_protected = |backup: &Backup| name.is_some() && backup.dir.file_name() == name;
+    let protected = usize::from(valid.iter().any(is_protected));
     let excess = valid.len().saturating_sub(protected).saturating_sub(MAX_BACKUPS);
-    let candidates = valid
-        .iter()
-        .rev()
-        .filter(|backup| backup.dir != keep.dir && Some(backup.dir.as_path()) != protect);
+    let candidates = valid.iter().rev().filter(|backup| backup.dir != keep.dir && !is_protected(backup));
     for old in candidates.take(excess) {
         fs::remove_dir_all(&old.dir).map_err(|source| IoError::Io {
             operation: Operation::Remove,
