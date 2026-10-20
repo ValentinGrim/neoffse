@@ -15,6 +15,8 @@
 //!   field id, with the metadata of each field.
 //! - [`games`]: the six games with their game id, Steam app ID, folder under
 //!   `My Games` and executable name.
+//! - [`slots`]: the 22 slot file names shared by the six games, and the
+//!   detection that recognizes a slot file by its name and head.
 //!
 //! Decode a file, edit one value, encode it again:
 //!
@@ -40,3 +42,4 @@ pub mod container;
 pub mod document;
 pub mod ff1;
 pub mod games;
+pub mod slots;
