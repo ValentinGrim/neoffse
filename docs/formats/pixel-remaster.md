@@ -1032,7 +1032,7 @@ The game states six caps and several stat caps in `game_constant_int.csv`
 |---|---|---|
 | `owendGil` | `MAX_GIL` | 999 999 |
 | inventory `count` | `MAX_ITEM` | 99 |
-| level (`addtionalLevel` plus the base) | `MAX_LV` | 99 |
+| level (`addtionalLevel`) | `MAX_LV` | 99 |
 | `currentExp` | `MAX_EXP` | 9 999 999 |
 | HP | `MAX_HP` | 999 |
 | spell charges per level | `MAX_MAGICAL_TIMES` | 9 |
@@ -1050,9 +1050,12 @@ The master data does not state:
 - a cap on the gain fields `addtionalMaxHp` and `addtionalMaxMpCountList`.
 
 `MAX_HP` caps HP at 999, yet the stored gain `addtionalMaxHp` reaches 1 097
-in the saves [M]. The cap applies to the sum of base and gain, not to the
-field [I]. How the game combines the two is not in the data
-([Open questions](#open-questions)).
+in the saves [M]. The cap applies to the displayed sum of base and gain: the
+menu shows 999 for a character whose sum reaches 1 132 [G]. The file stores no
+base, so the 1 132 comes from the constant difference between `currentHP` and
+the gain in the other game state [I] ([Characters](#characters)). The stored
+field exceeds the cap, and whether the game clamps an edited gain field is
+open ([Open questions](#open-questions)).
 
 ### ID spaces and tables
 
@@ -1231,21 +1234,21 @@ in FF I and FF II), `addtionalLevel`, `addtionalMaxHp`, `addtionalMaxMp`,
 **FF I `parameter` fields.** Several `addtional…` names hold a gain on top
 of a base the file does not store:
 
-- `addtionalLevel` grows with `currentExp` in both game states [M]. The Go
-  editor labels it "Level" (`coreStats.go`) [C]. Whether the menu shows
-  the value or the value plus 1 is open ([Open questions](#open-questions)).
-  The game caps the level at 99 (`MAX_LV`) [D].
+- `addtionalLevel` grows with `currentExp` in both game states [M]. The menu
+  level equals the field, with no offset: the menu shows 69 for a value of
+  69 [G]. The Go editor labels it "Level" (`coreStats.go`) [C]. The game caps
+  the level at 99 (`MAX_LV`) [D].
 - `addtionalMaxHp` is a gain over a per-character base, not the maximum.
   `currentHP` exceeds it in 7 of 8 character states, by a difference that
   stays constant per character across both game states [M]. In the
   eighth state `currentHP` is 999 and `addtionalMaxHp` is 1 097; the same
   character's difference in the other game state is 35, so base plus gain
   would be 1 132. The game states a maximum HP of 999 (`MAX_HP`) and no
-  bound for the gain field [D]. Reading: the cap bounds the sum of base and
-  gain, not the field, and maximum HP = base + `addtionalMaxHp`, capped at
-  999 [I]. The master data does not say how the game combines the two
-  ([Open questions](#open-questions)). The Go editor labels the field "HP Max" (`coreStats.go`) [C],
-  which the data contradicts.
+  bound for the gain field [D]. The menu shows a maximum HP of 999 for that
+  character [G]: the game displays min(base + `addtionalMaxHp`, 999). The
+  stored gain exceeds the cap. Whether the game clamps an edited gain field
+  is open ([Open questions](#open-questions)). The Go editor labels the field
+  "HP Max" (`coreStats.go`) [C], which the data contradicts.
 - `currentMP` and `addtionalMaxMp` hold 0 in all 8 states. FF I stores
   spell charges per spell level in `currentMpCountList` and
   `addtionalMaxMpCountList` (keys 1 to 8, values 0 to 9) [M].
@@ -1254,9 +1257,9 @@ of a base the file does not store:
   every other level shows equal values [M]. Reading: maximum charges =
   base + `addtionalMaxMpCountList`, capped at 9 [I]. The game states 9
   charges per spell level as the cap (`MAX_MAGICAL_TIMES`) [D], and the
-  observed 9 at level 1 equals it [M]. It states no MP cap, no cap on the
-  magic stat and no cap on the gain fields ([Bounds in the master
-  data](#bounds-in-the-master-data)) [D].
+  menu shows a maximum of 9 charges at every spell level [G]. The game
+  states no MP cap, no cap on the magic stat and no cap on the gain fields
+  ([Bounds in the master data](#bounds-in-the-master-data)) [D].
 
 ### Equipment slots
 
@@ -1702,22 +1705,17 @@ an in-game test.
    a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not
     measured.
-11. Two in-game readings for one FF I character. The menu level for
-    `addtionalLevel` 69: 69 or 70. The maximum HP when base plus
-    `addtionalMaxHp` reaches 1 132: the master data caps HP at 999
-    (`MAX_HP`) and does not say how the cap meets base and gain, so the
-    menu may show 999 or 1 132.
-12. Does the game read equipment `count`, and what do the inventory counts
+11. Does the game read equipment `count`, and what do the inventory counts
     5 and 9 of the placeholders mean?
-13. An FF I save from before the class change: which `jobId` does a
+12. An FF I save from before the class change: which `jobId` does a
     character hold (1 to 6, if `characterStatusId` names the base class),
     and do the placeholders 62, 131, 132 and 133 fill bare slots? No
     measured file comes from a new game.
-14. Does the game count the boss Vampire (monster 129) under key 61, or not
+13. Does the game count the boss Vampire (monster 129) under key 61, or not
     at all? The FF I bestiary holds no key 129, and the master data does not
     say.
-15. Caps the master data omits: MP, the magic stat and the gain fields
+14. Caps the master data omits: MP, the magic stat and the gain fields
     `addtionalMaxHp` and `addtionalMaxMpCountList`. An in-game test with an
     edited value would show whether the game clamps it.
-16. The label the game shows for a map (area name and title joined), and the
+15. The label the game shows for a map (area name and title joined), and the
     use of the `map.csv` rows 800 to 802.
