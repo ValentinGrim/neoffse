@@ -12,6 +12,7 @@
 
 mod apply;
 mod binding;
+mod lists;
 mod locate;
 mod meta;
 pub mod names;
