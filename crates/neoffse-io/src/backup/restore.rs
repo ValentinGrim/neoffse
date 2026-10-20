@@ -48,9 +48,12 @@ pub fn restore(data: &DataDir, game: &str, backup: &Backup, target_dir: &Path) -
 /// the restored manifest). Last it writes the files in manifest order, each
 /// through [`atomic::write_with`], and compares the temporary file with the
 /// bytes of the backup before the rename. The folder `target_dir` must exist
-/// and the restore never creates it. `ops` serves the writes of the target
-/// files and the manifest of the safety backup; the copies of the safety
-/// backup use `std::fs`. `now` names the safety backup.
+/// and the restore never creates it. The restore accepts any such folder and
+/// does not compare it with the `source_dir` of the manifest, which can be
+/// stale; the caller derives `target_dir` from a fresh discovery or from that
+/// manifest. `ops` serves the writes of the target files and the manifest of
+/// the safety backup; the copies of the safety backup use `std::fs`. `now`
+/// names the safety backup.
 ///
 /// The backup being restored is not removed by the retention pass of the
 /// safety backup, so the game may hold 21 readable backups until the next
