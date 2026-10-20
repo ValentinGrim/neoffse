@@ -48,6 +48,7 @@ fn assert_digit_edit(slot: &RealSlot, field: &FieldId) {
     }
     let mut rebuilt = RealSlot {
         label: label.clone(),
+        name: slot.name.clone(),
         bytes,
         json: again.json,
     }

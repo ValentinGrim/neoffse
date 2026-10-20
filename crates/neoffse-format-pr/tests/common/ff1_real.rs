@@ -12,6 +12,8 @@ use neoffse_format_pr::ff1::{Ff1Model, GAME};
 pub(crate) struct RealSlot {
     /// `ff1` plus the first 8 characters of the file name.
     pub label: String,
+    /// The file name; a save file name holds no personal value.
+    pub name: String,
     pub bytes: Vec<u8>,
     pub json: String,
 }
@@ -42,6 +44,7 @@ pub(crate) fn slots() -> Option<Vec<RealSlot>> {
     let mut slots = Vec::new();
     for path in files {
         let label = label(&path);
+        let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
         let Ok(bytes) = std::fs::read(&path) else { panic!("{label}: read failed") };
         let Ok(decoded) = decode(&bytes) else { panic!("{label}: decode failed") };
         let Ok(mut document) = Document::parse(&decoded.json) else {
@@ -50,6 +53,7 @@ pub(crate) fn slots() -> Option<Vec<RealSlot>> {
         if document.raw(&[Segment::Key("userData")]).is_ok() {
             slots.push(RealSlot {
                 label,
+                name,
                 bytes,
                 json: decoded.json,
             });

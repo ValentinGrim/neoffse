@@ -74,6 +74,7 @@ fn real_equip_keeps_the_game_rules() {
         let again = decode(&bytes).unwrap_or_else(|_| panic!("{label}: second decode failed"));
         let mut rebuilt = RealSlot {
             label: label.clone(),
+            name: slot.name.clone(),
             bytes,
             json: again.json,
         }
