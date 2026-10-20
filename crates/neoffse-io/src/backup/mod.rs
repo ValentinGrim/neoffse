@@ -38,8 +38,9 @@
 //!
 //! `source_dir` holds a path from the user's home, and the manifest keeps it
 //! on the local disk. An error names the failing file, whose path starts with
-//! `source_dir` or with the target folder of a restore, so a caller must not
-//! log the `Display` or the `Debug` of an error of this module.
+//! `source_dir`, with the target folder of a restore or with the data folder,
+//! so a caller must not log the `Display` or the `Debug` of an error of this
+//! module.
 
 mod list;
 mod manifest;
@@ -81,6 +82,9 @@ pub struct Request<'a> {
 }
 
 /// One backup on disk.
+///
+/// The `Debug` output holds `dir` and `manifest.source_dir`, paths under the
+/// user's home: do not log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Backup {

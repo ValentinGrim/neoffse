@@ -53,7 +53,11 @@ impl fmt::Display for Operation {
 ///
 /// The type derives `Debug` only: `std::io::Error` and the boxed errors are
 /// not `PartialEq`. Tests match with `matches!`. `Display` names the path and
-/// never repeats the cause, which stays in `source()`.
+/// does not repeat the cause, which stays in `source()`.
+///
+/// The `Display` and `Debug` output name personal paths: a file under the
+/// user's home, or a backup folder in the data folder. Do not log them
+/// (`docs/architecture.md#errors`).
 ///
 /// A later version may add variants, so a `match` needs a wildcard arm.
 #[derive(Debug, thiserror::Error)]
@@ -69,8 +73,8 @@ pub enum IoError {
         /// The error the operating system returned.
         source: std::io::Error,
     },
-    /// The system reports no home directory, so the data folder has no
-    /// location.
+    /// The data folder has no location: the system reports no home directory,
+    /// or the folder it computes is relative.
     #[error("the system reports no home directory, so the data folder is unknown")]
     NoDataDir,
     /// A game id cannot name a folder.
@@ -112,8 +116,9 @@ pub enum IoError {
     /// A restore failed while it wrote files.
     ///
     /// The files in `written` hold the backup's version, the others hold their
-    /// old one. The restore does not roll back: a rollback would write to a
-    /// disk that just failed. Restoring `safety` puts the old versions back.
+    /// old one. The restore does not roll back: a rollback would write to the
+    /// disk that refused the last write. Restoring `safety` puts the old
+    /// versions back.
     #[error("restore stopped after {} of {} files", .written.len(), .written.len() + .remaining.len())]
     RestoreFailed {
         /// Files already replaced by the backup's version, in write order.

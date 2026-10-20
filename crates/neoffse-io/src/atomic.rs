@@ -2,9 +2,9 @@
 //!
 //! [`write()`] puts `bytes` in a temporary file inside the target's own folder,
 //! flushes it to disk, lets the caller check that file, then renames it over
-//! the target. The target either keeps its exact previous content or holds
-//! exactly `bytes`; it is never partial. Any failure before the rename
-//! removes the temporary file.
+//! the target. The target keeps its previous content or holds all of
+//! `bytes`, with no state in between. Any failure before the rename removes
+//! the temporary file.
 //!
 //! Each file operation goes through [`FileOps`], so a test can make any one
 //! step fail. [`RealFileOps`] is the operating system implementation.

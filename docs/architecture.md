@@ -135,12 +135,38 @@ neoffse/
 ```
 
 **Dependency rule.**
-`neoffse-app → neoffse → neoffse-format-* → neoffse-core + neoffse-data + neoffse-io`.
-`neoffse-data` and `neoffse-io` depend on `neoffse-core` and on nothing
-else in the workspace; `neoffse-core` depends on no workspace crate. A
-format crate never imports another format crate. `neoffse-testkit`
+The target layering is
+`neoffse-app → neoffse → neoffse-format-* → neoffse-core + neoffse-data + neoffse-io`:
+a crate depends only on crates to its right. The workspace has fewer
+edges today:
+
+- `neoffse-core`, `neoffse-data` and `neoffse-io` depend on no workspace
+  crate.
+- `neoffse-format-pr` depends on `neoffse-core`. It has no dependency on
+  `neoffse-io`: the `neoffse` facade joins the two.
+- `neoffse` depends on `neoffse-core`, `neoffse-data`, `neoffse-io` and
+  `neoffse-format-pr`.
+- `neoffse-app` depends on `neoffse`.
+- `neoffse-io` has `neoffse-format-pr` as a dev-dependency, for the
+  ignored `real_discovery` test only. It is the one edge that points up.
+  It cannot become a normal dependency, because it would reverse the
+  layering and give the I/O crate knowledge of a format.
+
+A format crate never imports another format crate. `neoffse-testkit`
 enters a crate as a dev-dependency and nowhere else. No crate below the
 app depends on Slint, so their tests run without opening a window.
+
+**Public types.** Every public enum that a crate returns, and every
+struct with public fields that only the crate builds, is
+`#[non_exhaustive]`. A later version adds a variant or a field without a
+breaking change, and a `match` on such an enum needs a wildcard arm.
+`neoffse-io` applies the rule to `IoError`, `Operation`, `Origin`, `Key`,
+`Backup`, `Manifest`, `Listing`, `Restored`, `Discovery` and
+`SaveFolder`; `neoffse-format-pr` applies it to `CodecError`,
+`DocumentError`, `InflatePath`, `Decoded`, `Framing`, `Inflated`,
+`UnalignedLength` and `PrGame`. A type that a caller builds and passes in
+stays open, so the caller can construct it: `Request`, `Environment`,
+`SteamGame`, `ProcessInfo`, `Container`, `Segment` and `Scalar`.
 
 ### Crate roles
 
@@ -159,8 +185,11 @@ app depends on Slint, so their tests run without opening a window.
     `Operation`, the step that failed ([Errors](#errors)).
   - `dirs` holds `DataDir`, which names the folder where NeoFFSE keeps its
     backups. `DataDir::platform` asks the operating system for it
-    (`ProjectDirs::data_dir()`: `~/.local/share/neoffse` on Linux, the
-    roaming application data folder on Windows); `DataDir::at` takes any
+    (`ProjectDirs::data_dir()`). On Linux the folder is
+    `$XDG_DATA_HOME/neoffse` when that variable holds an absolute path,
+    else `~/.local/share/neoffse`. On Windows it is `%APPDATA%\neoffse\data`:
+    `neoffse\data` inside the roaming application data folder.
+    A relative result returns `NoDataDir`. `DataDir::at` takes any
     folder, which tests use. The type builds `<data dir>/backups` and
     `<data dir>/backups/<game>` and creates nothing on disk. A game id
     holds only ASCII lowercase letters, digits and `-`, so it stays inside
@@ -170,7 +199,12 @@ app depends on Slint, so their tests run without opening a window.
     [Save safety](#save-safety): `write` takes the bytes and a check to
     run on the temporary file. Every file operation goes through the
     `FileOps` trait, one method per step, so a test makes any single step
-    fail. `RealFileOps` is the operating system implementation.
+    fail. `RealFileOps` is the operating system implementation. The
+    provided method `copy_file` copies a file and flushes the copy through
+    `sync_file`; backups and the safety backup of a restore copy through
+    it, and each failed copy is an `Operation::Copy` error that names the
+    source file. Folder operations use `std::fs` and sit outside the
+    trait.
   - `backup` has `create`, `list` and `restore`. A backup is a folder of
     copied files with a `backup.json` manifest (`Manifest`); `list`
     returns a game's readable backups, newest first, and reports the
@@ -182,7 +216,9 @@ app depends on Slint, so their tests run without opening a window.
     under `My Games`. `discover` returns a `Discovery`: `folders`, one
     `SaveFolder` per `My Games/<folder>/Steam/<SteamID64>` found, with its
     `Origin`, and `skipped`, the places it could not read as `IoError`s. A
-    path that does not exist is no error. The search never writes.
+    path that does not exist is no error. `discover` returns each path
+    once: when two descriptors name one folder, the first descriptor gives
+    the id. The search never writes.
   - `process` answers one question: which of these executables have a
     live process? `running` takes the names and returns the matching ones.
     The scan is best effort: it skips threads, never fails, and a process
@@ -193,21 +229,42 @@ app depends on Slint, so their tests run without opening a window.
 
   Discovery on Linux collects Steam roots (native, Flatpak, Snap).
   `<data_home>/Steam` and `~/.local/share/Steam` are both probed, since
-  the first is the second unless `XDG_DATA_HOME` moves it. Each root's
-  `libraryfolders.vdf` lists its libraries, and every library is probed
-  for `compatdata/<app ID>`, because a Proton prefix can sit outside the
-  game's library. A library path that is not absolute is skipped and
-  reported in `skipped` as `LibraryListInvalid`: it would otherwise
-  resolve against the working folder of the process. On Windows it reads
-  the Documents Known Folder, which follows OneDrive. `discover` runs both
-  searches on any system, and each search runs only when the
-  `Environment` fields it needs are set. A relative path in an
+  the first is the second unless `XDG_DATA_HOME` moves it, and the
+  candidate list drops an exact duplicate before it canonicalizes a
+  path. The Steam root is a library, even when its
+  `libraryfolders.vdf` omits it, and that file lists the others. Discovery
+  canonicalizes every library first, then probes it for
+  `compatdata/<app ID>`, because a Proton prefix can sit outside the
+  game's library. A library that two roots list is probed once, and the
+  first root owns it (`Origin::SteamLibrary::root`). A library path that
+  is not absolute is skipped and reported in `skipped` as
+  `LibraryListInvalid`: it would otherwise resolve against the working
+  folder of the process. The public module
+  `neoffse_io::discovery::library_list` exposes `library_paths`, a pure
+  parse of the list text that touches no disk.
+
+  On Windows discovery probes four candidates in this order, and drops a
+  candidate that resolves to a folder it already probed: the
+  `Environment::documents` field (the Documents Known Folder),
+  `%USERPROFILE%\Documents`, `%USERPROFILE%\OneDrive\Documents` and
+  `%OneDrive%\Documents`. A result keeps the spelling of the first
+  candidate that named its folder. After a OneDrive Known Folder Move, a
+  stale local `Documents` folder that still holds a save is a different
+  folder from the synced one, so discovery returns two `SaveFolder`s and
+  the caller chooses
+  ([Save folder](formats/pixel-remaster.md#save-folder) lists the Go
+  editor's candidates).
+
+  `discover` runs both searches on any system, and each search runs only
+  when the `Environment` fields it needs are set. A relative path in an
   `Environment` field counts as absent and is not reported, and a relative
   or missing `home` switches off the Linux search. The rules behind
   discovery are in
   [Steam roots and libraries](formats/pixel-remaster.md#steam-roots-and-libraries).
-  Each format crate declares where its saves sit by publishing
-  `SteamGame` data, as `neoffse-format-pr` does with its game table.
+  Each format crate declares where its saves sit by publishing plain
+  data, and the caller turns it into `SteamGame` descriptors:
+  `neoffse-format-pr` publishes `PrGame` rows in `games::GAMES` and has no
+  dependency on `neoffse-io`.
 - **`neoffse-format-pr`** reads and writes FF I to VI PR saves. The codec
   splits off the BOM and the trailing whitespace, decodes base64,
   decrypts with Rijndael-256, inflates the raw deflate stream and returns
@@ -289,7 +346,7 @@ all three together.
 | UI build | `slint-build` | build script of `neoffse-app` (`build.rs`) compiles `ui/app.slint` with the `fluent` style |
 | UI tests | `i-slint-backend-testing` | dev-dependency of `neoffse-app`: headless UI tests with no window and no event loop. Internal Slint crate |
 | File dialogs (M4) | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
-| JSON | `serde`, `serde_json` | `serde` with `std` only. `serde_json` with `preserve_order` (key order), `arbitrary_precision` (a number keeps its written text) and `raw_value` (an untouched value keeps its bytes). They sit under a lossless document layer |
+| JSON | `serde`, `serde_json` | `neoffse-format-pr` uses `serde` with `std` only and `serde_json` with `preserve_order` (key order), `arbitrary_precision` (a number keeps its written text) and `raw_value` (an untouched value keeps its bytes); they sit under a lossless document layer. `neoffse-io` uses `serde` with `std` and `derive` and `serde_json` with its default features, for `Manifest` |
 | Deflate | `flate2` (`rust_backend`) | raw deflate, no zlib header, pure Rust |
 | Base64 | `base64` (`std` only) | standard alphabet, `=` padding |
 | PR cipher | hand-ported Rijndael-256 | 32-byte block, 32-byte key, CBC, fixed key and IV, zero padding; AES fixes the block at 16 bytes, so AES crates cannot decrypt it. The port computes its S-box and lookup tables by `const fn` and expands the key schedule in `Rijndael256::new` |
@@ -318,7 +375,7 @@ a file.
   `FormatError` in `neoffse-core`, next to the `SaveFormat` trait; a
   format crate converts its own errors into it and keeps them as the
   source. `neoffse-io` has `IoError`: a failed file operation with its
-  step and path (`Io`), a missing home directory (`NoDataDir`), an invalid
+  step and path (`Io`), a data folder with no location (`NoDataDir`), an invalid
   game id (`InvalidGameId`), a failed verification (`VerificationFailed`),
   an invalid backup manifest (`ManifestInvalid`), an invalid Steam library
   list (`LibraryListInvalid`) and a restore that stopped partway
@@ -357,9 +414,15 @@ a file.
   restore errors, for each entry of `Discovery::skipped`, and for the
   `Debug` output of `Discovery`, `SaveFolder` (which also holds a
   SteamID64), `ProcessInfo` (the first command-line argument of a process)
-  and `Manifest` (`sourceDir`). No function of the crate logs or prints
-  any of them, and a caller must not print them raw: log the variant and
-  the `Operation`, or the count of skipped places.
+  and `Manifest` (`sourceDir`). The `Debug` output of the following types
+  holds paths under the home too: `IoError` (its variants that carry a path),
+  `Backup` (`dir` and `manifest.source_dir`), `Listing`, `Restored` (its
+  `safety` backup), `Request` (`source_dir`), `Environment` (every
+  field), `Origin` and `DataDir` (the root). The data folder is a path
+  under the home, so an error that names a backup folder holds it. No
+  function of the crate logs or prints any of them, and a caller must not
+  print them raw: log the variant and the `Operation`, or the count of
+  skipped places.
 - A refused edit returns an error with the field and the reason, and the
   document stays as it was before the call. `Document::set` already
   behaves so with `DocumentError`; `EditError` will carry the bound an
@@ -441,6 +504,11 @@ a file.
   to the Windows machine and run it there with `--ignored --nocapture`.
   `neoffse-format-pr` is a dev-dependency of `neoffse-io` for this test
   only, so the I/O crate stays free of any format.
+- **Test profile.** The root `Cargo.toml` sets `opt-level = 2` in
+  `[profile.test]`, so `cargo test` builds optimized code. The cipher and
+  the property tests are CPU bound, and the largest codec test,
+  `max_text_len_admits_the_worst_case_payload`, encrypts and decrypts
+  about 16 MiB.
 - **Snapshots (M4).** `insta` will pin change summaries and view model
   state.
 - **UI.** View models (M4) carry the UI logic and run in plain Rust
@@ -573,8 +641,15 @@ and the facade (M4) joins them to the format's encoder and decoder.
    (`FINAL FANTASY II.exe`). On Windows the check compares the process
    name. On Linux the game runs under Wine, where the kernel cuts the
    process name to 15 bytes: FF II, FF III and FF IV all read
-   `FINAL FANTASY I`. The check compares the executable name from the
-   command line (`cmd()[0]`) instead, and skips threads. The scan is
+   `FINAL FANTASY I`. The loader that `/proc/<pid>/exe` names is the same
+   for every Wine process, so it cannot name the game either. Under
+   Proton, Wine rewrites the first command-line argument to the Windows
+   path of the game executable, for example
+   `<drive>:\<path>\FINAL FANTASY II PR\FINAL FANTASY II.exe`, and the
+   arguments after it are empty (measured on FF II); `sysinfo` drops the
+   empty ones. The check takes the last component of that first argument
+   (`cmd()[0]`), split on `/` and on `\`, and compares it with the
+   executable name, ASCII case folded. It skips threads. The scan is
    best effort: a process the system hides stays invisible, so the check
    can warn but never prove that the game is closed.
 2. The user reviews the change summary and confirms.
@@ -592,6 +667,10 @@ and the facade (M4) joins them to the format's encoder and decoder.
    error.
 7. `neoffse-io` renames the temporary file over the original.
 
+In the facade (M4), step 3 creates the backup before step 4 encodes, so
+an encode that fails leaves a backup that counts against the 20 of its
+game.
+
 **Backup layout.**
 
 ```
@@ -601,16 +680,22 @@ and the facade (M4) joins them to the format's encoder and decoder.
 ```
 
 `<data dir>` is the platform data folder that `neoffse_io::dirs::DataDir`
-names: `~/.local/share/neoffse` on Linux, the roaming application data
-folder on Windows. Backups hold user data, so they sit in the data
-folder. `<game>` is a game id of lowercase ASCII letters, digits and `-`,
-such as `ff1-pr`.
+names: `$XDG_DATA_HOME/neoffse` (default `~/.local/share/neoffse`) on
+Linux, `%APPDATA%\neoffse\data` on Windows. Backups hold user data, so
+they sit in the data folder. `<game>` is a game id of lowercase ASCII
+letters, digits and `-`, such as `ff1-pr`.
 
-The folder name is the UTC time of the backup and carries no `Z`; only
-`created` in the manifest does. `-NN`, from `-01` to `-99`, separates two
-backups taken in the same second. A backup holds only the files its
-request names, which is the edited slot and not the whole save folder.
-The manifest (illustrative values):
+The folder name is the UTC time of the backup's `Moment`, an instant with
+an offset from UTC (`Moment::now` reads the system clock in UTC), and it
+has no `Z`. `created` in the manifest shows the local time with that
+offset, and `Z` for UTC. A `Moment` holds a UTC time and a local time that
+both fall in the years 1970 to 9999, so the year has four digits. `-NN`,
+from `-01` to `-99`, separates backups taken in the same second. A new
+backup takes the number after the highest one on disk, so no name is
+reused inside a second, even after retention deleted its folder; the 101st
+backup in one second fails with an `AlreadyExists` error. A backup holds
+only the files its request names, which is the edited slot and not the
+whole save folder. The manifest (illustrative values):
 
 ```json
 {
@@ -618,7 +703,9 @@ The manifest (illustrative values):
   "game": "ff1-pr",
   "sourceDir": "/home/user/.local/share/Steam/steamapps/compatdata/<appid>/pfx/drive_c/users/steamuser/Documents/My Games/...",
   "created": "2026-10-18T20:14:03Z",
-  "files": ["<slot file>"],
+  "files": [
+    "<slot file>"
+  ],
   "saveType": "slot",
   "reason": "before-save"
 }
@@ -641,11 +728,12 @@ The manifest (illustrative values):
   delete it.
 - A restore that fails while it writes returns `IoError::RestoreFailed`.
   The files already written keep the backup's version, and no rollback
-  runs, because it would write to a disk that just failed. The error
-  carries the safety backup as the way back.
+  runs, because it would write to the disk that refused the last write.
+  The error carries the safety backup as the way back.
 - The backup being restored stays out of the retention count of the
-  restore's safety backup, so a game holds 21 readable backups after a
-  restore, until the next `create` prunes back to 20.
+  restore's safety backup, so a game holds at most 21 readable backups
+  after a restore, until the next `create` prunes back to 20. A game that
+  held fewer than 20 backups gains at most the safety backup.
 - `restore` writes into any existing folder it receives and does not
   compare it with the `sourceDir` of the manifest, a capture of the
   folder at backup time that a library move or a reinstall can make
@@ -654,7 +742,7 @@ The manifest (illustrative values):
 - **Steam Cloud.** Steam syncs PR saves to its cloud. After an edit,
   Steam may report a conflict at the next launch; the user must keep the
   local files, or Steam replaces the edit with the cloud copy. The app
-  shows this note after a save.
+  (M4) shows this note after a save.
 
 ## Layers and milestone boundaries
 
@@ -666,7 +754,7 @@ closed crate before the next milestone opens. The
 |---|---|---|
 | M0 Foundations | workspace, CI, app skeleton | no |
 | M1 PR codec | codec and lossless document of `neoffse-format-pr`; `neoffse-testkit` | yes |
-| M2 File safety | `neoffse-io` | yes |
+| M2 File safety | `neoffse-io`; the game table and the trailer cap of `neoffse-format-pr` | yes |
 | M3 PR domain | `neoffse-core`, `neoffse-data`, domain mapping of `neoffse-format-pr` | yes |
 | M4 App, FF I | `neoffse-app` v1, the `neoffse` facade (registry, history, save pipeline) | yes |
 | M5 FF II to VI | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` for per-game capabilities | yes |
