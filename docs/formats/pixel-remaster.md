@@ -22,7 +22,9 @@ The Auto Save equals slot 1 in every field those rules measure, and slot 2
 is the editor's copy of slot 1 [M]. Every [M] on an FF I character value
 in those sections rests on 8 character states. The ranges quoted there are
 observations, not bounds: no measured value comes from a new game (level 1,
-bare hands, low gil).
+bare hands, low gil). The names and IDs of FF I items and equipment come
+from the game's own master data, read from one install of FF I
+([Game master data](#game-master-data)).
 
 ### Games
 
@@ -57,7 +59,8 @@ Platforms covered:
 | Source | Location | Used for |
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
-| ID tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | names and IDs of the FF I items, equipment, spells and jobs ([ID spaces and tables](#id-spaces-and-tables)) |
+| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix. Two Addressables bundles in `<install>/FINAL FANTASY_Data/StreamingAssets/aa/StandaloneWindows64/`: `master_assets_all_<hash>.bundle` → TextAsset `Assets/GameAssets/Serial/Data/Master/content.csv` (and 88 other CSV files), and `message_assets_all_<hash>.bundle` → TextAssets `Assets/GameAssets/Serial/Data/Message/system_en.txt` and `system_fr.txt` (and `system_ja.txt`). The `<hash>` part of each file name varies per build. Read with UnityPy 1.25.4 from copies of the bundles | IDs, kinds and English and French names of the FF I items and equipment ([Game master data](#game-master-data)) [D] |
+| Go editor tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | names of the FF I abilities and jobs; the historical source of the content names, compared with the game ([Go editor tables](#go-editor-tables)) |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
 | Real saves | one Steam save folder per game, read-only copies | every [M] fact about the files |
 | Steam's own files | `libraryfolders.vdf`, `appmanifest_<app ID>.acf`, `remotecache.vdf`, `loginusers.vdf` and the install folders of one Linux Steam install with two libraries; structure only, personal values masked | every [M] fact about roots, libraries and Steam Cloud |
@@ -89,6 +92,7 @@ The 32 game files end with CRLF; the two editor files do not [M].
 |---|---|
 | [M] | Measured on the 32 game-written Steam files (FF I to VI) or, for roots, libraries and Steam Cloud, on one Linux Steam install; "[M, two editor files]" marks a measurement on the two editor-written files |
 | [G] | Verified in game |
+| [D] | Read from the game's own master data or message files (FF I, build 20249397); not checked on other builds or games |
 | [C] | Taken from the code, tests or commit messages of KiameV's Go editor, or from the code or documentation of another source named beside the tag; not measured |
 | [I] | Inferred from measurements; consistent with the data, not proven |
 
@@ -747,30 +751,144 @@ dictionaries in strings [M].
 Paths below use `.` for an object member and `→` for a step into a JSON
 string.
 
+### Game master data
+
+The game stores its content IDs and their names in its own data files.
+`content.csv` gives each `contentId` a type and a name key, and the
+message files turn the key into text in each language. NeoFFSE builds its
+`contentId` tables from these files. Every fact below comes from the FF I
+install, build 20249397 [D]. The installs of the other five games were not
+read.
+
+**Where the files sit.** `<install>` is
+`<library>/steamapps/common/FINAL FANTASY PR/`. Both files are TextAssets
+inside Unity Addressables bundles in
+`<install>/FINAL FANTASY_Data/StreamingAssets/aa/StandaloneWindows64/`:
+
+| Bundle | TextAsset | Holds |
+|---|---|---|
+| `master_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Master/*.csv` | 89 CSV files; `content.csv` defines the content IDs |
+| `message_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Message/system_en.txt`, `system_fr.txt`, `system_ja.txt` | text per language, one file each |
+
+The `<hash>` part of the bundle names changes with the build, so match the
+prefix. UnityPy 1.25.4 opens the bundles [D].
+
+**`content.csv`.** One row per content ID, with a header line. The measured
+build holds 221 rows [D]. Columns, in order:
+
+| Column | Holds |
+|---|---|
+| `id` | the `contentId` a save stores |
+| `mes_id_name` | key of the name in the message files |
+| `mes_id_battle` | a second message key; `None` on the rows quoted below |
+| `mes_id_description` | key of the description in the message files |
+| `icon_id` | an icon number; `0` on the rows quoted below |
+| `type_id` | the kind of row, below |
+| `type_value` | the row ID in the master file of that kind |
+
+| `type_id` | Kind | `type_value` points to | Rows |
+|---|---|---|---|
+| 1 | item | row in `item.csv` | 36 |
+| 2 | weapon | row in `weapon.csv` | 41 |
+| 3 | armor | row in `armor.csv` | 44 |
+| 4 | ability or command | not measured | 99 |
+| 5 | gil | not measured | 1 |
+
+Types 1 to 3 hold 121 content IDs, from 2 to 202 [D]. The `id` column is
+the `contentId` of saves: 111 entries of the Go editor's tables, which use
+save IDs, match it by ID and name ([Go editor tables](#go-editor-tables))
+[D, M].
+
+**Resolving a name.** Look up `mes_id_name` in the message file of the
+language. A message file holds one `key<TAB>text` pair per CRLF line, and
+no key repeats [D]. `system_fr.txt` carries the same keys as
+`system_en.txt`. Equipment names start with an icon tag such as
+`<IC_SHIELD>`; strip it before you show the name. The game resolves names
+this way [I]: the column name and the matches against the Go editor's
+tables say so, and no game code was read.
+
+A name key does not follow the content ID, so always read the key from the
+row. Rows 164 to 166, verbatim [D]:
+
+```text
+164,MSG_ARMOR_NAME_21,None,MSG_ARMOR_INF_21,0,3,35
+165,MSG_ARMOR_NAME_23,None,MSG_ARMOR_INF_23,0,3,36
+166,MSG_ARMOR_NAME_22,None,MSG_ARMOR_INF_22,0,3,37
+```
+
+| Content ID | Name key | English | French | `armor.csv` row |
+|---|---|---|---|---|
+| 165 | `MSG_ARMOR_NAME_23` | Ice Shield | Bouclier gelé | 36 |
+| 166 | `MSG_ARMOR_NAME_22` | Flame Shield | Bouclier igné | 37 |
+
+Three readings rule out a swap between keys and rows [D]:
+
+- The description keys follow the same rows. The text under
+  `MSG_ARMOR_INF_23` (on 165) describes an ice shield that guards against
+  fire, and `MSG_ARMOR_INF_22` (on 166) a fire shield that guards against
+  ice. The English, French and Japanese files agree.
+- `armor.csv` rows 36 and 37 share `parts_group_id` 2, defense 12 and price
+  10 000. The `resistance_attribute` value differs: 117 on row 36, 118 on row 37.
+  `attribute_group.csv` maps those values to attribute 1 and attribute 2.
+  Fire and Ice sit at consecutive message keys (`MSG_SYSTEM_240`,
+  `MSG_SYSTEM_241`), so 1 is fire and 2 is ice [I]. The shield on 165
+  resists fire, which fits Ice Shield.
+- `sort_id` is 45 on row 36 and 46 on row 37: the game lists Ice Shield
+  before Flame Shield.
+
+**Other master files** the check read [D]:
+
+- `armor.csv` holds one row per armor-type content ID. Its columns include
+  `parts_group_id`, `resistance_attribute` and `sort_id`, and one each for
+  defense and price.
+  Group 2 holds row 1 (content 130, the empty left hand) and the
+  rows of the nine shields (32 to 37, 39, 41 and 44). The group looks like
+  the equipment slot of the row, with group 2 for the left hand [I]; the
+  other groups were not read.
+- `attribute_group.csv` maps a `resistance_attribute` value to attributes.
+- `item.csv` and `weapon.csv` hold the rows that types 1 and 2 point to;
+  their columns were not read.
+
+**Limits.** One build and one game were read. A patch may renumber IDs, and
+the Pixel Remaster ports for other platforms were not checked. The check
+compared the seven content tables of the Go editor with `content.csv`.
+`abilityId`, `jobId`, commands, maps and monsters were not read from the
+game.
+
 ### ID spaces and tables
 
 A save points into the game data through three ID spaces: `contentId`,
-`abilityId` and `jobId`. The Go editor names them in tables of its package
-`models/core/costs/ff1`, and NeoFFSE takes the FF I names and IDs from
-those tables ([Sources](#sources)). Facts about the tables are [C];
-comparisons with the saves are [M].
+`abilityId` and `jobId`. NeoFFSE takes the `contentId` IDs, kinds and names
+from `content.csv` and the message files ([Game master data](#game-master-data)).
+The names of `abilityId` and `jobId` come from the Go editor's tables,
+because the game's own files for them were not read ([Go editor
+tables](#go-editor-tables)). Facts about game data are [D], facts about the
+Go editor's tables [C], comparisons with the saves [M].
 
-| Space | Referenced by | Tables | IDs |
+| Space | Referenced by | Names from | IDs |
 |---|---|---|---|
-| `contentId` | rows of `normalOwnedItemList` and `importantOwendItemList`, equipment slots, the `contentId` of an ability object | `Items`, `ImportantItems`, `Weapons`, `Shields`, `Armors`, `Helmets`, `Gloves` | 2 to 202; spells 213 to 276 |
-| `abilityId` | `abilityList`, spell slots, `learnedAbilityList` | `Abilities` | 5 to 94 |
-| `jobId` | character `jobId`, `id` in `jobList`, `releasedJobs` | `Jobs` | 1 to 12 |
+| `contentId` | rows of `normalOwnedItemList` and `importantOwendItemList`, equipment slots, the `contentId` of an ability object | `content.csv` with `system_en.txt` and `system_fr.txt` [D] | 2 to 202; spells 213 to 276 |
+| `abilityId` | `abilityList`, spell slots, `learnedAbilityList` | Go `Abilities` [C] | 5 to 94 |
+| `jobId` | character `jobId`, `id` in `jobList`, `releasedJobs` | Go `Jobs` [C] | 1 to 12 |
 
-Items, key items and equipment share one `contentId` space. The seven
-tables hold 116 entries over 115 distinct IDs, and no ID appears in two
-tables; the one collision, 165, sits inside `Shields`. Key items take 45
-to 61 [C], and every ID of `importantOwendItemList` falls in that range
-[M]. Spell content IDs (`abilityId + 208` in FF I) sit above every table
-ID, and none appears in the inventory [M].
+Items, key items and equipment share one `contentId` space. Key items take
+45 to 61 [C], and every ID of `importantOwendItemList` falls in that range
+[M]. Spell content IDs (`abilityId + 208` in FF I) sit above every item and
+equipment ID, and none appears in the inventory [M].
 
-Each table is a package-level slice of `models.NameValue` (`Name string`,
-`Value int`) in `models/core/costs/ff1`, sorted by ID. The package imports
-no GUI code. Its module path is `pixel-remastered-save-editor`.
+- **Placeholders.** The game holds a row for each empty-slot ID: the name
+  of 62 reads "Empty" (key `MSG_SYSTEM_069`) and the names of 130 to 133
+  read "None" (key `MSG_SYSTEM_070`) [D]. They are content IDs the game
+  uses for an empty slot, not items ([Equipment slots](#equipment-slots)).
+
+### Go editor tables
+
+The Go editor lists names for the content, ability and job IDs in its
+package `models/core/costs/ff1`. For `contentId`, 111 of its 116 entries
+match the game, and the rest are a known pitfall ([Known
+pitfalls](#known-pitfalls)). Each table is a package-level slice of `models.NameValue`
+(`Name string`, `Value int`), sorted by ID. The package imports no GUI
+code. Its module path is `pixel-remastered-save-editor`.
 
 | Go table | Entries | IDs | Serves |
 |---|---|---|---|
@@ -787,35 +905,57 @@ no GUI code. Its module path is `pixel-remastered-save-editor`.
 | `Maps` | 120 | 1 to 120 | `mapData.mapId` |
 | `Bestiary` | 129 | 1 to 129 | `monsterDefeats` keys |
 
+- **Content tables.** The seven content tables hold 116 entries over 115
+  distinct IDs. The only repeat, 165, sits inside `Shields`. The editor
+  merges `Items` and the five equipment tables into one ID-to-name map, and
+  the later entry replaces the earlier one [C].
 - **Names.** All names are English ASCII, without `"` or `\`. Names
-  repeat: "Wizard's Staff" at 122 and 123, "Gaze" six times, "Blaze" five
-  times and "Icestorm" twice in `Abilities`, place names in `Maps` and boss
-  variants in `Bestiary`. Look an entry up by ID, never by name.
-- **Duplicate ID.** `Shields` lists 165 twice, as Ice Shield and Flame
-  Shield. The Go editor merges `Items` and the five equipment tables into
-  one ID-to-name map, and the later entry replaces the earlier one
-  ([Open questions](#open-questions)).
+  repeat: "Gaze" six times, "Blaze" five times and "Icestorm" twice in
+  `Abilities`, place names in `Maps` and boss variants in `Bestiary`. Look
+  an entry up by ID, never by name.
 - **Placeholders.** The first row of each equipment table is a
   placeholder: `[Empty R. Hand]` (62), `[Empty L. Hand]` (130), `[Empty
-  Body]` (131), `[Empty Head]` (132) and `[Empty Arms]` (133). They are
-  content IDs the game uses for an empty slot, not items ([Equipment
-  slots](#equipment-slots)).
+  Body]` (131), `[Empty Head]` (132) and `[Empty Arms]` (133). The labels
+  are the editor's; the game names these rows "Empty" and "None".
 - **Spells and monster abilities.** In `Abilities`, 5 to 68 are 64 spells,
   8 levels of 8, and 69 to 94 are monster abilities that no character
   holds. Only the names mark the split ([Abilities](#abilities)).
-- **Gaps** inside the ranges, placeholders aside. `Items` skips 4, 6, 9,
-  16, 20 to 31 and 33. `Weapons` skips 66 to 70, 84, 85, 88, 90, 91, 93
-  to 95, 98 to 100, 103 to 105, 108, 111 to 113 and 117. `Armors` skips
-  135, 138 to 144, 151, 152, 155 and 159. `Shields` skips 166, 167, 169,
-  171 and 172. `Helmets` skips 176 to 182. `Gloves` skips 196 and 199 to
-  201. No table holds 124 to 129, 174, 189 or 190.
 - **Comments.** The source comments out X-Potion, six daggers and Knight's
-  Armor. They have no ID in the tables.
-- **IDs the tables do not name.** The saves hold content IDs 67, 100, 103,
-  151 and 166, and command 5, that the source tables lack. The content IDs
-  sit inside the ranges of `Weapons` (67, 100, 103), `Armors` (151) and
-  `Shields` (166). All five appear in the inventory of slot 1, and four of
-  them in equipment ([Equipment slots](#equipment-slots)) [M].
+  Armor. They have no ID in the tables, and the game holds rows for X-Potion
+  and Knight's Armor.
+
+**Against the game.** The comparison covers the uncommented entries of the
+seven content tables at tag `v1.5.1`; the package is identical at
+`cea371f`. An entry agrees when its ID exists in `content.csv` and its name
+equals the English name without the icon tag. A placeholder entry agrees
+when the game row is a placeholder [D].
+
+111 entries agree: `Items` 18, `ImportantItems` 17, `Weapons` 34,
+`Shields` 9, `Armors` 16, `Helmets` 8 and `Gloves` 9, with the five
+placeholders. Five disagree:
+
+| ID | Go table | Editor name | Game name at that ID | Cause |
+|---|---|---|---|---|
+| 76 | `Weapons` | Wyrmkiller Sword | Wyrmkiller | label only |
+| 101 | `Weapons` | Sasuke's Blade | no such content ID | Sasuke's Blade is 100 |
+| 102 | `Weapons` | Masamune | no such content ID | Masamune is 103 |
+| 122 | `Weapons` | Wizard's Staff | Crosier | Wizard's Staff is 123; the editor names both 122 and 123 Wizard's Staff |
+| 165 (second entry) | `Shields` | Flame Shield | Ice Shield | Flame Shield is 166 |
+
+The game's types 1 to 3 hold eight content IDs that no Go content table
+lists [D]. Five of them appear in saves [M]:
+
+| Content ID | Kind | Game name | Row |
+|---|---|---|---|
+| 67 | weapon | Cat Claws | `weapon.csv` 6 |
+| 100 | weapon | Sasuke's Blade | `weapon.csv` 39 |
+| 103 | weapon | Masamune | `weapon.csv` 42 |
+| 151 | armor | Knight's Armor | `armor.csv` 22 |
+| 166 | armor, shield | Flame Shield | `armor.csv` 37 |
+
+The other three are 4 (X-Potion), 104 (Nunchaku) and 105 (Iron Nunchaku).
+Apart from these eight, every gap inside the ranges of the Go tables is a
+gap in the game's IDs too [D].
 
 ### Characters
 
@@ -881,7 +1021,7 @@ FF I characters hold five equipment slots, keys 1 to 5 of `equipmentList`
 in that order. An empty slot holds the placeholder `contentId` of its slot,
 not 0.
 
-| Key | Slot (Go editor label) | Table | Placeholder |
+| Key | Slot (Go editor label) | Go table | Placeholder |
 |---|---|---|---|
 | 1 | R. Hand | `Weapons` | 62 |
 | 2 | L. Hand | `Shields` | 130 |
@@ -892,12 +1032,14 @@ not 0.
 - **Keys and slots.** The keys read `[1,2,3,4,5]` in that order for every
   FF I character [M]. The Go editor labels the rows by position in
   `values` (`coreEquipment.go`) [C]. 34 of 40 slot entries (slot 1 and
-  Quick Save, 20 each) resolve to the table of their slot [M]. The other
-  6 hold IDs that no table names, each inside the ID range of its slot's
-  table [M]. FF I has no accessory slot.
+  Quick Save, 20 each) resolve to the Go table of their slot [M]. The other
+  6 hold IDs that the Go tables lack and the game names: Cat Claws (67),
+  Sasuke's Blade (100) and Masamune (103) in the right hand, Flame Shield
+  (166) in the left hand, each inside the ID range of its slot's table
+  [M, D]. FF I has no accessory slot.
 - **Empty slots.** One slot entry holds a placeholder: 130 in a left hand
-  of the Quick Save [M, 1 entry]. The tables list 62, 131, 132 and 133 as
-  the placeholders of the other slots [C]; no sample holds one in a slot.
+  of the Quick Save [M, 1 entry]. The game holds placeholder rows for 62,
+  131, 132 and 133 too [D]; no sample holds one in a slot.
 - **`count` copies the inventory count.** In FF I, `count` equals the
   inventory count of the same `contentId` in 40 of 40 slot entries,
   placeholder 130 included (count 9, inventory 9) [M]. In FF II, 54 of 75
@@ -1006,9 +1148,10 @@ never row numbers.
 - **The inventory holds the five placeholders.** In FF I, 62, 130, 131, 132
   and 133 sit in the list in both game states, as its first five rows, with
   counts 5, 9, 5, 9 and 9 [M]. What those counts mean is unknown.
-- **IDs the tables do not name.** The FF I list holds 5 IDs (4 in the Quick
-  Save) that no source table names: 67, 100, 103, 151 and 166 ([ID spaces
-  and tables](#id-spaces-and-tables)) [M]. Keep them as read.
+- **IDs the Go tables lack.** The FF I list holds 5 IDs (4 in the Quick
+  Save) that no Go table names: 67, 100, 103, 151 and 166. `content.csv`
+  names all five ([Go editor tables](#go-editor-tables)) [M, D]. Keep them
+  as read.
 - `normalOwnedItemSortIdList → target`: content IDs. FF II slot 1 and
   FF II Auto Save hold 23, each one an owned item; the other four slots
   hold none [M]. The Go editor's "Reset Sort" wrote `1..N` with empty rows
@@ -1238,7 +1381,7 @@ gives the source; a commit ID points to the fix.
 25. A crash during a non-atomic write left an empty or partial slot [C, `375f916`].
 26. An empty nested document is `""`; writing `"{}"` changes the file [M].
 27. The Go editor labels `addtionalMaxHp` "HP Max", but the field is a gain over a base ([Characters](#characters)) [M, C].
-28. The `Shields` table lists ID 165 twice, and the editor's ID-to-name map keeps the later entry [C].
+28. The Go editor's content tables lack 8 content IDs of the game (4, 67, 100, 103, 104, 105, 151, 166) and disagree with it on 5 entries (76, 101, 102, 122 and the second 165). `Shields` lists 165 twice, as Ice Shield and Flame Shield; the game numbers Flame Shield 166, and the editor's ID-to-name map keeps the later 165 entry ([Go editor tables](#go-editor-tables)) [D, C].
 
 ## Open questions
 
@@ -1269,18 +1412,14 @@ an in-game test.
    a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not
     measured.
-11. Which name belongs to the `Shields` ID 165, Ice Shield or Flame
-    Shield. A save holds 166, the free ID next to it, in a left-hand slot,
-    so 166 may belong to one of the two [I]. An in-game look at that slot
-    would settle it.
-12. Three in-game readings for one FF I character. The menu level for
+11. Three in-game readings for one FF I character. The menu level for
     `addtionalLevel` 69: 69 or 70. The maximum HP when base plus
     `addtionalMaxHp` reaches 1 132: 999 or 1 132. The maximum charges at
     spell level 1, where `currentMpCountList` is 9 and
     `addtionalMaxMpCountList` is 7.
-13. Does the game read equipment `count`, and what do the inventory counts
+12. Does the game read equipment `count`, and what do the inventory counts
     5 and 9 of the placeholders mean?
-14. An FF I save from before the class change: which `jobId` does a
+13. An FF I save from before the class change: which `jobId` does a
     character hold (1 to 6, if `characterStatusId` names the base class),
     and do the placeholders 62, 131, 132 and 133 fill bare slots? No
     measured file comes from a new game.
