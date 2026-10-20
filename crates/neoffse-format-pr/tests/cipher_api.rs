@@ -1,7 +1,7 @@
 //! Edge cases of the public cipher API.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
-use neoffse_format_pr::cipher::{BLOCK_SIZE, PR_IV, PR_KEY, Rijndael256, UnalignedLength, pad_zeros};
+use neoffse_format_pr::cipher::{BLOCK_SIZE, PR_IV, PR_KEY, Rijndael256, pad_zeros};
 
 const KEY_HEX: &str = "61090700b9c3b8b9421599e79ca57b87bea932d3797bad7663ed4dde0a943cc5";
 const IV_HEX: &str = "0224f9771fdb6e0e3bd508d7b795bf2e0cbd176942680a637b12bc6273db2ebb";
@@ -76,9 +76,9 @@ fn cbc_rejects_unaligned_lengths_and_leaves_data() {
     for len in [1, 31, 33, 63, 65] {
         let original = counting(len);
         let mut data = original.clone();
-        assert_eq!(cipher.cbc_encrypt(&PR_IV, &mut data), Err(UnalignedLength { len }));
+        assert_eq!(cipher.cbc_encrypt(&PR_IV, &mut data).map_err(|error| error.len), Err(len));
         assert_eq!(data, original);
-        assert_eq!(cipher.cbc_decrypt(&PR_IV, &mut data), Err(UnalignedLength { len }));
+        assert_eq!(cipher.cbc_decrypt(&PR_IV, &mut data).map_err(|error| error.len), Err(len));
         assert_eq!(data, original);
     }
 }
@@ -119,6 +119,6 @@ fn decrypt_keeps_an_all_zero_block() {
 
 #[test]
 fn unaligned_length_display_names_the_length() {
-    let text = UnalignedLength { len: 33 }.to_string();
+    let text = Rijndael256::pr().cbc_encrypt(&PR_IV, &mut [0_u8; 33]).unwrap_err().to_string();
     assert!(text.contains("33") && text.contains("32"), "{text}");
 }

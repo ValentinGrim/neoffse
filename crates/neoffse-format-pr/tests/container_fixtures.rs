@@ -88,6 +88,7 @@ fn build(fixture: &Fixture) -> Vec<u8> {
             encoder.write_all(fixture.json.as_bytes()).unwrap();
             seal(&encoder.flush_finish().unwrap(), &fixture.container).unwrap()
         }
+        other => panic!("no generator for {other:?}"),
     }
 }
 

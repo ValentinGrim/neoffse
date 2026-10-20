@@ -75,6 +75,14 @@ pub enum CodecError {
         /// Index of the first offending byte in the trailer.
         index: usize,
     },
+    /// The trailer is longer than [`MAX_TRAILER_LEN`](super::MAX_TRAILER_LEN).
+    #[error("the trailer holds {len} bytes, above the limit of {limit}")]
+    TrailerTooLong {
+        /// The trailer length in bytes.
+        len: usize,
+        /// The limit in bytes.
+        limit: usize,
+    },
 }
 
 impl From<UnalignedLength> for CodecError {

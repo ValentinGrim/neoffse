@@ -10,6 +10,8 @@
 //! - [`container`]: the file around the JSON text (BOM, base64, cipher, raw
 //!   deflate, CRLF), with `decode` and `encode`.
 //! - [`document`]: a lossless view of the JSON text, read and edited by path.
+//! - [`games`]: the six games with their game id, Steam app ID, folder under
+//!   `My Games` and executable name.
 //!
 //! Decode a file, edit one value, encode it again:
 //!
@@ -33,3 +35,4 @@
 pub mod cipher;
 pub mod container;
 pub mod document;
+pub mod games;

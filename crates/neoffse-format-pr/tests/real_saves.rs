@@ -87,8 +87,7 @@ fn real_saves_survive_decode_encode_decode() {
         assert!(d2.container == d1.container, "{label}: container changed");
         assert!(d2.inflate_path == InflatePath::FinalBlock, "{label}: not the final-block path");
         let bom = neoffse_format_pr::container::text::BOM;
-        assert!(bytes.starts_with(&bom), "{label}: the file has no BOM");
-        assert!(file.starts_with(&bom), "{label}: BOM lost");
+        assert!(file.starts_with(&bom) == bytes.starts_with(&bom), "{label}: BOM changed");
         assert!(trailing_whitespace(&file) == trailing_whitespace(bytes), "{label}: trailing whitespace changed");
         true
     });

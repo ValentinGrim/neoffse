@@ -45,8 +45,10 @@ pub const PR_IV: [u8; 32] = [
     0xbc, 0x62, 0x73, 0xdb, 0x2e, 0xbb,
 ];
 
-/// A CBC input whose length is not a multiple of [`BLOCK_SIZE`].
+/// A CBC input whose length is not a multiple of [`BLOCK_SIZE`]. A later
+/// version may add fields, and only the CBC methods build one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct UnalignedLength {
     /// The rejected length in bytes.
     pub len: usize,

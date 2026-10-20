@@ -16,8 +16,7 @@ lists the crates each milestone closes.
 - CI on Linux and Windows: `cargo fmt --all --check`, a `Cargo.lock` check,
   `scripts/clippy.sh`, `cargo test --workspace --locked`; on Linux also
   the tests of `neoffse-format-pr` alone and `cargo doc` with warnings
-  denied; plus a `cargo check` job at Rust 1.92, the workspace
-  `rust-version`.
+  denied; plus a `cargo check` job at the workspace `rust-version`.
 - A Slint skeleton window with a top-level menu and an About dialog that
   shows the `AboutSlint` widget.
 - `LICENSE-MIT`, `LICENSE-APACHE`, and a `licenses/` folder for
@@ -53,7 +52,7 @@ decode with an identical inflated JSON text.
 ## M2 File safety
 
 **Scope.** `neoffse-io`:
-- Discovery: Steam native and Flatpak, extra libraries from
+- Discovery: Steam native, Flatpak and Snap, extra libraries from
   `libraryfolders.vdf`, Proton `compatdata` prefixes, Windows Documents
   including OneDrive.
 - Atomic write with verification before the rename (see
@@ -61,9 +60,15 @@ decode with an identical inflated JSON text.
 - Backups with `backup.json`, retention of 20 per game, restore.
 - Running-game detection.
 
+`neoffse-format-pr` also holds two pieces for this layer: the table of the six
+games (`neoffse_format_pr::games`) that discovery and the process check
+consume, and a 64-byte cap on the container trailer.
+
 **Exit.** Failure-injection tests pass: a failed write, verification or
 rename at any step leaves the original file unchanged. Discovery finds
-the real saves of a Steam install on Linux and on Windows.
+the real saves of a Steam install on Linux and on Windows; the ignored
+`real_discovery` test checks it (see
+[Test policy](architecture.md#test-policy)).
 
 ## M3 PR domain
 

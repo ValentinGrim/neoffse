@@ -11,7 +11,9 @@ NeoFFSE might read a console save once you have extracted and decrypted it with 
 Pre-alpha.
 The app does not open or edit saves yet.  
 `neoffse-format-pr` decodes and encodes Pixel Remaster save files and edits their JSON text by path, without rewriting the values it does not touch.  
-It maps nothing to a domain model yet: `neoffse-core`, `neoffse-data`, `neoffse-io` and `neoffse` hold no code.  
+`neoffse-io` finds the Steam save folders of the games it is given, replaces a file only after a check passes on the written copy, keeps timestamped backups with a restore, and scans for a running game.  
+The game scan is best effort: a process the system hides stays invisible, so an empty result proves nothing.  
+Nothing maps to a domain model yet: `neoffse-core`, `neoffse-data` and `neoffse` hold no code.  
 The first target is Final Fantasy I to VI Pixel Remaster on Steam PC (Windows and Linux, Proton included).  
 See [`docs/roadmap.md`](docs/roadmap.md) for the milestones.
 
@@ -33,8 +35,8 @@ document gives the reason behind each one.
 | `neoffse`           | public facade of the library, the crate other projects depend on (M4) |
 | `neoffse-core`      | domain model: games, characters, edits, field metadata (M3)           |
 | `neoffse-data`      | ID tables per game, from `data/*.toml` (M3)                           |
-| `neoffse-io`        | save discovery, backups, verified atomic writes (M2)                  |
-| `neoffse-format-pr` | FF I to VI Pixel Remaster format: codec and lossless document         |
+| `neoffse-io`        | save discovery, backups, restore, verified atomic writes, game check  |
+| `neoffse-format-pr` | FF I to VI Pixel Remaster format: codec, lossless document, game list |
 | `neoffse-app`       | Slint desktop app                                                     |
 | `neoffse-testkit`   | locates fixtures and private saves for tests                          |
 
@@ -42,7 +44,7 @@ Every crate sets `publish = false` until a crates.io release is decided.
 
 ## Build
 
-NeoFFSE needs Rust 1.92 or newer, the minimum Slint 1.18 sets.
+NeoFFSE needs Rust 1.95 or newer, the minimum `sysinfo` 0.39 sets.
 
 ```sh
 cargo build -p neoffse-app    # the desktop app
@@ -50,6 +52,7 @@ cargo build --workspace       # every crate
 cargo test --workspace
 ./scripts/clippy.sh
 cargo fmt --all --check
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
 
 `cargo run -p neoffse-app` opens the app window.

@@ -43,6 +43,12 @@ const MAX_STREAM_LEN: usize = 2 * MAX_PAYLOAD_LEN;
 /// (`docs/formats/pixel-remaster.md#raw-deflate`).
 pub const MAX_TEXT_LEN: usize = MAX_STREAM_LEN.next_multiple_of(BLOCK_SIZE).div_ceil(3) * 4;
 
+/// Longest trailer [`decode`] accepts and [`seal`] writes, in bytes: 32 times
+/// the CRLF the game writes. A text editor that adds blank lines stays under
+/// it; a file padded with megabytes of whitespace does not
+/// (`docs/formats/pixel-remaster.md#bom-and-line-end`).
+pub const MAX_TRAILER_LEN: usize = 64;
+
 /// Most zero bytes the Go `padder.Decode` strips, which the Fallback
 /// mimics (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
 const MAX_STRIP: usize = 31;
@@ -68,8 +74,10 @@ impl Container {
     }
 }
 
-/// Which inflate path produced the payload.
+/// Which inflate path produced the payload. A later version may add
+/// variants, so a `match` needs a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum InflatePath {
     /// A block with BFINAL set ended the stream (every measured file).
     FinalBlock,
@@ -83,8 +91,10 @@ pub enum InflatePath {
     Fallback,
 }
 
-/// The result of [`decode`].
+/// The result of [`decode`]. A later version may add fields, and only
+/// [`decode`] builds one.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Decoded {
     /// The payload, compact JSON text. It is valid UTF-8. On the final-block
     /// path the codec checks nothing more. On the Fallback path the text also
@@ -104,7 +114,7 @@ pub struct Decoded {
 /// (`docs/formats/pixel-remaster.md#zero-padding-and-the-stripping-trap`).
 /// The inflater stops at the final block and ignores the zero padding after
 /// it. [`Container::trailer`] keeps the whitespace after the base64 text
-/// byte for byte, with no cap on its length.
+/// byte for byte, up to [`MAX_TRAILER_LEN`] bytes.
 ///
 /// A base64 text longer than [`MAX_TEXT_LEN`] is refused before base64
 /// decoding. The inflated payload may not exceed [`MAX_PAYLOAD_LEN`].
@@ -112,6 +122,7 @@ pub struct Decoded {
 /// # Errors
 ///
 /// A [`CodecError`] naming the failed step: [`CodecError::Empty`],
+/// [`CodecError::TrailerTooLong`] (a trailer above [`MAX_TRAILER_LEN`]),
 /// [`CodecError::Base64`], [`CodecError::CipherLength`], [`CodecError::Inflate`],
 /// [`CodecError::InflateTruncated`], [`CodecError::PayloadTooLarge`] (an
 /// inflated payload above [`MAX_PAYLOAD_LEN`], or a text above
@@ -134,6 +145,12 @@ pub fn decode(file: &[u8]) -> Result<Decoded, CodecError> {
     let framing = text::split(file);
     if framing.text.is_empty() {
         return Err(CodecError::Empty);
+    }
+    if framing.trailer.len() > MAX_TRAILER_LEN {
+        return Err(CodecError::TrailerTooLong {
+            len: framing.trailer.len(),
+            limit: MAX_TRAILER_LEN,
+        });
     }
     if framing.text.len() > MAX_TEXT_LEN {
         return Err(CodecError::PayloadTooLarge { limit: MAX_TEXT_LEN });
@@ -198,8 +215,10 @@ pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> 
 ///
 /// # Errors
 ///
-/// [`CodecError::Trailer`] when the trailer holds a byte other than space,
-/// tab, CR or LF: such a trailer would not decode again.
+/// [`CodecError::TrailerTooLong`] when the trailer holds more than
+/// [`MAX_TRAILER_LEN`] bytes, then [`CodecError::Trailer`] when it holds a
+/// byte other than space, tab, CR or LF: such a trailer would not decode
+/// again.
 ///
 /// # Examples
 ///
@@ -218,6 +237,12 @@ pub fn encode(json: &str, container: &Container) -> Result<Vec<u8>, CodecError> 
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn seal(stream: &[u8], container: &Container) -> Result<Vec<u8>, CodecError> {
+    if container.trailer.len() > MAX_TRAILER_LEN {
+        return Err(CodecError::TrailerTooLong {
+            len: container.trailer.len(),
+            limit: MAX_TRAILER_LEN,
+        });
+    }
     if let Some(index) = container.trailer.iter().position(|&byte| !text::is_trailer_byte(byte)) {
         return Err(CodecError::Trailer { index });
     }
