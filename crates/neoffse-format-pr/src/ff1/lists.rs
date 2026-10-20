@@ -10,7 +10,7 @@
 use neoffse_core::{CapPolicy, CollectionMeta, Edit, EditError, RowId, Value};
 
 use super::binding::{Collection, List};
-use super::locate::{find_row, format_error, read_text, wearers};
+use super::locate::{find_row, format_error, read_text};
 use super::{Ff1Model, Scalar, names};
 use crate::document::{DocumentError, Segment};
 
@@ -125,12 +125,7 @@ impl Ff1Model {
         let Collection::Items(list) = collection else {
             return Ok(true);
         };
-        let placeholder = list == List::Inventory && self.tables.content(row.key()).is_some_and(|entry| entry.placeholder);
-        if placeholder {
-            return Ok(true);
-        }
-        let worn = wearers(&mut self.document, row.key()).map_err(|source| format_error(row.id(), source))?;
-        if worn > 0 {
+        if self.is_placeholder(list, row.key()) || self.wearers_of(row.key(), row.id())? > 0 {
             return Ok(true);
         }
         let text = self.row_text(row, list, index)?;
