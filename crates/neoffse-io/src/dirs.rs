@@ -25,10 +25,14 @@ impl DataDir {
     ///
     /// # Errors
     ///
-    /// [`IoError::NoDataDir`] when the system reports no home directory.
+    /// [`IoError::NoDataDir`] when the system reports no home directory or a
+    /// relative one. On Unix a relative `HOME` would put the backups under the
+    /// current folder of the process.
     pub fn platform() -> Result<Self, IoError> {
         ProjectDirs::from("", "", APPLICATION)
-            .map(|dirs| Self::at(dirs.data_dir()))
+            .map(|dirs| dirs.data_dir().to_path_buf())
+            .filter(|root| root.is_absolute())
+            .map(Self::at)
             .ok_or(IoError::NoDataDir)
     }
 

@@ -56,7 +56,7 @@ fn report_for(id: &'static str, folders: &[SaveFolder]) -> GameReport {
     }
 }
 
-#[allow(clippy::print_stderr, reason = "the owner reads the counts of a manual run")]
+#[allow(clippy::print_stderr, reason = "a manual run prints its counts on stderr")]
 fn print_report(reports: &[GameReport], skipped: usize) {
     let mut lines: Vec<String> = reports
         .iter()

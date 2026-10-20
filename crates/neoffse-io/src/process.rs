@@ -43,8 +43,9 @@ impl Key {
 pub struct ProcessInfo {
     /// The process name as the system reports it (cut to 15 bytes on Linux).
     pub name: String,
-    /// The first command-line argument. `None` when the scan did not read it
-    /// ([`Key::Name`]), or the system gave none.
+    /// The first non-empty command-line argument. `None` when the scan did
+    /// not read it ([`Key::Name`]), or the system gave none. `sysinfo` drops
+    /// empty parts and trims ASCII whitespace when it splits the command line.
     pub argv0: Option<String>,
     /// A thread or a kernel thread. Never a match.
     pub is_thread: bool,
@@ -52,8 +53,11 @@ pub struct ProcessInfo {
 
 /// Reads the live process table through `sysinfo`: one [`ProcessInfo`] per
 /// process, in no particular order. A [`Key::CommandLine`] snapshot reads each
-/// command line; a [`Key::Name`] snapshot reads none, so on Windows the scan
-/// never opens another process's memory. Lossy UTF-8 for every text.
+/// command line; a [`Key::Name`] snapshot reads none. On Windows `sysinfo`
+/// still opens each process handle to read its start time, but under
+/// [`Key::Name`] the scan reads no command line, environment or working
+/// folder from another process, and the name comes from the process
+/// snapshot of the system. Lossy UTF-8 for every text.
 #[must_use]
 pub fn snapshot(key: Key) -> Vec<ProcessInfo> {
     // Tasks off: on Linux each thread would otherwise be listed as a process

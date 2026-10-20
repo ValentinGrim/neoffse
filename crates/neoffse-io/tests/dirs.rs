@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use neoffse_format_pr::games::GAMES;
 use neoffse_io::dirs::DataDir;
 use neoffse_io::error::IoError;
 
@@ -88,4 +89,59 @@ fn clone_and_equality_follow_the_root() {
     assert_eq!(a, DataDir::at(tmp_root().join("eq-a")));
     assert_eq!(a, a.clone());
     assert_ne!(a, DataDir::at(tmp_root().join("eq-b")));
+}
+
+#[test]
+fn every_pr_game_id_names_a_backup_folder() {
+    let root = tmp_root().join("pr-game-ids");
+    let data = DataDir::at(&root);
+    for game in GAMES {
+        assert_eq!(data.game_backups_dir(game.id).unwrap(), root.join("backups").join(game.id), "{}", game.id);
+    }
+}
+
+/// Runs the ignored `child` test of this file in a new process with `HOME`
+/// set to `home` and no `XDG_DATA_HOME`. The child asserts; the parent checks
+/// that it ran exactly one test and that it passed.
+#[cfg(unix)]
+fn run_child(child: &str, home: &str) {
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--ignored", "--exact", child, "--nocapture", "--test-threads=1"])
+        .env("HOME", home)
+        .env_remove("XDG_DATA_HOME")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "child failed: {stdout}{stderr}");
+    assert!(stdout.contains("1 passed"), "child did not run one test: {stdout}");
+}
+
+#[cfg(unix)]
+#[test]
+fn platform_refuses_a_relative_home() {
+    run_child("child_platform_with_a_relative_home", "relative/home");
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore = "runs only as a child of platform_refuses_a_relative_home"]
+fn child_platform_with_a_relative_home() {
+    assert!(matches!(DataDir::platform(), Err(IoError::NoDataDir)));
+}
+
+#[cfg(unix)]
+#[test]
+fn platform_follows_an_absolute_home() {
+    let home = tmp_root().join("platform-absolute-home");
+    run_child("child_platform_with_an_absolute_home", home.to_str().unwrap());
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore = "runs only as a child of platform_follows_an_absolute_home"]
+fn child_platform_with_an_absolute_home() {
+    let home = std::env::var("HOME").unwrap();
+    let data = DataDir::platform().unwrap();
+    assert_eq!(data.root(), Path::new(&home).join(".local/share/neoffse"));
 }

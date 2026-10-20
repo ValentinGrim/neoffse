@@ -15,8 +15,9 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{IoError, Operation};
 
-/// Marks a stray temporary file by name. The pair never ends in a save
-/// extension, so a file left by a crash is not mistaken for a save.
+/// The fixed prefix and suffix of a temporary name mark a stray file, so a
+/// listing can filter on them; the random part sits between. A PR save file
+/// has no extension (`docs/formats/pixel-remaster.md#slot-files`).
 const TEMP_PREFIX: &str = ".neoffse-";
 const TEMP_SUFFIX: &str = ".tmp";
 
@@ -185,8 +186,8 @@ impl<O: FileOps + ?Sized> Drop for TempGuard<'_, O> {
 ///
 /// Returns [`IoError::Io`] when a file operation fails (the `operation`
 /// field names the step, and `CreateTemp` names the folder), and
-/// [`IoError::VerificationFailed`] when `verify` fails. The temporary file
-/// is removed in every case.
+/// [`IoError::VerificationFailed`] when `verify` fails. The call removes the
+/// temporary file, and a failed removal never replaces the error of the step.
 pub fn write<V, E>(target: &Path, bytes: &[u8], verify: V) -> Result<(), IoError>
 where
     V: FnOnce(&Path) -> Result<(), E>,
