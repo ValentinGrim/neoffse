@@ -10,6 +10,7 @@
 //! never by position. The model keeps no state beside the document: every
 //! key it does not map stays as read.
 
+mod apply;
 mod binding;
 mod locate;
 mod meta;
