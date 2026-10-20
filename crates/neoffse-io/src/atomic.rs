@@ -41,8 +41,10 @@ pub trait FileOps {
     fn write_all(&self, file: &mut File, bytes: &[u8]) -> io::Result<()>;
 
     /// Gives `file` the permissions of the file at `from`. When nothing
-    /// exists at `from` (`ErrorKind::NotFound`), changes nothing and
-    /// returns `Ok`.
+    /// exists at `from` (`ErrorKind::NotFound`), or when `from` is not a
+    /// file (a folder), changes nothing and returns `Ok`. A folder at the
+    /// target then fails the write at the rename on every system, because
+    /// Windows refuses to give a file the attributes of a folder.
     ///
     /// # Errors
     ///
@@ -118,9 +120,11 @@ impl FileOps for RealFileOps {
     /// `metadata` follows a symbolic link, so a link at `from` gives the
     /// mode of the file behind it. On Unix the call is `fchmod`, which the
     /// umask does not alter. On Windows only the read-only flag moves.
+    /// Only a regular file passes its permissions on.
     fn copy_permissions(&self, from: &Path, file: &File) -> io::Result<()> {
         match fs::metadata(from) {
-            Ok(metadata) => file.set_permissions(metadata.permissions()),
+            Ok(metadata) if metadata.is_file() => file.set_permissions(metadata.permissions()),
+            Ok(_) => Ok(()),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
             Err(error) => Err(error),
         }
