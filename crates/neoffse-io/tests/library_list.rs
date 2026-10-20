@@ -85,6 +85,12 @@ fn duplicate_keys_keep_every_library() {
 }
 
 #[test]
+fn a_block_with_two_paths_takes_the_first() {
+    let text = list("\t\"0\"\n\t{\n\t\t\"path\"\t\t\"/first\"\n\t\t\"path\"\t\t\"/second\"\n\t}\n");
+    assert_eq!(paths(&text), paths_of(&["/first"]));
+}
+
+#[test]
 fn a_wrong_top_key_is_an_error() {
     let wrong_case = library_paths("\"LibraryFolders\" { }").unwrap_err().to_string();
     assert!(wrong_case.contains("LibraryFolders"), "{wrong_case}");

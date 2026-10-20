@@ -9,7 +9,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use common::discovery::{
-    GAME_A, ID_1, ID_2, assert_nothing, documents_save, environment, library, list_libraries, paths, prefix, run, site, steam_origin, steam_root,
+    GAME_A, ID_1, ID_2, assert_nothing, documents_save, environment, library, library_block, list_libraries, paths, prefix, run, site, steam_origin, steam_root,
 };
 use neoffse_io::discovery::{Environment, SteamGame, discover};
 use neoffse_io::error::{IoError, Operation};
@@ -226,8 +226,12 @@ fn libraries_follow_the_numeric_order_of_their_keys() {
     let site = site("libraries_follow_the_numeric_order_of_their_keys");
     let root = steam_root(&site, NATIVE);
     let (two, ten) = (library(&site, "two"), library(&site, "ten"));
-    let block = |key: &str, path: &Path| format!("\t\"{key}\"\n\t{{\n\t\t\"path\"\t\t\"{}\"\n\t}}\n", path.display());
-    let text = format!("\"libraryfolders\"\n{{\n{}{}{}}}\n", block("0", &root), block("10", &ten), block("2", &two));
+    let text = format!(
+        "\"libraryfolders\"\n{{\n{}{}{}}}\n",
+        library_block("0", &root),
+        library_block("10", &ten),
+        library_block("2", &two)
+    );
     write_list(&root, text);
     let saves: Vec<PathBuf> = [&root, &two, &ten].iter().map(|library| prefix(library, &GAME_A, ID_1)).collect();
 

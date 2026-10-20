@@ -127,7 +127,8 @@ pub struct Discovery {
     /// Every save folder: the Linux hits first (roots in candidate order,
     /// libraries in the order read, games in the order given, `SteamID64`
     /// ascending), then the Windows hits (candidates in order, games in
-    /// order, ids ascending). Never a duplicate path.
+    /// order, ids ascending). Never a duplicate path: when two descriptors
+    /// name one folder, the first one gives its id.
     pub folders: Vec<SaveFolder>,
     /// What discovery could not read, in the order it met it. A path that
     /// does not exist is not a failure and is not listed here. The `Display`
@@ -200,7 +201,10 @@ pub(crate) fn settle<T>(result: io::Result<T>, operation: Operation, path: &Path
 ///
 /// An entry counts when its name is valid UTF-8, passes [`is_steam_id64`] and
 /// is a folder once links are followed. A file, a dangling link and any other
-/// name are ignored.
+/// name are ignored. A link whose target cannot be examined for another
+/// reason (a loop, a permission) is reported in `skipped` as a failed read of
+/// its path. A folder that an earlier descriptor already returned is not
+/// returned again.
 pub(crate) fn probe(steam_dir: &Path, game: &SteamGame<'_>, origin: &Origin, found: &mut Discovery) {
     let Some(entries) = settle(fs::read_dir(steam_dir), Operation::ListDir, steam_dir, &mut found.skipped) else {
         return;
@@ -224,10 +228,14 @@ pub(crate) fn probe(steam_dir: &Path, game: &SteamGame<'_>, origin: &Origin, fou
     }
     ids.sort();
     for steam_id in ids {
+        let path = steam_dir.join(&steam_id);
+        if found.folders.iter().any(|folder| folder.path == path) {
+            continue;
+        }
         found.folders.push(SaveFolder {
             game: game.id.to_owned(),
             app_id: game.app_id,
-            path: steam_dir.join(&steam_id),
+            path,
             steam_id,
             origin: origin.clone(),
         });

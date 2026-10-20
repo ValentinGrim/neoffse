@@ -16,6 +16,10 @@ fn a_nonsense_executable_is_not_running() {
     assert_eq!(running(&[]), NONE);
 }
 
+// Assumes the file name of `current_exe()` equals the last component of the
+// first command-line argument: true when the harness starts by its path, not
+// through a link of another name. The test returns early when the name is not
+// UTF-8.
 #[test]
 fn the_scan_sees_this_test_process() {
     let Some(own_name) = std::env::current_exe().ok().and_then(|path| path.file_name().map(ToOwned::to_owned)) else {

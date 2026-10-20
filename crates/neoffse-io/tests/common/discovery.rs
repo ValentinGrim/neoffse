@@ -1,7 +1,6 @@
 //! Helpers that the `discovery_*` test crates share. Every tree sits under
 //! the Cargo target temporary folder; no helper reads the real environment.
 
-use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -58,18 +57,20 @@ pub(crate) fn library(site: &Site, name: &str) -> PathBuf {
     library
 }
 
+/// One numbered block of a `libraryfolders.vdf` in the real shape, with its
+/// `label` and `apps`. A backslash of `path` doubles, as Steam writes a
+/// Windows path.
+pub(crate) fn library_block(key: &str, path: &Path) -> String {
+    let path = path.to_string_lossy().replace('\\', "\\\\");
+    format!("\t\"{key}\"\n\t{{\n\t\t\"path\"\t\t\"{path}\"\n\t\t\"label\"\t\t\"\"\n\t\t\"apps\"\n\t\t{{\n\t\t}}\n\t}}\n")
+}
+
 /// Writes `<root>/steamapps/libraryfolders.vdf` in the real shape: key `0`
-/// is the root, then `1`, `2`, ... are `libraries`. A backslash doubles, as
-/// Steam writes a Windows path.
+/// is the root, then `1`, `2`, ... are `libraries`.
 pub(crate) fn list_libraries(root: &Path, libraries: &[&Path]) {
     let mut text = String::from("\"libraryfolders\"\n{\n");
     for (key, path) in std::iter::once(root).chain(libraries.iter().copied()).enumerate() {
-        let path = path.to_string_lossy().replace('\\', "\\\\");
-        write!(
-            text,
-            "\t\"{key}\"\n\t{{\n\t\t\"path\"\t\t\"{path}\"\n\t\t\"label\"\t\t\"\"\n\t\t\"apps\"\n\t\t{{\n\t\t}}\n\t}}\n"
-        )
-        .unwrap();
+        text.push_str(&library_block(&key.to_string(), path));
     }
     text.push_str("}\n");
     fs::write(root.join("steamapps").join("libraryfolders.vdf"), text).unwrap();

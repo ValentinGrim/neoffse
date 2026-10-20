@@ -47,26 +47,32 @@ pub(super) fn search(environment: &Environment, games: &[SteamGame<'_>], found: 
     }
 }
 
-/// The places a Steam root can sit, in search order.
+/// The places a Steam root can sit, in search order, each spelling once.
 ///
 /// Source: `pixel-remaster.md#steam-roots-and-libraries`. The format document
 /// names `$XDG_DATA_HOME/Steam` "or" `~/.local/share/Steam`. Both are tried:
-/// a duplicate costs nothing after the dedupe, and a user who set the variable
-/// after installing Steam still gets found.
+/// a user who set the variable after installing Steam still gets found. When
+/// the data home is the default, the two are one path, and the list keeps the
+/// first. The comparison is exact equality, before any `canonicalize`.
 fn candidates(home: &Path, data_home: Option<&Path>) -> Vec<PathBuf> {
-    let mut list = Vec::new();
+    let mut list: Vec<PathBuf> = Vec::new();
+    let mut push = |path: PathBuf| {
+        if !list.contains(&path) {
+            list.push(path);
+        }
+    };
     if let Some(data_home) = data_home {
-        list.push(data_home.join("Steam"));
+        push(data_home.join("Steam"));
     }
-    list.push(home.join(".local/share/Steam"));
-    list.push(home.join(".steam/steam"));
-    list.push(home.join(".steam/root"));
-    list.push(home.join(".steam/debian-installation"));
+    push(home.join(".local/share/Steam"));
+    push(home.join(".steam/steam"));
+    push(home.join(".steam/root"));
+    push(home.join(".steam/debian-installation"));
     for sandbox in [".var/app/com.valvesoftware.Steam", "snap/steam/common"] {
         let base = home.join(sandbox);
-        list.push(base.join(".local/share/Steam"));
-        list.push(base.join(".steam/steam"));
-        list.push(base.join(".steam/root"));
+        push(base.join(".local/share/Steam"));
+        push(base.join(".steam/steam"));
+        push(base.join(".steam/root"));
     }
     list
 }
@@ -74,7 +80,9 @@ fn candidates(home: &Path, data_home: Option<&Path>) -> Vec<PathBuf> {
 /// The canonical candidates that hold a `steamapps` folder, without duplicates.
 ///
 /// Three native candidates are links to one folder. Each canonical path is
-/// checked once, so a folder reached five ways reports its failures once.
+/// checked once, so a folder reached five ways reports its `steamapps`
+/// failure once. A candidate that cannot be canonicalized reports its own
+/// failure; `candidates` never repeats a spelling, so none reports twice.
 fn roots(candidates: &[PathBuf], skipped: &mut Vec<IoError>) -> Vec<PathBuf> {
     let mut tried: Vec<PathBuf> = Vec::new();
     let mut roots = Vec::new();
