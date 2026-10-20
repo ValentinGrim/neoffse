@@ -235,7 +235,7 @@ fn folder_of(target: &Path) -> Result<&Path, IoError> {
     }
 }
 
-/// Steps 4 to 7: write, copy the permissions, flush, close. `file` drops
+/// Writes the bytes, copies the permissions, flushes and closes. `file` drops
 /// when the function returns or unwinds, before the caller's guard removes
 /// the path, because Windows cannot remove an open file.
 fn fill<O: FileOps + ?Sized>(ops: &O, target: &Path, bytes: &[u8], mut file: File) -> Result<(), IoError> {

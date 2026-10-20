@@ -37,8 +37,11 @@ pub struct SteamGame<'a> {
 
 /// The values discovery reads from the environment, filled by the caller.
 ///
-/// Every path is absolute. `home: None` switches off the Linux search; each
-/// Windows candidate needs its own field.
+/// Every path must be absolute. [`discover`] treats a relative path as
+/// absent: it searches nothing there and reports nothing, because a relative
+/// path would resolve against the current folder of the process.
+/// `home: None` switches off the Linux search; each Windows candidate needs
+/// its own field.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Environment {
     /// The user's home directory (Linux searches).
@@ -127,7 +130,8 @@ pub struct Discovery {
     /// order, ids ascending). Never a duplicate path.
     pub folders: Vec<SaveFolder>,
     /// What discovery could not read, in the order it met it. A path that
-    /// does not exist is not a failure and is not listed here.
+    /// does not exist is not a failure and is not listed here. The `Display`
+    /// of each error names a personal path: do not log it.
     pub skipped: Vec<IoError>,
 }
 
@@ -143,9 +147,22 @@ pub fn discover(environment: &Environment, games: &[SteamGame<'_>]) -> Discovery
         folders: Vec::new(),
         skipped: Vec::new(),
     };
-    linux::search(environment, games, &mut found);
-    windows::search(environment, games, &mut found);
+    let environment = absolute_only(environment);
+    linux::search(&environment, games, &mut found);
+    windows::search(&environment, games, &mut found);
     found
+}
+
+/// A copy of `environment` where every relative path is `None`.
+fn absolute_only(environment: &Environment) -> Environment {
+    let keep = |path: &Option<PathBuf>| path.clone().filter(|path| path.is_absolute());
+    Environment {
+        home: keep(&environment.home),
+        data_home: keep(&environment.data_home),
+        documents: keep(&environment.documents),
+        user_profile: keep(&environment.user_profile),
+        one_drive: keep(&environment.one_drive),
+    }
 }
 
 /// Whether `name` has the shape of a `SteamID64` folder: 17 ASCII digits, the first four `7656`.

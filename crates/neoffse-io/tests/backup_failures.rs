@@ -9,7 +9,7 @@ use std::fs;
 use std::io::ErrorKind;
 
 use common::Step;
-use common::backup::{BESTIARY, SLOT, Snoop, T0, World, at, game_dir, make, request, tree, world};
+use common::backup::{BESTIARY, Corrupt, SLOT, Snoop, T0, World, at, game_dir, make, request, tree, world};
 use neoffse_io::atomic::RealFileOps;
 use neoffse_io::backup::create_with;
 use neoffse_io::error::{IoError, Operation};
@@ -81,6 +81,20 @@ fn manifest_temp_failure_removes_the_folder() {
 fn manifest_that_reads_back_wrong_fails_verification() {
     let w = world("manifest_that_reads_back_wrong_fails_verification");
     let (snoop, _log) = Snoop::new(&[], true);
+    let files = [SLOT, BESTIARY];
+    let error = create_with(&snoop, &w.data, &request(&w, "ff1-pr", &files), at(T0)).unwrap_err();
+    let IoError::VerificationFailed { path, .. } = &error else {
+        panic!("{error:?}");
+    };
+    assert_eq!(path, &game_dir(&w, "ff1-pr").join(STAMP).join("backup.json"));
+    assert!(error.source().is_some());
+    assert!(tree(&game_dir(&w, "ff1-pr")).is_empty());
+}
+
+#[test]
+fn manifest_that_parses_but_differs_fails_verification() {
+    let w = world("manifest_that_parses_but_differs_fails_verification");
+    let (snoop, _log) = Snoop::corrupting(&[], Corrupt::Field);
     let files = [SLOT, BESTIARY];
     let error = create_with(&snoop, &w.data, &request(&w, "ff1-pr", &files), at(T0)).unwrap_err();
     let IoError::VerificationFailed { path, .. } = &error else {
