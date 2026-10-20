@@ -155,10 +155,13 @@ fn target_that_is_a_directory_is_left_alone() {
     let before = (snapshot(&dir), snapshot(&target));
 
     let error = write(&target, b"x", accept()).unwrap_err();
-    assert!(matches!(
-        &error,
-        IoError::Io { operation: Operation::Rename, path, .. } if *path == target
-    ));
+    assert!(
+        matches!(
+            &error,
+            IoError::Io { operation: Operation::Rename, path, .. } if *path == target
+        ),
+        "{error:?}"
+    );
     assert_eq!((snapshot(&dir), snapshot(&target)), before);
 }
 
@@ -254,6 +257,25 @@ fn real_copy_permissions_ignores_a_missing_source() {
     let (file, path) = RealFileOps.create_temp(&dir).unwrap();
     let before = file.metadata().unwrap().permissions();
     RealFileOps.copy_permissions(&dir.join("absent"), &file).unwrap();
+    assert_eq!(file.metadata().unwrap().permissions(), before);
+    drop(file);
+    RealFileOps.remove_file(&path).unwrap();
+}
+
+#[test]
+fn real_copy_permissions_ignores_a_folder() {
+    let dir = test_dir("copy-permissions-folder");
+    let folder = dir.join("folder");
+    fs::create_dir(&folder).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    let (file, path) = RealFileOps.create_temp(&dir).unwrap();
+    let before = file.metadata().unwrap().permissions();
+    RealFileOps.copy_permissions(&folder, &file).unwrap();
     assert_eq!(file.metadata().unwrap().permissions(), before);
     drop(file);
     RealFileOps.remove_file(&path).unwrap();
