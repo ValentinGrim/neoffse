@@ -6,6 +6,7 @@
 
 use std::path::PathBuf;
 
+pub(crate) mod ff1_format;
 pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
 pub(crate) mod ff1_rules;

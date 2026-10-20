@@ -14,14 +14,22 @@
 //! screen and the editor: the first gives the slot, play time, place and
 //! party, the second a snapshot of every character, item row and gil. Both
 //! leave the document untouched.
+//!
+//! [`Ff1Format`] implements `neoffse_core::SaveFormat` for the game: it
+//! detects a slot file by its name and opens it as an [`Ff1Document`], which
+//! implements `neoffse_core::SaveDocument` over the model, the container
+//! facts of the opened file and its name. [`OpenError`] says why a file is no
+//! slot of this game.
 
 mod apply;
 mod binding;
+mod format;
 mod game;
 mod lists;
 mod locate;
 mod meta;
 pub mod names;
+mod save;
 mod summary;
 mod view;
 
@@ -29,9 +37,12 @@ use neoffse_core::{Capability, CollectionMeta, EditError, FieldId, FieldMeta, Ga
 use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
+pub use crate::open_error::OpenError;
 use binding::{Binding, Collection};
+pub use format::Ff1Format;
 pub use game::GameChange;
 use locate::{format_error, locate, read_int, read_text, row_keys};
+pub use save::Ff1Document;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff1Pr;

@@ -14,7 +14,8 @@
 //! - [`ff1`]: the FF I slot as a model of `neoffse-core` fields, read by
 //!   field id, with the metadata of each field.
 //! - [`games`]: the six games with their game id, Steam app ID, folder under
-//!   `My Games` and executable name.
+//!   `My Games` and executable name, and the rule that tells the game of a
+//!   slot document.
 //! - [`slots`]: the 22 slot file names shared by the six games, and the
 //!   detection that recognizes a slot file by its name and head.
 //!
@@ -42,4 +43,5 @@ pub mod container;
 pub mod document;
 pub mod ff1;
 pub mod games;
+mod open_error;
 pub mod slots;
