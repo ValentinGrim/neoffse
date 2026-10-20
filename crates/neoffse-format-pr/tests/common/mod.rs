@@ -11,6 +11,9 @@ pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
 pub(crate) mod ff1_rules;
 pub(crate) mod ff1_save;
+pub(crate) mod json_diff;
+mod json_scan;
+pub(crate) mod json_tree;
 
 use neoffse_format_pr::document::Segment;
 
