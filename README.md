@@ -72,8 +72,9 @@ sudo apt-get install libfontconfig-dev libxkbcommon-dev libxcb-shape0-dev libxcb
 You may use NeoFFSE under the MIT license or the Apache License 2.0, at your option.
 The app uses [Slint](https://slint.dev) under the Slint Royalty-free Desktop, Mobile and Web Applications License 2.0.
 NeoFFSE ports the cipher of KiameV's MIT-licensed ffpr-save-cypher library, which is based on Meyti's MIT-licensed py3rijndael.
-The ID tables of KiameV's Pixel Remaster editor will follow in M3.
+The ID tables come from the game's own master data, which a script in `tools/pr-tables/` reads from your install.
 The copyright notices sit in [`licenses/`](licenses/).
 
 Final Fantasy, its game data and its artwork belong to Square Enix.
+This repository holds no graphic or audio asset from the games.
 NeoFFSE is not affiliated with or endorsed by Square Enix.

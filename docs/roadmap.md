@@ -76,8 +76,8 @@ the real saves of a Steam install on Linux and on Windows; the ignored
 - The domain model for FF I to VI in `neoffse-core`: characters, items,
   spells, `Edit` with its inverse, `ChangeSet`, `FieldMeta`,
   `Capability`.
-- TOML ID tables under `data/pr/`, exported from the Go editor's tables
-  by a one-off tool.
+- TOML ID tables under `data/pr/`, generated from the game's master data
+  by `tools/pr-tables/`, which you run where the game is installed.
 - The mapping from the PR document to the domain.
 
 **Exit.** On FF I, an edit followed by encode and decode yields the

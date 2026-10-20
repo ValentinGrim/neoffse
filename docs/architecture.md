@@ -24,25 +24,26 @@ and starts with the Pixel Remaster (PR) of I to VI on Steam PC.
   Applications License 2.0. That license requires the `AboutSlint`
   widget in the app's About dialog, and the user reaches that dialog
   from the top-level menu.
-- The first ID tables will derive from the tables of KiameV's archived,
-  MIT-licensed editor
+- The ID tables come from the game's own master data.  
+`tools/pr-tables/` reads the master data and message files  of the user's install ([Game master data](formats/pixel-remaster.md#game-master-data)) and generates the tables under `data/`.
+- KiameV's archived, MIT-licensed editor
   [final-fantasy-pr-save-editor](https://github.com/KiameV/final-fantasy-pr-save-editor)
-  (M3).
+  is the source of the save-format rules that
+  [`pixel-remaster.md`](formats/pixel-remaster.md) documents. Its MIT
+  notice stays in `licenses/`.
 - The Rijndael-256 cipher is a hand port of KiameV's MIT-licensed
-  [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher). That library
-  is based on Meyti's MIT-licensed
-  [py3rijndael](https://github.com/meyt/py3rijndael), whose origin is a
-  gist that ports Bram Cohen's public-domain Java reference code of 2001.
+  [ffpr-save-cypher](https://github.com/kiamev/ffpr-save-cypher).  
+  That library is based on Meyti's MIT-licensed
+  [py3rijndael](https://github.com/meyt/py3rijndael), whose origin is a gist that ports Bram Cohen's public-domain Java reference code of 2001.  
   The same Go library generates the cipher test vectors.
-- The notices of KiameV and Meyti sit in `licenses/`, and
-  [`licenses/README.md`](../licenses/README.md) maps each file to the
-  work it covers.
+- The notices of KiameV and Meyti sit in `licenses/`, and [`licenses/README.md`](../licenses/README.md) maps each file to the work it covers.
 - Contributors may read the format notes of GPL editors (Black Chocobo
   for FF7, Hyne for FF8) and must not copy their code: copied GPL code
   would force the GPL on NeoFFSE.
-- Square Enix owns the game data and artwork, so the repository holds no
-  file extracted from a game. [Visual assets](#visual-assets) describes
-  how the app shows portraits under that rule.
+- Square Enix owns the game data and artwork. Graphic and audio assets (sprites, portraits, textures, music, sounds) never enter the repository.  
+  Tables of facts that editing needs (IDs, names, kinds, bounds) may, and `tools/pr-tables/` generates them.  
+  Dialogue, descriptions and whole extracted files never do.  
+  [Visual assets](#visual-assets) describes how the app shows portraits under that rule.
 
 ## Principles
 
@@ -129,6 +130,8 @@ neoffse/
 ├── fixtures/                   synthetic test saves, committed (pr/)
 │                               and private real saves, ignored (private/)
 ├── tools/cipher-vectors/       Go program that writes the cipher test vectors
+├── tools/pr-tables/            (M3) Python script that generates data/pr/
+│                               from a game install
 ├── assets/                     (M4) original art, free-license art
 ├── licenses/                   third-party notices
 └── docs/                       this file, roadmap, formats/
@@ -178,8 +181,11 @@ stays open, so the caller can construct it: `Request`, `Environment`,
   which editor sections a save supports.
 - **`neoffse-data`** (M3) loads the ID tables (items, spells, maps, monsters,
   jobs) from the TOML files under `data/`. The build embeds them, so a
-  library caller needs no data directory. The tables hold names, IDs and
-  kinds.
+  library caller needs no data directory. The tables hold IDs, kinds and
+  names in English and French. `tools/pr-tables/` (M3) generates the files:
+  a Python script that uses UnityPy to read the game's master data and
+  message files from the user's install. You run it by hand on a machine
+  where the game is installed; the build and the tests never run it.
 - **`neoffse-io`** touches the user's files, and knows no save format.
   Six public modules split the work:
   - `error` holds `IoError`, the error type of every operation, and
@@ -602,7 +608,7 @@ it runs without a window.
 ## Visual assets
 
 The app (M4) picks each image from the best of three providers, and the
-repository never holds an asset extracted from a game. One
+repository never holds a graphic or audio asset extracted from a game. One
 `AssetProvider` trait in the app layer hides the choice, so no library
 crate depends on it. The providers, in order of preference:
 
@@ -763,9 +769,6 @@ closed crate before the next milestone opens. The
 
 ## Open points
 
-- **Localized game names.** The UI ships FR and EN, and the ID tables
-  carry English names. A French item list needs a source the project
-  may use. The release needs it.
 - **macOS.** CI covers Linux and Windows. macOS builds need a third CI
   runner and a tester on that system.
 - **crates.io.** Publishing `neoffse` and its internal crates on
