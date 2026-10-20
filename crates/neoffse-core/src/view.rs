@@ -40,7 +40,7 @@ pub struct SaveSummary {
     pub play_time: Option<Duration>,
     /// The name of the place the party stands in.
     pub location: Option<String>,
-    /// The names of the party, in battle order.
+    /// The names of the party, in the order the save lists them.
     pub party: Vec<String>,
 }
 
