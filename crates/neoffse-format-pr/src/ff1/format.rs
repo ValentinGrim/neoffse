@@ -4,6 +4,7 @@ use neoffse_core::{Detection, FieldId, FileProbe, FormatError, Game, SaveDocumen
 use neoffse_data::{GameTables, Language, tables_for};
 
 use super::save::Ff1Document;
+use super::summary::decode_error;
 use super::{Ff1Model, GAME, names};
 use crate::container::decode;
 use crate::document::Document;
@@ -94,10 +95,6 @@ impl Ff1Format {
         }
         Ok(Ff1Document::new(model, decoded.container, name.to_owned(), self.language))
     }
-}
-
-fn decode_error(source: impl std::error::Error + Send + Sync + 'static) -> FormatError {
-    FormatError::Decode { source: Box::new(source) }
 }
 
 impl Default for Ff1Format {
