@@ -2,7 +2,9 @@
 
 use std::fmt;
 
-use neoffse_core::{CapPolicy, Capability, ChangeSet, Edit, EditError, FormatError, Game, SaveDocument, SaveFiles, SaveSummary, SaveView};
+use neoffse_core::{
+    CapPolicy, Capability, ChangeSet, Edit, EditError, FieldId, FormatError, Game, GameChange, RowId, SaveDocument, SaveFiles, SaveSummary, SaveView,
+};
 use neoffse_data::Language;
 
 use super::{CAPABILITIES, Ff1Model, GAME};
@@ -88,6 +90,20 @@ impl SaveDocument for Ff1Document {
             self.model = model;
         }
         result
+    }
+
+    /// The model's game interface: caps, ID tables, equipment and inventory
+    /// rules.
+    fn apply_game(&mut self, edit: &Edit) -> Result<GameChange, EditError> {
+        self.model.apply_game(edit)
+    }
+
+    fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
+        self.model.row_locked(row)
+    }
+
+    fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
+        self.model.field_locked(field)
     }
 
     fn encode(&self) -> Result<SaveFiles, FormatError> {

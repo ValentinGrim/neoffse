@@ -7,23 +7,11 @@
 //! copies the inventory count, and the placeholder rows stay alone. A `Set` of
 //! an equipment slot expands into plain edits; every other edit passes as one.
 
-use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FieldMeta, RowId, Shape, Value};
+use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FieldMeta, GameChange, RowId, Shape, Value};
 
 use super::binding::{Binding, Collection, List, Part};
 use super::locate::{find_row, format_error, wearers};
 use super::{Ff1Model, meta, names};
-
-/// The plain edits `apply_game` applied and their inverses. Both sets apply
-/// through the raw `apply` under `CapPolicy::StorageOnly`, which holds no game
-/// rule, so neither can fail on one.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct GameChange {
-    /// The plain `Set` and `Insert` edits, in the order they applied: the redo.
-    pub forward: ChangeSet,
-    /// What `ChangeSet::apply_with` returned, in reverse order: the undo.
-    pub inverse: ChangeSet,
-}
 
 /// The upper storage bound of a count field.
 fn storage_max(meta: &FieldMeta) -> i64 {
@@ -80,7 +68,7 @@ impl Ff1Model {
         let snapshot = (plan.len() > 1).then(|| self.document.clone());
         let forward: ChangeSet = plan.into_iter().collect();
         match forward.apply_with(CapPolicy::Enforce, |step, policy| self.apply(step, policy)) {
-            Ok(inverse) => Ok(GameChange { forward, inverse }),
+            Ok(inverse) => Ok(GameChange::new(forward, inverse)),
             Err(error) => {
                 if let Some(document) = snapshot {
                     self.document = document;
