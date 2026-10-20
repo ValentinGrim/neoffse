@@ -10,6 +10,19 @@
 //! never by position. The model keeps no state beside the document: every
 //! key it does not map stays as read.
 //!
+//! The model edits through two interfaces over the same `Edit`:
+//!
+//! - [`Ff1Model::apply`] is the raw interface. It checks the storage bounds
+//!   of the field and, under `CapPolicy::Enforce`, the game caps and the ID
+//!   tables, and it holds no game rule: a bare equipment id, a count below the
+//!   number of wearers and a placeholder row all pass when the value is in
+//!   bounds. `CapPolicy::StorageOnly` is the expert mode of an app.
+//! - [`Ff1Model::apply_game`] edits the way the game would. It enforces caps
+//!   and tables, expands an equipment `Set` into the slot, the inventory row
+//!   and the slot count, refuses the edits the game never makes, and returns a
+//!   `GameChange`. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
+//!   the rows and fields it refuses whatever the value.
+//!
 //! [`Ff1Model::summary`] and [`Ff1Model::view`] read the slot for the Home
 //! screen and the editor: the first gives the slot, play time, place and
 //! party, the second a snapshot of every character, item row and gil. Both
@@ -20,6 +33,28 @@
 //! implements `neoffse_core::SaveDocument` over the model, the container
 //! facts of the opened file and its name. [`OpenError`] says why a file is no
 //! slot of this game.
+//!
+//! Open a slot, change the gil the way the game would, and encode the file:
+//!
+//! ```
+//! use neoffse_core::{Edit, FieldId, SaveDocument, SaveFiles, Value};
+//! use neoffse_format_pr::container::{Container, encode};
+//! use neoffse_format_pr::ff1::{Ff1Format, names};
+//!
+//! // A synthetic slot of the repository, wrapped in the game's container.
+//! let json = neoffse_testkit::read_fixture("pr/ff1-slot.json")?;
+//! let mut files = SaveFiles::new();
+//! files.push("slot.sav", encode(std::str::from_utf8(&json)?, &Container::game())?)?;
+//!
+//! let mut document = Ff1Format::new().open_document(&files)?;
+//! let gil = FieldId::new(names::GIL);
+//! let change = document.apply_game(&Edit::set(gil, Value::Int(500)))?;
+//! assert_eq!(change.forward.len(), 1);
+//!
+//! let saved = document.encode()?;
+//! document.verify(&saved)?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 mod apply;
 mod binding;

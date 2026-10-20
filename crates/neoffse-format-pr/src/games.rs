@@ -2,9 +2,10 @@
 //! Steam app ID, folder name under `My Games` and executable name.
 //! `docs/formats/pixel-remaster.md#games` is the source of every value.
 //!
-//! The module reads no file and calls no other crate. A caller copies `id`,
-//! `app_id` and `folder` of a row into the I/O crate's game descriptor for
-//! save discovery, and matches `executable` against the running processes.
+//! The `GAMES` table reads no file and holds no type of another crate. A
+//! caller copies `id`, `app_id` and `folder` of a row into the I/O crate's
+//! game descriptor for save discovery, and matches `executable` against the
+//! running processes.
 //!
 //! [`identify`] tells the game of a slot document by its vehicle count and
 //! a few marker keys, the rule every PR format applies when it opens a file.

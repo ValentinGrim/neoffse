@@ -514,7 +514,9 @@ layer. None of the 34 files needs this path [M].
   closed with a final block [G, FF I bestiary].
 - JSON payloads of 80 to 235 KB compress to 6 to 84 KB in slot files
   [M].
-- NeoFFSE refuses an inflated payload above 16 MiB (`MAX_PAYLOAD_LEN`).
+- NeoFFSE caps the JSON text at 16 MiB (`MAX_PAYLOAD_LEN`) in both
+  directions: decode refuses an inflated payload above it and encode
+  refuses a longer text, so it never writes a file it would refuse to read.
 
 ### JSON text
 
@@ -554,6 +556,7 @@ Encode:
 
 ```text
 encode(json, container) -> file:
+    require len(json) <= 16 MiB                      # NeoFFSE cap, the one decode applies
     stream = raw_deflate(json)                       # ends with a BFINAL block
     padded = stream + zero bytes up to a multiple of 32   # none when aligned
     cipher = rijndael256_cbc_encrypt(padded, KEY, IV)
@@ -925,17 +928,27 @@ Three readings rule out a swap between keys and rows [D]:
 
 **Other master files** the check read [D]:
 
-- `armor.csv` holds one row per armor-type content ID. Its columns include
-  `parts_group_id`, `resistance_attribute` and `sort_id`, and one each for
-  defense and price.
-  Group 2 holds row 1 (content 130, the empty left hand) and the
-  rows of the nine shields (32 to 37, 39, 41 and 44). The group looks like
-  the equipment slot of the row, with group 2 for the left hand [I]; the
-  other groups were not read.
+- `armor.csv` holds one row per armor-type content ID (44 rows). Its
+  columns include `parts_group_id`, `resistance_attribute` and `sort_id`, and
+  one each for defense and price. `parts_group_id` is the equipment slot
+  key of the row [D]:
+
+  | `parts_group_id` | Slot | Rows | Empty-slot row |
+  |---|---|---|---|
+  | 1 | right hand | 41 `weapon.csv` rows, 62 included | content 62 |
+  | 2 | left hand, shields | 10 | content 130 (`armor.csv` row 1) |
+  | 3 | body, armor | 17 | content 131 (row 2) |
+  | 4 | head, helmets | 8 | content 132 (row 3) |
+  | 5 | arms, gloves | 9 | content 133 (row 4) |
+
+  The counts include the empty-slot row. Group 2 holds the nine shields
+  (rows 32 to 37, 39, 41 and 44) beside the empty left hand. No row that
+  `content.csv` reaches falls outside these groups: the table export stops
+  on any other value.
 - `attribute_group.csv` maps a `resistance_attribute` value to attributes.
 - `item.csv` holds the rows that type 1 points to, and its `type_id`
   separates items from key items (below). `weapon.csv` holds the rows that
-  type 2 points to; its columns were not read.
+  type 2 points to; only its `parts_group_id` was read.
 
 **Item or key item.** `content.csv` gives both kinds `type_id` 1. The
 `type_id` of `item.csv` (36 rows) splits them, and a content row reaches its
@@ -1126,6 +1139,15 @@ base, so the 1 132 comes from the constant difference between `currentHP` and
 the gain in the other game state [I] ([Characters](#characters)). The stored
 field exceeds the cap, and whether the game clamps an edited gain field is
 open ([Open questions](#open-questions)).
+
+**Storage bound.** Neither the master data nor the saves state a bound for
+the integer fields NeoFFSE edits, apart from the caps above. NeoFFSE stores
+a value from 0 to 2 147 483 647 (`i32::MAX`) in such a field, and from 1 in
+a `count` and in a row key (`contentId`, character `id`) [I]. The Go
+editor clamps its number fields to i32 ([Known pitfalls](#known-pitfalls),
+10), and every counter measured in FF I fits. No test shows that the game
+reads the whole range. A value above a cap and inside the storage bound is
+storable.
 
 ### ID spaces and tables
 
@@ -1445,6 +1467,8 @@ pointing at existing character `id`s.
 - `corpsList → target[]`: 4 JSON strings `{"id":1,"characterId":n}` in
   FF I, FF II, FF III, FF V and FF VI, 5 in FF IV; `id` is 1 in each
   entry in FF I and FF II [M].
+  NeoFFSE lists the party in the order of this list. The measured files do
+  not show whether that order is the battle order.
 - `corpsSlots`: dictionary with keys `0`, `1`, `2`; each value is a list
   with the same entry shape [M]. In the six slots all three lists equal
   `corpsList` [M]. FF VI uses several parties [C].
@@ -1578,6 +1602,10 @@ FF V, 8 in FF VI [M]. The count identifies the game
 | `isOpenedGameBoosterWindow` | bool | |
 
 All rows [M], except the cap marked [D].
+
+NeoFFSE shows `currentLocation` as the place of the save when it is not
+empty, and `currentArea` otherwise [I]. The file does not say which of the
+two the game shows.
 
 ### Time stamp and progress flags
 
