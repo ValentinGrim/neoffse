@@ -2735,6 +2735,7 @@ version = "0.3.0"
 dependencies = [
  "directories",
  "keyvalues-parser",
+ "neoffse-format-pr",
  "serde",
  "serde_json",
  "sysinfo",
