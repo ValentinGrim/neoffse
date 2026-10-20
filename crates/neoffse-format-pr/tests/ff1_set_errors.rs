@@ -5,7 +5,7 @@
 mod common;
 
 use common::ff1_save::{SlotData, character_field, model, standard_model};
-use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, RowId, Value};
+use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, Value};
 use neoffse_format_pr::document::DocumentError;
 use neoffse_format_pr::ff1::names;
 
@@ -214,17 +214,6 @@ fn a_failed_set_leaves_the_text_untouched() {
     for (field, value, policy) in cases {
         assert!(model.apply(&Edit::set(field.clone(), value), policy).is_err(), "{field}");
         assert_eq!(model.document().to_json(), text, "{field}");
-    }
-}
-
-#[test]
-fn insert_and_remove_are_not_supported_yet() {
-    let mut model = standard_model();
-    let row = RowId::new(FieldId::new(names::INVENTORY), 7);
-    let edits = [Edit::insert(row.clone(), None, Vec::new()), Edit::remove(row.clone())];
-    for edit in edits {
-        let result = model.apply(&edit, ENFORCE);
-        assert!(matches!(result, Err(EditError::ReadOnly { field }) if field == *row.id()));
     }
 }
 

@@ -64,7 +64,7 @@ pub(super) fn row_keys(document: &mut Document, collection: Collection) -> Resul
 
 /// Index of the element of `collection` whose key is `wanted`. Other keys are
 /// compared as integers, so an odd value elsewhere does not hide this one.
-fn find_row(document: &mut Document, collection: Collection, wanted: u32) -> Result<Option<usize>, DocumentError> {
+pub(super) fn find_row(document: &mut Document, collection: Collection, wanted: u32) -> Result<Option<usize>, DocumentError> {
     let target = collection.target();
     for index in 0..document.array_len(&target)? {
         let key = with(element(target.clone(), index), &[Segment::Key(collection.row_key())]);
@@ -169,7 +169,6 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
 /// The number of equipment slots, over all characters, that hold
 /// `content_id` (`docs/formats/pixel-remaster.md#inventory`: an equipped id
 /// appears in the inventory with a count at least this number).
-#[allow(dead_code, reason = "the game-rule checks of the write side call it; nothing reads it yet")]
 pub(super) fn wearers(document: &mut Document, content_id: u32) -> Result<usize, DocumentError> {
     let target = characters_target();
     let mut count = 0;

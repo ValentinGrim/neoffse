@@ -24,17 +24,29 @@ impl Ff1Model {
     /// that runs under `CapPolicy::StorageOnly`. A failed call leaves the
     /// document as it was.
     ///
-    /// `Insert` and `Remove` answer `ReadOnly` until the row operations land.
+    /// An `Insert` or `Remove` acts on a row of `inventory` or `key_items`
+    /// and returns the `Remove` or `Insert` that restores the row at its
+    /// place, bytes included. `Insert` checks the collection, the key bounds,
+    /// the `count` value, under `Enforce` the ID tables of the list, then
+    /// duplicates and the position. `Remove` refuses a row whose text is not
+    /// the canonical `{"contentId":K,"count":N}` (`ReadOnly`) and a row whose
+    /// inverse would not apply. Neither holds a game rule: a placeholder row
+    /// and a worn row go like any other. A `character` row is `ReadOnly`.
     ///
     /// # Errors
     ///
     /// `UnknownField`, `MissingRow`, `WrongType`, `OutOfRange`, `AboveCap`,
-    /// `UnknownId` (a job or an equipment id that no table lists, under
-    /// `Enforce`), and `Format` for a document of another shape or a stored
-    /// value that is no integer.
+    /// `UnknownId` (a job, an equipment id or a row key that no table lists,
+    /// under `Enforce`), `DuplicateRow`, `PositionOutOfRange`,
+    /// `NotACollection`, `ReadOnly` (a character row, a row that cannot be
+    /// restored byte for byte), `UnknownField` for a bad row value name, and
+    /// `Format` for a document of another shape or a stored value that is no
+    /// integer.
     pub fn apply(&mut self, edit: &Edit, policy: CapPolicy) -> Result<Edit, EditError> {
         match edit {
             Edit::Set { field, value } => self.set(field, value, policy),
+            Edit::Insert { row, position, values } => self.insert(row, *position, values, policy),
+            Edit::Remove { row } => self.remove(row),
             _ => Err(EditError::ReadOnly { field: edit.target().clone() }),
         }
     }
