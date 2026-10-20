@@ -2,14 +2,17 @@
 //! save file into its JSON text and back, and a lossless document that
 //! reads and edits that text by path.
 //! `docs/formats/pixel-remaster.md` is the source of truth for every rule
-//! this crate implements. The crate knows no domain type yet: it moves
-//! bytes and JSON text, not characters or items.
+//! this crate implements. The codec and the document move bytes and JSON
+//! text and know no domain type; [`ff1`] maps a document onto the
+//! characters and items of `neoffse-core`.
 //!
 //! - [`cipher`]: Rijndael with a 256-bit block, CBC mode, the PR key and IV,
 //!   and the PR zero padding.
 //! - [`container`]: the file around the JSON text (BOM, base64, cipher, raw
 //!   deflate, CRLF), with `decode` and `encode`.
 //! - [`document`]: a lossless view of the JSON text, read and edited by path.
+//! - [`ff1`]: the FF I slot as a model of `neoffse-core` fields, read by
+//!   field id, with the metadata of each field.
 //! - [`games`]: the six games with their game id, Steam app ID, folder under
 //!   `My Games` and executable name.
 //!
@@ -35,4 +38,5 @@
 pub mod cipher;
 pub mod container;
 pub mod document;
+pub mod ff1;
 pub mod games;
