@@ -25,7 +25,7 @@ pub mod meta;
 pub mod view;
 
 pub use collection::{CollectionMeta, RowField};
-pub use edit::{ChangeSet, Edit};
+pub use edit::{ChangeSet, Edit, GameChange};
 pub use error::{EditError, FormatError};
 pub use field::{FieldId, Key, RowId, Value, ValueKind};
 pub use files::{Confidence, Detection, FileProbe, PROBE_HEAD_LEN, SaveFiles};

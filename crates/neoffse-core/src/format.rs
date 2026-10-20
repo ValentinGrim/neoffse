@@ -5,8 +5,9 @@
 //! pipeline that joins `encode`, the atomic write and `verify` live in the
 //! facade crate (`docs/architecture.md#save-safety`).
 
-use crate::edit::{ChangeSet, Edit};
+use crate::edit::{ChangeSet, Edit, GameChange};
 use crate::error::{EditError, FormatError};
+use crate::field::{FieldId, RowId};
 use crate::files::{Detection, FileProbe, SaveFiles};
 use crate::game::Game;
 use crate::kinds::{CapPolicy, Capability};
@@ -112,6 +113,50 @@ pub trait SaveDocument: Send {
     /// The error of the first edit that fails, or `RollbackFailed`.
     fn apply_all(&mut self, changes: &ChangeSet, policy: CapPolicy) -> Result<ChangeSet, EditError> {
         changes.apply_with(policy, |edit, policy| self.apply(edit, policy))
+    }
+
+    /// Applies `edit` the way the game would and returns what changed.
+    ///
+    /// The provided body has no game rule beyond the caps: it applies `edit`
+    /// under `CapPolicy::Enforce` and returns it as `forward` with its inverse
+    /// as `inverse`. A format with game rules overrides it and may expand one
+    /// edit into several plain edits. `forward` and `inverse` apply through
+    /// [`apply_all`](Self::apply_all) under `CapPolicy::StorageOnly`. The UI
+    /// calls `apply_game` for a new edit in the default mode and `apply` with
+    /// its own policy in expert mode.
+    ///
+    /// # Errors
+    ///
+    /// The error of [`apply`](Self::apply) under `Enforce`, plus the game
+    /// rules of the format. A failed call leaves the document as it was.
+    fn apply_game(&mut self, edit: &Edit) -> Result<GameChange, EditError> {
+        let inverse = self.apply(edit, CapPolicy::Enforce)?;
+        Ok(GameChange::new(ChangeSet::from_iter([edit.clone()]), ChangeSet::from_iter([inverse])))
+    }
+
+    /// True when the game interface refuses to remove `row`, whatever the
+    /// values. The UI greys the control before the click. The default is
+    /// `false`. Takes `&mut self` because a format may parse lazily; no value
+    /// changes.
+    ///
+    /// # Errors
+    ///
+    /// The format's error for a path or a row it cannot resolve.
+    fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
+        let _ = row;
+        Ok(false)
+    }
+
+    /// True when the game interface refuses every `Set` of `field`, whatever
+    /// the value. The UI greys the control before the click. The default is
+    /// `false`.
+    ///
+    /// # Errors
+    ///
+    /// The format's error for a path that names no declared field.
+    fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
+        let _ = field;
+        Ok(false)
     }
 
     /// Encodes the document into the files to write, under the names `open`

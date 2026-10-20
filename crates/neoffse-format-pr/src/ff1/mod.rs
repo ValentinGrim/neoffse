@@ -33,6 +33,7 @@ mod save;
 mod summary;
 mod view;
 
+pub use neoffse_core::GameChange;
 use neoffse_core::{Capability, CollectionMeta, EditError, FieldId, FieldMeta, Game, Value};
 use neoffse_data::GameTables;
 
@@ -40,7 +41,6 @@ use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
 use binding::{Binding, Collection};
 pub use format::Ff1Format;
-pub use game::GameChange;
 use locate::{format_error, locate, read_int, read_text, row_keys};
 pub use save::Ff1Document;
 

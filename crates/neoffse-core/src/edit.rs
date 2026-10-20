@@ -177,6 +177,30 @@ impl ChangeSet {
     }
 }
 
+/// What a game-rule edit did, as plain edits.
+///
+/// A document with game rules may expand one user edit into several plain
+/// edits (equipping a weapon also touches the inventory). Both sets apply
+/// through [`SaveDocument::apply_all`](crate::SaveDocument::apply_all) under
+/// `CapPolicy::StorageOnly`, which holds no game rule, so neither can fail on
+/// one: `forward` is the redo and `inverse` the undo.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct GameChange {
+    /// The plain edits, in the order they applied.
+    pub forward: ChangeSet,
+    /// The inverses of `forward`, in reverse order.
+    pub inverse: ChangeSet,
+}
+
+impl GameChange {
+    /// A change from its redo and undo sets.
+    #[must_use]
+    pub fn new(forward: ChangeSet, inverse: ChangeSet) -> Self {
+        Self { forward, inverse }
+    }
+}
+
 /// Undoes `inverses`, newest first. Returns `error`, or `RollbackFailed` at
 /// the first undo that fails.
 fn roll_back<F>(inverses: &[Edit], error: EditError, apply: &mut F) -> EditError
