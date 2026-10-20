@@ -599,6 +599,72 @@ In this order, in all 16 slot files of the six games [M]:
 | `clearFlag` | int | `1` in FF I slot 1, `0` in every other game slot |
 | `isCompleteFlag` | int | equal to `clearFlag` except in FF I's Auto Save (`0` and `1`); meaning open |
 
+### Telling the games apart
+
+A slot file names no game. The entry count of `userData →
+ownedTransportationList → target` identifies it: 4 for FF I, 7 for
+FF II, 14 for FF III, 11 for FF IV, 19 for FF V, 8 for FF VI [M, 16 slot
+files]. The count is the same in every slot file of a game (slot 1, Auto
+Save, Quick Save, slot 2) and takes six distinct values [M]. The game
+fills the list from its transportation table, one entry per vehicle,
+owned or not [I; D for FF I]. [Transportation](#transportation) holds
+the entries.
+
+No explicit identifier exists [M]:
+
+- Every slot file holds the same ten top-level keys in the same order
+  ([Slot keys](#slot-keys)).
+- No key path, at any depth, has a name containing `game`, `title`,
+  `version`, `app`, `product`, `series`, `build` or `platform`. The hits
+  on `type` or `game` are `configData.buttonType`, `mapData.viewType` and
+  `userData.isOpenedGameBoosterWindow`, and none names the game.
+- Of the 66 scalar leaves outside arrays that all 16 files hold, 8 keep
+  one value per game and none takes six distinct values. The widest
+  spread is 3 values (`gpsData.width`, `gpsData.height`,
+  `mapData.transportationId`, `userData.totalGil`), all state that changes
+  with play.
+
+Key names separate three games out of six [M]. These paths need no array
+element to exist:
+
+| Path | Game that holds it |
+|---|---|
+| `userData → cheatSettingsData.jobProficiencyRate` | FF III |
+| `userData → winCount`, `braveBladeReliefCount`, `braveBladeEscapeCount`, `isTakeOverBraveBladeEscapeCount`, `wonderWandIndex` | FF V |
+| `mapData → otherPartyDataList`, `partyPlayableCharacterCorpsId`, `currentSelectedPartyId`, `fieldDefenseNpcEntityIDList`, `beastFieldEncountExchangeFlags`, `beastFieldEncountSeekGroupId`, `rtsData` | FF VI |
+
+Each path is present in every slot file of its game and absent from every
+other game's files [M]. FF I, FF II and FF IV share one key set, so no key
+without an array step tells them apart. Other per-game paths (FF I
+`slotInfo` values, FF II `ownedKeyWaordList` elements, FF VI
+`currentConditionList` elements) exist only once an array holds an
+element, so they depend on progress and cannot serve as markers [I].
+
+A format applies this rule when it opens a slot file for game G:
+
+1. Refuse when `userData` is absent or holds no JSON object. The
+   bestiary, slot index and system settings files fail here.
+2. Read the `target` array of `userData → ownedTransportationList`.
+   Refuse when the list or `target` is missing or `target` is not an
+   array.
+3. Map the length of `target` to a game with the counts above. Refuse
+   when the length maps to no game or to a game other than G, and name the
+   detected game and the count in the error.
+4. Refuse when a marker contradicts the count:
+   `userData → cheatSettingsData.jobProficiencyRate` present unless G is
+   FF III, `userData → wonderWandIndex` present unless G is FF V,
+   `mapData → otherPartyDataList` present unless G is FF VI.
+
+Step 4 only refuses. A game's own markers are never required, because
+the count already decides and a build could drop a key. The rule keys on
+the count, not on the full ID set, so a list the game reorders still
+passes.
+
+The FF I format applies the rule; NeoFFSE has no format for FF II to VI
+yet. The FF II to VI counts are measured [M] but the tables behind them
+are unread, so each remains a reading of the saves
+([Open questions](#open-questions), 16 to 19).
+
 ### Documents inside strings
 
 These keys hold a JSON document serialized as a string [M]:
@@ -1442,12 +1508,41 @@ The Go editor never copied `mapId`, `pointIn`, `transportationId` and
 ### Transportation
 
 `userData → ownedTransportationList → target[]` holds one JSON string
-per vehicle: 4 in FF I, 7 in FF II [M].
+per vehicle: 4 in FF I, 7 in FF II, 14 in FF III, 11 in FF IV, 19 in
+FF V, 8 in FF VI [M]. The count identifies the game
+([Telling the games apart](#telling-the-games-apart)).
 
+| Game | Slot files | Entries | `id` values, in file order |
+|---|---|---|---|
+| FF I | 4 | 4 | 1 to 4 |
+| FF II | 4 | 7 | 1 to 7 |
+| FF III | 2 | 14 | 1, 2, 3, 5, 6, 8 to 16 |
+| FF IV | 2 | 11 | 1 to 11 |
+| FF V | 2 | 19 | 1 to 15, 17 to 20 |
+| FF VI | 2 | 8 | 1 to 8 |
+
+- The ID sets differ pairwise, and so does the highest ID (4, 7, 16,
+  11, 20, 8) [M].
+- The list does not track ownership. `enable` is `false` in every entry
+  of every file, and 0 to 2 entries per file sit on a map (`mapId` not
+  −1). The FF V files come from an early-game, one-character save and
+  already hold 19 entries [M].
+- FF I's master data, `transportation.csv` (build 20249397), has 4 rows
+  with IDs 1 to 4, the IDs the FF I saves hold [D]. The tables of
+  FF II to VI are unread, so their counts stay a reading of the saves
+  [M].
+- The count does not grow with progress within the measured range: late
+  FF I saves hold 4 entries and early FF V saves hold the full 19 [M].
 - Keys: `position` (`x`, `y`, `z` floats), `direction` (0 to 8), `id`,
   `mapId`, `enable`, `timeStampTicks` [M].
 - An unplaced vehicle has `mapId` −1 and a position such as
   `(1000.0, 1000.0, -1000.0)` [M].
+- The Go editor reads and writes the list entry by entry and never adds
+  or removes one (`save/userData.go`, `models/core/transportations.go`)
+  [C]. Its two slot 2 files keep the game's count [M]. In its FF VI
+  menu, IDs 4 and 5 are Blackjack and Falcon
+  (`ui/forms/editors/coreTransportation.go`) [C], consistent with an
+  8-row FF VI table.
 - `timeStampTicks` counts .NET DateTime ticks: 100 ns units since
   0001-01-01. The invented value `639083329294237651` reads 2026-03-05
   18:42:09; the measured values fall in the date range of the saves
@@ -1719,3 +1814,17 @@ an in-game test.
     edited value would show whether the game clamps it.
 15. The label the game shows for a map (area name and title joined), and the
     use of the `map.csv` rows 800 to 802.
+16. Does a slot file from a new game, saved at the first save point, hold
+    the full transportation list? The FF V files (one character, 19
+    entries) make a short or empty list unlikely [I], but no measured file
+    comes from a new game ([Telling the games apart](#telling-the-games-apart)).
+17. Do the `transportation.csv` tables of FF II to VI hold 7, 14, 11, 19
+    and 8 rows with the IDs the saves list? Reading them from an install
+    would settle it and explain the gaps (FF III lacks IDs 4 and 7, FF V
+    lacks 16).
+18. A patch or a new build that adds or removes a vehicle row shifts that
+    game's count, and the rule would refuse every save of the build. The
+    error names the count it found so a report carries it.
+19. Other builds and the PlayStation variant: every count comes from one
+    Steam build, and another tool that rebuilds the list (adding or
+    dropping entries) would defeat the rule. The Go editor does not [C].
