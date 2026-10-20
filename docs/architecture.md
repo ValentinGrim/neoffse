@@ -25,7 +25,7 @@ and starts with the Pixel Remaster (PR) of I to VI on Steam PC.
   widget in the app's About dialog, and the user reaches that dialog
   from the top-level menu.
 - The ID tables come from the game's own master data.  
-`tools/pr-tables/` reads the master data and message files  of the user's install ([Game master data](formats/pixel-remaster.md#game-master-data)) and generates the tables under `data/`.
+  `tools/pr-tables/` reads the master data and message files of the user's install ([Game master data](formats/pixel-remaster.md#game-master-data)) and generates the tables under `data/`.
 - KiameV's archived, MIT-licensed editor
   [final-fantasy-pr-save-editor](https://github.com/KiameV/final-fantasy-pr-save-editor)
   is the source of the save-format rules that
@@ -72,9 +72,9 @@ Every crate follows five rules.
    IDs and integers. A character's Magic widget lists the spells it knows
    and offers a dropdown to add one. A spell or skill level shows its
    named level and its raw value side by side, and both edit the same
-   field. Field metadata (`FieldMeta`: label, the bounds the game can
-   store, an enum of named values, a reference to an ID table) decides
-   which widget appears. An advanced mode shows the raw document tree
+   field. Field metadata (`FieldMeta`: label, the bounds the save can
+   store, the game's own cap, named values, the ID tables the field
+   references) decides which widget appears. An advanced mode shows the raw document tree
    behind a warning, for the fields no widget covers yet.
 4. **One format, one isolated and tested module.** Adding FF VII cannot
    break FF I. Each format lives in its own crate with its own fixtures
@@ -105,16 +105,17 @@ neoffse/
 │                               format crate alone, rustdoc, MSRV
 ├── scripts/                    clippy.sh, the strict clippy gate
 ├── crates/
-│   ├── neoffse-core/           (M3) domain: Game, Platform, Character,
-│   │                           Item, Spell, Edit with its inverse,
-│   │                           ChangeSet, FieldMeta, Capability, the
-│   │                           format traits
-│   ├── neoffse-data/           (M3) ID tables per game, from data/*.toml
+│   ├── neoffse-core/           domain: Game, FieldId, Value, Edit with
+│   │                           its inverse, ChangeSet, FieldMeta,
+│   │                           Capability, the format traits
+│   ├── neoffse-data/           ID tables per game, embedded from
+│   │                           data/pr/<game>/*.toml
 │   ├── neoffse-io/             discovery, verified atomic write,
 │   │                           backups, restore, running-game check
 │   ├── neoffse-format-pr/      FF I to VI Pixel Remaster: codec,
-│   │                           lossless document, game table; the
-│   │                           domain mapping lands with M3
+│   │                           lossless document, game table, slot
+│   │                           names; the FF I domain mapping and
+│   │                           format
 │   ├── neoffse/                (M4) public facade: re-exports, format
 │   │                           registry, save pipeline
 │   ├── neoffse-app/            Slint desktop app: window, menu and About
@@ -126,11 +127,11 @@ neoffse/
 │   │   └── tests/              offscreen UI tests
 │   └── neoffse-testkit/        fixtures and private-save locator,
 │                               dev-dependency
-├── data/                       (M3) TOML ID tables (data/pr/ff1/, ...)
+├── data/                       TOML ID tables (data/pr/ff1/, ...)
 ├── fixtures/                   synthetic test saves, committed (pr/)
 │                               and private real saves, ignored (private/)
 ├── tools/cipher-vectors/       Go program that writes the cipher test vectors
-├── tools/pr-tables/            (M3) Python script that generates data/pr/
+├── tools/pr-tables/            Python script that generates data/pr/
 │                               from a game install
 ├── assets/                     (M4) original art, free-license art
 ├── licenses/                   third-party notices
@@ -138,15 +139,18 @@ neoffse/
 ```
 
 **Dependency rule.**
-The target layering is
-`neoffse-app → neoffse → neoffse-format-* → neoffse-core + neoffse-data + neoffse-io`:
-a crate depends only on crates to its right. The workspace has fewer
-edges today:
+The layering is
+`neoffse-app → neoffse → neoffse-format-* → neoffse-data → neoffse-core`,
+with `neoffse-io` beside the format crates: a crate depends only on crates
+to its right. A format crate knows the domain and its ID tables and never
+the file system, and `neoffse-io` knows the file system and no format. The
+`neoffse` facade joins them. The workspace edges are:
 
-- `neoffse-core`, `neoffse-data` and `neoffse-io` depend on no workspace
-  crate.
-- `neoffse-format-pr` depends on `neoffse-core`. It has no dependency on
-  `neoffse-io`: the `neoffse` facade joins the two.
+- `neoffse-core` and `neoffse-io` depend on no workspace crate.
+- `neoffse-data` depends on `neoffse-core`: its tables are keyed by
+  `TableKind` and `Game`.
+- `neoffse-format-pr` depends on `neoffse-core` and `neoffse-data`. It has
+  no dependency on `neoffse-io`.
 - `neoffse` depends on `neoffse-core`, `neoffse-data`, `neoffse-io` and
   `neoffse-format-pr`.
 - `neoffse-app` depends on `neoffse`.
@@ -166,26 +170,66 @@ breaking change, and a `match` on such an enum needs a wildcard arm.
 `neoffse-io` applies the rule to `IoError`, `Operation`, `Origin`, `Key`,
 `Backup`, `Manifest`, `Listing`, `Restored`, `Discovery` and
 `SaveFolder`; `neoffse-format-pr` applies it to `CodecError`,
-`DocumentError`, `InflatePath`, `Decoded`, `Framing`, `Inflated`,
-`UnalignedLength` and `PrGame`. A type that a caller builds and passes in
-stays open, so the caller can construct it: `Request`, `Environment`,
-`SteamGame`, `ProcessInfo`, `Container`, `Segment` and `Scalar`.
+`DocumentError`, `OpenError`, `InflatePath`, `Decoded`, `Framing`,
+`Inflated`, `UnalignedLength`, `PrGame` and `SlotFile`; `neoffse-core`
+applies it to `Game`, `Value`, `ValueKind`, `Edit`, `GameChange`,
+`EditError`, `FormatError`, `Capability`, `TableKind`, `CapPolicy`,
+`Shape`, `FieldMeta`, `RowField`, `CollectionMeta`, `FileProbe`,
+`Confidence`, `Detection`, `SaveSlot`, `SaveSummary`, `SaveView`,
+`Section`, `Entity` and `FieldView`; `neoffse-data` applies it to
+`Language`, `AbilityKind`, `AbilityInfo`, `Entry` and `DataError`. A type
+that a caller builds and passes in stays open, so the caller can construct
+it: `Request`, `Environment`, `SteamGame`, `ProcessInfo`, `Container`,
+`Segment`, `Scalar`, `Key` and `NamedValue` of `neoffse-core`, and
+`Sources` of `neoffse-data`. The metadata and view types are
+`#[non_exhaustive]` and come with a constructor (`FieldMeta::new`,
+`SaveView::new`), so a caller builds one and then assigns the public fields.
 
 ### Crate roles
 
-- **`neoffse-core`** (M3) holds the domain and the traits every format
-  implements. No format code, no file access, no UI. An `Edit` names a
-  field and a new value; applying it returns the inverse `Edit`, which
-  is how undo works. A `ChangeSet` groups the edits of one user action.
-  A `Capability` (party, inventory, magic, bestiary, ...) tells the UI
-  which editor sections a save supports.
-- **`neoffse-data`** (M3) loads the ID tables (items, spells, maps, monsters,
-  jobs) from the TOML files under `data/`. The build embeds them, so a
-  library caller needs no data directory. The tables hold IDs, kinds and
-  names in English and French. `tools/pr-tables/` (M3) generates the files:
-  a Python script that uses UnityPy to read the game's master data and
-  message files from the user's install. You run it by hand on a machine
-  where the game is installed; the build and the tests never run it.
+- **`neoffse-core`** holds the domain and the traits every format
+  implements. No format code, no file access, no UI. Ten modules split it:
+  - `game` holds `Game`, one variant per title and edition (`Ff1Pr` to
+    `Ff6Pr`), with the stable id `ff1-pr` to `ff6-pr`.
+  - `field` holds `FieldId`, the path of one field (`gil`,
+    `character.1.level`, `inventory.7.count`), `RowId`, the path of one
+    row of a collection, and `Value`, the integer, flag or text an edit
+    writes. A format declares its own paths and the app lays them out.
+  - `edit` holds `Edit` (`Set`, `Insert`, `Remove`) and `ChangeSet`. Applying
+    an `Edit` returns its inverse, which is how undo works. A `ChangeSet`
+    groups the edits of one user action and applies all or none:
+    `ChangeSet::apply_with` undoes the applied edits when one fails.
+    `GameChange` pairs the plain edits of a game-rule edit with their
+    inverses.
+  - `meta` and `collection` hold `FieldMeta` (label, storage bounds, the
+    game's cap, named values, referenced ID tables) and `CollectionMeta`
+    (whether rows may be inserted or removed, the key and the fields of a
+    new row). Both check an edit before a format writes it.
+  - `kinds` holds `Capability` (party, inventory, magic, bestiary), which
+    tells the UI which editor sections a save supports, `TableKind`, one
+    variant per ID table, and `CapPolicy` ([Edit interfaces](#edit-interfaces)).
+  - `error` holds `EditError`, the twelve reasons an edit is refused, and
+    `FormatError`, the failure of an operation on files.
+  - `files` holds `SaveFiles` (file names and bytes, never a path),
+    `FileProbe` (what `detect` sees of a file) and `Detection` (the claim of
+    a format).
+  - `view` holds `SaveSummary` for the Home screen and `SaveView` for the
+    editor, a tree of sections, entities and fields.
+  - `format` holds the two traits ([Format traits](#format-traits)).
+- **`neoffse-data`** holds the ID tables of a game, keyed by `TableKind`:
+  content (items, key items and the five equipment kinds), abilities,
+  jobs, commands and monsters, with the name of each entry in English and
+  French, plus the game's caps (`MAX_GIL` and the like). It has no maps
+  table yet. The TOML files under `data/pr/<game>/` hold the text, and
+  `include_str!` embeds it, so a library caller needs no data directory.
+  `tables_for(Game)` returns the parsed tables, `None` for a game with no
+  data (only FF I has some); `GameTables::parse` parses any six texts.
+  Names repeat inside a table, so an ID is the only lookup key.
+  `tools/pr-tables/` generates the files: a Python script that uses
+  UnityPy to read the game's master data and message files from the user's
+  install. You run it by hand on a machine where the game is installed
+  (`python3 -m prtables --game ff1 --install "<game folder>"`, from
+  `tools/pr-tables/`); the build and the tests never run it.
 - **`neoffse-io`** touches the user's files, and knows no save format.
   Six public modules split the work:
   - `error` holds `IoError`, the error type of every operation, and
@@ -279,15 +323,43 @@ stays open, so the caller can construct it: `Request`, `Environment`,
   inflater stops at the final block and so ignores it, and the codec
   records the BOM and the exact trailing bytes so that `encode` writes
   them back; a trailer longer than `MAX_TRAILER_LEN` (64 bytes, against
-  the 2 the game writes) fails the codec. The lossless document reads and
-  edits that text by path. The `games` module holds `GAMES`, the six
+  the 2 the game writes) fails the codec, and `encode` refuses a JSON text
+  above `MAX_PAYLOAD_LEN` (16 MiB), the cap `decode` applies. The lossless
+  document reads and edits that text by path, and inserts or removes the
+  elements of an array. The `games` module holds `GAMES`, the six
   `PrGame` entries of FF I to VI: game id (`ff1-pr` to `ff6-pr`), Steam
   app ID, folder under `My Games` and executable name. A caller copies
   the first three fields into `neoffse-io`'s `SteamGame` and passes the
   executable names to `process::running`. A test pins the table to the
   [Games](formats/pixel-remaster.md#games) table of the format document.
-  A mapping layer will expose the document as domain types and `FieldMeta`
-  (M3).
+  `games::identify` tells the game of a slot document by the entry count
+  of its vehicle list and a few marker keys ([Telling the games
+  apart](formats/pixel-remaster.md#telling-the-games-apart)); every PR
+  format applies it when it opens a file. The `slots` module holds the 22
+  slot file names the six games share and `detect`, which claims a file by
+  its name: `Likely` when the head also looks like base64, `Possible`
+  otherwise, never `Certain`, because the head names no game.
+  The `ff1` module maps an FF I slot onto the domain of `neoffse-core`:
+  - `Ff1Model` wraps a `Document` and the FF I tables of `neoffse-data`.
+    It reads and writes fields by `FieldId`, never by position, with the
+    metadata of each field (`field_meta`, `collection_meta`). It offers the
+    two [edit interfaces](#edit-interfaces), `apply` and `apply_game`,
+    plus `row_locked` and `field_locked`. It also builds the `SaveSummary`
+    and the `SaveView`, which list the party in the order of `corpsList`.
+    A key the model does not map stays as read.
+  - `Ff1Format` implements `SaveFormat`: `open` takes exactly one file,
+    decodes it, applies `games::identify` and checks that the character
+    list and the two item lists exist. `OpenError` says why a file is no
+    slot of the game: wrong file count, not a slot, or a slot of another
+    game.
+  - `Ff1Document` implements `SaveDocument` over the model. It keeps the
+    BOM, the trailer and the file name of the opened file, so `encode` writes
+    the file back under its own name. `verify` decodes the bytes and compares
+    the JSON text and the container with the in-memory document.
+  - `names` holds the field vocabulary: the section names `gil`,
+    `character`, `inventory` and `key_items`, and the 39 field ids of a
+    character.
+
   [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md) holds
   every byte-level rule, with the codec layers under
   [Container encoding](formats/pixel-remaster.md#container-encoding).
@@ -308,33 +380,102 @@ stays open, so the caller can construct it: `Request`, `Environment`,
 
 ### Format traits
 
-A format registers one `SaveFormat`. Opening a save yields a
-`SaveDocument`, which owns the original data and every edit applied to
-it. The sketch below shows the shape; the real signatures land with M3.
+A format registers one `SaveFormat` per game. Opening a save yields a
+`SaveDocument`, which owns the original data and every edit applied to it.
+Both traits live in `neoffse-core::format`; the document trait is
+dyn-compatible and `Send`, so the app moves a document to a worker thread.
 
 ```rust
-// Illustrative, not the final API.
 pub trait SaveFormat: Send + Sync {
-    fn id(&self) -> FormatId;
-    fn detect(&self, probe: &FileProbe) -> Option<Detection>;
+    fn game(&self) -> Game;
+    fn detect(&self, probe: &FileProbe<'_>) -> Option<Detection>;
     fn open(&self, files: &SaveFiles) -> Result<Box<dyn SaveDocument>, FormatError>;
 }
 
-pub trait SaveDocument {
+pub trait SaveDocument: Send {
     fn game(&self) -> Game;
-    fn summary(&self) -> SaveSummary;
     fn capabilities(&self) -> &[Capability];
-    fn view(&self) -> SaveView;
-    fn apply(&mut self, edit: &Edit) -> Result<Edit, EditError>; // returns the inverse edit
-    fn encode(&self) -> Result<EncodedFiles, FormatError>;
+    fn summary(&mut self) -> Result<SaveSummary, FormatError>;
+    fn view(&mut self) -> Result<SaveView, FormatError>;
+    fn apply(&mut self, edit: &Edit, policy: CapPolicy) -> Result<Edit, EditError>; // returns the inverse
+    fn apply_all(&mut self, changes: &ChangeSet, policy: CapPolicy) -> Result<ChangeSet, EditError>; // provided
+    fn apply_game(&mut self, edit: &Edit) -> Result<GameChange, EditError>;        // provided
+    fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError>;              // provided
+    fn field_locked(&self, field: &FieldId) -> Result<bool, EditError>;            // provided
+    fn encode(&self) -> Result<SaveFiles, FormatError>;
+    fn verify(&self, files: &SaveFiles) -> Result<(), FormatError>;
 }
 ```
 
-`SaveFiles` and `EncodedFiles` carry several files because some saves
-span more than one (a memory card holds many saves, some PC games split
-a slot across files). `detect` reads a `FileProbe` (path, size, first
-bytes) and returns a confidence, so the registry picks the best match
-when two formats could claim a file.
+- **Files, never paths.** `SaveFiles` carries file names and bytes, so a
+  format cannot reach the disk or choose where a file lands. A save that
+  spans several files (a memory card, a PC game that splits a slot) fits the
+  same type. `Debug` shows the names and the byte counts only.
+- **Detection.** `detect` is pure. It reads a `FileProbe` (the name, the
+  size and at most 256 bytes of the head) and returns a `Detection`, or
+  `None`. `Confidence` runs `Possible` (the name fits), `Likely` (the name
+  and a cheap content check fit), `Certain` (the first bytes prove it), so
+  the registry picks the best claim when two formats could claim a file. The
+  six PR formats claim the same file names, so the facade breaks the tie
+  with the game of the save folder. A format never claims a leftover
+  `.neoffse-*.tmp` file of the atomic write.
+- **Open.** `open` copies what it needs from the files, so the document
+  keeps no borrow. It refuses a file that does not fit its game with a
+  `FormatError::Decode`, never a panic.
+- **Views.** `summary` feeds the Home screen: slot, play time, place and
+  party. `view` returns the editable content as a snapshot, one section per
+  capability, each field with its `FieldMeta` and current value, each
+  collection with its `CollectionMeta`. Both take `&mut self` because a
+  format may parse lazily; neither changes a value.
+- **Encode and verify.** `encode` returns the files to write under the
+  names `open` received. `verify` decodes such files from their bytes alone
+  and compares the result with the whole in-memory document, including the
+  data the view omits. The facade calls it from the hook of
+  `neoffse_io::atomic::write` ([Save safety](#save-safety), step 6).
+
+### Edit interfaces
+
+A document edits through two interfaces over one `Edit` type. The UI
+picks the interface; the library keeps no mode.
+
+An `Edit` is `Set` (a field takes a value), `Insert` (a row joins a
+collection at a position) or `Remove` (a row leaves it). Every `apply`
+returns the inverse edit, and an inverse of a `Remove` restores the row at
+its old index with its values. Redo is the original edit applied again.
+
+- **Raw: `apply(edit, policy)`.** The edit goes through the storage bounds
+  of the field, and through the game's cap and the ID tables when the policy
+  is `CapPolicy::Enforce`. `CapPolicy::StorageOnly` accepts any value the
+  save can hold, which is the app's expert mode. The raw interface holds no
+  game rule: it writes a bare equipment id, a count below the number of
+  wearers, or a placeholder row, if the value fits the bounds. An inverse,
+  a rollback and a redo always run under `StorageOnly`, because they restore
+  a value the document already held and the user may have set it above the
+  cap.
+- **Game: `apply_game(edit)`.** The edit changes the save the way the game
+  would, so the result keeps the invariants the game keeps. Caps and ID tables are always
+  enforced, and the game rules of the format hold. FF I equips an item by
+  setting `character.<id>.equipment.<slot>`: the call expands it into the
+  slot's `contentId`, an inventory row that holds the item for every wearer,
+  and the slot `count` copied from the inventory. A count below the number of
+  wearers returns `OutOfRange` with that number as `min`. The call refuses
+  with `ReadOnly` to remove a worn item, to edit a placeholder row, and to
+  set the `count` of an equipment slot or of a key item. It returns a `GameChange`: the
+  plain edits it applied (`forward`) and their inverses (`inverse`). Both
+  sets replay through `apply_all` under `StorageOnly`, which holds no game
+  rule, so neither can fail on one. The default body of the trait method
+  applies one edit under `Enforce` and holds no other rule.
+- **Locks.** `row_locked(row)` and `field_locked(field)` tell the UI which
+  controls the game interface refuses whatever the value, so it greys them
+  before the click. They agree with `apply_game`: a refusal that depends on
+  the value is an error, not a lock.
+- **All or none.** `apply_all` applies a `ChangeSet` and, when an edit
+  fails, undoes the applied edits newest first, so the document holds all the
+  changes or none. `Ff1Document` also snapshots the document for a set of
+  two or more edits: a rollback rewrites the levels it touched in compact
+  form, and the snapshot brings the original text back byte for byte.
+  When an undo fails too, the result is `EditError::RollbackFailed` and the
+  caller reloads the document.
 
 ### Technology stack
 
@@ -356,7 +497,9 @@ all three together.
 | JSON | `serde`, `serde_json` | `neoffse-format-pr` uses `serde` with `std` only and `serde_json` with `preserve_order` (key order), `arbitrary_precision` (a number keeps its written text) and `raw_value` (an untouched value keeps its bytes); they sit under a lossless document layer. `neoffse-io` uses `serde` with `std` and `derive` and `serde_json` with its default features, for `Manifest` |
 | Deflate | `flate2` (`rust_backend`) | raw deflate, no zlib header, pure Rust |
 | Base64 | `base64` (`std` only) | standard alphabet, `=` padding |
+| ID table text | `toml` (`parse`, `serde`, `std`), `serde` (`std`, `derive`) | `neoffse-data` parses the embedded `data/pr/<game>/*.toml`; each raw row refuses unknown keys, so a column the export tool adds fails the tests until the parser handles it |
 | PR cipher | hand-ported Rijndael-256 | 32-byte block, 32-byte key, CBC, fixed key and IV, zero padding; AES fixes the block at 16 bytes, so AES crates cannot decrypt it. The port computes its S-box and lookup tables by `const fn` and expands the key schedule in `Rijndael256::new` |
+| ID table export | Python 3.11 or later and `UnityPy` in `tools/pr-tables/` | reads the master data and message files of the user's install; `requirements.txt` pins every package. Only a contributor who regenerates the tables needs Python |
 | Cipher test vectors | Go program in `tools/cipher-vectors/` | runs KiameV's ffpr-save-cypher (version pinned in its `go.mod`). Only a contributor who regenerates the vectors needs Go |
 | Binary formats (after M5) | `binrw` | for the console and older PC formats after the PR |
 | Atomic write | `tempfile` | temp file in the target folder, then rename |
@@ -376,18 +519,23 @@ not request. For that reason CI runs the tests of `neoffse-format-pr` alone.
 A library crate returns errors; it does not panic on anything read from
 a file.
 
-- One `thiserror` enum per failure domain of a library crate. Today
-  `neoffse-format-pr` has `CodecError` (the container steps) and
-  `DocumentError` (reads and edits of the JSON document). M3 adds
-  `FormatError` in `neoffse-core`, next to the `SaveFormat` trait; a
-  format crate converts its own errors into it and keeps them as the
-  source. `neoffse-io` has `IoError`: a failed file operation with its
-  step and path (`Io`), a data folder with no location (`NoDataDir`), an invalid
-  game id (`InvalidGameId`), a failed verification (`VerificationFailed`),
-  an invalid backup manifest (`ManifestInvalid`), an invalid Steam library
-  list (`LibraryListInvalid`) and a restore that stopped partway
-  (`RestoreFailed`). `EditError` (M3) follows with `neoffse-core`. The app
-  (M4) uses `anyhow` and adds context at the boundary.
+- One `thiserror` enum per failure domain of a library crate.
+  `neoffse-format-pr` has `CodecError` (the container steps),
+  `DocumentError` (reads and edits of the JSON document) and `OpenError`
+  (why a file is no slot of a game: wrong file count, not a slot, a slot of
+  another game). `neoffse-core` has `FormatError` for the failure of a
+  format operation (an invalid or repeated file name, a missing file, a
+  decode, encode or verify failure); a format crate converts its own errors
+  into it and keeps them as the source. `neoffse-core` also has `EditError`,
+  the reasons an edit is refused. `neoffse-data` has `DataError` (a
+  table text that fails to parse). `neoffse-io` has `IoError`: a failed
+  file operation with its step and path (`Io`), a data folder with no
+  location (`NoDataDir`), an invalid game id (`InvalidGameId`), a failed
+  verification (`VerificationFailed`), an invalid backup manifest
+  (`ManifestInvalid`), an invalid Steam library list
+  (`LibraryListInvalid`) and a restore that stopped partway
+  (`RestoreFailed`). The app (M4) uses `anyhow` and adds context at the
+  boundary.
 - Every error enum is `#[non_exhaustive]`, so a `match` needs a wildcard
   arm and a later version may add a variant. `IoError` and its
   `Operation` enum follow the rule.
@@ -406,7 +554,8 @@ a file.
   nothing. `InvalidJson` also keeps the parser's error, whose line and
   column count from the first byte the caller passed.
 - `CodecError::PayloadTooLarge` holds in `limit` the cap that fired, the
-  payload cap or the base64 text cap. `CodecError::TrailerTooLong` holds
+  payload cap or the base64 text cap. `decode` raises it for an inflated
+  payload above `MAX_PAYLOAD_LEN` and `encode` for a JSON text above it. `CodecError::TrailerTooLong` holds
   the trailer length and its limit, `MAX_TRAILER_LEN` (64 bytes); `decode`
   and `seal` both refuse a longer trailer.
 - `IoError::RestoreFailed` lists the files `written` and the files
@@ -430,10 +579,18 @@ a file.
   function of the crate logs or prints any of them, and a caller must not
   print them raw: log the variant and the `Operation`, or the count of
   skipped places.
+- **Save content in `Debug` output.** `SaveSummary`, `SaveView`, `Entity`,
+  `FieldView` and `Ff1Model` print character names, the place and field
+  values, so a caller must not log them. `SaveFiles` prints file names and
+  byte counts only, and `Ff1Document` prints its type and file name.
+  `FormatError` and `OpenError` hold file names, counts and
+  document paths, never a path on disk.
 - A refused edit returns an error with the field and the reason, and the
-  document stays as it was before the call. `Document::set` already
-  behaves so with `DocumentError`; `EditError` will carry the bound an
-  edit broke (M3).
+  document stays as it was before the call. `Document::set` behaves so with
+  `DocumentError`. `EditError::OutOfRange` carries the storage bound an edit
+  broke and `EditError::AboveCap` the game cap, which the UI reads to offer
+  expert mode. `EditError::Format` and `FormatError::Decode` keep the
+  document or codec error as their source.
 
 ## Test policy
 
@@ -456,6 +613,26 @@ a file.
   original file.
 - **Edit tests.** An edit, then encode and decode, yields the intended
   change and no other difference in the JSON text.
+- **FF I exit proof.** The proof runner of `neoffse-format-pr`
+  (`tests/common/edit_proof.rs`) drives an edit through
+  `Box<dyn SaveDocument>`, encodes, decodes with the codec and a JSON tree
+  of its own, and compares the tree with the one before the edit. The only
+  differences allowed are the expected ones: the edited tokens and, for a
+  slot stored with spaces, the compact rewrite of the levels the edit
+  crosses. The runner then undoes the edit, on the edited document and on a
+  reopened one, and checks that the original text returns. An edit matrix
+  (gil, level, stat, spell charges, job, name, item count, row insert and
+  remove, equip and unequip) runs through both interfaces on the synthetic
+  slot `fixtures/pr/ff1-slot.json` and on every private FF I slot. Guard
+  cases show the proof cannot pass for free: a refused edit and a set to
+  the current value leave the file as it was, and each container comes back
+  unchanged. On private saves a failure names the slot label and a field
+  path, never a value.
+- **Domain contract.** `neoffse-core` tests the edit contract with
+  hand-built documents and `proptest`: a refused edit changes nothing, an
+  inverse restores the document, and a `ChangeSet` applies all or none.
+  `neoffse-data` tests the embedded FF I tables against the facts of
+  [Game master data](formats/pixel-remaster.md#game-master-data).
 - **Properties.** `proptest` drives each codec stage (framing, base64,
   the cipher with its padding, deflate), the whole pipeline and the
   document with generated input. Decode inverts encode, an integer edit
@@ -480,6 +657,11 @@ a file.
   decodes each file again. A compression update that changes the stream
   fails the first check; regenerate the files with
   `NEOFFSE_WRITE_FIXTURES=1 cargo test -p neoffse-format-pr --test container_fixtures write_fixtures`.
+  The FF I slot `fixtures/pr/ff1-slot.json` holds invented values that obey
+  the game's rules (equipped items sit in the inventory, slot counts copy
+  the inventory count, the five placeholder rows are present). A test fails
+  when the file differs from its generator; regenerate it with
+  `NEOFFSE_WRITE_FIXTURES=1 cargo test -p neoffse-format-pr --test ff1_fixture write_fixture`.
 - **Real saves.** They are personal data and stay out of the repository.
   A test asks the testkit for the saves of one game, for example
   `neoffse_testkit::private_saves("ff1")`. The testkit reads the folder
@@ -588,6 +770,12 @@ it runs without a window.
   widgets from `FieldMeta` (see [Principles](#principles), rule 3): an
   ID table gives a searchable dropdown, a named enum gives a dropdown
   beside a raw spin box, bounds clamp the spin box.
+- **Default and expert mode.** In the default mode the view model sends a
+  new edit through `apply_game` and keeps the returned `GameChange` for
+  undo and redo; it greys a control that `field_locked` or `row_locked`
+  reports. In expert mode it sends the edit through `apply` with
+  `CapPolicy::StorageOnly`, and an `AboveCap` error from the default mode
+  is the cue to offer the switch ([Edit interfaces](#edit-interfaces)).
 - **Threads.** The Steam scan and other slow work run on a worker
   thread, which returns its result to the UI through
   `slint::invoke_from_event_loop`.
@@ -662,12 +850,15 @@ and the facade (M4) joins them to the format's encoder and decoder.
 2. The user reviews the change summary and confirms.
 3. `neoffse-io` copies the current files into a new backup folder and
    writes its `backup.json`.
-4. The format encodes the document.
+4. The format encodes the document. The PR encoder refuses a JSON text
+   above `MAX_PAYLOAD_LEN` (16 MiB), the cap the decoder applies, so the
+   pipeline never writes a file that step 6 or a later load would refuse.
 5. `neoffse-io` writes the bytes to a temporary file in the save's own
    folder, so the rename stays on one filesystem, and flushes it to
    disk.
 6. The format decodes the temporary file, and the facade compares the
-   result with the in-memory document. The facade hands this check to
+   result with the in-memory document (`SaveDocument::verify`, which
+   covers the whole document, not only the view). The facade hands this check to
    `neoffse_io::atomic::write` as a hook. On a mismatch, or on any other
    failure before the rename, a guard in `neoffse-io` deletes the
    temporary file, also when the hook panics, and the call returns an
@@ -762,7 +953,7 @@ closed crate before the next milestone opens. The
 | M0 Foundations | workspace, CI, app skeleton | no |
 | M1 PR codec | codec and lossless document of `neoffse-format-pr`; `neoffse-testkit` | yes |
 | M2 File safety | `neoffse-io`; the game table and the trailer cap of `neoffse-format-pr` | yes |
-| M3 PR domain | `neoffse-core`, `neoffse-data`, domain mapping of `neoffse-format-pr` | yes |
+| M3 PR domain | `neoffse-core`, `neoffse-data`, the FF I domain mapping and format of `neoffse-format-pr` | yes |
 | M4 App, FF I | `neoffse-app` v1, the `neoffse` facade (registry, history, save pipeline) | yes |
 | M5 FF II to VI | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` for per-game capabilities | yes |
 | Release (v0.7.0) | release packaging, translations | full repository |
@@ -774,4 +965,6 @@ closed crate before the next milestone opens. The
 - **crates.io.** Publishing `neoffse` and its internal crates on
   crates.io remains open. Every crate sets `publish = false` until that
   choice, and the manifests carry the metadata `clippy::cargo` requires,
-  so either outcome costs no rework.
+  so either outcome costs no rework. `neoffse-data` embeds `data/pr/`
+  through a path that leaves its crate folder, so a publication first
+  copies the tables into the crate.

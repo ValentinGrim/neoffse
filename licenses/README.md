@@ -23,5 +23,5 @@ the key schedule at run time, where the Go library embeds both.
 ## ID tables
 
 The script `tools/pr-tables/` generates them from the master data and message files of the user's own game install.
-Square Enix owns that data, so the tables hold facts: IDs, names, kinds and sounds.  
+Square Enix owns that data, so the tables hold facts: IDs, names, kinds and bounds.  
 The repository holds no graphic or audio asset, no dialogue and no extracted file.
