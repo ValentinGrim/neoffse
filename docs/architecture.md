@@ -178,7 +178,8 @@ stays open, so the caller can construct it: `Request`, `Environment`,
   which editor sections a save supports.
 - **`neoffse-data`** (M3) loads the ID tables (items, spells, maps, monsters,
   jobs) from the TOML files under `data/`. The build embeds them, so a
-  library caller needs no data directory. Names and IDs only.
+  library caller needs no data directory. The tables hold names, IDs and
+  kinds.
 - **`neoffse-io`** touches the user's files, and knows no save format.
   Six public modules split the work:
   - `error` holds `IoError`, the error type of every operation, and
