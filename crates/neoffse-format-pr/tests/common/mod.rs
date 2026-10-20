@@ -6,6 +6,11 @@
 
 use std::path::PathBuf;
 
+pub(crate) mod ff1_real;
+pub(crate) mod ff1_render;
+pub(crate) mod ff1_rules;
+pub(crate) mod ff1_save;
+
 use neoffse_format_pr::document::Segment;
 
 /// The six game folders under the saves root, one per game of
