@@ -65,3 +65,27 @@ pub(crate) fn slots() -> Option<Vec<RealSlot>> {
     }
     Some(slots)
 }
+
+/// One private FF I file, whatever it holds.
+pub(crate) struct RealFile {
+    /// `ff1` plus the first 8 characters of the file name.
+    pub label: String,
+    /// The file name.
+    pub name: String,
+    pub bytes: Vec<u8>,
+}
+
+/// Every private FF I file except the Steam marker: the slots, the bestiary,
+/// the slot index and the settings. `None` after a skip report when there
+/// are none.
+pub(crate) fn files() -> Option<Vec<RealFile>> {
+    let paths = super::save_files("ff1")?;
+    let mut files = Vec::new();
+    for path in paths {
+        let label = label(&path);
+        let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+        let Ok(bytes) = std::fs::read(&path) else { panic!("{label}: read failed") };
+        files.push(RealFile { label, name, bytes });
+    }
+    Some(files)
+}
