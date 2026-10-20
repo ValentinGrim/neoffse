@@ -119,3 +119,54 @@ pub enum EditError {
         rollback: Box<EditError>,
     },
 }
+
+/// A failed format operation on files or documents.
+///
+/// A format crate converts its own errors into this type and keeps them as
+/// the source (`docs/architecture.md#errors`). `Display` never repeats the
+/// source. The type derives `Debug` only, since it boxes other errors, and
+/// is `Error + Send + Sync + 'static`. It holds file names, which carry no
+/// personal value, and no path. A later version may add variants, so a
+/// `match` needs a wildcard arm.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum FormatError {
+    /// A file name that is not a plain file name: empty, `.`, `..`, or one
+    /// holding `/`, `\`, `:` or a NUL byte.
+    #[error("invalid file name {name:?}")]
+    InvalidFileName {
+        /// The name as given.
+        name: String,
+    },
+    /// A file name already present in the `SaveFiles`, compared byte for byte.
+    #[error("the file {name:?} appears twice")]
+    DuplicateFile {
+        /// The repeated name.
+        name: String,
+    },
+    /// A file the format needs is absent from the `SaveFiles`.
+    #[error("the save has no file {name:?}")]
+    MissingFile {
+        /// The name of the absent file.
+        name: String,
+    },
+    /// The format cannot read the files. The format's own error is the source.
+    #[error("cannot read the save")]
+    Decode {
+        /// The format's error: a `CodecError`, a `DocumentError`, and so on.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// The format cannot write the document. The format's own error is the
+    /// source.
+    #[error("cannot write the save")]
+    Encode {
+        /// The format's error: a `CodecError`, a `DocumentError`, and so on.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// The decoded file differs from the in-memory document.
+    #[error("the file {name:?} does not match the document")]
+    VerifyMismatch {
+        /// The name of the first file that differs.
+        name: String,
+    },
+}

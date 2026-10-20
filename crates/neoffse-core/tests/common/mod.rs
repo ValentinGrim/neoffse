@@ -7,6 +7,10 @@
 
 use std::collections::BTreeMap;
 
+pub(crate) mod fake;
+pub(crate) mod fake_codec;
+pub(crate) mod fake_meta;
+
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Key, RowId, Value, ValueKind};
 
 /// The only collection of the model.
