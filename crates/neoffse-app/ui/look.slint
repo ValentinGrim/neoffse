@@ -1,0 +1,35 @@
+// The tokens every control and screen draws with. A theme is one `Look` value.
+
+export enum FrameStyle { flat, bevel }
+
+// Every value a control or a screen draws with.
+export struct Look {
+    font-family: string,
+    font-family-strong: string,
+    font-weight-strong: int,
+    font-body: length,
+    font-small: length,
+    font-title: length,
+    text: color,
+    label: color,
+    selected: color,
+    muted: color,
+    warning: color,
+    accent: color,
+    window-fill: brush,
+    panel-fill: brush,
+    field-fill: brush,
+    portrait-fill: brush,
+    hover-fill: brush,
+    selected-fill: brush,
+    frame-style: FrameStyle,
+    frame-outer: color,
+    frame-inner: color,
+    rule: color,
+    field-border: color,
+    focus: color,
+    frame-width: length,
+    frame-radius: length,
+    padding: length,
+    spacing: length,
+}

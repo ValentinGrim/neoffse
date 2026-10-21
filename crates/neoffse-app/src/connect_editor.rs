@@ -13,6 +13,7 @@
 use slint::{ComponentHandle, Model, ModelRc, VecModel, Weak};
 
 use crate::editor::{EditorViewModel, Input, problem_notice};
+use crate::theme::sync_theme;
 use crate::{App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, PickerEntry, SectionData};
 
 /// Wires the editor callbacks of the [`EditorBridge`] global to `app.editor`.
@@ -75,6 +76,7 @@ pub fn connect_editor(window: &MainWindow, app: &App) {
 /// The rows of a shape that did not change update in place; any other change
 /// replaces the data whole. A failed `data()` sets the notice instead.
 pub fn refresh_editor(window: &MainWindow, app: &App) {
+    sync_theme(window, app.state.game());
     refresh_with(window, app, None);
 }
 

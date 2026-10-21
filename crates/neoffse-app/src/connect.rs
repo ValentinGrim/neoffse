@@ -21,6 +21,7 @@ use crate::editor::{EditorViewModel, Leave, LeaveAnswer};
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
 use crate::picker::FilePicker;
 use crate::state::AppState;
+use crate::theme::sync_theme;
 use crate::{EditorBridge, MainWindow};
 
 /// Everything the Home screen needs, built once in [`run`](crate::run).
@@ -125,9 +126,10 @@ pub fn connect_home(window: &MainWindow, app: &App) {
     start_scan(&weak, app);
 }
 
-/// Pushes the Home state into `window`: games, scanning, busy, skipped count,
-/// filter.
+/// Pushes the Home state into `window`: theme, games, scanning, busy, skipped
+/// count, filter.
 pub fn refresh_home(window: &MainWindow, app: &App) {
+    sync_theme(window, app.state.game());
     window.set_games(ModelRc::new(VecModel::from(app.home.rows())));
     window.set_scanning(app.home.is_scanning());
     window.set_scan_failed(app.home.scan_failed());

@@ -1,0 +1,51 @@
+import { Fonts } from "fonts.slint";
+import { FrameStyle, Look } from "look.slint";
+import { Shell } from "shell.slint";
+
+// One theme per game family. To add a game's theme: write one `Look` value
+// (a new `global`), add one branch to `Theme.look`, add one value to `ThemeId`
+// and one arm to `theme_for` in `src/theme.rs`. No screen changes.
+export enum ThemeId { app, pr }
+
+// The Pixel Remaster menu: blue gradient windows, light bevelled borders,
+// white text, cyan labels. All six Pixel Remaster games share it.
+global PrLook {
+    out property <Look> look: {
+        font-family: Fonts.pixel,
+        font-family-strong: Fonts.pixel,
+        font-weight-strong: 400,
+        // Cornelia Sans stays crisp at multiples of 12 px only (its pixel is 1/12 em).
+        // Small text is 12 px for the charge rows and hints a 24 px line would crowd out.
+        font-body: 24px,
+        font-small: 12px,
+        font-title: 36px,
+        text: #ffffff,
+        label: #59d7ee,
+        selected: #f2e24a,
+        muted: #9aa4d6,
+        warning: #ffb347,
+        accent: #59d7ee,
+        window-fill: #05072a,
+        panel-fill: @linear-gradient(180deg, #5557e3 0%, #0b0b78 100%),
+        field-fill: #0c0c60,
+        portrait-fill: #07075a,
+        hover-fill: #ffffff1f,
+        selected-fill: #ffffff26,
+        frame-style: FrameStyle.bevel,
+        frame-outer: #dfe6f2,
+        frame-inner: #6d7bb0,
+        rule: #c9d3ea,
+        field-border: #9fb0e0,
+        focus: #f2e24a,
+        frame-width: 2px,
+        frame-radius: 0px,
+        padding: 12px,
+        spacing: 8px,
+    };
+}
+
+export global Theme {
+    in property <ThemeId> id: ThemeId.app;
+    // The look of the open game; the app theme is the shell's.
+    out property <Look> look: root.id == ThemeId.pr ? PrLook.look : Shell.look;
+}

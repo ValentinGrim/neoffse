@@ -58,6 +58,12 @@ impl AppState {
         self.lock().is_some()
     }
 
+    /// The game of the open save, `None` when none is open.
+    #[must_use]
+    pub fn game(&self) -> Option<Game> {
+        self.lock().as_ref().map(|opened| opened.game)
+    }
+
     /// The summary of the open save, as the editor page shows it.
     #[must_use]
     pub fn summary(&self) -> Option<SummaryRow> {
