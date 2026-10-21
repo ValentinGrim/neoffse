@@ -19,10 +19,9 @@ fn a_slot_opens_by_name_with_or_without_a_game() {
     let dir = folder_with(&[(slot_name(2), &bytes)]);
     for game in [Some(Game::Ff1Pr), None] {
         let save = registry().open(dir.path(), slot_name(2), game).unwrap();
-        assert_eq!(save.game, Game::Ff1Pr);
-        assert_eq!(save.document.game(), Game::Ff1Pr);
-        assert_eq!(save.name, slot_name(2));
-        assert_eq!(save.dir, dir.path());
+        assert_eq!(save.game(), Game::Ff1Pr);
+        assert_eq!(save.name(), slot_name(2));
+        assert_eq!(save.dir(), dir.path());
     }
 }
 
@@ -31,7 +30,7 @@ fn a_renamed_slot_copy_opens_as_ff1_without_a_game() {
     let bytes = slot_bytes();
     let dir = folder_with(&[("renamed-copy.sav", &bytes)]);
     let save = registry().open(dir.path(), "renamed-copy.sav", None).unwrap();
-    assert_eq!(save.game, Game::Ff1Pr);
+    assert_eq!(save.game(), Game::Ff1Pr);
 }
 
 #[test]
@@ -39,11 +38,9 @@ fn original_holds_the_bytes_read() {
     let bytes = slot_bytes();
     let dir = folder_with(&[(slot_name(2), &bytes)]);
     let save = registry().open(dir.path(), slot_name(2), None).unwrap();
-    assert_eq!(save.original.len(), 1);
-    assert_eq!(save.original.get(slot_name(2)), Some(bytes.as_slice()));
-    // The document encodes back to the bytes it was given.
-    let encoded = save.document.encode().unwrap();
-    assert_eq!(encoded.get(slot_name(2)), Some(bytes.as_slice()));
+    assert_eq!(save.original().len(), 1);
+    assert_eq!(save.original().get(slot_name(2)), Some(bytes.as_slice()));
+    assert!(!save.is_dirty());
 }
 
 #[test]

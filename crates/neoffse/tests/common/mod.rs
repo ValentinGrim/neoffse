@@ -34,3 +34,14 @@ pub(crate) fn folder_with(files: &[(&str, &[u8])]) -> TempDir {
 pub(crate) fn write_in(dir: &Path, name: &str, bytes: &[u8]) {
     fs::write(dir.join(name), bytes).unwrap();
 }
+
+/// A session opened on the synthetic slot. Keep the folder alive as long as
+/// the session: it holds the file the session read.
+pub(crate) fn open_session() -> (TempDir, neoffse::Session) {
+    let bytes = slot_bytes();
+    let dir = folder_with(&[(slot_name(2), &bytes)]);
+    let session = neoffse::Registry::new(neoffse::data::Language::En)
+        .open(dir.path(), slot_name(2), None)
+        .unwrap();
+    (dir, session)
+}
