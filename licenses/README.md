@@ -35,3 +35,12 @@ Fonts are not code and are not ported.
 |---|---|---|---|---|---|
 | `assets/fonts/cornelia-sans/cornelia-sans.ttf` | Cornelia Sans, FontStruct, by EliDirkx98 | <https://fontstruct.com/fontstructions/show/1914648> | CC BY-SA 3.0, <http://creativecommons.org/licenses/by-sa/3.0/> | `assets/fonts/cornelia-sans/license.txt` | Redistributed unmodified |
 | `assets/fonts/barlow/Barlow-Regular.ttf`, `assets/fonts/barlow/Barlow-SemiBold.ttf` | Barlow, The Barlow Project Authors (copyright 2017) | <https://github.com/google/fonts/tree/main/ofl/barlow> | SIL OFL 1.1, <https://openfontlicense.org> | `assets/fonts/barlow/OFL.txt` | Redistributed unmodified |
+
+## Icons
+
+The app draws its icons from one set. The files travel unmodified with the
+licence text. Icons are not code and are not ported.
+
+| Files | Project and author | Source | License | Notice file | Status |
+|---|---|---|---|---|---|
+| `assets/icons/material-symbols/*.svg` | Material Symbols, Google | <https://github.com/google/material-design-icons> | Apache License 2.0, <https://www.apache.org/licenses/LICENSE-2.0> | `assets/icons/material-symbols/LICENSE` | Outlined, weight 300, fill 0, grade 0, 24 px. Redistributed unmodified, file names shortened |
