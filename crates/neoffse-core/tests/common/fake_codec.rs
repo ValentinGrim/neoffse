@@ -10,7 +10,7 @@ use std::fmt::{self, Write as _};
 use neoffse_core::{FieldId, RowId, Value};
 
 use super::fake::{FakeDocument, HEADER};
-use super::fake_meta::{ITEMS, Slot, inventory};
+use super::fake_meta::{Slot, inventory};
 
 /// A decode failure of the fake format.
 #[derive(Debug)]
@@ -23,6 +23,10 @@ impl fmt::Display for FakeError {
 }
 
 impl std::error::Error for FakeError {}
+
+/// The storage bound of a row key. The file holds any key in it: the item
+/// table is a game rule the codec does not know.
+const KEY_BOUNDS: std::ops::RangeInclusive<u32> = 1..=200;
 
 fn fail<T>(message: &str) -> Result<T, FakeError> {
     Err(FakeError(message.to_string()))
@@ -115,7 +119,7 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<FakeDocument, FakeError> {
             }
             slot.value = value;
         } else if let (Some(row), Value::Int(count)) = (row_key(key), &value) {
-            if !ITEMS.contains(&row) || !(1..=99).contains(count) || doc.rows.iter().any(|(k, _)| *k == row) {
+            if !KEY_BOUNDS.contains(&row) || !(1..=99).contains(count) || doc.rows.iter().any(|(k, _)| *k == row) {
                 return fail("bad row");
             }
             doc.rows.push((row, *count));

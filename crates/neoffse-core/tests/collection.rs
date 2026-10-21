@@ -107,6 +107,20 @@ fn the_key_is_checked_against_its_metadata() {
 }
 
 #[test]
+fn the_key_is_checked_before_the_values() {
+    for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
+        let error = collection().check_insert(&row(0), &count(Value::Int(100)), policy).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                EditError::OutOfRange { ref field, value: 0, min: 1, max: 200 } if *field == *row(0).id()
+            ),
+            "{error:?}"
+        );
+    }
+}
+
+#[test]
 fn an_unknown_value_name_is_refused() {
     let error = collection()
         .check_insert(&row(7), &[("weight", Value::Int(1))], CapPolicy::Enforce)

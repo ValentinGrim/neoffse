@@ -1,5 +1,7 @@
 //! A minimal in-test document for the edit tests: scalar fields with
 //! storage bounds and caps, and one ordered collection keyed by `u32`.
+//! Every check goes through `FieldMeta::check` and `CollectionMeta`; only the
+//! game rules (the ID table, duplicates, positions) live here.
 //! Each test crate declares `mod common;`: Cargo does not build this file as
 //! a test target.
 #![allow(dead_code, reason = "each test crate uses a subset of the shared helpers")]
@@ -11,41 +13,37 @@ pub(crate) mod fake;
 pub(crate) mod fake_codec;
 pub(crate) mod fake_meta;
 
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Key, RowId, Value, ValueKind};
+use fake_meta::{ITEMS, count_field, inventory_meta};
+use neoffse_core::{CapPolicy, Edit, EditError, FieldId, FieldMeta, Key, RowId, Shape, Value};
 
 /// The only collection of the model.
 const INVENTORY: &str = "inventory";
-/// Row keys of `inventory` that name an entry of the (imaginary) ID table.
-const KEYS: std::ops::RangeInclusive<u32> = 1..=200;
-/// Storage bounds of a row's `count`.
-const COUNT_MIN: i64 = 1;
-const COUNT_MAX: i64 = 99;
 
-/// One scalar field: its value and the rules an edit meets.
+/// One scalar field: its value and the metadata every edit goes through.
 #[derive(Debug, Clone)]
 struct Slot {
     value: Value,
-    bounds: (i64, i64),
-    cap: Option<i64>,
-    read_only: bool,
+    meta: FieldMeta,
 }
 
 impl Slot {
     fn int(value: i64, bounds: (i64, i64), cap: Option<i64>) -> Self {
+        let mut meta = FieldMeta::new("Number", Shape::Int { min: bounds.0, max: bounds.1 });
+        meta.cap = cap;
         Self {
             value: Value::Int(value),
-            bounds,
-            cap,
-            read_only: false,
+            meta,
         }
     }
 
     fn other(value: Value) -> Self {
+        let shape = match value {
+            Value::Bool(_) => Shape::Bool,
+            _ => Shape::Text,
+        };
         Self {
             value,
-            bounds: (0, 0),
-            cap: None,
-            read_only: false,
+            meta: FieldMeta::new("Other", shape),
         }
     }
 }
@@ -60,37 +58,6 @@ pub(crate) struct Model {
 pub(crate) struct Snapshot {
     pub(crate) scalars: BTreeMap<FieldId, Value>,
     pub(crate) rows: Vec<(u32, i64)>,
-}
-
-/// The storage bound first, then the cap under `Enforce`.
-fn checked_int(field: &FieldId, value: &Value, bounds: (i64, i64), cap: Option<i64>, policy: CapPolicy) -> Result<i64, EditError> {
-    let Value::Int(number) = value else {
-        return Err(EditError::WrongType {
-            field: field.clone(),
-            expected: ValueKind::Int,
-            found: value.kind(),
-        });
-    };
-    let (min, max) = bounds;
-    if *number < min || *number > max {
-        return Err(EditError::OutOfRange {
-            field: field.clone(),
-            value: *number,
-            min,
-            max,
-        });
-    }
-    if let Some(cap) = cap
-        && policy == CapPolicy::Enforce
-        && *number > cap
-    {
-        return Err(EditError::AboveCap {
-            field: field.clone(),
-            value: *number,
-            cap,
-        });
-    }
-    Ok(*number)
 }
 
 pub(crate) fn row(key: u32) -> RowId {
@@ -130,7 +97,7 @@ impl Model {
         scalars.insert(name(2), Slot::other(Value::Text("Bo".into())));
         scalars.insert(FieldId::new("character").with_id(1).with_name("ready"), Slot::other(Value::Bool(false)));
         let mut locked = Slot::int(7, (0, 255), None);
-        locked.read_only = true;
+        locked.meta.read_only = true;
         scalars.insert(FieldId::new("character").with_id(1).with_name("locked"), locked);
         Model {
             scalars,
@@ -181,39 +148,25 @@ impl Model {
             if *name != "count" {
                 return Err(EditError::UnknownField { field: field.clone() });
             }
-            let count = checked_int(field, value, (COUNT_MIN, COUNT_MAX), None, policy)?;
-            let Some(slot) = self.rows.get_mut(index) else {
+            count_field().meta.check(field, value, policy)?;
+            let (Value::Int(count), Some(slot)) = (value, self.rows.get_mut(index)) else {
                 return Err(EditError::UnknownField { field: field.clone() });
             };
-            let old = std::mem::replace(&mut slot.1, count);
+            let old = std::mem::replace(&mut slot.1, *count);
             return Ok(Edit::set(field.clone(), Value::Int(old)));
         }
         let Some(slot) = self.scalars.get_mut(field) else {
             return Err(EditError::UnknownField { field: field.clone() });
         };
-        if slot.read_only {
-            return Err(EditError::ReadOnly { field: field.clone() });
-        }
-        if slot.value.kind() != value.kind() {
-            return Err(EditError::WrongType {
-                field: field.clone(),
-                expected: slot.value.kind(),
-                found: value.kind(),
-            });
-        }
-        if matches!(value, Value::Int(_)) {
-            checked_int(field, value, slot.bounds, slot.cap, policy)?;
-        }
+        slot.meta.check(field, value, policy)?;
         let old = std::mem::replace(&mut slot.value, value.clone());
         Ok(Edit::set(field.clone(), old))
     }
 
     fn insert(&mut self, id: &RowId, position: Option<usize>, values: &[(&'static str, Value)], policy: CapPolicy) -> Result<Edit, EditError> {
         let collection = id.collection();
-        if collection != FieldId::new(INVENTORY) {
-            return Err(EditError::NotACollection { field: collection });
-        }
-        if !KEYS.contains(&id.key()) {
+        inventory_meta().check_insert(id, values, policy)?;
+        if policy == CapPolicy::Enforce && !ITEMS.contains(&id.key()) {
             return Err(EditError::UnknownId {
                 field: id.id().clone(),
                 id: i64::from(id.key()),
@@ -227,22 +180,16 @@ impl Model {
         if position > len {
             return Err(EditError::PositionOutOfRange { collection, position, len });
         }
-        let mut count = None;
-        for (name, value) in values {
-            if *name != "count" || count.is_some() {
-                return Err(EditError::UnknownField { field: id.field(name) });
-            }
-            count = Some(checked_int(&id.field(name), value, (COUNT_MIN, COUNT_MAX), None, policy)?);
-        }
-        self.rows.insert(position, (id.key(), count.unwrap_or(1)));
+        let count = values
+            .iter()
+            .find_map(|(_, value)| if let Value::Int(n) = value { Some(*n) } else { None })
+            .unwrap_or(1);
+        self.rows.insert(position, (id.key(), count));
         Ok(Edit::remove(id.clone()))
     }
 
     fn remove(&mut self, id: &RowId) -> Result<Edit, EditError> {
-        let collection = id.collection();
-        if collection != FieldId::new(INVENTORY) {
-            return Err(EditError::NotACollection { field: collection });
-        }
+        inventory_meta().check_remove(id)?;
         let Some(index) = self.index_of(id.key()) else {
             return Err(EditError::MissingRow { row: id.id().clone() });
         };

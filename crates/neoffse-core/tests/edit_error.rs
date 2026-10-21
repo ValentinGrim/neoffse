@@ -118,8 +118,15 @@ fn rollback_failed_exposes_the_original_error() {
         source: Box::new(EditError::ReadOnly { field: FieldId::new("inner") }),
         rollback: Box::new(EditError::UnknownField { field: FieldId::new("other") }),
     };
-    let source = failed.source().unwrap().downcast_ref::<Box<EditError>>().unwrap();
+    let chain_head = failed.source().unwrap();
+    assert!(chain_head.downcast_ref::<EditError>().is_none());
+    let source = chain_head.downcast_ref::<Box<EditError>>().unwrap();
     assert!(matches!(**source, EditError::ReadOnly { ref field } if field.to_string() == "inner"));
+    assert!(chain_head.source().is_none(), "the rollback error is not in the source chain");
+    let EditError::RollbackFailed { rollback, .. } = &failed else {
+        panic!("expected RollbackFailed");
+    };
+    assert!(matches!(**rollback, EditError::UnknownField { ref field } if field.to_string() == "other"));
 }
 
 #[test]

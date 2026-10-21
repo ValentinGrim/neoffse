@@ -192,7 +192,10 @@ fn an_undo_stops_at_the_first_failed_undo() {
             _ => Err(EditError::UnknownField { field: field("ub") }),
         }
     });
-    assert!(matches!(result, Err(EditError::RollbackFailed { .. })));
+    let Err(EditError::RollbackFailed { field: failed, .. }) = result else {
+        panic!("expected RollbackFailed");
+    };
+    assert_eq!(failed, field("ub"), "the field is the target of the inverse that failed");
     assert_eq!(log, ["a", "b", "c", "d", "uc", "ub"]);
 }
 

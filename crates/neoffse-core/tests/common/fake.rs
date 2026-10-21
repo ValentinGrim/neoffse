@@ -113,7 +113,7 @@ impl FakeDocument {
         if collection != inventory() {
             return Err(EditError::NotACollection { field: collection });
         }
-        if !ITEMS.contains(&id.key()) {
+        if policy == CapPolicy::Enforce && !ITEMS.contains(&id.key()) {
             return Err(EditError::UnknownId {
                 field: id.id().clone(),
                 id: i64::from(id.key()),

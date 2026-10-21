@@ -35,18 +35,20 @@ pub enum EditError {
         /// The kind the edit carried.
         found: ValueKind,
     },
-    /// The value breaks the storage bound of the field. A value past both the
-    /// storage bound and the game cap reports this variant: the storage bound
-    /// is checked first.
+    /// The value breaks the range the edit had to respect: the storage bound
+    /// of the field or, under a format's game interface, the range of a game
+    /// rule (a floor such as the number of wearers). A value past both that
+    /// range and the game cap reports this variant: the range is checked
+    /// first.
     #[error("{value} is outside {min}..={max} for field {field}")]
     OutOfRange {
         /// The path the edit named.
         field: FieldId,
         /// The value the edit carried.
         value: i64,
-        /// The lowest value the save can hold, inclusive.
+        /// The lowest value of the range the edit broke, inclusive.
         min: i64,
-        /// The highest value the save can hold, inclusive.
+        /// The highest value of the range the edit broke, inclusive.
         max: i64,
     },
     /// The value breaks the game cap under `CapPolicy::Enforce`. The app reads
@@ -109,6 +111,10 @@ pub enum EditError {
     /// A change set failed and its rollback failed too. The document is in an
     /// unknown state: the caller reloads it. `Display` prints neither inner
     /// error.
+    ///
+    /// `source()` yields the `Box<EditError>` itself, so a caller downcasts
+    /// with `downcast_ref::<Box<EditError>>()`. The `rollback` error sits
+    /// outside the source chain: read it from the field.
     #[error("rollback failed at {field} after another edit failed")]
     RollbackFailed {
         /// The target of the inverse edit that failed to apply.
