@@ -58,13 +58,20 @@ impl AppState {
         self.lock().is_some()
     }
 
+    /// The game of the open save, `None` when none is open.
+    #[must_use]
+    pub fn game(&self) -> Option<Game> {
+        self.lock().as_ref().map(|opened| opened.game)
+    }
+
     /// The summary of the open save, as the editor page shows it.
     #[must_use]
     pub fn summary(&self) -> Option<SummaryRow> {
         self.lock().as_ref().map(|opened| opened.summary.clone())
     }
 
-    /// Drops the session. Task 8 asks first when the session is dirty.
+    /// Drops the session without a question. The question for a dirty
+    /// session lives in `EditorViewModel::leave`.
     pub fn close(&self) {
         // The old session drops after the lock is released.
         let old = self.lock().take();
@@ -80,31 +87,5 @@ impl AppState {
         };
         let old = self.lock().replace(opened);
         drop(old);
-    }
-}
-
-/// The editor page. It shows the summary and a Back button. Task 8 extends
-/// it.
-#[derive(Debug, Clone)]
-pub struct EditorViewModel {
-    state: Arc<AppState>,
-}
-
-impl EditorViewModel {
-    /// An editor page over `state`.
-    #[must_use]
-    pub fn new(state: Arc<AppState>) -> Self {
-        Self { state }
-    }
-
-    /// The summary of the open save, `None` when none is open.
-    #[must_use]
-    pub fn summary(&self) -> Option<SummaryRow> {
-        self.state.summary()
-    }
-
-    /// Leaves the editor: closes the open save.
-    pub fn back(&self) {
-        self.state.close();
     }
 }

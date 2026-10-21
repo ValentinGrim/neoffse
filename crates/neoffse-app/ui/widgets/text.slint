@@ -1,0 +1,100 @@
+// Language-dependent sentences shared by the Home screen and the editor
+// page. Rust sends a kind and a number; the sentence is written here.
+
+import { SlotKind, SummaryRow } from "../types/home.slint";
+import { EditNotice, EditProblem } from "../types/editor.slint";
+import { Shell } from "../theme/shell.slint";
+import { ShellText } from "shell-text.slint";
+
+export global SlotText {
+    pure public function name(kind: SlotKind, number: int) -> string {
+        if kind == SlotKind.numbered {
+            return @tr("Slot {}", number);
+        }
+        if kind == SlotKind.auto-save {
+            return @tr("Auto save");
+        }
+        if kind == SlotKind.quick-save {
+            return @tr("Quick save");
+        }
+        return @tr("Unknown slot");
+    }
+}
+
+// The sentence for an edit notice. Rust sends the problem and the numbers; the
+// wording lives here.
+export global NoticeText {
+    pure public function sentence(notice: EditNotice) -> string {
+        if notice.problem == EditProblem.not-a-number {
+            return @tr("{}: enter a whole number.", notice.label);
+        }
+        if notice.problem == EditProblem.read-only {
+            return @tr("{} is locked.", notice.label);
+        }
+        if notice.problem == EditProblem.out-of-range {
+            return @tr("{}: {} is outside {} to {}.", notice.label, notice.value, notice.min, notice.max);
+        }
+        if notice.problem == EditProblem.above-cap {
+            return @tr("{}: {} is above the game limit of {}.", notice.label, notice.value, notice.cap);
+        }
+        if notice.problem == EditProblem.unknown-id {
+            return @tr("{}: {} is not a known entry.", notice.label, notice.value);
+        }
+        if notice.problem == EditProblem.duplicate-row {
+            return @tr("{} is already in the list.", notice.label);
+        }
+        if notice.problem == EditProblem.missing-row {
+            return @tr("{} is no longer in the save.", notice.label);
+        }
+        if notice.problem == EditProblem.not-editable {
+            return @tr("This field cannot be edited.");
+        }
+        if notice.problem == EditProblem.reloaded {
+            return @tr("The change failed and the save was reloaded. Unsaved changes are gone.");
+        }
+        return @tr("An internal error stopped the edit.");
+    }
+}
+
+// The one-line header of the editor page after the game title: slot, play
+// time and location, each skipped when empty.
+export global SummaryLine {
+    pure public function rest(summary: SummaryRow) -> string {
+        if summary.play-time != "" && summary.location != "" {
+            return @tr("{} - {} - {}", SlotText.name(summary.kind, summary.number), summary.play-time, summary.location);
+        }
+        if summary.play-time != "" {
+            return @tr("{} - {}", SlotText.name(summary.kind, summary.number), summary.play-time);
+        }
+        if summary.location != "" {
+            return @tr("{} - {}", SlotText.name(summary.kind, summary.number), summary.location);
+        }
+        return SlotText.name(summary.kind, summary.number);
+    }
+}
+
+// Party, play time and location of one save, each line skipped when empty.
+// Drawn in the shell look, as the Home screen shows it.
+export component SummaryLines inherits VerticalLayout {
+    in property <SummaryRow> summary;
+
+    spacing: 2px;
+
+    if root.summary.party != "": ShellText {
+        text: @tr("Party: {}", root.summary.party);
+        font-size: Shell.look.font-small;
+        overflow: elide;
+    }
+    if root.summary.play-time != "": ShellText {
+        text: @tr("Play time: {}", root.summary.play-time);
+        font-size: Shell.look.font-small;
+        color: Shell.look.muted;
+        overflow: elide;
+    }
+    if root.summary.location != "": ShellText {
+        text: @tr("Location: {}", root.summary.location);
+        font-size: Shell.look.font-small;
+        color: Shell.look.muted;
+        overflow: elide;
+    }
+}

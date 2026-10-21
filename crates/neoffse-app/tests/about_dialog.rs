@@ -1,7 +1,7 @@
 //! Offscreen tests for the About dialog wiring, run on Slint's testing
 //! backend. No test opens a desktop window or starts an event loop.
 
-use neoffse_app::{MainWindow, connect_about, new_about_dialog};
+use neoffse_app::{FONT_CREDIT, MainWindow, UI_FONT_CREDIT, connect_about, new_about_dialog};
 use slint::ComponentHandle;
 
 /// Installs the testing platform for the calling thread. Must run before
@@ -44,6 +44,18 @@ fn about_dialog_shows_license_expression() -> Result<(), slint::PlatformError> {
     init_testing_backend();
     let about = new_about_dialog()?;
     assert_eq!(about.get_license(), "MIT OR Apache-2.0");
+    Ok(())
+}
+
+#[test]
+fn about_dialog_shows_both_font_credits() -> Result<(), slint::PlatformError> {
+    init_testing_backend();
+    let about = new_about_dialog()?;
+    assert_eq!(about.get_font_credit(), FONT_CREDIT);
+    assert_eq!(about.get_ui_font_credit(), UI_FONT_CREDIT);
+    assert!(FONT_CREDIT.contains("EliDirkx98"));
+    assert!(FONT_CREDIT.contains("CC BY-SA 3.0"));
+    assert!(UI_FONT_CREDIT.contains("SIL OFL 1.1"));
     Ok(())
 }
 

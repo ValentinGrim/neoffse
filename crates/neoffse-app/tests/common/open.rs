@@ -5,9 +5,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, ThreadId};
 
+use neoffse::data::Language;
+use neoffse_app::EditorViewModel;
 use neoffse_app::FilePicker;
 use neoffse_app::home::{HomeViewModel, OpenOutcome, OpenViewModel, SlotTarget};
-use neoffse_app::state::{AppState, EditorViewModel};
+use neoffse_app::state::AppState;
 
 use super::{Manual, Site, registry, scanned};
 
@@ -83,7 +85,7 @@ impl Flow {
         let state = Arc::new(AppState::new());
         let picker = FixedPicker::new(pick);
         let open = OpenViewModel::new(registry(), Arc::clone(&picker) as Arc<dyn FilePicker>, Arc::clone(&state));
-        let editor = EditorViewModel::new(Arc::clone(&state));
+        let editor = EditorViewModel::new(Arc::clone(&state), Language::En);
         Self {
             home,
             open,

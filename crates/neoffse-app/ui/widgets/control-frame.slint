@@ -1,0 +1,33 @@
+import { FrameStyle, Look } from "../theme/look.slint";
+
+// The frame of a control: a flat 1px line, or a bevel with an inner line.
+export component ControlFrame inherits Rectangle {
+    in property <Look> look;
+    in property <brush> fill;
+    in property <color> line;
+
+    background: root.fill;
+    border-width: root.look.frame-width;
+    border-color: root.line;
+    border-radius: root.look.frame-radius;
+
+    if root.look.frame-style == FrameStyle.bevel: Rectangle {
+        x: root.look.frame-width;
+        y: root.look.frame-width;
+        width: root.width - 2 * root.look.frame-width;
+        height: root.height - 2 * root.look.frame-width;
+        border-width: 1px;
+        border-color: root.look.frame-inner;
+    }
+}
+
+// The outline of the control that holds the focus.
+export component FocusRing inherits Rectangle {
+    in property <Look> look;
+    in property <bool> shown;
+
+    visible: root.shown;
+    border-width: 2px;
+    border-color: root.look.focus;
+    border-radius: root.look.frame-radius;
+}

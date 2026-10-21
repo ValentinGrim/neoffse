@@ -1,0 +1,38 @@
+import { Fonts } from "fonts.slint";
+import { FrameStyle, Look } from "look.slint";
+
+// The look of the app shell: Home, dialogs, the notice bar, the About dialog.
+// Deep navy, flat translucent panels, thin light lines, no light variant.
+export global Shell {
+    out property <Look> look: {
+        font-family: Fonts.modern,
+        font-family-strong: Fonts.modern-strong,
+        font-weight-strong: Fonts.modern-strong-weight,
+        font-body: 14px,
+        font-small: 12px,
+        font-title: 18px,
+        text: #eef4ff,
+        label: #6fd3ff,
+        selected: #ffffff,
+        muted: #8c9cc4,
+        warning: #ffb454,
+        accent: #6fd3ff,
+        window-fill: @linear-gradient(180deg, #0a1330 0%, #040815 100%),
+        panel-fill: #0c1a40b3,
+        field-fill: #081230,
+        // The shell draws no portrait; the token takes the field colour.
+        portrait-fill: #081230,
+        hover-fill: #1c3a7a40,
+        selected-fill: #2f66c033,
+        frame-style: FrameStyle.flat,
+        frame-outer: #cfe2ffcc,
+        frame-inner: #a8c8ff59,
+        rule: #a8c8ff59,
+        field-border: #8fb0e6,
+        focus: #9fd6ff,
+        frame-width: 1px,
+        frame-radius: 2px,
+        padding: 12px,
+        spacing: 10px,
+    };
+}

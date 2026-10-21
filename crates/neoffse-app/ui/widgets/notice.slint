@@ -1,0 +1,62 @@
+import { IconButton, ThemedButton } from "controls.slint";
+import { Icon, Icons } from "../theme/icons.slint";
+import { Shell } from "../theme/shell.slint";
+import { ShellText } from "shell-text.slint";
+import { NoticeText } from "text.slint";
+
+// A strip that tells the user something went wrong: a warning bar at the
+// left, an icon, one line of text, an optional button and a dismiss button.
+// It reads no model; `NoticeBar` and the Home screen feed it.
+export component NoticeStrip inherits Rectangle {
+    in property <string> text;
+    // The label of the extra button; empty hides it.
+    in property <string> offer-text;
+    in property <bool> enabled: true;
+    callback offer-clicked();
+    callback dismissed();
+
+    background: Shell.look.warning.with-alpha(0.14);
+    border-width: Shell.look.frame-width;
+    border-color: Shell.look.warning.with-alpha(0.4);
+    border-radius: Shell.look.frame-radius;
+    min-height: row.min-height;
+    preferred-height: row.preferred-height;
+
+    Rectangle {
+        x: 0px;
+        width: 3px;
+        background: Shell.look.warning;
+    }
+    row := HorizontalLayout {
+        padding: Shell.look.spacing;
+        padding-left: Shell.look.padding;
+        spacing: Shell.look.spacing;
+
+        Icon {
+            source: Icons.warning;
+            tint: Shell.look.warning;
+            width: Shell.look.font-body * 1.5;
+            height: Shell.look.font-body * 1.5;
+            y: (parent.height - self.height) / 2;
+        }
+        ShellText {
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+            text: root.text;
+        }
+        if root.offer-text != "": ThemedButton {
+            look: Shell.look;
+            text: root.offer-text;
+            enabled: root.enabled;
+            clicked => { root.offer-clicked(); }
+        }
+        IconButton {
+            look: Shell.look;
+            icon: Icons.close;
+            label: @tr("Dismiss");
+            enabled: root.enabled;
+            clicked => { root.dismissed(); }
+        }
+    }
+}

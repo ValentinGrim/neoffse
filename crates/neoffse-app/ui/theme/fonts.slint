@@ -1,0 +1,12 @@
+import "../../../../assets/fonts/cornelia-sans/cornelia-sans.ttf";
+import "../../../../assets/fonts/barlow/Barlow-Regular.ttf";
+import "../../../../assets/fonts/barlow/Barlow-SemiBold.ttf";
+
+// Family names as they stand inside the font files. A wrong name falls back to the default font.
+export global Fonts {
+    out property <string> pixel: "Cornelia Sans";
+    out property <string> modern: "Barlow";
+    // Barlow-SemiBold carries the family "Barlow" in name ID 16, so weight 600 on `modern` selects it.
+    out property <string> modern-strong: "Barlow";
+    out property <int> modern-strong-weight: 600;
+}

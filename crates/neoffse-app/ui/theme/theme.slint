@@ -1,0 +1,15 @@
+import { PrLook } from "../games/pr/look.slint";
+import { Look } from "look.slint";
+import { Shell } from "shell.slint";
+
+// One theme per game family. To add a game's theme: write one `Look` value
+// (a new `global` in `games/<game>/look.slint`), add one branch to
+// `Theme.look`, add one value to `ThemeId` and one arm to `theme_for` in
+// `src/theme.rs`. No screen changes.
+export enum ThemeId { app, pr }
+
+export global Theme {
+    in property <ThemeId> id: ThemeId.app;
+    // The look of the open game; the app theme is the shell's.
+    out property <Look> look: root.id == ThemeId.pr ? PrLook.look : Shell.look;
+}

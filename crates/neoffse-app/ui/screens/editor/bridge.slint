@@ -1,0 +1,51 @@
+import { EditorCommand, EditorData, EditNotice, Overview, PickerEntry } from "../../types/editor.slint";
+
+// The state and the callbacks of the editor page. Rust fills it through
+// `window.global::<EditorBridge>()`, so the nested components read it
+// without property drilling.
+export global EditorBridge {
+    in property <EditorData> data;
+    // The party overview the cards read.
+    in property <Overview> overview;
+    in property <[PickerEntry]> picker-entries;
+    in property <bool> has-notice;
+    in property <EditNotice> notice;
+    // The notice is an above-cap refusal in the default mode.
+    in property <bool> offer-expert;
+    in property <bool> expert-mode;
+    // The checkmark of the View menu item.
+    in-out property <bool> expert-menu-checked;
+    in property <bool> expert-warning-open;
+    in property <bool> discard-dialog-open;
+    // Navigation state: Rust resets it when a save opens and steps it on Back.
+    // The current command of the menu.
+    in-out property <EditorCommand> command: EditorCommand.party;
+    // The Party command's page: -1 is the overview of the cards, otherwise an
+    // index into `data.party.pages`.
+    in-out property <int> character: -1;
+    // A modal dialog covers the page: the controls under it stop taking input.
+    out property <bool> blocked: root.expert-warning-open || root.discard-dialog-open;
+
+    // Key and text, for the text and number kinds.
+    callback field-text-committed(int, string);
+    // Key and checked.
+    callback field-toggled(int, bool);
+    // Key and entry id.
+    callback field-picked(int, int);
+    // Key and index in `names`.
+    callback field-name-picked(int, int);
+    // Key and search text.
+    callback field-picker-query(int, string);
+    // List key and search text.
+    callback list-picker-query(int, string);
+    // List key and entry id.
+    callback item-add-requested(int, int);
+    // Row key.
+    callback item-remove-requested(int);
+    callback notice-dismissed();
+    callback expert-toggle-requested();
+    callback expert-warning-confirmed();
+    callback expert-warning-cancelled();
+    callback discard-confirmed();
+    callback discard-cancelled();
+}

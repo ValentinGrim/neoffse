@@ -1,0 +1,284 @@
+import { Icon, Icons } from "../theme/icons.slint";
+import { ControlFrame, FocusRing } from "control-frame.slint";
+import { Look } from "../theme/look.slint";
+import { Theme } from "../theme/theme.slint";
+
+// The controls every screen builds on: button, icon button, text edit and
+// check box. Each takes a `Look` (the open game's by default, the shell's
+// when a shell screen passes it) and none reads a model or a bridge.
+//
+// A control is a focus stop unless disabled. It shows a focus outline and
+// sets its accessible role, label and state on its `FocusScope`, so the
+// scope is the node a screen reader lands on.
+
+// Activates on a click released inside, and on Enter or Space.
+export component ThemedButton inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> has-icon;
+    // The icon follows the text instead of leading it.
+    in property <bool> icon-trailing;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    // The accessible name when it differs from `text`; an icon-only button needs it.
+    in property <string> accessible-name;
+    callback clicked();
+    out property <bool> has-focus: scope.has-focus;
+
+    forward-focus: scope;
+
+    private property <color> ink: !root.enabled ? root.look.muted : root.primary ? root.look.selected : root.look.text;
+    private property <bool> icon-only: root.text == "";
+
+    min-width: row.min-width;
+    min-height: row.min-height;
+    preferred-width: row.preferred-width;
+    preferred-height: row.preferred-height;
+
+    ControlFrame {
+        look: root.look;
+        fill: root.look.field-fill;
+        line: root.primary && root.enabled ? root.look.accent : root.look.frame-inner;
+    }
+    Rectangle {
+        background: !root.enabled ? transparent : area.pressed ? root.look.selected-fill : area.has-hover ? root.look.hover-fill : transparent;
+    }
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        enabled: root.enabled;
+        focus-on-click: false;
+        accessible-role: button;
+        accessible-label: root.accessible-name != "" ? root.accessible-name : root.text;
+        accessible-enabled: root.enabled;
+        accessible-action-default => { root.clicked(); }
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                if !event.repeat {
+                    root.clicked();
+                }
+                return accept;
+            }
+            return reject;
+        }
+    }
+    row := HorizontalLayout {
+        padding-left: root.icon-only ? root.look.spacing : root.look.padding;
+        padding-right: root.icon-only ? root.look.spacing : root.look.padding;
+        padding-top: root.icon-only ? root.look.spacing : root.look.spacing * 0.6;
+        padding-bottom: root.icon-only ? root.look.spacing : root.look.spacing * 0.6;
+        spacing: root.look.spacing;
+        alignment: center;
+
+        if root.has-icon && !root.icon-trailing: Icon {
+            source: root.icon;
+            tint: root.ink;
+            width: root.look.font-body * 1.25;
+            height: root.look.font-body * 1.25;
+            y: (parent.height - self.height) / 2;
+        }
+        if !root.icon-only: Text {
+            text: root.text;
+            color: root.ink;
+            font-family: root.look.font-family;
+            font-size: root.look.font-body;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if root.has-icon && root.icon-trailing: Icon {
+            source: root.icon;
+            tint: root.ink;
+            width: root.look.font-body * 1.25;
+            height: root.look.font-body * 1.25;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    FocusRing {
+        look: root.look;
+        shown: scope.has-focus;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                scope.focus();
+            }
+        }
+    }
+}
+
+// A button with an icon and no text. `label` is its accessible name.
+export component IconButton inherits ThemedButton {
+    in property <string> label;
+
+    has-icon: true;
+    accessible-name: root.label;
+}
+
+// A single-line text box. Enter calls `accepted`. Escape calls `escaped`,
+// whose handler answers whether it used the key: on `false` the key goes on
+// to the screen behind.
+export component ThemedEdit inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    // The accessible name; `placeholder` stands in when empty.
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <TextHorizontalAlignment> alignment: left;
+    callback accepted();
+    callback edited();
+    callback escaped() -> bool;
+    out property <bool> has-focus: input.has-focus;
+
+    forward-focus: input;
+
+    min-width: 40px;
+    min-height: input.preferred-height + 2 * root.look.spacing * 0.6;
+    preferred-width: 120px;
+    preferred-height: input.preferred-height + 2 * root.look.spacing * 0.6;
+    background: root.look.field-fill;
+    border-width: 1px;
+    border-color: input.has-focus ? root.look.focus : root.look.field-border;
+    border-radius: root.look.frame-radius;
+    clip: true;
+
+    // Passive: the box holds no focus of its own and only sees the keys the
+    // text input leaves unhandled.
+    FocusScope {
+        focus-on-click: false;
+        focus-on-tab-navigation: false;
+        enabled: false;
+        key-pressed(event) => {
+            if event.text == Key.Escape && root.escaped() {
+                return accept;
+            }
+            return reject;
+        }
+
+        // The placeholder sits over the box, so it never pushes the input aside.
+        if root.placeholder != "" && input.text == "": Text {
+            x: root.look.spacing;
+            width: parent.width - 2 * root.look.spacing;
+            height: parent.height;
+            text: root.placeholder;
+            color: root.look.muted;
+            font-family: root.look.font-family;
+            font-size: root.look.font-body;
+            vertical-alignment: center;
+            horizontal-alignment: root.alignment;
+            overflow: elide;
+        }
+        HorizontalLayout {
+            padding-left: root.look.spacing;
+            padding-right: root.look.spacing;
+
+            input := TextInput {
+                color: root.enabled ? root.look.text : root.look.muted;
+                font-family: root.look.font-family;
+                font-size: root.look.font-body;
+                enabled: root.enabled;
+                single-line: true;
+                horizontal-alignment: root.alignment;
+                vertical-alignment: center;
+                selection-background-color: root.look.accent.with-alpha(0.35);
+                selection-foreground-color: root.look.selected;
+                accessible-label: root.label != "" ? root.label : root.placeholder;
+                accepted => { root.accepted(); }
+                edited => { root.edited(); }
+            }
+        }
+    }
+}
+
+// A box with a tick and an optional text. Space or Enter, or a click, toggles it.
+export component ThemedCheck inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in-out property <bool> checked;
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback toggled();
+    out property <bool> has-focus: scope.has-focus;
+
+    forward-focus: scope;
+
+    function toggle() {
+        root.checked = !root.checked;
+        root.toggled();
+    }
+
+    private property <length> box: root.look.font-body * 1.25;
+
+    min-width: row.min-width;
+    min-height: row.min-height;
+    preferred-width: row.preferred-width;
+    preferred-height: row.preferred-height;
+
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        enabled: root.enabled;
+        focus-on-click: false;
+        accessible-role: checkbox;
+        accessible-checkable: true;
+        accessible-checked: root.checked;
+        accessible-label: root.text;
+        accessible-enabled: root.enabled;
+        accessible-action-default => { root.toggle(); }
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                if !event.repeat {
+                    root.toggle();
+                }
+                return accept;
+            }
+            return reject;
+        }
+    }
+    row := HorizontalLayout {
+        spacing: root.look.spacing;
+        alignment: start;
+
+        Rectangle {
+            width: root.box;
+            height: root.box;
+            y: (parent.height - self.height) / 2;
+            background: root.look.field-fill;
+            border-width: 1px;
+            border-color: root.enabled ? root.look.field-border : root.look.muted;
+            border-radius: root.look.frame-radius;
+
+            if root.checked: Icon {
+                source: Icons.check;
+                tint: root.enabled ? root.look.accent : root.look.muted;
+                width: parent.width - 2px;
+                height: parent.height - 2px;
+                x: 1px;
+                y: 1px;
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.enabled ? root.look.text : root.look.muted;
+            font-family: root.look.font-family;
+            font-size: root.look.font-body;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    FocusRing {
+        look: root.look;
+        shown: scope.has-focus;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.toggle(); }
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                scope.focus();
+            }
+        }
+    }
+}

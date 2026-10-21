@@ -1,0 +1,88 @@
+import { EditorBridge } from "../../screens/editor/bridge.slint";
+import { EditorCommand } from "../../types/editor.slint";
+import { Frame, LookText, Pointer, PressRow, RuleLine } from "../../widgets/frames.slint";
+
+// One command of the list. The current one shows the pointer and the
+// selected colour; a command the save lacks is dim and ignores input.
+component CommandRow inherits PressRow {
+    in property <string> text;
+
+    name: root.text;
+    height: 34px;
+
+    if root.current: Pointer {
+        look: root.look;
+        x: 6px;
+        y: (parent.height - self.height) / 2;
+    }
+    LookText {
+        look: root.look;
+        x: 30px;
+        width: parent.width - 36px;
+        height: parent.height;
+        text: root.text;
+        overflow: elide;
+        color: !root.enabled ? root.look.muted : root.current ? root.look.selected : root.look.text;
+    }
+}
+
+// The framed list of commands: Party, Items and Magic. A choice calls
+// `chosen`; the page decides what a choice changes.
+export component CommandList inherits Frame {
+    callback chosen(EditorCommand);
+
+    CommandRow {
+        text: @tr("Party");
+        current: EditorBridge.command == EditorCommand.party;
+        enabled: EditorBridge.data.party.present && !EditorBridge.blocked;
+        activated => { root.chosen(EditorCommand.party); }
+    }
+    CommandRow {
+        text: @tr("Items");
+        current: EditorBridge.command == EditorCommand.items;
+        enabled: EditorBridge.data.inventory.present && !EditorBridge.blocked;
+        activated => { root.chosen(EditorCommand.items); }
+    }
+    CommandRow {
+        text: @tr("Magic");
+        current: EditorBridge.command == EditorCommand.magic;
+        enabled: EditorBridge.data.magic.present && !EditorBridge.blocked;
+        activated => { root.chosen(EditorCommand.magic); }
+    }
+}
+
+component StatusLine inherits HorizontalLayout {
+    in property <string> label;
+    in property <string> value;
+
+    spacing: 8px;
+
+    LookText {
+        text: root.label;
+        color: self.look.label;
+    }
+    LookText {
+        horizontal-stretch: 1;
+        text: root.value;
+        horizontal-alignment: right;
+        overflow: elide;
+    }
+}
+
+// Play time and gil, as the game shows them under its command list.
+export component StatusPanel inherits Frame {
+    in property <string> time;
+    in property <string> gil;
+
+    gap: 6px;
+
+    StatusLine {
+        label: @tr("Time");
+        value: root.time;
+    }
+    RuleLine { }
+    StatusLine {
+        label: @tr("Gil");
+        value: root.gil;
+    }
+}

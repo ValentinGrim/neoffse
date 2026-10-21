@@ -1,0 +1,82 @@
+// Data contract of the editor page. Presentation types only: the view model
+// fills them, the screens draw them, no rule about a save lives here.
+
+export enum FieldKind { label, text, number, choice, picker, toggle }
+// The commands of the editor menu. The command list shows them in this order.
+export enum EditorCommand { party, items, magic }
+export enum EditProblem { not-a-number, read-only, out-of-range, above-cap, unknown-id, duplicate-row, missing-row, not-editable, reloaded, internal }
+
+// `name` is "" when the table gives none.
+export struct PickerEntry { id: int, name: string }
+
+// The numbers are decimal strings; "" when the problem has none.
+export struct EditNotice {
+    problem: EditProblem,
+    // The field, or the item, the edit named.
+    label: string,
+    value: string,
+    min: string,
+    max: string,
+    cap: string,
+}
+
+export struct FieldRow {
+    // Opaque: the id every field callback sends back.
+    key: int,
+    label: string,
+    kind: FieldKind,
+    // Text and number: the value. Picker and choice: the raw value as decimal.
+    // Label: "".
+    text: string,
+    // Picker: the entry name. Label: the entry or the named value. Else "".
+    shown: string,
+    // Picker and choice: the value has an entry or a name.
+    known: bool,
+    // Toggle.
+    checked: bool,
+    // Choice only.
+    names: [string],
+    // Choice: index of the matching name, -1 when none.
+    name-index: int,
+    // The control accepts input now.
+    editable: bool,
+    // The game interface refuses this field whatever the value.
+    locked: bool,
+    // The game cap as decimal, "" when none.
+    cap: string,
+    // The value exceeds the cap.
+    above-cap: bool,
+}
+
+export struct EntityPage { label: string, fields: [FieldRow] }
+export struct ItemRow { key: int, label: string, fields: [FieldRow], locked: bool, removable: bool, can-remove: bool }
+export struct ItemList { key: int, title: string, rows: [ItemRow], insertable: bool }
+// `read-only`: the section holds fields and every one is read only.
+export struct SectionData { present: bool, read-only: bool, pages: [EntityPage], lists: [ItemList] }
+export struct EditorData { party: SectionData, inventory: SectionData, magic: SectionData }
+
+// One character of the party overview. The numbers are decimal strings; an
+// entry is "" when the save or the data lacks it.
+export struct CharacterCard {
+    // Index into `party.pages`: the page this card opens.
+    page: int,
+    // The page label.
+    name: string,
+    // First letter of `name`, upper case; "" for an empty name.
+    initial: string,
+    // The job name in the game-data language; "" when the tables lack it.
+    job: string,
+    level: string,
+    // Current HP.
+    hp: string,
+    // "": the save holds no maximum.
+    hp-max: string,
+    // Current charges, spell level 1 first; empty when the game has none.
+    charges: [string],
+    exp: string,
+    // "": the data holds no experience table.
+    next-exp: string,
+}
+
+// `present` is false for a game with no card builder. `gil` is "" when absent.
+export struct Overview { present: bool, cards: [CharacterCard], gil: string }

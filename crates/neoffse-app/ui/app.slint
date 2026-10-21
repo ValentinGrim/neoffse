@@ -1,16 +1,35 @@
-import { AboutSlint, StandardButton, VerticalBox } from "std-widgets.slint";
-import { EditorPage } from "editor.slint";
-import { HomeScreen } from "home.slint";
-import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
+import { AboutSlint, Palette, StandardButton, VerticalBox } from "std-widgets.slint";
+import { ThemedButton } from "widgets/controls.slint";
+import { ModalDialog } from "widgets/dialogs.slint";
+import { EditorBridge } from "screens/editor/bridge.slint";
+import { EditorPage } from "screens/editor/editor.slint";
+import { Fonts } from "theme/fonts.slint";
+import { HomeScreen } from "screens/home/home.slint";
+import { FrameStyle, Look } from "theme/look.slint";
+import { Shell } from "theme/shell.slint";
+import { Theme, ThemeId } from "theme/theme.slint";
+import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types/home.slint";
 
-export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
+export { CharacterCard, EditNotice, EditProblem, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow, ItemList, ItemRow, Overview, PickerEntry, SectionData } from "types/editor.slint";
+export { EditorBridge } from "screens/editor/bridge.slint";
+// Exported so the font imports enter the compiled document and a test reads the family names.
+export { Fonts }
+// The looks: `Theme` follows the open save's game, `Shell` is the app's own.
+export { FrameStyle, Look, Shell, Theme, ThemeId }
+export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types/home.slint";
 
 export component AboutDialog inherits Dialog {
     in property <string> app-version;
     in property <string> license;
+    in property <string> font-credit;
+    in property <string> ui-font-credit;
     callback dismiss();
 
     title: @tr("About NeoFFSE");
+    background: Shell.look.window-fill;
+
+    // The std scroll bars and `AboutSlint` stay legible on navy.
+    init => { Palette.color-scheme = ColorScheme.dark; }
 
     VerticalBox {
         Text {
@@ -25,6 +44,14 @@ export component AboutDialog inherits Dialog {
         }
         Text {
             text: @tr("License: {}", root.license);
+            horizontal-alignment: center;
+        }
+        Text {
+            text: root.font-credit;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: root.ui-font-credit;
             horizontal-alignment: center;
         }
         AboutSlint { }
@@ -55,11 +82,19 @@ export component MainWindow inherits Window {
     in property <SummaryRow> editor-summary;
     callback open-file-requested();
     callback back-requested();
+    callback home-requested();
     callback problem-dismissed();
 
     title: @tr("NeoFFSE");
     preferred-width: 800px;
     preferred-height: 600px;
+    background: Theme.look.window-fill;
+    // The PR menu lays out at the in-game text size and needs room. Home keeps no minimum of its own.
+    min-width: Theme.id == ThemeId.pr ? 1280px : 0px;
+    min-height: Theme.id == ThemeId.pr ? 800px : 0px;
+
+    // The std scroll bars and the `ComboBox` stay legible on navy.
+    init => { Palette.color-scheme = ColorScheme.dark; }
 
     MenuBar {
         Menu {
@@ -67,6 +102,16 @@ export component MainWindow inherits Window {
             MenuItem {
                 title: @tr("Quit");
                 activated => { root.quit-requested(); }
+            }
+        }
+        Menu {
+            title: @tr("View");
+            MenuItem {
+                title: @tr("Expert mode");
+                checkable: true;
+                checked <=> EditorBridge.expert-menu-checked;
+                enabled: root.editor-open && !EditorBridge.blocked;
+                activated => { EditorBridge.expert-toggle-requested(); }
             }
         }
         Menu {
@@ -96,5 +141,42 @@ export component MainWindow inherits Window {
     if root.editor-open: EditorPage {
         summary: root.editor-summary;
         back-requested => { root.back-requested(); }
+        home-requested => { root.home-requested(); }
+    }
+    if EditorBridge.expert-warning-open: ModalDialog {
+        title: @tr("Turn on expert mode?");
+        message: @tr("Expert mode skips the game's rules and limits. A value the game does not expect can corrupt the save or crash the game.");
+        cancelled => { EditorBridge.expert-warning-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.expert-warning-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Turn on expert mode");
+            primary: true;
+            clicked => { EditorBridge.expert-warning-confirmed(); }
+        }
+    }
+    if EditorBridge.discard-dialog-open: ModalDialog {
+        title: @tr("Discard unsaved changes?");
+        message: @tr("Discard drops your unsaved changes to this save.");
+        cancelled => { EditorBridge.discard-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.discard-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Discard");
+            primary: true;
+            clicked => { EditorBridge.discard-confirmed(); }
+        }
     }
 }

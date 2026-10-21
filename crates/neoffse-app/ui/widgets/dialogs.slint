@@ -1,0 +1,91 @@
+import { Shell } from "../theme/shell.slint";
+import { ShellText, ShellTitle } from "shell-text.slint";
+
+// A dialog drawn over the whole window: a dimmed background that swallows
+// clicks, and a centred flat card with a title, a message and a row of
+// buttons. The caller puts the buttons in as children, so a dialog can carry
+// two or three without a change here.
+//
+// Escape calls `cancelled`. Enter confirms nothing: the caller gives the focus
+// to its cancel button when the dialog appears (`init => { self.focus(); }`),
+// so Enter lands on Cancel.
+export component ModalDialog inherits Rectangle {
+    in property <string> title;
+    in property <string> message;
+    callback cancelled();
+
+    width: 100%;
+    height: 100%;
+    background: Colors.black.with-alpha(0.63);
+
+    // Swallows every click and scroll that would reach the page below. A click
+    // on the overlay takes the focus back, so Escape still reaches the dialog.
+    TouchArea {
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                scope.focus();
+            }
+        }
+    }
+
+    // Holds no focus of its own while a button has it: a key a button leaves
+    // unhandled bubbles up to here.
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        focus-on-click: false;
+        focus-on-tab-navigation: false;
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                root.cancelled();
+                return accept;
+            }
+            return reject;
+        }
+
+        Rectangle {
+            width: min(root.width - 32px, 440px);
+            // The card is as high as its content: title, rule, the wrapped message, the buttons.
+            height: min(root.height - 32px, column.preferred-height);
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            // A more opaque backing keeps the text readable over the page.
+            background: Shell.look.field-fill;
+            border-radius: Shell.look.frame-radius;
+
+            Rectangle {
+                background: Shell.look.panel-fill;
+                border-width: Shell.look.frame-width;
+                border-color: Shell.look.rule;
+                border-radius: Shell.look.frame-radius;
+            }
+            column := VerticalLayout {
+                padding: Shell.look.padding * 1.5;
+                spacing: Shell.look.spacing;
+
+                ShellTitle {
+                    text: root.title;
+                    overflow: elide;
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    height: 2px;
+                    Rectangle {
+                        width: 40px;
+                        background: Shell.look.accent;
+                    }
+                }
+                ShellText {
+                    text: root.message;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    padding-top: Shell.look.spacing;
+                    alignment: end;
+                    spacing: Shell.look.spacing;
+                    @children
+                }
+            }
+        }
+    }
+}
