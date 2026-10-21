@@ -12,3 +12,7 @@ CLAUDE.local.md
 
 # Real saves are personal data. Tests reach them through NEOFFSE_SAVES.
 fixtures/private/
+
+# Python caches of tools/pr-tables
+__pycache__/
+*.pyc

@@ -73,19 +73,29 @@ the real saves of a Steam install on Linux and on Windows; the ignored
 ## M3 PR domain
 
 **Scope.**
-- The domain model for FF I to VI in `neoffse-core`: characters, items,
-  spells, `Edit` with its inverse, `ChangeSet`, `FieldMeta`,
-  `Capability`.
-- TOML ID tables under `data/pr/`, exported from the Go editor's tables
-  by a one-off tool.
-- The mapping from the PR document to the domain.
+- The domain model in `neoffse-core`, shared by every game: games, field
+  paths, `Edit` with its inverse, `ChangeSet`, `FieldMeta`, `Capability`,
+  and the `SaveFormat` and `SaveDocument` traits. A document edits through
+  two interfaces: `apply` with a `CapPolicy` (raw, for an expert mode) and
+  `apply_game` (the way the game does). See
+  [Edit interfaces](architecture.md#edit-interfaces).
+- `neoffse-data`, which embeds the TOML ID tables of `data/pr/ff1/`
+  (content, abilities, jobs, commands, monsters, the game's caps; English
+  and French names). `tools/pr-tables/` generates the files from the
+  game's master data, and you run it where the game is installed.
+- The mapping from the PR document to the domain for FF I, in
+  `neoffse-format-pr`: characters, inventory, key items and gil, with the
+  slot and game detection, `Ff1Format` and `Ff1Document`. FF II to VI wait
+  for M5.
 
 **Exit.** On FF I, an edit followed by encode and decode yields the
-intended change and no other difference.
+intended change and no other difference (see
+[Test policy](architecture.md#test-policy)).
 
 ## M4 App, FF I end to end
 
-**Scope.** The Home screen with detected saves, the FF I editor
+**Scope.** The `neoffse` facade (format registry, edit history, save
+pipeline), the Home screen with detected saves, the FF I editor
 sections, the change review, save, the Restore page, the About dialog
 (see [UI architecture](architecture.md#ui-architecture)). Portraits use
 the silhouettes. Local extraction (see
