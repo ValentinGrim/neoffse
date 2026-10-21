@@ -17,6 +17,11 @@ neoffse-core = { workspace = true }
 neoffse-data = { workspace = true }
 neoffse-io = { workspace = true }
 neoffse-format-pr = { workspace = true }
+thiserror = "2.0.21"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+neoffse-testkit = { workspace = true }
+tempfile = "3.27.0"

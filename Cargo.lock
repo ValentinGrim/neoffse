@@ -2695,6 +2695,9 @@ dependencies = [
  "neoffse-data",
  "neoffse-format-pr",
  "neoffse-io",
+ "neoffse-testkit",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
