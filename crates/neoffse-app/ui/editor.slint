@@ -1,7 +1,8 @@
 import { Button, TabWidget } from "std-widgets.slint";
 import { SummaryRow } from "types.slint";
 import { EditorBridge } from "bridge.slint";
-import { NoticeText, SummaryLine } from "text.slint";
+import { NoticeBar } from "notice.slint";
+import { SummaryLine } from "text.slint";
 import { CharacterPage, InventoryPage } from "pages.slint";
 
 // The editor page: the summary of the open save, the notice bar, and one tab
@@ -33,25 +34,7 @@ export component EditorPage inherits VerticalLayout {
             text: SummaryLine.rest(root.summary);
         }
     }
-    if EditorBridge.has-notice: HorizontalLayout {
-        spacing: 8px;
-        Text {
-            horizontal-stretch: 1;
-            vertical-alignment: center;
-            overflow: elide;
-            text: NoticeText.sentence(EditorBridge.notice);
-        }
-        if EditorBridge.offer-expert: Button {
-            text: @tr("Switch to expert mode");
-            enabled: !EditorBridge.blocked;
-            clicked => { EditorBridge.expert-toggle-requested(); }
-        }
-        Button {
-            text: @tr("OK");
-            enabled: !EditorBridge.blocked;
-            clicked => { EditorBridge.notice-dismissed(); }
-        }
-    }
+    if EditorBridge.has-notice: NoticeBar { }
     TabWidget {
         vertical-stretch: 1;
 

@@ -3,6 +3,8 @@
 
 import { SlotKind, SummaryRow } from "types.slint";
 import { EditNotice, EditProblem } from "editor-types.slint";
+import { Shell } from "shell.slint";
+import { ShellText } from "shell-text.slint";
 
 export global SlotText {
     pure public function name(kind: SlotKind, number: int) -> string {
@@ -72,21 +74,27 @@ export global SummaryLine {
 }
 
 // Party, play time and location of one save, each line skipped when empty.
+// Drawn in the shell look, as the Home screen shows it.
 export component SummaryLines inherits VerticalLayout {
     in property <SummaryRow> summary;
 
     spacing: 2px;
 
-    if root.summary.party != "": Text {
+    if root.summary.party != "": ShellText {
         text: @tr("Party: {}", root.summary.party);
+        font-size: Shell.look.font-small;
         overflow: elide;
     }
-    if root.summary.play-time != "": Text {
+    if root.summary.play-time != "": ShellText {
         text: @tr("Play time: {}", root.summary.play-time);
+        font-size: Shell.look.font-small;
+        color: Shell.look.muted;
         overflow: elide;
     }
-    if root.summary.location != "": Text {
+    if root.summary.location != "": ShellText {
         text: @tr("Location: {}", root.summary.location);
+        font-size: Shell.look.font-small;
+        color: Shell.look.muted;
         overflow: elide;
     }
 }

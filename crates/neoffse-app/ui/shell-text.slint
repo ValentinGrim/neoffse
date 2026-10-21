@@ -1,0 +1,18 @@
+import { Shell } from "shell.slint";
+
+// Body text in the shell look: the app font, `look.text`, `font-body`.
+// A screen overrides `color` or `font-size` on the instance for a muted or a
+// small line.
+export component ShellText inherits Text {
+    color: Shell.look.text;
+    font-family: Shell.look.font-family;
+    font-size: Shell.look.font-body;
+}
+
+// A title in the shell look: the strong face at `font-title`.
+export component ShellTitle inherits Text {
+    color: Shell.look.text;
+    font-family: Shell.look.font-family-strong;
+    font-weight: Shell.look.font-weight-strong;
+    font-size: Shell.look.font-title;
+}

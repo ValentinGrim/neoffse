@@ -1,4 +1,5 @@
-import { AboutSlint, Button, Palette, StandardButton, VerticalBox } from "std-widgets.slint";
+import { AboutSlint, Palette, StandardButton, VerticalBox } from "std-widgets.slint";
+import { ThemedButton } from "controls.slint";
 import { ModalDialog } from "dialogs.slint";
 import { EditorBridge } from "bridge.slint";
 import { EditorPage } from "editor.slint";
@@ -143,11 +144,16 @@ export component MainWindow inherits Window {
     if EditorBridge.expert-warning-open: ModalDialog {
         title: @tr("Turn on expert mode?");
         message: @tr("Expert mode skips the game's rules and limits. A value the game does not expect can corrupt the save or crash the game.");
-        Button {
+        cancelled => { EditorBridge.expert-warning-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
             text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
             clicked => { EditorBridge.expert-warning-cancelled(); }
         }
-        Button {
+        ThemedButton {
+            look: Shell.look;
             text: @tr("Turn on expert mode");
             primary: true;
             clicked => { EditorBridge.expert-warning-confirmed(); }
@@ -155,12 +161,17 @@ export component MainWindow inherits Window {
     }
     if EditorBridge.discard-dialog-open: ModalDialog {
         title: @tr("Discard unsaved changes?");
-        message: @tr("Your changes to this save are lost.");
-        Button {
+        message: @tr("Discard drops your unsaved changes to this save.");
+        cancelled => { EditorBridge.discard-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
             text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
             clicked => { EditorBridge.discard-cancelled(); }
         }
-        Button {
+        ThemedButton {
+            look: Shell.look;
             text: @tr("Discard");
             primary: true;
             clicked => { EditorBridge.discard-confirmed(); }
