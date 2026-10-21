@@ -62,6 +62,63 @@ impl Moment {
         })
     }
 
+    /// The seconds since 1970-01-01T00:00:00Z.
+    #[must_use]
+    pub fn unix_seconds(self) -> i64 {
+        self.unix_seconds
+    }
+
+    /// The offset from UTC in seconds: a whole number of minutes, positive
+    /// east of Greenwich.
+    #[must_use]
+    pub fn offset_seconds(self) -> i32 {
+        self.offset_seconds
+    }
+
+    /// Parses the RFC 3339 text that [`Manifest::created`] holds:
+    /// `YYYY-MM-DDTHH:MM:SSZ`, or `YYYY-MM-DDTHH:MM:SS+HH:MM` and
+    /// `-HH:MM` for a non-zero offset.
+    ///
+    /// The parser accepts what `create` writes and nothing else: no fraction,
+    /// no lowercase `t` or `z`, no space, no offset of seconds. An offset of
+    /// zero is `Z`, so `+00:00` and `-00:00` give `None`, as does a value
+    /// [`Moment::new`] refuses (before 1970, offset past 23:59) and a date that
+    /// does not exist (`02-30`, `13-01`, `24:00:00`).
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        let bytes = text.as_bytes();
+        let number = |from: usize, to: usize| -> Option<i64> {
+            let digits = bytes.get(from..to)?;
+            digits
+                .iter()
+                .all(u8::is_ascii_digit)
+                .then(|| digits.iter().fold(0, |sum, digit| sum * 10 + i64::from(digit - b'0')))
+        };
+        let shape = [(4, b'-'), (7, b'-'), (10, b'T'), (13, b':'), (16, b':')];
+        if shape.iter().any(|&(at, separator)| bytes.get(at) != Some(&separator)) {
+            return None;
+        }
+        let (year, month, day) = (number(0, 4)?, number(5, 7)?, number(8, 10)?);
+        let (hour, minute, second) = (number(11, 13)?, number(14, 16)?, number(17, 19)?);
+        if !(1..=12).contains(&month) || !(1..=days_in_month(year, month)).contains(&day) || hour > 23 || minute > 59 || second > 59 {
+            return None;
+        }
+        let offset = match bytes.get(19..)? {
+            b"Z" => 0,
+            [sign @ (b'+' | b'-'), _, _, b':', _, _] => {
+                let (offset_hour, offset_minute) = (number(20, 22)?, number(23, 25)?);
+                let magnitude = offset_hour * 3_600 + offset_minute * 60;
+                if offset_hour > 23 || offset_minute > 59 || magnitude == 0 {
+                    return None;
+                }
+                if *sign == b'-' { -magnitude } else { magnitude }
+            }
+            _ => return None,
+        };
+        let local = days_from_civil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second;
+        Self::new(local - offset, i32::try_from(offset).ok()?)
+    }
+
     /// The backup folder name, `YYYYMMDD-HHMMSS`, in UTC whatever the offset.
     pub(crate) fn stamp(self) -> String {
         let (year, month, day, hour, minute, second) = civil(self.unix_seconds);
@@ -106,6 +163,29 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let month = if march_month < 10 { march_month + 3 } else { march_month - 9 };
     let year = year_of_era + era * 400 + i64::from(month <= 2);
     (year, month, day)
+}
+
+/// Converts a proleptic Gregorian `(year, month, day)` to days since
+/// 1970-01-01. This is the inverse of [`civil_from_days`], the public domain
+/// "days from civil" algorithm of Howard Hinnant; `month` is 1 to 12.
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let year = year - i64::from(month <= 2);
+    let era = year.div_euclid(400);
+    let year_of_era = year.rem_euclid(400);
+    let march_month = if month > 2 { month - 3 } else { month + 9 };
+    let day_of_year = (153 * march_month + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era - 719_468
+}
+
+/// The number of days of `month` (1 to 12) in `year`, Gregorian leap rule.
+fn days_in_month(year: i64, month: i64) -> i64 {
+    match month {
+        4 | 6 | 9 | 11 => 30,
+        2 if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) => 29,
+        2 => 28,
+        _ => 31,
+    }
 }
 
 /// The content of `backup.json`.

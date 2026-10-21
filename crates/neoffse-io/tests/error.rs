@@ -39,6 +39,11 @@ fn every_error() -> Vec<IoError> {
             path: PathBuf::from(PATH),
             source: boxed(),
         },
+        IoError::InvalidFileName { name: "a/b".to_owned() },
+        IoError::FileTooLarge {
+            path: PathBuf::from(PATH),
+            limit: 10,
+        },
     ]
 }
 
@@ -105,6 +110,25 @@ fn display_never_repeats_the_source() {
 fn variants_without_a_cause_have_no_source() {
     assert!(IoError::NoDataDir.source().is_none());
     assert!(IoError::InvalidGameId { game: String::new() }.source().is_none());
+    assert!(IoError::InvalidFileName { name: String::new() }.source().is_none());
+    let too_large = IoError::FileTooLarge {
+        path: PathBuf::from(PATH),
+        limit: 10,
+    };
+    assert!(too_large.source().is_none());
+}
+
+#[test]
+fn file_name_and_size_errors_show_their_subject() {
+    let name = IoError::InvalidFileName { name: "a/b".to_owned() };
+    assert_eq!(name.to_string(), "invalid file name \"a/b\"");
+    let too_large = IoError::FileTooLarge {
+        path: PathBuf::from(PATH),
+        limit: 10,
+    };
+    let message = too_large.to_string();
+    assert!(message.contains(PATH), "{message}");
+    assert!(message.contains("10"), "{message}");
 }
 
 #[test]
@@ -147,10 +171,12 @@ fn match_needs_a_wildcard_arm() {
             IoError::VerificationFailed { .. } => 4,
             IoError::ManifestInvalid { .. } => 5,
             IoError::LibraryListInvalid { .. } => 6,
+            IoError::InvalidFileName { .. } => 7,
+            IoError::FileTooLarge { .. } => 8,
             _ => 0,
         });
     }
-    assert_eq!(seen, [1, 2, 3, 4, 5, 6]);
+    assert_eq!(seen, [1, 2, 3, 4, 5, 6, 7, 8]);
 
     let mut seen = Vec::new();
     for operation in every_operation() {
