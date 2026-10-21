@@ -91,3 +91,16 @@ fn ability_names_the_go_editor_got_wrong() {
         assert_eq!(name_en(TableKind::Command, id), *name, "command {id}");
     }
 }
+
+#[test]
+fn monster_and_command_abilities_have_level_0() {
+    let abilities = ff1().table(TableKind::Ability).unwrap();
+    let flat: Vec<_> = abilities
+        .iter()
+        .filter(|entry| matches!(entry.ability.unwrap().kind, AbilityKind::Monster | AbilityKind::Command))
+        .collect();
+    assert_eq!(flat.len(), 31);
+    for entry in flat {
+        assert_eq!(entry.ability.unwrap().level, 0, "ability {}", entry.id);
+    }
+}

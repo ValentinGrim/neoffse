@@ -54,7 +54,7 @@ fn load(game: Game, sources: &Sources<'_>) -> GameTables {
     }
 }
 
-/// The error and its source on one line, from `Display` only.
+/// The error and its source, from `Display` only.
 fn describe(error: &DataError) -> String {
     match std::error::Error::source(error) {
         Some(source) => format!("{error}: {source}"),

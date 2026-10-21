@@ -4,7 +4,9 @@
 ///
 /// `file` is the name the tool writes: `content.toml`, `abilities.toml`,
 /// `jobs.toml`, `commands.toml`, `monsters.toml` or `bounds.toml`. `Display`
-/// never repeats `source`.
+/// never repeats `source`. The parser checks the file contract of
+/// `data/pr/ff1/` row by row: the types (`Toml`), the kinds
+/// (`UnknownKind`), the id order (`IdOrder`) and the value rules (`Rule`).
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum DataError {
@@ -33,5 +35,15 @@ pub enum DataError {
         file: &'static str,
         /// The offending id.
         id: u32,
+    },
+    /// A row that parses but breaks a rule of the file contract.
+    #[error("{file}: {row} breaks a rule: {rule}")]
+    Rule {
+        /// The file that failed.
+        file: &'static str,
+        /// The row: `id <N>` for a table row, the key for a bound.
+        row: String,
+        /// The rule, as a short phrase.
+        rule: &'static str,
     },
 }

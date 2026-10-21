@@ -11,7 +11,7 @@ commits its output.
 `--install` reads the bundles from the game's install folder and the Steam
 build id from the appmanifest next to it. `--bundles` takes a folder that
 holds the two bundle files directly, for a copy of them. The tool only reads
-the bundles. It writes the six files under the output folder, and only when
+the bundles. It writes the six files under <out>/<game>/, and only when
 their bytes change.
 """
 
@@ -51,15 +51,25 @@ _MASTER_PREFIX = "master_assets_all_"
 _MESSAGE_PREFIX = "message_assets_all_"
 
 
-def check_out_dir(out: Path, sources: Sequence[Path]) -> Path:
-    """The resolved output folder. It ends in data/pr and sits outside every source."""
+def _within(inner: Path, outer: Path) -> bool:
+    """True when inner is outer or lies below it. Both paths are resolved."""
+    return inner == outer or outer in inner.parents
+
+
+def check_out_dir(out: Path, game_id: str, sources: Sequence[Path]) -> Path:
+    """The resolved output folder. It ends in data/pr. Neither it nor the folder
+    the tool writes into, <out>/<game_id>, lies inside a source, and no source
+    lies inside <out>/<game_id>."""
     resolved = out.resolve()
     if resolved.parts[-2:] != ("data", "pr"):
         raise ExportError(f"output folder must end in data/pr: {out}")
+    target = resolved / game_id
     for source in sources:
         folder = source.resolve()
-        if resolved == folder or folder in resolved.parents:
+        if _within(resolved, folder) or _within(target, folder):
             raise ExportError(f"output folder {out} lies inside the source folder {source}")
+        if _within(folder, target):
+            raise ExportError(f"source folder {source} lies inside the output folder {target}")
     return resolved
 
 
@@ -187,7 +197,7 @@ def _run(args: argparse.Namespace) -> int:
     bundle_dir: Path = install / game.bundle_subdir if install else args.bundles
     if not bundle_dir.is_dir():
         raise ExportError(f"bundle folder not found: {bundle_dir}")
-    out_dir = check_out_dir(args.out, [bundle_dir] + ([install] if install else []))
+    out_dir = check_out_dir(args.out, game.id, [bundle_dir] + ([install] if install else []))
     try:
         listing = [entry.name for entry in bundle_dir.iterdir()]
     except OSError as error:

@@ -37,12 +37,12 @@ def read_assets(bundle: Path, wanted: Collection[str]) -> dict[str, str]:
         import UnityPy
     except ImportError as error:
         raise ExportError(
-            "UnityPy is not installed: pip install -r tools/pr-tables/requirements.txt"
+            "UnityPy is not installed: pip install -r requirements.txt (from tools/pr-tables)"
         ) from error
     if UnityPy.__version__ != PINNED_UNITYPY:
         raise ExportError(
             f"UnityPy {UnityPy.__version__} is installed, {PINNED_UNITYPY} is pinned: "
-            "pip install -r tools/pr-tables/requirements.txt"
+            "pip install -r requirements.txt (from tools/pr-tables)"
         )
     by_lower = {path.lower(): path for path in wanted}
     matches: dict[str, list[Any]] = {path: [] for path in wanted}
