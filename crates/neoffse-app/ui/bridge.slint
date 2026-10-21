@@ -1,0 +1,41 @@
+import { EditorData, EditNotice, PickerEntry } from "editor-types.slint";
+
+// The state and the callbacks of the editor page. Rust fills it through
+// `window.global::<EditorBridge>()`, so the nested components read it
+// without property drilling.
+export global EditorBridge {
+    in property <EditorData> data;
+    in property <[PickerEntry]> picker-entries;
+    in property <bool> has-notice;
+    in property <EditNotice> notice;
+    // The notice is an above-cap refusal in the default mode.
+    in property <bool> offer-expert;
+    in property <bool> expert-mode;
+    // The checkmark of the View menu item.
+    in-out property <bool> expert-menu-checked;
+    in property <bool> expert-warning-open;
+    in property <bool> discard-dialog-open;
+
+    // Key and text, for the text and number kinds.
+    callback field-text-committed(int, string);
+    // Key and checked.
+    callback field-toggled(int, bool);
+    // Key and entry id.
+    callback field-picked(int, int);
+    // Key and index in `names`.
+    callback field-name-picked(int, int);
+    // Key and search text.
+    callback field-picker-query(int, string);
+    // List key and search text.
+    callback list-picker-query(int, string);
+    // List key and entry id.
+    callback item-add-requested(int, int);
+    // Row key.
+    callback item-remove-requested(int);
+    callback notice-dismissed();
+    callback expert-toggle-requested();
+    callback expert-warning-confirmed();
+    callback expert-warning-cancelled();
+    callback discard-confirmed();
+    callback discard-cancelled();
+}

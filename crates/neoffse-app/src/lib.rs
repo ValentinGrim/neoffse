@@ -9,6 +9,7 @@
 
 pub mod connect;
 pub mod dispatch;
+pub mod editor;
 pub mod home;
 pub mod language;
 pub mod picker;
@@ -24,7 +25,10 @@ mod generated {
 
 pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
-pub use generated::{AboutDialog, FolderOrigin, FolderRow, GameRow, MainWindow, OpenProblem, SlotKind, SlotRow, SummaryRow};
+pub use generated::{
+    AboutDialog, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow, GameRow, ItemList, ItemRow,
+    MainWindow, OpenProblem, PickerEntry, SectionData, SlotKind, SlotRow, SummaryRow,
+};
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
 use std::sync::Arc;
