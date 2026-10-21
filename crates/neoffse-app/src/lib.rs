@@ -25,6 +25,7 @@ mod generated {
 
 pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
+pub use editor::EditorViewModel;
 pub use generated::{
     AboutDialog, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow, GameRow, ItemList, ItemRow,
     MainWindow, OpenProblem, PickerEntry, SectionData, SlotKind, SlotRow, SummaryRow,
@@ -43,8 +44,15 @@ use slint::{CloseRequestResponse, ComponentHandle};
 ///
 /// Returns the platform error when a window or the event loop cannot start.
 pub fn run() -> Result<(), slint::PlatformError> {
-    let registry = Arc::new(Registry::new(system_language()));
-    let app = App::new(registry, Environment::platform(), Arc::new(NativePicker), Arc::new(EventLoopDispatcher));
+    let language = system_language();
+    let registry = Arc::new(Registry::new(language));
+    let app = App::new(
+        registry,
+        language,
+        Environment::platform(),
+        Arc::new(NativePicker),
+        Arc::new(EventLoopDispatcher),
+    );
     let main_window = MainWindow::new()?;
     let about = new_about_dialog()?;
     connect_about(&main_window, &about);

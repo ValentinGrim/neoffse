@@ -10,14 +10,16 @@ use std::fmt;
 use std::sync::Arc;
 
 use neoffse::Registry;
+use neoffse::data::Language;
 use neoffse::io::discovery::Environment;
 use slint::{ComponentHandle, ModelRc, VecModel, Weak};
 
 use crate::MainWindow;
 use crate::dispatch::Dispatcher;
+use crate::editor::EditorViewModel;
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
 use crate::picker::FilePicker;
-use crate::state::{AppState, EditorViewModel};
+use crate::state::AppState;
 
 /// Everything the Home screen needs, built once in [`run`](crate::run).
 ///
@@ -50,12 +52,12 @@ impl fmt::Debug for App {
 impl App {
     /// Builds the view models over one empty [`AppState`]. Nothing runs yet.
     #[must_use]
-    pub fn new(registry: Arc<Registry>, environment: Environment, picker: Arc<dyn FilePicker>, dispatcher: Arc<dyn Dispatcher>) -> Self {
+    pub fn new(registry: Arc<Registry>, language: Language, environment: Environment, picker: Arc<dyn FilePicker>, dispatcher: Arc<dyn Dispatcher>) -> Self {
         let state = Arc::new(AppState::new());
         Self {
             home: HomeViewModel::new(Arc::clone(&registry), environment),
             open: OpenViewModel::new(registry, picker, Arc::clone(&state)),
-            editor: EditorViewModel::new(Arc::clone(&state)),
+            editor: EditorViewModel::new(Arc::clone(&state), language),
             state,
             dispatcher,
         }

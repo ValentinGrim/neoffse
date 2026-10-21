@@ -11,9 +11,10 @@ use std::thread;
 
 use common::{Flow, ID_1, Outcomes, Site, slot_bytes, slot_file, slots_of, steam_slot};
 use neoffse::core::Game;
+use neoffse_app::EditorViewModel;
 use neoffse_app::OpenProblem;
 use neoffse_app::home::{OpenOutcome, OpenViewModel};
-use neoffse_app::state::{AppState, EditorViewModel};
+use neoffse_app::state::AppState;
 
 const FF1: usize = 0;
 const FF2: usize = 1;

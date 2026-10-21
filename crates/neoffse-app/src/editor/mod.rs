@@ -1,19 +1,26 @@
-//! The editor page's pure functions: what widget a field gets, what a typed
-//! input means, how an edit error becomes a notice, which picker entries
-//! match a search.
+//! The editor page: the pure functions that decide what widget a field gets,
+//! what a typed input means, how an edit error becomes a notice and which
+//! picker entries match a search, and the view model that binds them to an
+//! open session.
 //!
-//! Nothing here holds a session or a window. Each function reads the
-//! metadata the format publishes (`FieldMeta`) or the game's tables and
-//! returns plain data or a generated Slint type, so a test calls it without
-//! a screen. The Slint side lives in `ui/editor-types.slint` and
-//! `ui/bridge.slint`.
+//! The pure functions hold no session and no window. Each reads the metadata
+//! the format publishes (`FieldMeta`) or the game's tables and returns plain
+//! data or a generated Slint type, so a test calls it without a screen.
+//! [`build`] turns a `SaveView` into the Slint data, and [`EditorViewModel`]
+//! sends each commit to the session as one edit. The Slint side lives in
+//! `ui/editor-types.slint` and `ui/bridge.slint`.
 
+mod field_row;
 mod input;
 mod kind;
+mod layout;
+mod model;
 mod notice;
 mod pick;
 
 pub use input::{Input, value_for};
 pub use kind::field_kind;
+pub use layout::{Built, Locks, build};
+pub use model::EditorViewModel;
 pub use notice::{notice_of, problem_notice};
 pub use pick::{entry_name, picker_entries};

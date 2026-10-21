@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use neoffse::data::Language;
 use neoffse_app::{App, FilePicker, GameRow, MainWindow, SlotRow, connect_home};
 
 use super::{FixedPicker, Manual, Site, environment, items, registry, slots_of};
@@ -22,7 +23,13 @@ impl Ui {
         i_slint_backend_testing::init_no_event_loop();
         let manual = Manual::new();
         let picker = FixedPicker::new(pick);
-        let app = App::new(registry(), environment(site), Arc::clone(&picker) as Arc<dyn FilePicker>, manual.dispatcher());
+        let app = App::new(
+            registry(),
+            Language::En,
+            environment(site),
+            Arc::clone(&picker) as Arc<dyn FilePicker>,
+            manual.dispatcher(),
+        );
         let window = MainWindow::new().unwrap();
         connect_home(&window, &app);
         Self { window, app, manual, picker }
