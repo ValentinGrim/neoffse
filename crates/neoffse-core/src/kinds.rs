@@ -3,7 +3,7 @@
 //! A [`CapPolicy`] says whether an edit respects the game's own cap. An
 //! inverse edit, a rollback and a redo restore values the document already
 //! held, and the user may have set those above the cap in expert mode, so the
-//! facade applies them with [`CapPolicy::StorageOnly`]. A new edit gets
+//! facade (M4) applies them with [`CapPolicy::StorageOnly`]. A new edit gets
 //! [`CapPolicy::Enforce`] unless the user turned expert mode on.
 
 /// A section of the editor a save supports.

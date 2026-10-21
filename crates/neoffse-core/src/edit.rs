@@ -18,6 +18,8 @@ use crate::kinds::CapPolicy;
 /// A later version may add kinds: a format matches with a wildcard arm and
 /// answers an unknown kind with an error of its own.
 ///
+/// `Debug` prints save content: never log it.
+///
 /// ```
 /// use neoffse_core::{Edit, FieldId, RowId, Value};
 ///
@@ -104,6 +106,8 @@ impl Edit {
 }
 
 /// The edits of one user action, in the order the user made them.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChangeSet {
     edits: Vec<Edit>,
@@ -185,6 +189,8 @@ impl ChangeSet {
 /// through [`SaveDocument::apply_all`](crate::SaveDocument::apply_all) under
 /// `CapPolicy::StorageOnly`, which holds no game rule, so neither can fail on
 /// one: `forward` is the redo and `inverse` the undo.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct GameChange {

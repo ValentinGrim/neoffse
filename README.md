@@ -11,7 +11,7 @@ NeoFFSE might read a console save once you have extracted and decrypted it with 
 Pre-alpha.
 The app does not open or edit saves yet.  
 At the library level, you can read and edit a Final Fantasy I Pixel Remaster slot through the traits of `neoffse-core`.  
-`Ff1Format` in `neoffse-format-pr` opens a slot file.
+`Ff1Format` in `neoffse-format-pr` opens a slot file and refuses a file of another game or a file that is no slot.
 Its document lists the party, the items, the key items and the gil, edits them, and encodes the file back.
 The tests show that an edit followed by encode and decode changes the intended values and nothing else.  
 A document offers two ways to edit.
@@ -88,6 +88,7 @@ python3 -m prtables --game ff1 --install "<library>/steamapps/common/FINAL FANTA
 ```
 
 The tool only reads your install, and it writes the six TOML files under `data/pr/ff1/` when their content changes.  
+It refuses an output folder that lies inside a source folder, and a source folder that lies inside the output folder.  
 The tables hold facts the editor needs: IDs, names, kinds and the game's caps.  
 They hold no dialogue, no graphic, no audio and no extracted file.
 

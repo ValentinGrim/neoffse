@@ -14,8 +14,8 @@ use crate::slots::slot_for_name;
 /// An FF I slot opened by [`Ff1Format`](super::Ff1Format).
 ///
 /// It keeps the BOM and the exact trailer of the opened file and the file
-/// name, so `encode` writes the file back as it came. It has no `Debug`
-/// derive and no `Clone`: a print would show the save.
+/// name, so `encode` writes the file back as it came. Its `Debug` is written
+/// by hand and prints the file name only, and it has no `Clone`.
 pub struct Ff1Document {
     model: Ff1Model,
     container: Container,

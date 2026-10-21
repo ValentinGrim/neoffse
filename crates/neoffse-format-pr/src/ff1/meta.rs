@@ -10,14 +10,17 @@ use neoffse_data::GameTables;
 use super::binding::{Binding, Collection, List, Part, Stat};
 use super::names;
 
-/// Largest stored value of a number field. The format states no bound for
-/// these fields: `i32::MAX` is the clamp of the Go editor
-/// (`docs/formats/pixel-remaster.md#known-pitfalls`, item 10) and holds
-/// every counter of FF I.
+/// Largest stored value of a number field. Neither the master data nor the
+/// saves state a bound for these fields: `i32::MAX` is the clamp of the Go
+/// editor and holds every counter of FF I
+/// (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`, "Storage
+/// bound").
 pub(super) const STORAGE_MAX: i64 = 2_147_483_647;
 
-/// The slot names and their equipment tables, slot 1 to 5
-/// (`docs/formats/pixel-remaster.md#equipment-slots`).
+/// The slot labels and their equipment tables, slot 1 to 5. The table of a
+/// slot follows `parts_group_id` of the game's `armor.csv`
+/// (`docs/formats/pixel-remaster.md#game-master-data`); the labels are the Go
+/// editor's (`docs/formats/pixel-remaster.md#equipment-slots`).
 const SLOTS: [(&str, TableKind); 5] = [
     ("Right hand", TableKind::Weapon),
     ("Left hand", TableKind::Shield),

@@ -240,7 +240,7 @@ from the host [I]; a Flatpak install would settle it.
 ### Slot files
 
 The game names each slot file with a fixed 44-character string that looks
-like base64 and may contain `=` in the middle. The JSON `id` key of a
+like base64 and may contain `=` in the middle [C]. The JSON `id` key of a
 slot equals its slot number [M for 1 and 21 in six games and for 22 in FF I
 and FF II; C for the rest].
 
@@ -275,6 +275,11 @@ slot 2 name appears in the two editor-written files, and the game lists
 those files [G]. The FF III to VI folders hold no Quick Save file because
 the player made none in those games [I]. The names hold `+` and `=`,
 which are legal on Windows and Linux; quote them in shells.
+
+**Which slot a file holds.** NeoFFSE reads the slot from the JSON `id`
+key: 1 to 20 are numbered slots, 21 is the Auto Save and 22 the Quick
+Save. When `id` is absent or names no slot, it falls back to the file name,
+matched byte for byte against the table [I].
 
 ### Other files in the folder
 
@@ -652,11 +657,16 @@ A format applies this rule when it opens a slot file for game G:
    array.
 3. Map the length of `target` to a game with the counts above. Refuse
    when the length maps to no game or to a game other than G, and name the
-   detected game and the count in the error.
+   game that owns the count, with the count, in the error. Step 3 runs
+   before step 4: a file with the FF II count and an FF VI marker reports
+   FF II.
 4. Refuse when a marker contradicts the count:
    `userData → cheatSettingsData.jobProficiencyRate` present unless G is
    FF III, `userData → wonderWandIndex` present unless G is FF V,
-   `mapData → otherPartyDataList` present unless G is FF VI.
+   `mapData → otherPartyDataList` present unless G is FF VI. The error
+   names the marker's game and the count. A marker path that crosses a
+   value of the wrong kind, such as `cheatSettingsData` holding a number,
+   is no absent key: NeoFFSE refuses the file as not a slot [I].
 
 Step 4 only refuses. A game's own markers are never required, because
 the count already decides and a build could drop a key. The rule keys on
@@ -667,6 +677,13 @@ The FF I format applies the rule; NeoFFSE has no format for FF II to VI
 yet. The FF II to VI counts are measured [M] but the tables behind them
 are unread, so each remains a reading of the saves
 ([Open questions](#open-questions), 16 to 19).
+
+After the game rule, the FF I format checks the shape of what it edits
+[I]. `ownedCharacterList`, `normalOwnedItemList` and
+`importantOwendItemList` must exist, each row key (`id` of a character,
+`contentId` of an item) must be an unsigned 32-bit integer, and no key
+repeats inside a list ([Characters](#characters), [Inventory](#inventory)).
+The format refuses a file that fails a check as not a slot.
 
 ### Documents inside strings
 
@@ -1102,6 +1119,11 @@ the 129 IDs. Its entry 129 reads "Vampire (Cavern of Earth)", where the game
 reads "Vampire". The keys of the saved bestiary are these monster IDs
 ([Bestiary](#bestiary)).
 
+**Export rule.** `monsters.toml` lists one monster per group of
+`picture_book_group.csv`, the one with the lowest picture-book ID [D]. The
+file holds 128 monsters: monster 129, the boss Vampire, shares group 46 with
+the Vampire of monster 61 and is dropped ([Bestiary](#bestiary)).
+
 ### Bounds in the master data
 
 The game states six caps and several stat caps in `game_constant_int.csv`
@@ -1116,7 +1138,14 @@ The game states six caps and several stat caps in `game_constant_int.csv`
 | HP | `MAX_HP` | 999 |
 | spell charges per level | `MAX_MAGICAL_TIMES` | 9 |
 | strength, vitality, agility, intelligence, spirit, luck | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` | 99 each |
-| attack, defense, ability attack, ability defense, accuracy, evasion | `MAX_ATTACK`, `MAX_DEFENSE` and the matching rows | 255 each |
+| attack, defense, ability attack, ability defense, accuracy, evasion | `MAX_ATTACK`, `MAX_DEFENSE`, `MAX_ABILITY_ATTACK`, `MAX_ABILITY_DEFENSE`, `MAX_ACCURACY_RATE`, `MAX_EVASION_RATE` | 255 each |
+
+The tool writes nine more `MAX_` rows to `bounds.toml`:
+`MAX_ACCURACY_RATE_PERCENTAGE`, `MAX_EVASION_RATE_PERCENTAGE`,
+`MAX_ABILITY_EVASION_RATE`, `MAX_ABILITY_EVASION_RATE_PERCENTAGE`,
+`MAX_CRITICAL_RATE`, `MAX_CRITICAL_RATE_PERCENTAGE`, `MAX_ATTACK_SPEED`,
+`MAX_HIT_VALUE` and `MAX_GETAWAY_PROBABILITY_RATE`. No save field is known
+for them [I].
 
 `MAX_ITEM` is one row with no list name [D]. NeoFFSE reads it as the cap
 of the normal inventory and not of the key items, which hold `count` 1
@@ -1140,14 +1169,45 @@ the gain in the other game state [I] ([Characters](#characters)). The stored
 field exceeds the cap, and whether the game clamps an edited gain field is
 open ([Open questions](#open-questions)).
 
+**Caps in NeoFFSE.** A cap is a limit the game states; a storage bound is
+the range a save field can hold (next paragraph). Under `CapPolicy::Enforce`
+and in the game interface, NeoFFSE applies a cap to the stored field that
+carries the value [I]:
+
+| Stored field | Cap |
+|---|---|
+| `owendGil` | `MAX_GIL` |
+| `count` in `normalOwnedItemList` | `MAX_ITEM` |
+| `addtionalLevel` | `MAX_LV` |
+| `currentExp` | `MAX_EXP` |
+| `currentHP` | `MAX_HP` |
+| each value of `currentMpCountList` | `MAX_MAGICAL_TIMES` |
+| `addtionalPower`, `addtionalVitality`, `addtionalAgility`, `addtionalIntelligence`, `addtionalSpirit`, `addtionalLuck` | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` (99 each) |
+
+The six stat fields hold gains over a base the file does not store, and
+NeoFFSE applies the stat cap to the stored gain. No stored gain of the four
+measured FF I slots exceeds 99 [M, 4 slots]. NeoFFSE caps `currentHP`, not
+the gain `addtionalMaxHp`: it reads `currentHP` as bounded by the displayed
+maximum that `MAX_HP` limits, while the game caps the sum of base and gain,
+so a stored gain above 999 stays legal. The magic stat (`addtionalMagic`),
+`addtionalMaxHp`, `addtionalMaxMpCountList` and the equipment slot `count`
+have no cap: the master data states none.
+
 **Storage bound.** Neither the master data nor the saves state a bound for
 the integer fields NeoFFSE edits, apart from the caps above. NeoFFSE stores
 a value from 0 to 2 147 483 647 (`i32::MAX`) in such a field, and from 1 in
-a `count` and in a row key (`contentId`, character `id`) [I]. The Go
-editor clamps its number fields to i32 ([Known pitfalls](#known-pitfalls),
-10), and every counter measured in FF I fits. No test shows that the game
-reads the whole range. A value above a cap and inside the storage bound is
-storable.
+the `count` of an item row and in a row key (`contentId`, character `id`)
+[I]. The `count` of an equipment slot starts at 0: no measured slot holds 0
+[M, 4 slots], and the game interface sets that count only by copying the
+inventory count [I]. The Go editor clamps its number fields to i32 ([Known
+pitfalls](#known-pitfalls), 10), and every counter measured in FF I fits. No
+test shows that the game reads the whole range. A value above a cap and
+inside the storage bound is storable.
+
+Both edit interfaces refuse a value outside the storage bound [I]. The game
+interface also refuses a key-item `count` other than 1 and any hand-set
+`count` of an equipment slot ([Inventory](#inventory), [Equipment
+slots](#equipment-slots)) [I].
 
 ### ID spaces and tables
 
@@ -1295,7 +1355,7 @@ character: 4 in FF I, 7 or 8 in FF II [M]. Identify a character by
 
 | Key | Type | Notes |
 |---|---|---|
-| `id` | int | 1 to N, unique [M] |
+| `id` | int | 1 to N, unique [M]; NeoFFSE refuses a file that repeats an `id` [I] |
 | `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the status names the base class [I]. No other meaning measured |
 | `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
 | `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; names in `job.csv` ([ID spaces and tables](#id-spaces-and-tables)) |
@@ -1308,6 +1368,9 @@ character: 4 in FF I, 7 or 8 in FF II [M]. Identify a character by
 | `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4); slots and `count` in [Equipment slots](#equipment-slots) |
 | `equipmentAbilitys` | JSON list | `[0,0,0]` in FF I and FF II [M] |
 | `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C] |
+
+NeoFFSE edits the characters in place and never inserts or removes a
+character row [I].
 
 `parameter` keys [M]: `currentHP`, `currentMP`, `currentMpCountList`,
 `addtionalMaxMpCountList` (dictionaries with 8 keys, one per spell level,
@@ -1357,7 +1420,7 @@ of a base the file does not store:
 
 FF I characters hold five equipment slots, keys 1 to 5 of `equipmentList`
 in that order. An empty slot holds the placeholder `contentId` of its slot,
-not 0.
+not 0 [M, 1 entry; D].
 
 | Key | Slot (Go editor label) | Go table | Placeholder |
 |---|---|---|---|
@@ -1385,6 +1448,16 @@ not 0.
   Reading: the game copies the inventory count when a character equips
   and does not refresh it [I]. Whether the game reads `count` at all is
   open.
+- **Equip and unequip in NeoFFSE.** The game interface edits a slot the way
+  the game does [I]. Equip writes the slot's `contentId`, makes sure the
+  inventory row of the item holds at least one per wearer (it inserts the row
+  with the wearer count, or raises the count to it), then copies the
+  inventory count into the slot `count`. Unequip writes the slot's
+  placeholder, copies the count of the placeholder's inventory row into the
+  slot `count` (when the list holds that row) and keeps the item in the
+  inventory. The game interface refuses to set a slot `count` by hand, since
+  the equip plan owns it [I]. The raw interface writes any of these fields
+  alone.
 
 ### Abilities
 
@@ -1421,8 +1494,9 @@ Character keys that reference abilities:
 | `learningAbilitys` | list | empty in FF I and FF II [M] |
 
 `userData → learnedAbilityList` holds ability IDs. In FF I it equals the
-union of the party's `abilityId`s (47 IDs) [M]. In FF II it does not, and
-its meaning is unknown [M].
+union of the party's `abilityId`s as a set (47 IDs in slot 1 and the Quick
+Save), and its order is not ascending [M, 4 slots]. In FF II it does not
+equal that union, and its meaning is unknown [M].
 
 **FF I spell slots** [M]. `abilitySlotDataList → target[]` holds 8 JSON
 strings, one per spell level: `{"level":1..8,"slotInfo":"<JSON>"}`.
@@ -1467,8 +1541,10 @@ pointing at existing character `id`s.
 - `corpsList → target[]`: 4 JSON strings `{"id":1,"characterId":n}` in
   FF I, FF II, FF III, FF V and FF VI, 5 in FF IV; `id` is 1 in each
   entry in FF I and FF II [M].
-  NeoFFSE lists the party in the order of this list. The measured files do
-  not show whether that order is the battle order.
+  NeoFFSE lists the party in the order of this list [I]. The measured files
+  do not show whether that order is the battle order. The editor view
+  lists every character in the order of `ownedCharacterList`, in the party
+  or not [I].
 - `corpsSlots`: dictionary with keys `0`, `1`, `2`; each value is a list
   with the same entry shape [M]. In the six slots all three lists equal
   `corpsList` [M]. FF VI uses several parties [C].
@@ -1483,17 +1559,24 @@ JSON strings in the game's own order; the sort list holds content IDs,
 never row numbers.
 
 - Normal items: 47 to 56 entries, no duplicate `contentId`, no `count`
-  of 0, not sorted by ID [M]. `MAX_ITEM` (99) is the master-data cap on
-  this list's `count` [D, I]: the cap exists in the data [D], and its
-  scope follows from the key items below holding one each [I]
+  of 0, not sorted by ID [M]. NeoFFSE refuses a file that repeats a
+  `contentId` in either item list [I]. `MAX_ITEM` (99) is the master-data
+  cap on this list's `count` [D, I]: the cap exists in the data [D], and
+  its scope follows from the key items below holding one each [I]
   ([Bounds in the master data](#bounds-in-the-master-data)).
+- **No key item in the normal list.** None of the 221 rows of
+  `normalOwnedItemList` in the four measured FF I slots holds a content ID
+  from 45 to 61 [M, 4 slots]. NeoFFSE therefore resolves the row keys of
+  `inventory` in the item and equipment tables only, and the row keys of
+  `key_items` in the key item table [I].
 - `importantOwendItemList`: same shape. Every measured row holds `count`
   1 [M]. In FF I it holds 9 or 10 entries, IDs 45 to 61, all in
   `ImportantItems` [M]. In the game's data these IDs are the key items,
   `item.csv` `type_id` 2 [D]. The game holds one of each key item and
   never shows a key-item count above 1 [I], so `MAX_ITEM` does not apply
   to this list. A format that edits the way the game does keeps every
-  key-item `count` at 1.
+  key-item `count` at 1 [I]: NeoFFSE's game interface refuses to set a
+  key-item `count` and to insert a key item with another `count` [I].
 - **The inventory includes equipped items.** In FF I, each equipped
   `contentId` appears in `normalOwnedItemList` with a count at least the
   number of characters who equip it. A ring worn by all 4 characters has
@@ -1501,7 +1584,16 @@ never row numbers.
   missing or under-counted [M].
 - **The inventory holds the five placeholders.** In FF I, 62, 130, 131, 132
   and 133 sit in the list in both game states, as its first five rows, with
-  counts 5, 9, 5, 9 and 9 [M]. What those counts mean is unknown.
+  counts 5, 9, 5, 9 and 9 [M]. What those counts mean is unknown, so
+  NeoFFSE's game interface refuses every edit of a placeholder row: a
+  `count` change, an insert and a removal [I].
+- **Removal in NeoFFSE.** The game interface removes a row only when no
+  character wears its item and the row is no placeholder [I]. Both
+  interfaces refuse a row whose text the editor cannot rewrite byte for
+  byte (other spacing, key order or escapes) and a row whose stored
+  `count` lies outside the storage bound (0, a negative number, or above
+  `i32::MAX`), because the inverse insert could not restore it. Such a row
+  counts as locked [I].
 - **IDs the Go tables lack.** The FF I list holds 5 IDs (4 in the Quick
   Save) that no Go table names: 67, 100, 103, 151 and 166. `content.csv`
   names all five ([Go editor tables](#go-editor-tables)) [M, D]. Keep them

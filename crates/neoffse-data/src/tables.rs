@@ -59,8 +59,8 @@ impl GameTables {
     /// it in its file, or a row that breaks a rule of the file contract
     /// ([`DataError::Rule`]): an ability level above 8, an ability
     /// `content_id` of 0, a placeholder written as `false`, a placeholder
-    /// outside the five equipment kinds or repeated in one kind, a bound key
-    /// without the `MAX_` prefix, or a negative bound.
+    /// outside the five equipment kinds or repeated in one kind, a cap key
+    /// without the `MAX_` prefix, or a negative cap.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
         let parsed = parse_sources(sources)?;
         Ok(GameTables {

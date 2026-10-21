@@ -110,6 +110,8 @@ impl SaveView {
 /// [`collections`](Section::collections), so the UI shows the rows and the
 /// add and remove controls the flags allow. Gil belongs to
 /// `Capability::Inventory`.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Section {
@@ -138,6 +140,8 @@ impl Section {
 /// `id` is the prefix every one of its fields' ids starts with
 /// (`FieldId::starts_with`); for a row of a collection it is `RowId::id()`.
 /// The view enforces neither rule.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Entity {
@@ -162,6 +166,8 @@ impl Entity {
 }
 
 /// One field with its metadata and its current value.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FieldView {

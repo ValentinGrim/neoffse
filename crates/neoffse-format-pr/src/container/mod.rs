@@ -93,6 +93,8 @@ pub enum InflatePath {
 
 /// The result of [`decode`]. A later version may add fields, and only
 /// [`decode`] builds one.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Decoded {

@@ -2,8 +2,8 @@
 //!
 //! Rows are found by the value of `id` or `contentId`, dictionary entries by
 //! their key, never by position (`docs/formats/pixel-remaster.md#characters`,
-//! pitfall 22). Every lookup is a read: it parses levels and never marks one
-//! dirty.
+//! `docs/formats/pixel-remaster.md#known-pitfalls`, item 22). Every lookup is
+//! a read: it parses levels and never marks one dirty.
 
 use neoffse_core::{EditError, FieldId, RowId};
 
