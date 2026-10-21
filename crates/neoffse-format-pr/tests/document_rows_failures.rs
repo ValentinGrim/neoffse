@@ -130,6 +130,14 @@ fn insert_of_nan_is_non_finite_float() {
 }
 
 #[test]
+fn a_non_finite_value_is_reported_before_a_path_that_does_not_exist() {
+    let (mut document, text) = doc();
+    let err = document.insert(&[Segment::Key("nope")], 99, &Scalar::Float(f64::NAN)).unwrap_err();
+    assert!(matches!(err, DocumentError::NonFiniteFloat { .. }), "{err:?}");
+    assert_eq!(document.to_json(), text);
+}
+
+#[test]
 fn an_invalid_json_argument_wins_over_a_bad_path() {
     let (mut document, _) = doc();
     let err = document.insert_raw(&[Segment::Key("nope")], 99, "{").unwrap_err();

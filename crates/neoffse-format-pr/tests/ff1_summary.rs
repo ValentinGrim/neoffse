@@ -136,3 +136,27 @@ fn summary_changes_nothing() {
     model.summary().unwrap();
     assert_eq!(model.document().to_json(), before);
 }
+
+#[test]
+fn an_empty_character_name_stays_empty_in_the_party() {
+    let mut slot = SlotData::standard();
+    slot.characters[1].name = String::new();
+    let summary = model_of(document(&slot)).summary().unwrap();
+    assert_eq!(summary.party, ["Aria", "", "Cleo", "Zoé"]);
+}
+
+#[test]
+fn a_character_listed_twice_in_the_corps_gives_the_name_twice() {
+    let mut document = document(&SlotData::standard());
+    document.set(&corps_id(1), &Scalar::Int(1)).unwrap();
+    let summary = model_of(document).summary().unwrap();
+    assert_eq!(summary.party, ["Aria", "Aria", "Cleo", "Zoé"]);
+}
+
+#[test]
+fn a_corps_entry_with_a_text_character_id_is_skipped() {
+    let mut document = document(&SlotData::standard());
+    document.set(&corps_id(1), &Scalar::Text("2".to_owned())).unwrap();
+    let summary = model_of(document).summary().unwrap();
+    assert_eq!(summary.party, ["Aria", "Cleo", "Zoé"]);
+}

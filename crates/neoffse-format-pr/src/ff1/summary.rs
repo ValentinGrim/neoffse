@@ -40,7 +40,9 @@ impl Ff1Model {
     /// - `party`: the names of `userData.corpsList`, in list order. The format
     ///   document does not say the list order is the battle order. An entry
     ///   whose `characterId` is absent, is no integer or names no character is
-    ///   skipped.
+    ///   skipped. An empty character name stays `""` in `party` (the view
+    ///   shows a placeholder label instead), and a `characterId` listed twice
+    ///   gives the name twice.
     ///
     /// A key the save lacks, or holds in another shape, gives the empty value
     /// of its field. The call changes no byte of the document.

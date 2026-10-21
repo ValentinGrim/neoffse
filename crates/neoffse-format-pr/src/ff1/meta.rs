@@ -81,7 +81,7 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
             Part::Exp => int("Experience", 0, capped("MAX_EXP")),
             Part::Hp => int("HP", 0, capped("MAX_HP")),
             Part::MaxHpGain => int("Max HP gain", 0, None),
-            Part::Stat(stat) => int(stat_label(stat), 0, None),
+            Part::Stat(stat) => int(stat_label(stat), 0, stat.bound_key().map(|key| (tables, key))),
             Part::Charges(level) => int(format!("Charges, level {level}"), 0, capped("MAX_MAGICAL_TIMES")),
             Part::ChargesMaxGain(level) => int(format!("Max charges gain, level {level}"), 0, None),
             Part::Slot(number) => {
