@@ -6,7 +6,7 @@ use std::sync::PoisonError;
 use neoffse_app::{EditorBridge, EditorData, FieldRow};
 use slint::ComponentHandle;
 
-use super::{Part, Site, Ui, field};
+use super::{Part, Site, Ui, field, fields, page};
 
 /// A window whose first slot is open on the editor page.
 pub(crate) fn open_editor(site: &Site) -> Ui {
@@ -22,6 +22,27 @@ impl Ui {
     /// The data the screens read.
     pub(crate) fn bridge_data(&self) -> EditorData {
         self.window.global::<EditorBridge>().get_data()
+    }
+
+    /// The editor bridge of the window.
+    pub(crate) fn bridge(&self) -> EditorBridge<'_> {
+        self.window.global::<EditorBridge>()
+    }
+
+    /// The first field of the Magic page of the first character.
+    pub(crate) fn spell(&self) -> FieldRow {
+        let data = self.bridge_data();
+        fields(&page(&data, Part::Magic, "Aria")).into_iter().next().expect("a spell slot")
+    }
+
+    /// The count field of the first equipment slot of the first character.
+    pub(crate) fn slot_count(&self) -> FieldRow {
+        field(&self.bridge_data(), Part::Party, "Aria", "Count in slot 1")
+    }
+
+    /// Whether a save is open.
+    pub(crate) fn session_open(&self) -> bool {
+        self.app.state.is_open()
     }
 
     /// The history entries of the open session.

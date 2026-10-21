@@ -7,13 +7,15 @@
 //! the format publishes (`FieldMeta`) or the game's tables and returns plain
 //! data or a generated Slint type, so a test calls it without a screen.
 //! [`build`] turns a `SaveView` into the Slint data, and [`EditorViewModel`]
-//! sends each commit to the session as one edit. The Slint side lives in
-//! `ui/editor-types.slint` and `ui/bridge.slint`.
+//! sends each commit to the session as one edit. `leave` asks before a dirty
+//! session closes. The Slint side lives in `ui/editor-types.slint` and
+//! `ui/bridge.slint`.
 
 mod field_row;
 mod input;
 mod kind;
 mod layout;
+mod leave;
 mod model;
 mod notice;
 mod pick;
@@ -21,6 +23,7 @@ mod pick;
 pub use input::{Input, value_for};
 pub use kind::field_kind;
 pub use layout::{Built, Locks, build};
+pub use leave::{Leave, LeaveAnswer};
 pub use model::EditorViewModel;
 pub use notice::{notice_of, problem_notice};
 pub use pick::{entry_name, picker_entries};

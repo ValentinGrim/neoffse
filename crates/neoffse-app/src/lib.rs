@@ -9,6 +9,7 @@
 
 pub mod connect;
 pub mod connect_editor;
+pub mod connect_guard;
 pub mod dispatch;
 pub mod editor;
 pub mod home;
@@ -26,8 +27,9 @@ mod generated {
 
 pub use connect::{App, connect_home, refresh_home};
 pub use connect_editor::{connect_editor, refresh_editor};
+pub use connect_guard::{connect_close, connect_expert};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
-pub use editor::EditorViewModel;
+pub use editor::{EditorViewModel, Leave, LeaveAnswer};
 pub use generated::{
     AboutDialog, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow, GameRow, ItemList, ItemRow,
     MainWindow, OpenProblem, PickerEntry, SectionData, SlotKind, SlotRow, SummaryRow,
@@ -61,6 +63,8 @@ pub fn run() -> Result<(), slint::PlatformError> {
     connect_quit(&main_window);
     connect_home(&main_window, &app);
     connect_editor(&main_window, &app);
+    connect_expert(&main_window, &app);
+    connect_close(&main_window, &about, &app);
     main_window.run()
 }
 
@@ -77,8 +81,9 @@ pub fn new_about_dialog() -> Result<AboutDialog, slint::PlatformError> {
     Ok(about)
 }
 
-/// Opens `about` from the menu and hides it on dismiss or when the main
-/// window closes.
+/// Opens `about` from the menu and hides it on dismiss. It also hides the
+/// dialog when the main window closes, until [`connect_close`] replaces that
+/// handler.
 ///
 /// The main window's About callback holds a strong reference, so the
 /// dialog outlives the caller's handle. The dialog's own callbacks hold
@@ -98,7 +103,8 @@ pub fn connect_about(main_window: &MainWindow, about: &AboutDialog) {
     });
 
     // Without this hide, an open About dialog keeps the event loop, and the
-    // process, alive after the main window closes.
+    // process, alive after the main window closes. `connect_close` replaces
+    // this handler and hides the dialog itself.
     let weak = about.as_weak();
     main_window.window().on_close_requested(move || {
         if let Some(dialog) = weak.upgrade() {

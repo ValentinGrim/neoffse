@@ -63,13 +63,14 @@ pub fn connect_editor(window: &MainWindow, app: &App) {
         let weak = weak.clone();
         move || {
             if let Some(window) = weak.upgrade() {
-                set_notice(&window.global::<EditorBridge>(), None);
+                set_notice(&window.global::<EditorBridge>(), None, false);
             }
         }
     });
 }
 
-/// Pushes `app.editor.data()` into the bridge and clears the notice.
+/// Pushes `app.editor.data()` into the bridge and clears the notice and the
+/// expert offer.
 ///
 /// The rows of a shape that did not change update in place; any other change
 /// replaces the data whole. A failed `data()` sets the notice instead.
@@ -96,10 +97,15 @@ fn refresh_with(window: &MainWindow, app: &App, notice: Option<EditNotice>) {
         }
         Err(notice) => Some(notice),
     };
-    set_notice(&bridge, notice.or(failure));
+    let notice = notice.or(failure);
+    let offer = notice.as_ref().is_some_and(|notice| app.editor.offers_expert(notice));
+    set_notice(&bridge, notice, offer);
 }
 
-fn set_notice(bridge: &EditorBridge<'_>, notice: Option<EditNotice>) {
+/// Shows or clears the notice. `offer` adds the "Switch to expert mode"
+/// button to it.
+fn set_notice(bridge: &EditorBridge<'_>, notice: Option<EditNotice>, offer: bool) {
+    bridge.set_offer_expert(offer);
     bridge.set_has_notice(notice.is_some());
     bridge.set_notice(notice.unwrap_or_default());
 }

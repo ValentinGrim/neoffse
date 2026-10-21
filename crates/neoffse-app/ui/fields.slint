@@ -136,13 +136,13 @@ export component FieldEditor inherits HorizontalLayout {
     if root.field.kind == FieldKind.text: CommitEdit {
         horizontal-stretch: 1;
         source: root.field.text;
-        enabled: root.field.editable;
+        enabled: root.field.editable && !EditorBridge.blocked;
         committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
     }
     if root.field.kind == FieldKind.number: CommitEdit {
         max-width: 200px;
         source: root.field.text;
-        enabled: root.field.editable;
+        enabled: root.field.editable && !EditorBridge.blocked;
         alignment: right;
         committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
     }
@@ -161,7 +161,7 @@ export component FieldEditor inherits HorizontalLayout {
     if root.field.kind == FieldKind.choice: ComboBox {
         model: root.field.names;
         current-index: root.field.name-index;
-        enabled: root.field.editable;
+        enabled: root.field.editable && !EditorBridge.blocked;
         selected => {
             EditorBridge.field-name-picked(root.field.key, self.current-index);
             self.current-index = root.field.name-index;
@@ -170,14 +170,14 @@ export component FieldEditor inherits HorizontalLayout {
     if root.field.kind == FieldKind.choice: CommitEdit {
         max-width: 200px;
         source: root.field.text;
-        enabled: root.field.editable;
+        enabled: root.field.editable && !EditorBridge.blocked;
         alignment: right;
         committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
     }
     if root.field.kind == FieldKind.picker: PickerField {
         width: 220px;
         entries: EditorBridge.picker-entries;
-        enabled: root.field.editable;
+        enabled: root.field.editable && !EditorBridge.blocked;
         button-text: root.field.known && root.field.shown != "" ? root.field.shown
             : root.field.known ? @tr("Entry {}", root.field.text)
             : @tr("Unknown ({})", root.field.text);
@@ -187,7 +187,7 @@ export component FieldEditor inherits HorizontalLayout {
     }
     if root.field.kind == FieldKind.toggle: CheckBox {
         checked: root.field.checked;
-        enabled: root.field.editable;
+        enabled: root.field.editable && !EditorBridge.blocked;
         toggled => {
             EditorBridge.field-toggled(root.field.key, self.checked);
             self.checked = root.field.checked;

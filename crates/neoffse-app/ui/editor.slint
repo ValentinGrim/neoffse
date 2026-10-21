@@ -17,6 +17,7 @@ export component EditorPage inherits VerticalLayout {
         spacing: 12px;
         Button {
             text: @tr("Back");
+            enabled: !EditorBridge.blocked;
             clicked => { root.back-requested(); }
         }
         Text {
@@ -40,8 +41,14 @@ export component EditorPage inherits VerticalLayout {
             overflow: elide;
             text: NoticeText.sentence(EditorBridge.notice);
         }
+        if EditorBridge.offer-expert: Button {
+            text: @tr("Switch to expert mode");
+            enabled: !EditorBridge.blocked;
+            clicked => { EditorBridge.expert-toggle-requested(); }
+        }
         Button {
             text: @tr("OK");
+            enabled: !EditorBridge.blocked;
             clicked => { EditorBridge.notice-dismissed(); }
         }
     }

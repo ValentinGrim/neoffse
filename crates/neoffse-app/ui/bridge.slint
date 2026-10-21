@@ -15,6 +15,8 @@ export global EditorBridge {
     in-out property <bool> expert-menu-checked;
     in property <bool> expert-warning-open;
     in property <bool> discard-dialog-open;
+    // A modal dialog covers the page: the controls under it stop taking input.
+    out property <bool> blocked: root.expert-warning-open || root.discard-dialog-open;
 
     // Key and text, for the text and number kinds.
     callback field-text-committed(int, string);

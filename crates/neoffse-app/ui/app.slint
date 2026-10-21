@@ -1,4 +1,6 @@
-import { AboutSlint, StandardButton, VerticalBox } from "std-widgets.slint";
+import { AboutSlint, Button, StandardButton, VerticalBox } from "std-widgets.slint";
+import { ModalDialog } from "dialogs.slint";
+import { EditorBridge } from "bridge.slint";
 import { EditorPage } from "editor.slint";
 import { HomeScreen } from "home.slint";
 import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
@@ -72,6 +74,16 @@ export component MainWindow inherits Window {
             }
         }
         Menu {
+            title: @tr("View");
+            MenuItem {
+                title: @tr("Expert mode");
+                checkable: true;
+                checked <=> EditorBridge.expert-menu-checked;
+                enabled: root.editor-open && !EditorBridge.blocked;
+                activated => { EditorBridge.expert-toggle-requested(); }
+            }
+        }
+        Menu {
             title: @tr("Help");
             MenuItem {
                 title: @tr("About NeoFFSE");
@@ -98,5 +110,31 @@ export component MainWindow inherits Window {
     if root.editor-open: EditorPage {
         summary: root.editor-summary;
         back-requested => { root.back-requested(); }
+    }
+    if EditorBridge.expert-warning-open: ModalDialog {
+        title: @tr("Turn on expert mode?");
+        message: @tr("Expert mode skips the game's rules and limits. A value the game does not expect can corrupt the save or crash the game.");
+        Button {
+            text: @tr("Cancel");
+            clicked => { EditorBridge.expert-warning-cancelled(); }
+        }
+        Button {
+            text: @tr("Turn on expert mode");
+            primary: true;
+            clicked => { EditorBridge.expert-warning-confirmed(); }
+        }
+    }
+    if EditorBridge.discard-dialog-open: ModalDialog {
+        title: @tr("Discard unsaved changes?");
+        message: @tr("Your changes to this save are lost.");
+        Button {
+            text: @tr("Cancel");
+            clicked => { EditorBridge.discard-cancelled(); }
+        }
+        Button {
+            text: @tr("Discard");
+            primary: true;
+            clicked => { EditorBridge.discard-confirmed(); }
+        }
     }
 }

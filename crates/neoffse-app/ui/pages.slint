@@ -102,7 +102,7 @@ component ItemLine inherits HorizontalLayout {
     Rectangle { }
     if root.item.removable: Button {
         text: @tr("Remove");
-        enabled: root.item.can-remove;
+        enabled: root.item.can-remove && !EditorBridge.blocked;
         clicked => { EditorBridge.item-remove-requested(root.item.key); }
     }
     Text {
@@ -133,6 +133,7 @@ component ItemBlock inherits VerticalLayout {
         PickerField {
             width: 220px;
             entries: EditorBridge.picker-entries;
+            enabled: !EditorBridge.blocked;
             button-text: @tr("Add...");
             opened => { EditorBridge.list-picker-query(root.list.key, ""); }
             query-changed(text) => { EditorBridge.list-picker-query(root.list.key, text); }

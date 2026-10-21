@@ -14,13 +14,14 @@ use neoffse::data::Language;
 use neoffse::io::discovery::Environment;
 use slint::{ComponentHandle, ModelRc, VecModel, Weak};
 
-use crate::MainWindow;
 use crate::connect_editor::refresh_editor;
+use crate::connect_guard::sync_expert;
 use crate::dispatch::Dispatcher;
-use crate::editor::EditorViewModel;
+use crate::editor::{EditorViewModel, Leave, LeaveAnswer};
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
 use crate::picker::FilePicker;
 use crate::state::AppState;
+use crate::{EditorBridge, MainWindow};
 
 /// Everything the Home screen needs, built once in [`run`](crate::run).
 ///
@@ -101,8 +102,15 @@ pub fn connect_home(window: &MainWindow, app: &App) {
     window.on_back_requested({
         let (weak, app) = (weak.clone(), app.clone());
         move || {
-            app.editor.back();
-            with_window(&weak, &app, |window, _| window.set_editor_open(false));
+            if let Some(window) = weak.upgrade() {
+                if app.editor.leave(Leave::Back) == LeaveAnswer::Left {
+                    window.set_editor_open(false);
+                    sync_expert(&window, &app);
+                    refresh_home(&window, &app);
+                } else {
+                    window.global::<EditorBridge>().set_discard_dialog_open(true);
+                }
+            }
         }
     });
     window.on_problem_dismissed({

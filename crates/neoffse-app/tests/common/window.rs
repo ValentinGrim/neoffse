@@ -5,7 +5,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use neoffse::data::Language;
-use neoffse_app::{App, FilePicker, GameRow, MainWindow, SlotRow, connect_editor, connect_home};
+use neoffse_app::{
+    AboutDialog, App, FilePicker, GameRow, MainWindow, SlotRow, connect_about, connect_close, connect_editor, connect_expert, connect_home, new_about_dialog,
+};
 
 use super::{FixedPicker, Manual, Site, environment, items, registry, slots_of};
 
@@ -33,7 +35,19 @@ impl Ui {
         let window = MainWindow::new().unwrap();
         connect_home(&window, &app);
         connect_editor(&window, &app);
+        connect_expert(&window, &app);
         Self { window, app, manual, picker }
+    }
+
+    /// Like `new`, with the About dialog connected and the close handler
+    /// installed after it, as `run` does.
+    pub(crate) fn with_about(site: &Site) -> (Self, AboutDialog) {
+        let ui = Self::new(site, None);
+        let about = new_about_dialog().unwrap();
+        connect_about(&ui.window, &about);
+        connect_close(&ui.window, &about, &ui.app);
+        ui.manual.run_all();
+        (ui, about)
     }
 
     /// Like `new`, then the first scan runs to the end.

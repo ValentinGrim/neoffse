@@ -10,6 +10,7 @@ use neoffse::data::Language;
 
 use super::input::{Input, value_for};
 use super::layout::{FieldSlot, Layout, Locks, build};
+use super::leave::Leave;
 use super::notice::{notice_of, problem_notice};
 use super::pick::{entry_name, picker_entries};
 use crate::state::AppState;
@@ -29,11 +30,13 @@ impl Locks for SessionLocks<'_> {
     }
 }
 
-struct Shared {
-    state: Arc<AppState>,
+pub(super) struct Shared {
+    pub(super) state: Arc<AppState>,
     language: Language,
     layout: Mutex<Layout>,
     expert: AtomicBool,
+    /// The leave request that waits for the user's answer.
+    pub(super) pending: Mutex<Option<Leave>>,
 }
 
 /// The editor page: reads the open session, applies edits, keeps the expert
@@ -44,7 +47,7 @@ struct Shared {
 /// is open and the expert flag.
 #[derive(Clone)]
 pub struct EditorViewModel {
-    shared: Arc<Shared>,
+    pub(super) shared: Arc<Shared>,
 }
 
 impl fmt::Debug for EditorViewModel {
@@ -75,11 +78,12 @@ impl EditorViewModel {
                 language,
                 layout: Mutex::new(Layout::default()),
                 expert: AtomicBool::new(false),
+                pending: Mutex::new(None),
             }),
         }
     }
 
-    fn layout(&self) -> MutexGuard<'_, Layout> {
+    pub(super) fn layout(&self) -> MutexGuard<'_, Layout> {
         self.shared.layout.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
@@ -89,11 +93,14 @@ impl EditorViewModel {
         self.shared.state.summary()
     }
 
-    /// Leaves the editor: closes the open save and forgets its keys. It asks
-    /// nothing; the question for a dirty save comes with the leave flow.
+    /// Leaves the editor now: closes the open save, forgets its keys and
+    /// turns expert mode off. It asks nothing: the UI calls
+    /// [`leave`](Self::leave), which asks first when the save holds unsaved
+    /// edits.
     pub fn back(&self) {
         self.shared.state.close();
         *self.layout() = Layout::default();
+        self.set_expert(false);
     }
 
     /// Rebuilds the data from the session and replaces the key table. Every
