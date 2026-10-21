@@ -6,6 +6,7 @@
 
 mod bridge;
 mod editor;
+mod keys;
 mod manual;
 mod open;
 mod site;

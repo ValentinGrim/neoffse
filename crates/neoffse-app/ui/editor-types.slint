@@ -2,6 +2,8 @@
 // fills them, the screens draw them, no rule about a save lives here.
 
 export enum FieldKind { label, text, number, choice, picker, toggle }
+// The commands of the editor menu. The command list shows them in this order.
+export enum EditorCommand { party, items, magic }
 export enum EditProblem { not-a-number, read-only, out-of-range, above-cap, unknown-id, duplicate-row, missing-row, not-editable, reloaded, internal }
 
 // `name` is "" when the table gives none.

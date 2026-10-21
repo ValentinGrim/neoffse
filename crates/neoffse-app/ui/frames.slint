@@ -1,0 +1,125 @@
+import { ControlFrame, FocusRing } from "control-frame.slint";
+import { FrameStyle, Look } from "look.slint";
+import { Theme } from "theme.slint";
+
+// The pieces the editor menu is drawn with. Every one reads a `Look`, the
+// open game's by default, and draws with primitives only: no image.
+
+// A panel: a bevelled frame in the PR look, one thin rule in a flat look. The
+// children sit inside a padded column.
+export component Frame inherits Rectangle {
+    in property <Look> look: Theme.look;
+    // The space between the children.
+    in property <length> gap: 0px;
+
+    ControlFrame {
+        look: root.look;
+        fill: root.look.panel-fill;
+        line: root.look.frame-style == FrameStyle.bevel ? root.look.frame-outer : root.look.rule;
+    }
+    VerticalLayout {
+        padding: root.look.padding;
+        spacing: root.gap;
+        @children
+    }
+}
+
+// A square holding the initial of a character. It carries no image.
+export component PortraitFrame inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <string> initial;
+
+    background: root.look.portrait-fill;
+    border-width: 1px;
+    border-color: root.look.field-border;
+
+    Text {
+        text: root.initial;
+        color: root.look.muted;
+        font-family: root.look.font-family;
+        font-size: root.look.font-title;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// The marker of the current command: a right-pointing triangle.
+export component Pointer inherits Path {
+    in property <Look> look: Theme.look;
+
+    commands: "M 0 0 L 12 7 L 0 14 Z";
+    fill: root.look.selected;
+    width: 12px;
+    height: 14px;
+}
+
+// A line one pixel high between two blocks.
+export component RuleLine inherits Rectangle {
+    in property <Look> look: Theme.look;
+
+    height: 1px;
+    background: root.look.rule;
+}
+
+// Body text in a look: its font, its text colour, centred on the line. A
+// screen overrides `color` or `font-size` on the instance.
+export component LookText inherits Text {
+    in property <Look> look: Theme.look;
+
+    color: root.look.text;
+    font-family: root.look.font-family;
+    font-size: root.look.font-body;
+    vertical-alignment: center;
+}
+
+// A row that activates on a click, on Enter and on Space. It is a focus stop
+// unless disabled, shows the hover fill and a focus ring, and names itself to
+// the accessibility tree. `current` fills it as the selected one.
+export component PressRow inherits Rectangle {
+    in property <Look> look: Theme.look;
+    // The accessible name.
+    in property <string> name;
+    in property <bool> enabled: true;
+    in property <bool> current;
+    callback activated();
+    out property <bool> has-focus: scope.has-focus;
+
+    forward-focus: scope;
+
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        enabled: root.enabled;
+        focus-on-click: false;
+        accessible-role: button;
+        accessible-label: root.name;
+        accessible-enabled: root.enabled;
+        accessible-action-default => { root.activated(); }
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                if !event.repeat {
+                    root.activated();
+                }
+                return accept;
+            }
+            return reject;
+        }
+    }
+    Rectangle {
+        background: root.current ? root.look.selected-fill : area.has-hover && root.enabled ? root.look.hover-fill : transparent;
+    }
+    @children
+    FocusRing {
+        look: root.look;
+        shown: scope.has-focus;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.activated(); }
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                scope.focus();
+            }
+        }
+    }
+}

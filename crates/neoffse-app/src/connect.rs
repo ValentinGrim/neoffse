@@ -22,7 +22,7 @@ use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
 use crate::picker::FilePicker;
 use crate::state::AppState;
 use crate::theme::sync_theme;
-use crate::{EditorBridge, MainWindow};
+use crate::{EditorBridge, EditorCommand, MainWindow};
 
 /// Everything the Home screen needs, built once in [`run`](crate::run).
 ///
@@ -103,14 +103,18 @@ pub fn connect_home(window: &MainWindow, app: &App) {
     window.on_back_requested({
         let (weak, app) = (weak.clone(), app.clone());
         move || {
+            if let Some(window) = weak.upgrade()
+                && !step_back(&window)
+            {
+                go_home(&window, &app);
+            }
+        }
+    });
+    window.on_home_requested({
+        let (weak, app) = (weak.clone(), app.clone());
+        move || {
             if let Some(window) = weak.upgrade() {
-                if app.editor.leave(Leave::Back) == LeaveAnswer::Left {
-                    window.set_editor_open(false);
-                    sync_expert(&window, &app);
-                    refresh_home(&window, &app);
-                } else {
-                    window.global::<EditorBridge>().set_discard_dialog_open(true);
-                }
+                go_home(&window, &app);
             }
         }
     });
@@ -124,6 +128,36 @@ pub fn connect_home(window: &MainWindow, app: &App) {
     });
 
     start_scan(&weak, app);
+}
+
+/// Leaves the editor for Home. A dirty session asks first: the discard dialog
+/// opens and the editor stays until the user decides.
+fn go_home(window: &MainWindow, app: &App) {
+    if app.editor.leave(Leave::Back) == LeaveAnswer::Left {
+        window.set_editor_open(false);
+        sync_expert(window, app);
+        refresh_home(window, app);
+    } else {
+        window.global::<EditorBridge>().set_discard_dialog_open(true);
+    }
+}
+
+/// Steps back one level inside the editor: a character page or another
+/// command returns to the Party cards. Returns `false` on the Party cards,
+/// where Back does what Home does.
+fn step_back(window: &MainWindow) -> bool {
+    let bridge = window.global::<EditorBridge>();
+    if bridge.get_command() == EditorCommand::Party && bridge.get_character() < 0 {
+        return false;
+    }
+    reset_navigation(&bridge);
+    true
+}
+
+/// Puts the editor on the Party cards.
+fn reset_navigation(bridge: &EditorBridge<'_>) {
+    bridge.set_command(EditorCommand::Party);
+    bridge.set_character(-1);
 }
 
 /// Pushes the Home state into `window`: theme, games, scanning, busy, skipped
@@ -162,6 +196,7 @@ fn show_outcome(window: &MainWindow, app: &App, outcome: OpenOutcome) {
     match outcome {
         OpenOutcome::Opened => {
             if let Some(summary) = app.editor.summary() {
+                reset_navigation(&window.global::<EditorBridge>());
                 refresh_editor(window, app);
                 window.set_editor_summary(summary);
                 window.set_editor_open(true);

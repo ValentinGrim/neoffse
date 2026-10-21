@@ -2,6 +2,7 @@ import { Button, ListView, Palette, ScrollView } from "std-widgets.slint";
 import { EntityPage, FieldRow, ItemList, ItemRow, SectionData } from "editor-types.slint";
 import { EditorBridge } from "bridge.slint";
 import { FieldEditor, FieldLine, PickerField } from "fields.slint";
+import { LookText } from "frames.slint";
 
 // The left column of a character page: one row per entity.
 export component EntityList inherits Rectangle {
@@ -44,6 +45,22 @@ export component FieldList inherits ScrollView {
         for field in root.fields: FieldLine {
             field: field;
         }
+    }
+}
+
+// One Party character: the name over the fields. Back returns to the cards.
+export component CharacterEditPage inherits VerticalLayout {
+    in property <EntityPage> page;
+
+    spacing: 6px;
+
+    LookText {
+        text: root.page.label;
+        color: self.look.selected;
+        overflow: elide;
+    }
+    FieldList {
+        fields: root.page.fields;
     }
 }
 

@@ -1,70 +1,144 @@
-import { Button, TabWidget } from "std-widgets.slint";
 import { SummaryRow } from "types.slint";
 import { EditorBridge } from "bridge.slint";
+import { EditorCommand } from "editor-types.slint";
+import { IconButton } from "controls.slint";
+import { Frame, LookText } from "frames.slint";
+import { Icons } from "icons.slint";
+import { PartyCards } from "cards.slint";
+import { CommandList, StatusPanel } from "menu.slint";
 import { NoticeBar } from "notice.slint";
 import { SummaryLine } from "text.slint";
-import { CharacterPage, InventoryPage } from "pages.slint";
+import { CharacterEditPage, CharacterPage, InventoryPage } from "pages.slint";
+import { Look } from "look.slint";
+import { Theme } from "theme.slint";
 
-// The editor page: the summary of the open save, the notice bar, and one tab
-// per section the save can hold.
-export component EditorPage inherits VerticalLayout {
+component NoSection inherits LookText {
+    text: @tr("This save has no such section.");
+    color: self.look.muted;
+    horizontal-alignment: center;
+    vertical-alignment: center;
+}
+
+// The editor page, laid out like the game's menu: the command list and the
+// status panel on the left, the current command's page in a frame on the
+// right. Home leaves the save; Back steps up one level and leaves from the top.
+//
+// The root takes the focus, so Escape does what Back does when no control
+// holds it. A control that uses Escape accepts it first.
+export component EditorPage inherits FocusScope {
     in property <SummaryRow> summary;
     callback back-requested();
+    callback home-requested();
 
-    padding: 12px;
-    spacing: 8px;
+    private property <Look> look: Theme.look;
+    // True while a dialog covers the page.
+    private property <bool> covered: EditorBridge.blocked;
+    private property <int> pages: EditorBridge.data.party.pages.length;
+    // The Party command shows a character page.
+    private property <bool> on-character: EditorBridge.command == EditorCommand.party && EditorBridge.character >= 0 && EditorBridge.character < root.pages;
 
-    HorizontalLayout {
-        spacing: 12px;
-        Button {
-            text: @tr("Back");
-            enabled: !EditorBridge.blocked;
-            clicked => { root.back-requested(); }
-        }
-        Text {
-            vertical-alignment: center;
-            font-size: 16px;
-            font-weight: 700;
-            text: root.summary.game;
-        }
-        Text {
-            horizontal-stretch: 1;
-            vertical-alignment: center;
-            overflow: elide;
-            text: SummaryLine.rest(root.summary);
+    focus-on-tab-navigation: false;
+
+    init => { self.focus(); }
+    // A dialog's buttons vanish with it, and the focus would go with them.
+    changed covered => {
+        if !root.covered {
+            self.focus();
         }
     }
-    if EditorBridge.has-notice: NoticeBar { }
-    TabWidget {
-        vertical-stretch: 1;
+    key-pressed(event) => {
+        if event.text == Key.Escape && !EditorBridge.blocked {
+            root.back-requested();
+            return accept;
+        }
+        return reject;
+    }
 
-        Tab {
-            title: @tr("Party");
-            if EditorBridge.data.party.present: CharacterPage {
-                pages: EditorBridge.data.party.pages;
-                read-only: EditorBridge.data.party.read-only;
+    // Moves to a command's top page. The control that was clicked may vanish
+    // with the old page, so the root takes the focus first.
+    function go-to(command: EditorCommand, character: int) {
+        self.focus();
+        EditorBridge.command = command;
+        EditorBridge.character = character;
+    }
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 8px;
+
+        HorizontalLayout {
+            spacing: root.look.spacing;
+            IconButton {
+                icon: Icons.home;
+                label: @tr("Home");
+                enabled: !EditorBridge.blocked;
+                clicked => { root.home-requested(); }
             }
-            if !EditorBridge.data.party.present: Text {
-                text: @tr("This save has no such section.");
+            IconButton {
+                icon: Icons.arrow-back;
+                label: @tr("Back");
+                enabled: !EditorBridge.blocked;
+                clicked => { root.back-requested(); }
+            }
+            LookText {
+                text: root.summary.game;
+                font-family: root.look.font-family-strong;
+                font-weight: root.look.font-weight-strong;
+                font-size: root.look.font-title;
+            }
+            LookText {
+                horizontal-stretch: 1;
+                text: SummaryLine.rest(root.summary);
+                color: root.look.muted;
+                overflow: elide;
             }
         }
-        Tab {
-            title: @tr("Inventory");
-            if EditorBridge.data.inventory.present: InventoryPage {
-                section: EditorBridge.data.inventory;
+        if EditorBridge.has-notice: NoticeBar { }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: root.look.spacing * 1.5;
+
+            VerticalLayout {
+                min-width: 190px;
+                max-width: 300px;
+                preferred-width: min(300px, max(190px, root.width * 0.3));
+                spacing: root.look.spacing;
+
+                CommandList {
+                    vertical-stretch: 0;
+                    chosen(command) => { root.go-to(command, -1); }
+                }
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+                StatusPanel {
+                    vertical-stretch: 0;
+                    time: root.summary.play-time;
+                    gil: EditorBridge.overview.gil;
+                }
             }
-            if !EditorBridge.data.inventory.present: Text {
-                text: @tr("This save has no such section.");
-            }
-        }
-        Tab {
-            title: @tr("Magic");
-            if EditorBridge.data.magic.present: CharacterPage {
-                pages: EditorBridge.data.magic.pages;
-                read-only: EditorBridge.data.magic.read-only;
-            }
-            if !EditorBridge.data.magic.present: Text {
-                text: @tr("This save has no such section.");
+            Frame {
+                horizontal-stretch: 1;
+
+                if EditorBridge.command == EditorCommand.party && !EditorBridge.data.party.present: NoSection { }
+                if EditorBridge.command == EditorCommand.party && EditorBridge.data.party.present && !root.on-character: PartyCards {
+                    overview: EditorBridge.overview;
+                    pages: EditorBridge.data.party.pages;
+                    enabled: !EditorBridge.blocked;
+                    activated(page) => { root.go-to(EditorCommand.party, page); }
+                }
+                if root.on-character && EditorBridge.data.party.present: CharacterEditPage {
+                    page: EditorBridge.data.party.pages[EditorBridge.character];
+                }
+                if EditorBridge.command == EditorCommand.items && !EditorBridge.data.inventory.present: NoSection { }
+                if EditorBridge.command == EditorCommand.items && EditorBridge.data.inventory.present: InventoryPage {
+                    section: EditorBridge.data.inventory;
+                }
+                if EditorBridge.command == EditorCommand.magic && !EditorBridge.data.magic.present: NoSection { }
+                if EditorBridge.command == EditorCommand.magic && EditorBridge.data.magic.present: CharacterPage {
+                    pages: EditorBridge.data.magic.pages;
+                    read-only: EditorBridge.data.magic.read-only;
+                }
             }
         }
     }

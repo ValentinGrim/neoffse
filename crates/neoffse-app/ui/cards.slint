@@ -1,0 +1,179 @@
+import { CharacterCard, EntityPage, Overview } from "editor-types.slint";
+import { LookText, PortraitFrame, PressRow, RuleLine } from "frames.slint";
+
+// One character: a portrait frame with the initial, the job over the name,
+// HP, the eight charges in two rows of four, the level, and the experience or
+// the next level. A click, Enter or Space opens the character's page.
+component CharacterRow inherits PressRow {
+    in property <CharacterCard> card;
+    in property <bool> last;
+
+    private property <length> side: max(0px, min(root.height - 2 * root.look.padding, 96px));
+    // The label column of the stats: wide enough for "HP", "MP" and "Lv".
+    private property <length> label-width: 60px;
+
+    name: root.card.name;
+
+    HorizontalLayout {
+        padding: root.look.padding;
+        spacing: root.look.padding;
+
+        Rectangle {
+            width: root.side;
+            PortraitFrame {
+                look: root.look;
+                initial: root.card.initial;
+                x: 0px;
+                y: (parent.height - self.height) / 2;
+                width: root.side;
+                height: root.side;
+            }
+        }
+        VerticalLayout {
+            min-width: 120px;
+            preferred-width: 190px;
+            max-width: 190px;
+            alignment: center;
+
+            LookText {
+                look: root.look;
+                text: root.card.job;
+                font-size: root.look.font-small;
+                color: root.look.muted;
+                overflow: elide;
+            }
+            LookText {
+                look: root.look;
+                text: root.card.name;
+                overflow: elide;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+
+            HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("HP");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.hp-max != "" ? root.card.hp + "/ " + root.card.hp-max : root.card.hp;
+                    overflow: elide;
+                }
+            }
+            if root.card.charges.length >= 8: HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("MP");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.charges[0] + "/ " + root.card.charges[1] + "/ " + root.card.charges[2] + "/ " + root.card.charges[3];
+                }
+            }
+            if root.card.charges.length >= 8: HorizontalLayout {
+                Rectangle {
+                    width: root.label-width;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.charges[4] + "/ " + root.card.charges[5] + "/ " + root.card.charges[6] + "/ " + root.card.charges[7];
+                }
+            }
+            HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("Lv");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.level;
+                }
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.next-exp != "" ? @tr("Next level") : @tr("Exp");
+                    color: root.look.label;
+                }
+                Rectangle {
+                    width: root.look.padding;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.next-exp != "" ? root.card.next-exp : root.card.exp;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+    }
+    if !root.last: RuleLine {
+        look: root.look;
+        y: parent.height - self.height;
+        x: root.look.padding;
+        width: parent.width - 2 * root.look.padding;
+    }
+}
+
+// A character of a game with no card builder: its name, on one line.
+component PlainRow inherits PressRow {
+    in property <string> text;
+
+    name: root.text;
+    height: 34px;
+
+    LookText {
+        look: root.look;
+        x: root.look.padding;
+        width: parent.width - 2 * root.look.padding;
+        height: parent.height;
+        text: root.text;
+        overflow: elide;
+    }
+}
+
+// The party: four cards share the height, a fifth makes the column scroll.
+// A game with no cards lists the characters as plain rows.
+export component PartyCards inherits Rectangle {
+    in property <Overview> overview;
+    in property <[EntityPage]> pages;
+    in property <bool> enabled: true;
+    // The index into the party pages.
+    callback activated(int);
+
+    private property <length> card-height: flick.height / 4;
+    private property <length> plain-height: 34px;
+
+    // Rows sit at fixed offsets, not in a layout: a layout would feed the
+    // content height back into the card height.
+    flick := Flickable {
+        content-width: self.width;
+        content-height: root.overview.present ? root.overview.cards.length * root.card-height : root.pages.length * root.plain-height;
+
+        for card[index] in root.overview.cards: CharacterRow {
+            y: index * root.card-height;
+            width: flick.width;
+            height: root.card-height;
+            card: card;
+            last: index == root.overview.cards.length - 1;
+            enabled: root.enabled;
+            activated => { root.activated(card.page); }
+        }
+        for page[index] in root.overview.present ? [] : root.pages: PlainRow {
+            y: index * root.plain-height;
+            width: flick.width;
+            text: page.label;
+            enabled: root.enabled;
+            activated => { root.activated(index); }
+        }
+    }
+}

@@ -1,4 +1,4 @@
-import { EditorData, EditNotice, Overview, PickerEntry } from "editor-types.slint";
+import { EditorCommand, EditorData, EditNotice, Overview, PickerEntry } from "editor-types.slint";
 
 // The state and the callbacks of the editor page. Rust fills it through
 // `window.global::<EditorBridge>()`, so the nested components read it
@@ -17,6 +17,12 @@ export global EditorBridge {
     in-out property <bool> expert-menu-checked;
     in property <bool> expert-warning-open;
     in property <bool> discard-dialog-open;
+    // Navigation state: Rust resets it when a save opens and steps it on Back.
+    // The current command of the menu.
+    in-out property <EditorCommand> command: EditorCommand.party;
+    // The Party command's page: -1 is the overview of the cards, otherwise an
+    // index into `data.party.pages`.
+    in-out property <int> character: -1;
     // A modal dialog covers the page: the controls under it stop taking input.
     out property <bool> blocked: root.expert-warning-open || root.discard-dialog-open;
 

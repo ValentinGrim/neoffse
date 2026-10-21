@@ -10,7 +10,7 @@ import { Shell } from "shell.slint";
 import { Theme, ThemeId } from "theme.slint";
 import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
 
-export { CharacterCard, EditNotice, EditProblem, EditorData, EntityPage, FieldKind, FieldRow, ItemList, ItemRow, Overview, PickerEntry, SectionData } from "editor-types.slint";
+export { CharacterCard, EditNotice, EditProblem, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow, ItemList, ItemRow, Overview, PickerEntry, SectionData } from "editor-types.slint";
 export { EditorBridge } from "bridge.slint";
 // Exported so the font imports enter the compiled document and a test reads the family names.
 export { Fonts }
@@ -82,6 +82,7 @@ export component MainWindow inherits Window {
     in property <SummaryRow> editor-summary;
     callback open-file-requested();
     callback back-requested();
+    callback home-requested();
     callback problem-dismissed();
 
     title: @tr("NeoFFSE");
@@ -140,6 +141,7 @@ export component MainWindow inherits Window {
     if root.editor-open: EditorPage {
         summary: root.editor-summary;
         back-requested => { root.back-requested(); }
+        home-requested => { root.home-requested(); }
     }
     if EditorBridge.expert-warning-open: ModalDialog {
         title: @tr("Turn on expert mode?");
