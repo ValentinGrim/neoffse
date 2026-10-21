@@ -6,7 +6,12 @@
 use std::fs;
 use std::path::Path;
 
+use neoffse::Session;
+use neoffse::core::{Edit, FieldId, Game, SaveFiles, Value};
+use neoffse::io::backup::Moment;
+use neoffse::io::dirs::DataDir;
 use neoffse::pr::container::{self, Container};
+use neoffse::pr::ff1::names;
 use neoffse::pr::slots::SLOT_FILES;
 use tempfile::TempDir;
 
@@ -44,4 +49,54 @@ pub(crate) fn open_session() -> (TempDir, neoffse::Session) {
         .open(dir.path(), slot_name(2), None)
         .unwrap();
     (dir, session)
+}
+
+/// A probe that finds no running game.
+pub(crate) fn no_process(_executables: &[&'static str]) -> Vec<&'static str> {
+    Vec::new()
+}
+
+/// A fixed instant for the backup folder name.
+pub(crate) fn moment() -> Moment {
+    Moment::new(1_700_000_000, 0).unwrap()
+}
+
+/// An empty data folder, apart from the save folder. Keep the guard alive.
+pub(crate) fn data_dir() -> (TempDir, DataDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let data = DataDir::at(dir.path());
+    (dir, data)
+}
+
+pub(crate) fn gil() -> FieldId {
+    FieldId::new(names::GIL)
+}
+
+pub(crate) fn level() -> FieldId {
+    FieldId::new(names::CHARACTER).with_id(1).with_name(names::LEVEL)
+}
+
+pub(crate) fn set(field: &FieldId, value: i64) -> Edit {
+    Edit::set(field.clone(), Value::Int(value))
+}
+
+pub(crate) fn gil_value(session: &mut Session) -> i64 {
+    let view = session.view().unwrap();
+    let (_, field) = view.find(&gil()).expect("gil is in the view");
+    let Value::Int(gil) = field.value else { panic!("gil is an integer") };
+    gil
+}
+
+/// Opens `before` with the FF I format, applies the gil edit through
+/// `apply_game`, and verifies the file `name` in `dir` against that
+/// document. `verify` compares the whole decoded document, unmodeled data
+/// included, so `Ok` proves that the save changed nothing else.
+pub(crate) fn assert_gil_only_change(before: &SaveFiles, gil_after: i64, dir: &Path, name: &str) {
+    let registry = neoffse::Registry::new(neoffse::data::Language::En);
+    let format = registry.format(Game::Ff1Pr).expect("FF I has a format");
+    let mut document = format.open(before).unwrap();
+    document.apply_game(&set(&gil(), gil_after)).unwrap();
+    let mut written = SaveFiles::new();
+    written.push(name, fs::read(dir.join(name)).unwrap()).unwrap();
+    document.verify(&written).unwrap();
 }

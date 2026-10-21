@@ -11,6 +11,10 @@ use neoffse_core::{
 
 use crate::error::Error;
 
+mod save;
+
+pub use save::{Running, Saved};
+
 /// One opened save and its edit history.
 ///
 /// [`Registry::open`](crate::Registry::open) builds a session. The session
