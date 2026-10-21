@@ -85,7 +85,8 @@ impl SaveView {
     }
 
     /// The entity and the field view whose `FieldView::id` equals `id`.
-    /// Matches ids, never labels.
+    /// Matches ids, never labels. The first match in section, entity and
+    /// field order wins.
     #[must_use]
     pub fn find(&self, id: &FieldId) -> Option<(&Entity, &FieldView)> {
         self.sections
@@ -95,6 +96,7 @@ impl SaveView {
     }
 
     /// The metadata of the collection whose `CollectionMeta::id` equals `id`.
+    /// The first match in section and collection order wins.
     #[must_use]
     pub fn collection(&self, id: &FieldId) -> Option<&CollectionMeta> {
         self.sections.iter().flat_map(|section| &section.collections).find(|meta| meta.id == *id)

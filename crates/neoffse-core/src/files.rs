@@ -29,7 +29,8 @@ pub struct FileProbe<'a> {
     pub name: &'a str,
     /// The size of the whole file in bytes.
     pub len: u64,
-    /// The first bytes of the file, at most [`PROBE_HEAD_LEN`].
+    /// The first bytes of the file. [`FileProbe::new`] keeps at most
+    /// [`PROBE_HEAD_LEN`] bytes; a format reads no more than that.
     pub head: &'a [u8],
 }
 
@@ -124,8 +125,9 @@ impl SaveFiles {
     ///
     /// A plain file name passes: it is not empty, not `.` or `..`, and holds
     /// no `/`, `\`, `:` or NUL byte. The rule keeps a name from leaving the
-    /// save folder when the facade joins it to a directory, and matches the
-    /// plain-name rule of the backup request of `neoffse-io`. Names are
+    /// save folder when the facade joins it to a directory. The backup request
+    /// of `neoffse-io` is stricter: it also refuses `backup.json` in any ASCII
+    /// case and two names equal under ASCII case folding. Here names are
     /// compared byte for byte: `A` and `a` are two files. A refused push
     /// changes nothing.
     ///

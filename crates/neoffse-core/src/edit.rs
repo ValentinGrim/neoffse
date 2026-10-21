@@ -49,7 +49,8 @@ pub enum Edit {
     /// A path that is no collection gives `NotACollection`; a collection that
     /// refuses the kind gives `ReadOnly`; a key already present gives
     /// `DuplicateRow`; a `position` past the end gives `PositionOutOfRange`;
-    /// a key that is no entry of the referenced ID table gives `UnknownId`.
+    /// under `CapPolicy::Enforce`, a key that is no entry of the referenced
+    /// ID table gives `UnknownId`; `CapPolicy::StorageOnly` skips that check.
     Insert {
         /// The row to add.
         row: RowId,

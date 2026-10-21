@@ -99,6 +99,32 @@ fn collection_finds_the_metadata_by_collection_id() {
 }
 
 #[test]
+fn lookups_return_the_first_match_in_view_order() {
+    let early = FieldId::new("early");
+    let later = FieldId::new("later");
+    let mut first = Section::new(Capability::Party, vec![Entity::new(early.clone(), "First", vec![])]);
+    let mut second = Section::new(Capability::Party, vec![Entity::new(later.clone(), "Second", vec![])]);
+    let shared = FieldId::new("shared").with_name("hp");
+    first.entities[0].fields = vec![field(shared.clone(), "One", 1), field(shared.clone(), "Two", 2)];
+    second.entities[0].fields = vec![field(shared.clone(), "Three", 3)];
+    let collection = |label: &str| CollectionMeta::new(inventory(), label, FieldMeta::new("Item", Shape::Int { min: 1, max: 200 }));
+    first.collections = vec![collection("Early one"), collection("Early two")];
+    second.collections = vec![collection("Later")];
+    let view = SaveView::new(vec![first, second]);
+
+    let party = view.section(Capability::Party).unwrap();
+    assert_eq!(party.entities[0].id, early);
+    let (entity, found) = view.find(&shared).unwrap();
+    assert_eq!((entity.id.clone(), found.meta.label.as_str()), (early, "One"));
+    assert_eq!(view.collection(&inventory()).unwrap().label, "Early one");
+
+    let swapped = SaveView::new(view.sections.iter().rev().cloned().collect());
+    assert_eq!(swapped.section(Capability::Party).unwrap().entities[0].id, later);
+    assert_eq!(swapped.find(&shared).unwrap().1.meta.label, "Three");
+    assert_eq!(swapped.collection(&inventory()).unwrap().label, "Later");
+}
+
+#[test]
 fn a_view_equals_its_clone_and_differs_by_one_value() {
     let view = view();
     assert_eq!(view, view.clone());

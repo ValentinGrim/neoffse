@@ -35,9 +35,9 @@ pub trait SaveFormat: Send + Sync {
     ///
     /// # Errors
     ///
-    /// `MissingFile` when a file the format needs is absent, `Decode` when it
-    /// cannot read the files. A set of files the format cannot use, such as a
-    /// missing or an extra file, may also be reported as `Decode`.
+    /// `MissingFile` when the format needs a file by a fixed name and the set
+    /// lacks it. `Decode` when the format cannot read the files, which covers
+    /// a set of the wrong size or of names the format does not use.
     fn open(&self, files: &SaveFiles) -> Result<Box<dyn SaveDocument>, FormatError>;
 }
 

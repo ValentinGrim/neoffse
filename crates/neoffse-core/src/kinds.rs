@@ -27,7 +27,7 @@ pub enum Capability {
 }
 
 /// An ID table a field can reference: one variant per table of
-/// `docs/formats/pixel-remaster.md#id-spaces-and-tables`.
+/// `docs/formats/pixel-remaster.md#go-editor-tables`.
 ///
 /// `neoffse-data` keys its tables by this type. Finer kinds inside a table (a
 /// spell against a monster ability) are entry kinds, not table kinds.
@@ -64,8 +64,10 @@ pub enum TableKind {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum CapPolicy {
-    /// Storage bounds and the game cap. A value above the cap of the field's
-    /// metadata is refused with `EditError::AboveCap`. The default.
+    /// Storage bounds, the game cap and the ID tables. A value above the cap
+    /// of the field's metadata is refused with `EditError::AboveCap`, and an
+    /// inserted key outside its ID table with `EditError::UnknownId`. The
+    /// default.
     #[default]
     Enforce,
     /// Storage bounds only: accepts anything the save can hold. This is the
