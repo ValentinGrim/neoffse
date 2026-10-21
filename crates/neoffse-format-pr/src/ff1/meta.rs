@@ -4,7 +4,7 @@
 //! A meta describes a field (label, storage bounds, game cap, tables) and no
 //! policy or game rule. It reads no document.
 
-use neoffse_core::{CollectionMeta, FieldId, FieldMeta, RowField, Shape, TableKind, Value};
+use neoffse_core::{CollectionMeta, FieldId, FieldMeta, NamedValue, RowField, Shape, TableKind, Value};
 use neoffse_data::GameTables;
 
 use super::binding::{Binding, Collection, List, Part, Stat};
@@ -94,8 +94,22 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
                 meta
             }
             Part::SlotCount(number) => int(format!("Count in slot {number}"), 0, None),
+            Part::Spell { level, slot } => spell_meta(level, slot),
         },
     }
+}
+
+/// A spell slot: the `abilityId` it holds, 0 for an empty slot. The slot is
+/// read only (`docs/formats/pixel-remaster.md#abilities`, "FF I spell slots").
+fn spell_meta(level: u32, slot: u32) -> FieldMeta {
+    let mut meta = int(format!("Level {level}, slot {slot}"), 0, None);
+    meta.read_only = true;
+    meta.tables = vec![TableKind::Ability];
+    meta.names = vec![NamedValue {
+        value: 0,
+        name: "Empty".to_owned(),
+    }];
+    meta
 }
 
 /// The `count` of an item row: 1 to the storage bound. `inventory` also takes

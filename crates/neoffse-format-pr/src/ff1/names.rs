@@ -1,12 +1,14 @@
 //! The field vocabulary of an FF I Pixel Remaster slot: the names that
-//! build a [`FieldId`], and the list of the fields of one character.
+//! build a [`FieldId`], and the lists of the fields of one character.
 //!
 //! A caller builds an id with the core builders, for example
 //! `FieldId::new(names::CHARACTER).with_id(1).with_name(names::LEVEL)`. The
 //! document location behind each name is in
 //! `docs/formats/pixel-remaster.md#characters`,
 //! `docs/formats/pixel-remaster.md#equipment-slots` and
-//! `docs/formats/pixel-remaster.md#inventory`.
+//! `docs/formats/pixel-remaster.md#inventory`. A spell slot is
+//! `character.<id>.spell.<level>.<slot>`
+//! (`docs/formats/pixel-remaster.md#abilities`, "FF I spell slots").
 
 use neoffse_core::FieldId;
 
@@ -53,6 +55,9 @@ pub const CHARGES_MAX_GAIN: &str = "charges_max_gain";
 pub const EQUIPMENT: &str = "equipment";
 /// Count of an inventory row or of an equipment slot.
 pub const COUNT: &str = "count";
+/// One spell slot, `abilitySlotDataList`; the spell level and the slot
+/// number are the two keys that follow. Read only.
+pub const SPELL: &str = "spell";
 
 /// `charges` and `charges_max_gain` take the spell level 1 to this value
 /// (`docs/formats/pixel-remaster.md#characters`: keys 1 to 8).
@@ -60,6 +65,9 @@ pub const SPELL_LEVELS: u32 = 8;
 /// `equipment` takes the slot 1 to this value
 /// (`docs/formats/pixel-remaster.md#equipment-slots`: keys 1 to 5).
 pub const EQUIPMENT_SLOTS: u32 = 5;
+/// `spell` takes the slot 1 to this value in each spell level
+/// (`docs/formats/pixel-remaster.md#abilities`: `slotInfo` keys 1 to 3).
+pub const SPELL_SLOTS: u32 = 3;
 
 /// The scalar fields of a character, in display order.
 const SCALARS: [&str; 13] = [
@@ -95,4 +103,15 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
         fields.push(slot_field.with_name(COUNT));
     }
     fields
+}
+
+/// The 24 spell slot ids of one character: spell level 1 slot 1 first, then
+/// by level, then by slot, ending with level 8 slot 3.
+#[must_use]
+pub fn spell_fields(id: u32) -> Vec<FieldId> {
+    let slot = |level, slot| FieldId::new(CHARACTER).with_id(id).with_name(SPELL).with_id(level).with_id(slot);
+    (1..=SPELL_LEVELS)
+        .flat_map(|level| (1..=SPELL_SLOTS).map(move |number| (level, number)))
+        .map(|(level, number)| slot(level, number))
+        .collect()
 }

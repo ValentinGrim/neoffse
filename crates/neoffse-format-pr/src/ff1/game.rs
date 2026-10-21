@@ -82,7 +82,7 @@ impl Ff1Model {
     }
 
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
-    /// value: the `count` of an equipment slot, the `count` of a placeholder
+    /// value: a spell slot, the `count` of an equipment slot, the `count` of a placeholder
     /// row of `inventory`, present in the list or not, and the `count` of any
     /// key item (the game holds one of each). A count that only refuses values
     /// below the wearers is unlocked.
@@ -94,7 +94,10 @@ impl Ff1Model {
     /// `UnknownField` for a path that names no declared field.
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
-            Binding::Character { part: Part::SlotCount(_), .. } => true,
+            Binding::Character {
+                part: Part::SlotCount(_) | Part::Spell { .. },
+                ..
+            } => true,
             Binding::Count { list, key } => list == List::KeyItems || self.is_placeholder(list, key),
             _ => false,
         })

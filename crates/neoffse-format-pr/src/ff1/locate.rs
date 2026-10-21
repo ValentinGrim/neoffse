@@ -138,6 +138,35 @@ fn entry_value(document: &mut Document, dictionary: Path, key: u32) -> Result<Pa
     Ok(with(dictionary, &[Segment::Key("values"), Segment::Index(index)]))
 }
 
+/// Index of the element of the `abilitySlotDataList` array `target` whose
+/// `level` is `wanted`, by value (`docs/formats/pixel-remaster.md#abilities`,
+/// "FF I spell slots").
+fn find_level(document: &mut Document, target: &[Segment<'static>], wanted: u32) -> Result<Option<usize>, DocumentError> {
+    for index in 0..document.array_len(target)? {
+        let level = with(element(target.to_vec(), index), &[Segment::Key("level")]);
+        if read_int(document, &level)? == i64::from(wanted) {
+            return Ok(Some(index));
+        }
+    }
+    Ok(None)
+}
+
+/// The `abilityId` held by the spell slot value at `path`: 0 for `""`, the
+/// id of the ability object otherwise. A number, a text that holds no object
+/// with an integer `abilityId`, or an id outside `u32` is a `DocumentError`.
+pub(super) fn read_ability(document: &mut Document, path: &[Segment<'_>]) -> Result<u32, DocumentError> {
+    if read_text(document, path)?.is_empty() {
+        return Ok(0);
+    }
+    let id = [Segment::Doc, Segment::Key("abilityId")];
+    let id_path: Vec<Segment<'_>> = path.iter().chain(&id).copied().collect();
+    match read_key(document, &id_path) {
+        // A slot object without `abilityId` is a bad shape, not an absent field.
+        Err(DocumentError::MissingKey { .. }) => Err(wrong_kind(&id_path, "integer")),
+        other => other,
+    }
+}
+
 fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, Located> {
     let parameter = [Segment::Key("parameter"), Segment::Doc];
     let key = |name| [Segment::Key(name)];
@@ -157,6 +186,12 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
             };
             let dictionary = with(with(base, &parameter), &[Segment::Key(list), Segment::Doc]);
             entry_value(document, dictionary, level)?
+        }
+        Part::Spell { level, slot } => {
+            let target = with(base, &[Segment::Key("abilitySlotDataList"), Segment::Doc, Segment::Key("target")]);
+            let index = find_level(document, &target, level)?.ok_or(Located::Absent)?;
+            let dictionary = with(element(target, index), &[Segment::Key("slotInfo"), Segment::Doc]);
+            entry_value(document, dictionary, slot)?
         }
         Part::Slot(slot) | Part::SlotCount(slot) => {
             let dictionary = with(base, &[Segment::Key("equipmentList"), Segment::Doc]);

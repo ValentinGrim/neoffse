@@ -281,5 +281,5 @@ fn character_fields_lists_39_ids_in_display_order() {
 #[test]
 fn capabilities_and_game_constants() {
     assert_eq!(GAME, Game::Ff1Pr);
-    assert_eq!(CAPABILITIES, [Capability::Party, Capability::Inventory]);
+    assert_eq!(CAPABILITIES, [Capability::Party, Capability::Inventory, Capability::Magic]);
 }
