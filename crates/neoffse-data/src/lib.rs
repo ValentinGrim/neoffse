@@ -12,8 +12,16 @@
 //! Names repeat inside a table, so an id is the only key. The role of the
 //! crate among the others is in `docs/architecture.md#crate-roles`.
 //!
+//! The parser checks the file contract, not only the types: ids start at 1
+//! and rise, a `kind` string is one of the known kinds, an ability `level` is
+//! 0 to 8 and its `content_id` is not 0, `placeholder` appears only as `true`,
+//! only on an equipment kind and once per kind, and every cap key starts with
+//! `MAX_` and holds no negative value. A row that breaks a value rule gives
+//! [`DataError::Rule`].
+//!
 //! - [`embedded`]: the tables the crate ships, [`sources_for`] and [`tables_for`].
-//! - [`entry`]: the rows of a table, [`Entry`], and the [`Language`] of a name.
+//! - [`entry`]: the rows of a table, [`Entry`], its [`AbilityInfo`] and
+//!   [`AbilityKind`] for an ability row, and the [`Language`] of a name.
 //! - [`error`]: [`DataError`], why a set of texts failed to parse.
 //! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the six texts that build them.
 //!

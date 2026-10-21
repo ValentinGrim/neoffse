@@ -101,6 +101,8 @@ pub fn render_path(path: &[Segment<'_>]) -> String {
 /// Reads take `&mut self` because they parse levels and keep them. A read
 /// never changes [`to_json`](Self::to_json).
 ///
+/// `Debug` prints save content: never log it.
+///
 /// ```
 /// use neoffse_format_pr::document::{Document, Scalar, Segment};
 ///

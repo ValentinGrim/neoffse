@@ -97,7 +97,10 @@ intended change and no other difference (see
 **Scope.** The `neoffse` facade (format registry, edit history, save
 pipeline), the Home screen with detected saves, the FF I editor
 sections, the change review, save, the Restore page, the About dialog
-(see [UI architecture](architecture.md#ui-architecture)). Portraits use
+(see [UI architecture](architecture.md#ui-architecture)). The FF I
+Magic section lists the learned spells and stays read only at first;
+writing spells waits for research on the spell slot rules
+([Abilities](formats/pixel-remaster.md#abilities)). Portraits use
 the silhouettes. Local extraction (see
 [Visual assets](architecture.md#visual-assets)) waits for research on
 the Unity asset bundles.

@@ -21,6 +21,8 @@ pub const PROBE_HEAD_LEN: usize = 256;
 /// The registry reads a name and at most [`PROBE_HEAD_LEN`] bytes. The name
 /// is a file name without a directory.
 ///
+/// `Debug` prints save content: never log it.
+///
 /// [`SaveFormat::detect`]: crate::format::SaveFormat::detect
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -68,7 +70,8 @@ pub enum Confidence {
 /// The registry keeps the claim with the highest [`confidence`](Detection::confidence).
 /// The six Pixel Remaster formats earn the same claim on the same file name
 /// (`docs/formats/pixel-remaster.md#slot-files`: the names repeat in all six
-/// games), and the facade breaks that tie with the game of the save folder.
+/// games), and the facade (M4) breaks that tie with the game of the save
+/// folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Detection {
@@ -125,7 +128,7 @@ impl SaveFiles {
     ///
     /// A plain file name passes: it is not empty, not `.` or `..`, and holds
     /// no `/`, `\`, `:` or NUL byte. The rule keeps a name from leaving the
-    /// save folder when the facade joins it to a directory. The backup request
+    /// save folder when a caller joins it to a directory. The backup request
     /// of `neoffse-io` is stricter: it also refuses `backup.json` in any ASCII
     /// case and two names equal under ASCII case folding. Here names are
     /// compared byte for byte: `A` and `a` are two files. A refused push

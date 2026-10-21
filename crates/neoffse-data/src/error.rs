@@ -41,7 +41,7 @@ pub enum DataError {
     Rule {
         /// The file that failed.
         file: &'static str,
-        /// The row: `id <N>` for a table row, the key for a bound.
+        /// The row: `id <N>` for a table row, the key for a cap.
         row: String,
         /// The rule, as a short phrase.
         rule: &'static str,

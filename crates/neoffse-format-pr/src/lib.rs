@@ -4,8 +4,9 @@
 //! the domain of `neoffse-core`.
 //! `docs/formats/pixel-remaster.md` is the source of truth for every rule
 //! this crate implements. The codec and the document move bytes and JSON
-//! text and know no domain type; [`ff1`] is the one module that does, and it
-//! knows only the FF I slot.
+//! text and know no domain type. [`games`] and [`slots`] use the games and
+//! slots of `neoffse-core`, and [`ff1`] alone maps a game's fields: it knows
+//! only the FF I slot.
 //!
 //! - [`cipher`]: Rijndael with a 256-bit block, CBC mode, the PR key and IV,
 //!   and the PR zero padding.
@@ -21,7 +22,8 @@
 //!   `SaveDocument` on top of it.
 //! - [`games`]: the six games with their game id, Steam app ID, folder under
 //!   `My Games` and executable name, and [`games::identify`], which names the
-//!   game of a slot document by its vehicle count.
+//!   game of a slot document by its vehicle count and refuses it when a marker
+//!   key of another game contradicts the count.
 //! - [`slots`]: the 22 slot file names shared by the six games, and the
 //!   detection that recognizes a slot file by its name and head.
 //!

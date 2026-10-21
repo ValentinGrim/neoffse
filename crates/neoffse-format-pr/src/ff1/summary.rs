@@ -36,7 +36,8 @@ impl Ff1Model {
     /// - `play_time`: `userData.playTime`, seconds, as a float or an integer
     ///   (`docs/formats/pixel-remaster.md#counters-and-flags`).
     /// - `location`: `userData.currentLocation` when it is not empty, else
-    ///   `userData.currentArea`.
+    ///   `userData.currentArea`
+    ///   (`docs/formats/pixel-remaster.md#counters-and-flags`).
     /// - `party`: the names of `userData.corpsList`, in list order. The format
     ///   document does not say the list order is the battle order. An entry
     ///   whose `characterId` is absent, is no integer or names no character is
