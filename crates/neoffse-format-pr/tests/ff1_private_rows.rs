@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::ff1_real::{RealSlot, slots};
+use common::ff1_real::{RealSlot, must, slots};
 use neoffse_core::{CapPolicy, Edit, FieldId, RowId, TableKind, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{GAME, names};
@@ -49,13 +49,17 @@ fn real_insert_survives_encode_and_decode() {
         .model();
         let mut want = old.clone();
         want.push(id);
-        assert_eq!(rebuilt.rows(&inventory()).unwrap(), want, "{label}: rows after the round trip");
+        let rows = must(rebuilt.rows(&inventory()), &format!("{label}: rows after the round trip do not read"));
+        assert!(rows == want, "{label}: rows after the round trip");
         let count = rebuilt.get(&inventory().with_id(id).with_name(names::COUNT));
-        assert_eq!(count.unwrap(), Value::Int(1), "{label}: new row count");
+        assert!(
+            must(count, &format!("{label}: new row count does not read")) == Value::Int(1),
+            "{label}: new row count"
+        );
         let Ok(_) = rebuilt.apply(&inverse, STORAGE_ONLY) else {
             panic!("{label}: the inverse is refused")
         };
-        assert_eq!(rebuilt.document().to_json(), slot.json, "{label}: undo");
+        assert!(rebuilt.document().to_json() == slot.json, "{label}: undo");
     }
 }
 
@@ -84,11 +88,11 @@ fn real_remove_and_undo_restore_the_text() {
         let Ok(inverse) = model.apply(&Edit::remove(row), ENFORCE) else {
             panic!("{label}: an unlocked row is refused")
         };
-        assert_ne!(model.document().to_json(), slot.json, "{label}: the remove changed nothing");
+        assert!(model.document().to_json() != slot.json, "{label}: the remove changed nothing");
         let Ok(_) = model.apply(&inverse, STORAGE_ONLY) else {
             panic!("{label}: the inverse is refused")
         };
-        assert_eq!(model.document().to_json(), slot.json, "{label}: undo");
+        assert!(model.document().to_json() == slot.json, "{label}: undo");
     }
 }
 
@@ -107,11 +111,12 @@ fn real_rows_keep_order_after_an_insert_in_the_middle() {
         };
         let mut want = old.clone();
         want.insert(middle, id);
-        assert_eq!(model.rows(&inventory()).unwrap(), want, "{label}: order after the insert");
+        let rows = must(model.rows(&inventory()), &format!("{label}: rows after the insert do not read"));
+        assert!(rows == want, "{label}: order after the insert");
         let Ok(_) = model.apply(&inverse, STORAGE_ONLY) else {
             panic!("{label}: the inverse is refused")
         };
-        assert_eq!(model.document().to_json(), slot.json, "{label}: undo");
+        assert!(model.document().to_json() == slot.json, "{label}: undo");
     }
 }
 
@@ -128,10 +133,13 @@ fn real_placeholder_and_worn_rows_are_locked() {
         for id in &rows {
             if tables.content(*id).is_some_and(|entry| entry.placeholder) {
                 let locked = model.row_locked(&RowId::new(inventory(), *id));
-                assert!(locked.unwrap(), "{label}: a placeholder row is not locked");
+                assert!(
+                    must(locked, &format!("{label}: row_locked fails on inventory.{id}")),
+                    "{label}: a placeholder row is not locked"
+                );
             }
         }
-        let characters = model.rows(&FieldId::new(names::CHARACTER)).unwrap();
+        let characters = must(model.rows(&FieldId::new(names::CHARACTER)), &format!("{label}: character rows do not read"));
         for character in characters {
             for number in 1..=names::EQUIPMENT_SLOTS {
                 let field = FieldId::new(names::CHARACTER).with_id(character).with_name(names::EQUIPMENT).with_id(number);
@@ -139,7 +147,10 @@ fn real_placeholder_and_worn_rows_are_locked() {
                 let Ok(content) = u32::try_from(content) else { continue };
                 if rows.contains(&content) {
                     let locked = model.row_locked(&RowId::new(inventory(), content));
-                    assert!(locked.unwrap(), "{label}: a worn row at {field} is not locked");
+                    assert!(
+                        must(locked, &format!("{label}: row_locked fails on inventory.{content}")),
+                        "{label}: a worn row at {field} is not locked"
+                    );
                 }
             }
         }

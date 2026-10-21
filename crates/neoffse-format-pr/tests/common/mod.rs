@@ -4,14 +4,18 @@
 #![allow(dead_code, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+use std::ffi::OsStr;
 use std::path::PathBuf;
 
+pub(crate) mod edit_paths;
 pub(crate) mod edit_proof;
 mod edit_subject;
 mod edit_view;
 pub(crate) mod exit_cases;
 pub(crate) mod exit_equip;
 mod exit_facts;
+mod exit_fields;
+pub(crate) mod ff1_ability_rules;
 pub(crate) mod ff1_format;
 pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
@@ -31,14 +35,20 @@ pub(crate) const GAMES: [&str; 6] = ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"];
 /// (`docs/formats/pixel-remaster.md#other-files-in-the-folder`).
 pub(crate) const STEAM_CLOUD_MARKER: &str = "steam_autocloud.vdf";
 
-/// The private save files of `game` without the Steam cloud marker.
-/// `None` when the game has no private saves or only the marker; the
-/// second case reports the skip through `neoffse_testkit::skip`.
+/// True when a file of a private game folder can be a save: not the Steam
+/// cloud marker and not a dot-file (KDE writes `.directory`).
+pub(crate) fn is_save_name(name: &OsStr) -> bool {
+    name != STEAM_CLOUD_MARKER && !name.as_encoded_bytes().starts_with(b".")
+}
+
+/// The private save files of `game` without the Steam cloud marker and the
+/// dot-files. `None` when the game has no private saves or only such files;
+/// the second case reports the skip through `neoffse_testkit::skip`.
 pub(crate) fn save_files(game: &str) -> Option<Vec<PathBuf>> {
     let mut files = neoffse_testkit::private_saves(game)?;
-    files.retain(|path| path.file_name().is_none_or(|name| name != STEAM_CLOUD_MARKER));
+    files.retain(|path| path.file_name().is_none_or(is_save_name));
     if files.is_empty() {
-        neoffse_testkit::skip(&format!("{game} holds only the Steam cloud marker"));
+        neoffse_testkit::skip(&format!("{game} holds only the Steam cloud marker or hidden files"));
         return None;
     }
     Some(files)

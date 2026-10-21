@@ -6,7 +6,7 @@
 mod common;
 
 use common::edit_proof::{How, Proof, Subject, ViewChange, prove};
-use common::exit_cases::{ALWAYS, NEW_NAME, build, run};
+use common::exit_cases::{ALWAYS, FIXTURE_SKIPS, NEW_NAME, build, run};
 use common::ff1_save::{INVENTORY, KEY_ITEMS, SlotData, character_field};
 use common::json_diff::{Change, added, removed, value};
 use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
@@ -220,7 +220,7 @@ fn unequip_copies_the_placeholder_count() {
 fn every_generated_case_proves_on_the_fixture() {
     let subject = subject();
     let built = build(&subject);
-    assert!(built.skipped.is_empty(), "skipped: {:?}", built.skipped);
+    assert!(built.skipped == FIXTURE_SKIPS, "cases not built: {:?}", built.skipped);
     assert!(ALWAYS.iter().all(|name| built.cases.iter().any(|case| case.name == *name)));
     for case in &built.cases {
         run(&subject, case);

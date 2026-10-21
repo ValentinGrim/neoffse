@@ -35,8 +35,10 @@ pub(crate) struct Change {
     pub path: String,
 }
 
-impl fmt::Display for Change {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Change {
+    /// The change as `Display` prints it, with `path` standing for the path:
+    /// a caller can hide an index that would show a list length.
+    pub(crate) fn describe(&self, path: &str) -> String {
         let kind = match self.kind {
             Kind::Value => "value",
             Kind::Added => "added",
@@ -44,8 +46,14 @@ impl fmt::Display for Change {
             Kind::Reordered => "reordered",
             Kind::Layout => "layout",
         };
-        let path = if self.path.is_empty() { "<root>" } else { &self.path };
-        write!(formatter, "{kind} {path}")
+        let path = if path.is_empty() { "<root>" } else { path };
+        format!("{kind} {path}")
+    }
+}
+
+impl fmt::Display for Change {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.describe(&self.path))
     }
 }
 
@@ -115,6 +123,11 @@ pub(crate) fn layout_chain(before: &Tree, changes: &[Change]) -> Vec<Change> {
 /// `actual`, then one line `{label}: missing change: {change}` per change
 /// only in `expected`.
 pub(crate) fn assert_changes(label: &str, actual: &[Change], expected: &[Change]) {
+    assert_changes_with(label, actual, expected, &Change::to_string);
+}
+
+/// As [`assert_changes`], with `show` rendering each change in the messages.
+pub(crate) fn assert_changes_with(label: &str, actual: &[Change], expected: &[Change], show: &dyn Fn(&Change) -> String) {
     let mut actual = actual.to_vec();
     let mut expected = expected.to_vec();
     actual.sort();
@@ -122,8 +135,8 @@ pub(crate) fn assert_changes(label: &str, actual: &[Change], expected: &[Change]
     let stray = actual.iter().filter(|item| !expected.contains(item));
     let missing = expected.iter().filter(|item| !actual.contains(item));
     let lines: Vec<String> = stray
-        .map(|item| format!("{label}: unexpected change: {item}"))
-        .chain(missing.map(|item| format!("{label}: missing change: {item}")))
+        .map(|item| format!("{label}: unexpected change: {}", show(item)))
+        .chain(missing.map(|item| format!("{label}: missing change: {}", show(item))))
         .collect();
     assert!(lines.is_empty(), "{}", lines.join("\n"));
 }

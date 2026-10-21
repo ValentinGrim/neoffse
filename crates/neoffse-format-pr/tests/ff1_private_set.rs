@@ -6,7 +6,7 @@
 mod common;
 
 use common::changed_span;
-use common::ff1_real::{RealSlot, slots};
+use common::ff1_real::{RealSlot, must_some, slots};
 use neoffse_core::{CapPolicy, Edit, FieldId, Shape, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{Ff1Model, names};
@@ -38,7 +38,7 @@ fn assert_digit_edit(slot: &RealSlot, field: &FieldId) {
         panic!("{label}: encode failed")
     };
     let Ok(again) = decode(&bytes) else { panic!("{label}: second decode failed") };
-    assert_eq!(again.json, json, "{label}: {field} changes in the round trip");
+    assert!(again.json == json, "{label}: {field} changes in the round trip");
     let (was, now) = changed_span(&slot.json, &again.json);
     for side in [was, now] {
         assert!(
@@ -53,7 +53,7 @@ fn assert_digit_edit(slot: &RealSlot, field: &FieldId) {
         json: again.json,
     }
     .model();
-    assert_eq!(int(&mut rebuilt, label, field), value, "{label}: {field} does not read back");
+    assert!(int(&mut rebuilt, label, field) == value, "{label}: {field} does not read back");
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn real_character_edits_change_only_digits() {
         };
         let Some(first) = ids.first() else { continue };
         for field in names::character_fields(*first) {
-            let meta = model.field_meta(&field).unwrap();
+            let meta = must_some(model.field_meta(&field), &format!("{}: {field} has no meta", slot.label));
             if matches!(meta.shape, Shape::Int { .. }) && meta.tables.is_empty() {
                 assert_digit_edit(&slot, &field);
             }
@@ -111,7 +111,7 @@ fn real_edit_then_inverse_restores_the_text() {
             let Ok(_) = model.apply(&inverse, CapPolicy::StorageOnly) else {
                 panic!("{}: {field} refuses the inverse", slot.label)
             };
-            assert_eq!(model.document().to_json(), slot.json, "{}: {field}", slot.label);
+            assert!(model.document().to_json() == slot.json, "{}: {field} does not restore", slot.label);
         }
     }
 }

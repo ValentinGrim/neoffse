@@ -7,13 +7,19 @@ mod common;
 
 use std::collections::HashSet;
 
-use common::ff1_real::{RealSlot, slots};
+use common::ff1_ability_rules::ability_violations;
+use common::ff1_real::{RealSlot, must, must_some, slots};
 use common::ff1_rules::{cap_violations, violations};
+use common::json_tree::Tree;
 use neoffse_core::{FieldId, Shape, TableKind, Value};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
 fn tables() -> &'static neoffse_data::GameTables {
-    neoffse_data::tables_for(GAME).unwrap()
+    must_some(neoffse_data::tables_for(GAME), "no FF I tables")
+}
+
+fn rows(model: &mut Ff1Model, list: &'static str, label: &str) -> Vec<u32> {
+    must(model.rows(&FieldId::new(list)), &format!("{label}: {list} rows do not read"))
 }
 
 /// Every character field of every character, `gil` and every item count.
@@ -57,7 +63,7 @@ fn real_slots_read_every_declared_field() {
             let Ok(value) = model.get(&field) else {
                 panic!("{}: {field} does not read", slot.label)
             };
-            let meta = model.field_meta(&field).unwrap();
+            let meta = must_some(model.field_meta(&field), &format!("{}: {field} has no meta", slot.label));
             if let (Value::Int(number), Shape::Int { min, max }) = (value, meta.shape) {
                 assert!((min..=max).contains(&number), "{}: {field} is outside its storage bound", slot.label);
             }
@@ -102,8 +108,8 @@ fn real_slot_counts_copy_the_inventory_count() {
 #[test]
 fn real_characters_have_unique_ids_and_known_jobs() {
     for_each_slot(|slot, model| {
-        let ids = model.rows(&FieldId::new(names::CHARACTER)).unwrap();
-        assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len(), "{}: a character id repeats", slot.label);
+        let ids = rows(model, names::CHARACTER, &slot.label);
+        assert!(ids.iter().collect::<HashSet<_>>().len() == ids.len(), "{}: a character id repeats", slot.label);
         for id in ids {
             let field = FieldId::new(names::CHARACTER).with_id(id).with_name(names::JOB);
             let job = u32::try_from(int(model, &slot.label, &field)).unwrap_or(0);
@@ -116,7 +122,7 @@ fn real_characters_have_unique_ids_and_known_jobs() {
 fn real_equipment_resolves_in_the_slot_tables() {
     let kinds = [TableKind::Weapon, TableKind::Shield, TableKind::Armor, TableKind::Helmet, TableKind::Gloves];
     for_each_slot(|slot, model| {
-        for id in model.rows(&FieldId::new(names::CHARACTER)).unwrap() {
+        for id in rows(model, names::CHARACTER, &slot.label) {
             for (number, kind) in (1..).zip(kinds) {
                 let field = FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(number);
                 let content = u32::try_from(int(model, &slot.label, &field)).unwrap_or(0);
@@ -129,10 +135,10 @@ fn real_equipment_resolves_in_the_slot_tables() {
 #[test]
 fn real_inventory_ids_are_table_entries() {
     for_each_slot(|slot, model| {
-        let inventory = model.rows(&FieldId::new(names::INVENTORY)).unwrap();
-        let key_items = model.rows(&FieldId::new(names::KEY_ITEMS)).unwrap();
+        let inventory = rows(model, names::INVENTORY, &slot.label);
+        let key_items = rows(model, names::KEY_ITEMS, &slot.label);
         for (list, keys) in [(names::INVENTORY, &inventory), (names::KEY_ITEMS, &key_items)] {
-            assert_eq!(keys.iter().collect::<HashSet<_>>().len(), keys.len(), "{}: a {list} key repeats", slot.label);
+            assert!(keys.iter().collect::<HashSet<_>>().len() == keys.len(), "{}: a {list} key repeats", slot.label);
         }
         for key in inventory {
             let entry = tables().content(key);
@@ -156,8 +162,16 @@ fn real_inventory_ids_are_table_entries() {
 fn real_reads_leave_the_text_unchanged() {
     for_each_slot(|slot, model| {
         for field in all_fields(model, &slot.label) {
-            model.get(&field).unwrap();
+            must(model.get(&field), &format!("{}: {field} does not read", slot.label));
         }
         assert!(model.document().to_json() == slot.json, "{}: a read changed the text", slot.label);
+    });
+}
+
+#[test]
+fn real_slots_obey_the_ability_rules() {
+    for_each_slot(|slot, _| {
+        let found = ability_violations(&Tree::parse(&slot.json));
+        assert!(found.is_empty(), "{}: {}", slot.label, found.join("; "));
     });
 }
