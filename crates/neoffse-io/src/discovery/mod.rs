@@ -1,10 +1,11 @@
-//! Finding the save folders of Steam games.
+//! Finding the save folders and the installs of Steam games.
 //!
 //! A format crate hands [`discover`] its [`SteamGame`] descriptors and the
 //! caller fills an [`Environment`]. Discovery reads the disk and never
 //! writes or creates anything. It knows no save format: it returns every
-//! folder `<Documents>/My Games/<folder>/Steam/<SteamID64>` that exists,
-//! with what produced it, and lists the places it had to skip.
+//! save folder `<Documents>/My Games/<folder>/Steam/<SteamID64>` that exists,
+//! with what produced it, every [`Install`] a Steam library holds, and lists
+//! the places it had to skip.
 //!
 //! Nothing in the crate logs or prints a path or a `SteamID64`. The `Debug`
 //! output of [`Discovery`] and [`SaveFolder`] holds both, so a caller must
@@ -21,6 +22,7 @@ use crate::error::{IoError, Operation};
 
 pub mod library_list;
 mod linux;
+mod steam;
 mod windows;
 
 /// What a format crate declares about the save folder of one Steam game:
@@ -56,14 +58,16 @@ pub struct Environment {
     pub user_profile: Option<PathBuf>,
     /// `%OneDrive%` (Windows).
     pub one_drive: Option<PathBuf>,
+    /// `%ProgramFiles(x86)%` (Windows). The Steam root is its `Steam` folder.
+    pub program_files_x86: Option<PathBuf>,
 }
 
 impl Environment {
     /// Reads the real environment. Touches no file, creates nothing.
     ///
     /// Outside Windows it fills `home` and `data_home`; on Windows it fills
-    /// `documents`, `user_profile` and `one_drive`, and an empty variable
-    /// counts as unset. The other fields stay `None`, so each system runs
+    /// `documents`, `user_profile`, `one_drive` and `program_files_x86`, and
+    /// an empty variable counts as unset. The other fields stay `None`, so each system runs
     /// its own search only.
     #[must_use]
     pub fn platform() -> Self {
@@ -72,6 +76,7 @@ impl Environment {
             environment.documents = UserDirs::new().and_then(|dirs| dirs.document_dir().map(Path::to_path_buf));
             environment.user_profile = variable("USERPROFILE");
             environment.one_drive = variable("OneDrive");
+            environment.program_files_x86 = variable("ProgramFiles(x86)");
         } else if let Some(dirs) = BaseDirs::new() {
             environment.home = Some(dirs.home_dir().to_path_buf());
             environment.data_home = Some(dirs.data_dir().to_path_buf());
@@ -120,6 +125,23 @@ pub struct SaveFolder {
     pub origin: Origin,
 }
 
+/// One game that a Steam library installs.
+///
+/// A library installs a game when it holds `steamapps/appmanifest_<app ID>.acf`.
+/// `path` is a personal path: never log it. On Windows it can carry the `\\?\`
+/// prefix of `fs::canonicalize`, because library paths are canonicalized, so a
+/// caller must not display it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Install {
+    /// `SteamGame::id`.
+    pub game: String,
+    /// `SteamGame::app_id`.
+    pub app_id: u32,
+    /// `<library>/steamapps/common/<folder>`. The folder can be absent while a download runs.
+    pub path: PathBuf,
+}
+
 /// Everything one discovery run found and skipped.
 ///
 /// The `Debug` output holds personal paths and `SteamID64` values: do not log it.
@@ -132,6 +154,11 @@ pub struct Discovery {
     /// order, ids ascending). Never a duplicate path: when two descriptors
     /// name one folder, the first one gives its id.
     pub folders: Vec<SaveFolder>,
+    /// Every installed game: the Linux libraries first (roots in candidate
+    /// order, libraries in the order read, games in the order given), then
+    /// the Windows libraries. Never a duplicate `path`, because two roots can
+    /// list one library.
+    pub installs: Vec<Install>,
     /// What discovery could not read, in the order it met it. A path that
     /// does not exist is not a failure and is not listed here. The `Display`
     /// of each error names a personal path: do not log it.
@@ -148,6 +175,7 @@ pub struct Discovery {
 pub fn discover(environment: &Environment, games: &[SteamGame<'_>]) -> Discovery {
     let mut found = Discovery {
         folders: Vec::new(),
+        installs: Vec::new(),
         skipped: Vec::new(),
     };
     let environment = absolute_only(environment);
@@ -165,6 +193,7 @@ fn absolute_only(environment: &Environment) -> Environment {
         documents: keep(&environment.documents),
         user_profile: keep(&environment.user_profile),
         one_drive: keep(&environment.one_drive),
+        program_files_x86: keep(&environment.program_files_x86),
     }
 }
 
