@@ -40,6 +40,7 @@ export component MainWindow inherits Window {
 
     in property <[GameRow]> games;
     in property <bool> scanning;
+    in property <bool> scan-failed;
     in property <int> skipped-count;
     in-out property <bool> owned-only: true;
     callback owned-only-toggled(bool);

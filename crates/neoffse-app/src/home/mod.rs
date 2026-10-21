@@ -5,6 +5,7 @@
 //! [`HomeViewModel`] keeps that data, the filter and the scan flag, and turns
 //! them into the Slint rows on the UI thread. Nothing here needs a window.
 
+mod open;
 mod rows;
 mod scan;
 
@@ -16,9 +17,10 @@ use neoffse::Registry;
 use neoffse::core::Game;
 use neoffse::io::discovery::Environment;
 
-use crate::dispatch::{Dispatcher, run_async};
+use crate::dispatch::{Dispatcher, WorkerPanic, run_async};
 use crate::{FolderOrigin, GameRow, SlotKind};
 
+pub use open::{OpenOutcome, OpenViewModel};
 pub use scan::scan_home;
 
 /// What one scan found. Plain data, `Send`: it crosses from the worker to the
@@ -96,6 +98,7 @@ struct State {
     data: HomeData,
     owned_only: bool,
     scanning: bool,
+    scan_failed: bool,
 }
 
 struct Shared {
@@ -117,6 +120,7 @@ impl fmt::Debug for HomeViewModel {
         let state = self.lock();
         f.debug_struct("HomeViewModel")
             .field("scanning", &state.scanning)
+            .field("scan_failed", &state.scan_failed)
             .field("owned_only", &state.owned_only)
             .field("games", &state.data.games.len())
             .finish()
@@ -132,6 +136,7 @@ impl HomeViewModel {
             data: HomeData { games: Vec::new(), skipped: 0 },
             owned_only: true,
             scanning: false,
+            scan_failed: false,
         };
         Self {
             shared: Arc::new(Shared {
@@ -147,7 +152,8 @@ impl HomeViewModel {
     }
 
     /// Starts a scan through [`run_async`]. `done` runs on the UI thread
-    /// after the new data is in place. When a scan already runs, nothing
+    /// after the new data is in place, or after the scan failed (see
+    /// [`scan_failed`](Self::scan_failed)). When a scan already runs, nothing
     /// starts and `done` is dropped.
     pub fn start_scan(&self, dispatcher: &Arc<dyn Dispatcher>, done: impl FnOnce() + Send + 'static) {
         {
@@ -156,22 +162,27 @@ impl HomeViewModel {
                 return;
             }
             state.scanning = true;
+            state.scan_failed = false;
         }
         let worker = Arc::clone(&self.shared);
         let target = self.clone();
         run_async(
             dispatcher,
             move || scan_home(&worker.registry, &worker.environment),
-            move |data| {
-                target.finish_scan(data);
+            move |result| {
+                target.finish_scan(result);
                 done();
             },
         );
     }
 
-    fn finish_scan(&self, data: HomeData) {
+    /// A panic keeps the previous data and raises `scan_failed`.
+    fn finish_scan(&self, result: Result<HomeData, WorkerPanic>) {
         let mut state = self.lock();
-        state.data = data;
+        match result {
+            Ok(data) => state.data = data,
+            Err(WorkerPanic { .. }) => state.scan_failed = true,
+        }
         state.scanning = false;
     }
 
@@ -179,6 +190,14 @@ impl HomeViewModel {
     #[must_use]
     pub fn is_scanning(&self) -> bool {
         self.lock().scanning
+    }
+
+    /// Whether the last scan panicked on its worker thread. The flag stays up
+    /// until the next [`start_scan`](Self::start_scan); the data of the scan
+    /// before it stays in place.
+    #[must_use]
+    pub fn scan_failed(&self) -> bool {
+        self.lock().scan_failed
     }
 
     /// Whether the filter hides the games with no install and no save folder.

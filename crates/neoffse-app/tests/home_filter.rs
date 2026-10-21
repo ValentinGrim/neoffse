@@ -180,3 +180,13 @@ fn a_second_start_during_a_scan_is_ignored() {
     assert_eq!(count.load(Ordering::SeqCst), 1);
     assert!(!home.is_scanning());
 }
+
+#[test]
+fn a_finished_scan_is_not_failed() {
+    let site = Site::new();
+    let home = view_model(&site);
+    assert!(!home.scan_failed());
+    let home = scanned(&site);
+    assert!(!home.scan_failed());
+    assert!(!home.is_scanning());
+}

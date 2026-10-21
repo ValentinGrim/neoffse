@@ -11,7 +11,7 @@ use std::thread;
 use std::time::Duration;
 
 use neoffse::data::Language;
-use neoffse_app::dispatch::{Dispatcher, EventLoopDispatcher, Job, run_async};
+use neoffse_app::dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 use neoffse_app::language::language_for_locale;
 use neoffse_app::picker::{FilePicker, NativePicker};
 
@@ -108,8 +108,8 @@ fn run_async_works_off_thread_then_posts_the_result() {
             *worked_in.lock().unwrap() = Some(thread::current().id());
             42_u32
         },
-        move |value| {
-            *delivered_in.lock().unwrap() = Some((value, thread::current().id()));
+        move |result| {
+            *delivered_in.lock().unwrap() = Some((result, thread::current().id()));
         },
     );
 
@@ -125,7 +125,7 @@ fn run_async_works_off_thread_then_posts_the_result() {
     assert!(delivered.lock().unwrap().is_none(), "then ran before the post was run");
 
     manual.run_posts();
-    assert_eq!(*delivered.lock().unwrap(), Some((42, thread::current().id())));
+    assert_eq!(*delivered.lock().unwrap(), Some((Ok(42), thread::current().id())));
     assert_eq!(Manual::queued(&manual.jobs), 0);
     assert_eq!(Manual::queued(&manual.posts), 0);
 }
@@ -139,4 +139,45 @@ fn run_async_with_a_dropped_result_is_harmless() {
     manual.run_posts();
     assert_eq!(Manual::queued(&manual.jobs), 0);
     assert_eq!(Manual::queued(&manual.posts), 0);
+}
+
+#[test]
+fn a_panicking_work_gives_worker_panic_once() {
+    let manual = Arc::new(Manual::default());
+    let dispatcher: Arc<dyn Dispatcher> = Arc::clone(&manual) as Arc<dyn Dispatcher>;
+    let delivered: Arc<Mutex<Vec<(bool, thread::ThreadId)>>> = Arc::default();
+
+    let delivered_in = Arc::clone(&delivered);
+    run_async(
+        &dispatcher,
+        || -> u32 { panic!("synthetic worker failure") },
+        move |result| {
+            let panicked = matches!(result, Err(WorkerPanic { .. }));
+            delivered_in.lock().unwrap().push((panicked, thread::current().id()));
+        },
+    );
+
+    // The job runs on a helper thread: `join` is `Ok` only when the panic
+    // stayed inside `run_async`.
+    let jobs = Manual::take(&manual.jobs);
+    let outcome = thread::spawn(move || jobs.into_iter().for_each(|job| job())).join();
+    assert!(outcome.is_ok(), "the panic escaped the worker thread");
+    assert_eq!(Manual::queued(&manual.posts), 1, "the failure is posted to the UI thread");
+    assert!(delivered.lock().unwrap().is_empty());
+
+    manual.run_posts();
+    assert_eq!(*delivered.lock().unwrap(), vec![(true, thread::current().id())]);
+    assert_eq!(Manual::queued(&manual.posts), 0);
+}
+
+#[test]
+fn a_returning_work_gives_ok() {
+    let manual = Arc::new(Manual::default());
+    let dispatcher: Arc<dyn Dispatcher> = Arc::clone(&manual) as Arc<dyn Dispatcher>;
+    let delivered: Arc<Mutex<Vec<Result<u8, WorkerPanic>>>> = Arc::default();
+    let delivered_in = Arc::clone(&delivered);
+    run_async(&dispatcher, || 7_u8, move |result| delivered_in.lock().unwrap().push(result));
+    manual.run_jobs();
+    manual.run_posts();
+    assert_eq!(*delivered.lock().unwrap(), vec![Ok(7)]);
 }

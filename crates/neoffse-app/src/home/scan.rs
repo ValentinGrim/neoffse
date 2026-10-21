@@ -141,7 +141,7 @@ fn named_slots(folder: &SaveFolder) -> (Vec<SlotData>, usize) {
     (slots, skipped)
 }
 
-fn slot_kind(slot: Option<SaveSlot>) -> (SlotKind, i32) {
+pub(super) fn slot_kind(slot: Option<SaveSlot>) -> (SlotKind, i32) {
     match slot {
         Some(SaveSlot::Numbered(number)) => (SlotKind::Numbered, i32::try_from(number).unwrap_or(i32::MAX)),
         Some(SaveSlot::Auto) => (SlotKind::AutoSave, 0),
@@ -168,7 +168,7 @@ fn compare_slots(a: &SlotData, b: &SlotData) -> Ordering {
         .then_with(|| a.name.as_bytes().cmp(b.name.as_bytes()))
 }
 
-fn summary_data(summary: &SaveSummary) -> SummaryData {
+pub(super) fn summary_data(summary: &SaveSummary) -> SummaryData {
     SummaryData {
         party: summary.party.join(", "),
         location: summary.location.clone().unwrap_or_default(),

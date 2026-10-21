@@ -1,9 +1,11 @@
 //! From scan data to the Slint rows.
 
+use neoffse::core::{Game, SaveSummary};
 use slint::{ModelRc, VecModel};
 
-use super::{FolderData, GameData, HomeData, SlotData};
-use crate::{FolderRow, GameRow, SlotRow, SummaryRow};
+use super::scan::{slot_kind, summary_data};
+use super::{FolderData, GameData, HomeData, SlotData, SummaryData};
+use crate::{FolderRow, GameRow, SlotKind, SlotRow, SummaryRow};
 
 /// The rows of the visible games. Builds Slint models: UI thread only.
 pub(super) fn game_rows(data: &HomeData, owned_only: bool) -> Vec<GameRow> {
@@ -11,7 +13,7 @@ pub(super) fn game_rows(data: &HomeData, owned_only: bool) -> Vec<GameRow> {
 }
 
 fn game_row(game: &GameData) -> GameRow {
-    let title = title_of(game);
+    let title = title_of(game.game);
     let no_save = game.supported && game.folders.iter().all(|folder| folder.slots.is_empty());
     let (slots, folders) = match game.folders.as_slice() {
         [only] => (slot_rows(&only.slots, &title), Vec::new()),
@@ -43,29 +45,40 @@ fn slot_rows(slots: &[SlotData], title: &str) -> Vec<SlotRow> {
 }
 
 fn slot_row(slot: &SlotData, title: &str) -> SlotRow {
-    let mut summary = SummaryRow {
-        game: title.into(),
-        kind: slot.kind,
-        number: slot.number,
-        ..SummaryRow::default()
-    };
-    if let Some(found) = &slot.summary {
-        summary.party = found.party.as_str().into();
-        summary.location = found.location.as_str().into();
-        summary.play_time = found.play_time.as_str().into();
-    }
     SlotRow {
         key: slot.key,
-        summary,
+        summary: summary_row(title, slot.kind, slot.number, slot.summary.as_ref()),
         summarized: slot.summary.is_some(),
         unreadable: slot.unreadable,
         openable: slot.openable,
     }
 }
 
+fn summary_row(title: &str, kind: SlotKind, number: i32, found: Option<&SummaryData>) -> SummaryRow {
+    let mut summary = SummaryRow {
+        game: title.into(),
+        kind,
+        number,
+        ..SummaryRow::default()
+    };
+    if let Some(found) = found {
+        summary.party = found.party.as_str().into();
+        summary.location = found.location.as_str().into();
+        summary.play_time = found.play_time.as_str().into();
+    }
+    summary
+}
+
+/// The row the editor page shows for an open save: the same mapping as a
+/// Home slot with a summary.
+pub(super) fn summary_row_of(summary: &SaveSummary) -> SummaryRow {
+    let (kind, number) = slot_kind(summary.slot);
+    summary_row(&title_of(summary.game), kind, number, Some(&summary_data(summary)))
+}
+
 /// `Final Fantasy I` to `Final Fantasy VI`; any other number prints as digits.
-fn title_of(game: &GameData) -> String {
-    let number = game.game.number();
+fn title_of(game: Game) -> String {
+    let number = game.number();
     let numeral = match number {
         1 => "I",
         2 => "II",

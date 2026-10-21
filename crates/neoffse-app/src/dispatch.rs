@@ -1,5 +1,6 @@
 //! Where work runs: off the UI thread, and back on it.
 
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
 
 /// A unit of work handed to a thread.
@@ -31,18 +32,33 @@ impl Dispatcher for EventLoopDispatcher {
     }
 }
 
+/// A worker closure panicked.
+///
+/// [`run_async`] catches the panic and hands this value to the UI-thread
+/// step, so a screen can clear its busy flag instead of waiting for ever. The
+/// panic payload is dropped: it can quote a path or save content, so it never
+/// reaches a label or a log.
+///
+/// Catching relies on unwinding. A profile that sets `panic = "abort"` ends
+/// the process on the first worker panic and this type never appears. The
+/// workspace sets no such profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct WorkerPanic;
+
 /// Runs `work` off the UI thread, then `then(result)` on it.
 ///
-/// The call returns before `work` starts.
+/// `result` is `Err(WorkerPanic)` when `work` panicked, and the worker thread
+/// then ends normally. The call returns before `work` starts.
 pub fn run_async<T, W, D>(dispatcher: &Arc<dyn Dispatcher>, work: W, then: D)
 where
     T: Send + 'static,
     W: FnOnce() -> T + Send + 'static,
-    D: FnOnce(T) + Send + 'static,
+    D: FnOnce(Result<T, WorkerPanic>) + Send + 'static,
 {
     let back = Arc::clone(dispatcher);
     dispatcher.spawn(Box::new(move || {
-        let result = work();
+        let result = catch_unwind(AssertUnwindSafe(work)).map_err(|_payload| WorkerPanic);
         back.post(Box::new(move || then(result)));
     }));
 }

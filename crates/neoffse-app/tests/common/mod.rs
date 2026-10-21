@@ -5,6 +5,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
 mod manual;
+mod open;
 mod site;
 mod slots;
 
@@ -17,6 +18,7 @@ use neoffse_app::{GameRow, SlotRow};
 use slint::{Model, ModelRc};
 
 pub(crate) use manual::Manual;
+pub(crate) use open::{FixedPicker, Flow, Outcomes};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
 
