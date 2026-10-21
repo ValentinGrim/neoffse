@@ -2,16 +2,21 @@ import { AboutSlint, Button, StandardButton, VerticalBox } from "std-widgets.sli
 import { ModalDialog } from "dialogs.slint";
 import { EditorBridge } from "bridge.slint";
 import { EditorPage } from "editor.slint";
+import { Fonts } from "fonts.slint";
 import { HomeScreen } from "home.slint";
 import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
 
 export { EditNotice, EditProblem, EditorData, EntityPage, FieldKind, FieldRow, ItemList, ItemRow, PickerEntry, SectionData } from "editor-types.slint";
 export { EditorBridge } from "bridge.slint";
+// Exported so the font imports enter the compiled document and a test reads the family names.
+export { Fonts }
 export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
 
 export component AboutDialog inherits Dialog {
     in property <string> app-version;
     in property <string> license;
+    in property <string> font-credit;
+    in property <string> ui-font-credit;
     callback dismiss();
 
     title: @tr("About NeoFFSE");
@@ -29,6 +34,14 @@ export component AboutDialog inherits Dialog {
         }
         Text {
             text: @tr("License: {}", root.license);
+            horizontal-alignment: center;
+        }
+        Text {
+            text: root.font-credit;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: root.ui-font-credit;
             horizontal-alignment: center;
         }
         AboutSlint { }

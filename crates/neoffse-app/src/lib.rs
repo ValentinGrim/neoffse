@@ -31,8 +31,8 @@ pub use connect_guard::{connect_close, connect_expert};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
 pub use generated::{
-    AboutDialog, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow, GameRow, ItemList, ItemRow,
-    MainWindow, OpenProblem, PickerEntry, SectionData, SlotKind, SlotRow, SummaryRow,
+    AboutDialog, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow, Fonts, GameRow, ItemList,
+    ItemRow, MainWindow, OpenProblem, PickerEntry, SectionData, SlotKind, SlotRow, SummaryRow,
 };
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
@@ -41,6 +41,13 @@ use std::sync::Arc;
 use neoffse::Registry;
 use neoffse::io::discovery::Environment;
 use slint::{CloseRequestResponse, ComponentHandle};
+
+/// The attribution the About dialog shows for the PR font.
+pub const FONT_CREDIT: &str = "Cornelia Sans by EliDirkx98, CC BY-SA 3.0";
+
+/// The attribution the About dialog shows for the app font: the family, the
+/// copyright holder named in its `OFL.txt`, the license.
+pub const UI_FONT_CREDIT: &str = "Barlow by The Barlow Project Authors, SIL OFL 1.1";
 
 /// Builds the windows, wires them together and runs the event loop.
 ///
@@ -69,7 +76,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
 }
 
 /// Creates the About dialog with the version and license taken from the
-/// crate manifest, so each has one source.
+/// crate manifest, so each has one source, and the two font credits.
 ///
 /// # Errors
 ///
@@ -78,6 +85,8 @@ pub fn new_about_dialog() -> Result<AboutDialog, slint::PlatformError> {
     let about = AboutDialog::new()?;
     about.set_app_version(env!("CARGO_PKG_VERSION").into());
     about.set_license(env!("CARGO_PKG_LICENSE").into());
+    about.set_font_credit(FONT_CREDIT.into());
+    about.set_ui_font_credit(UI_FONT_CREDIT.into());
     Ok(about)
 }
 
