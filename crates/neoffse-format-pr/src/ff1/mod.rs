@@ -2,8 +2,8 @@
 //!
 //! [`Ff1Model`] maps the lossless [`Document`] of a slot onto the field
 //! vocabulary of [`names`]: characters (name, job, level, experience, HP,
-//! stats, spell charges, five equipment slots), the two item lists and gil
-//! (`docs/formats/pixel-remaster.md#characters`,
+//! stats, spell charges, five equipment slots, spell slots), the two item
+//! lists and gil (`docs/formats/pixel-remaster.md#characters`,
 //! `docs/formats/pixel-remaster.md#equipment-slots`,
 //! `docs/formats/pixel-remaster.md#inventory`). A read finds a character by
 //! its `id`, an item by its `contentId` and a dictionary entry by its key,
@@ -21,12 +21,13 @@
 //!   and tables, expands an equipment `Set` into the slot, the inventory row
 //!   and the slot count, refuses the edits the game never makes, and returns a
 //!   `GameChange`. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
-//!   the rows and fields it refuses whatever the value.
+//!   the rows and fields it refuses whatever the value. A spell slot is read
+//!   only in both interfaces.
 //!
 //! [`Ff1Model::summary`] and [`Ff1Model::view`] read the slot for the Home
 //! screen and the editor: the first gives the slot, play time, place and
-//! party, the second a snapshot of every character, item row and gil. Both
-//! leave the document untouched.
+//! party, the second a snapshot of every character, item row and gil and the
+//! spell slots of every character. Both leave the document untouched.
 //!
 //! [`Ff1Format`] implements `neoffse_core::SaveFormat` for the game: it
 //! detects a slot file by its name and opens it as an [`Ff1Document`], which
@@ -76,15 +77,15 @@ use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
 use binding::{Binding, Collection};
 pub use format::Ff1Format;
-use locate::{format_error, locate, read_int, read_text, row_keys};
+use locate::{format_error, locate, read_ability, read_int, read_text, row_keys};
 pub use save::Ff1Document;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff1Pr;
 
-/// The capabilities of an FF I slot: the party and the inventory (gil sits
-/// under the inventory).
-pub const CAPABILITIES: [Capability; 2] = [Capability::Party, Capability::Inventory];
+/// The capabilities of an FF I slot: the party, the inventory (gil sits under
+/// the inventory) and the magic (the spell slots, read only).
+pub const CAPABILITIES: [Capability; 3] = [Capability::Party, Capability::Inventory, Capability::Magic];
 
 /// An FF I slot document with its ID tables.
 ///
@@ -155,6 +156,8 @@ impl Ff1Model {
         let path = locate(&mut self.document, &binding, field)?;
         let read = if binding.is_text() {
             read_text(&mut self.document, &path).map(Value::Text)
+        } else if binding.is_spell() {
+            read_ability(&mut self.document, &path).map(|id| Value::Int(i64::from(id)))
         } else {
             read_int(&mut self.document, &path).map(Value::Int)
         };

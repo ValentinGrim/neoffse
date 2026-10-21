@@ -51,7 +51,7 @@ fn real_views_cover_every_row() {
         let Ok(view) = model.view(Language::En) else {
             panic!("{}: the view does not read", slot.label)
         };
-        assert!(view.sections.len() == 2, "{}: section count", slot.label);
+        assert!(view.sections.len() == 3, "{}: section count", slot.label);
         let count = |model: &mut Ff1Model, name| must(model.rows(&FieldId::new(name)), &format!("{}: {name} rows do not read", slot.label)).len();
         let characters = count(&mut model, names::CHARACTER);
         let rows = count(&mut model, names::INVENTORY) + count(&mut model, names::KEY_ITEMS);

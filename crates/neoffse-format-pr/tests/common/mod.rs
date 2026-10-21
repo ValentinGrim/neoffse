@@ -17,6 +17,7 @@ mod exit_facts;
 mod exit_fields;
 pub(crate) mod ff1_ability_rules;
 pub(crate) mod ff1_format;
+pub(crate) mod ff1_magic;
 pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
 pub(crate) mod ff1_rules;
