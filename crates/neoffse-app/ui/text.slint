@@ -1,0 +1,39 @@
+// Language-dependent sentences shared by the Home screen and the editor
+// page. Rust sends a kind and a number; the sentence is written here.
+
+import { SlotKind, SummaryRow } from "types.slint";
+
+export global SlotText {
+    pure public function name(kind: SlotKind, number: int) -> string {
+        if kind == SlotKind.numbered {
+            return @tr("Slot {}", number);
+        }
+        if kind == SlotKind.auto-save {
+            return @tr("Auto save");
+        }
+        if kind == SlotKind.quick-save {
+            return @tr("Quick save");
+        }
+        return @tr("Unknown slot");
+    }
+}
+
+// Party, play time and location of one save, each line skipped when empty.
+export component SummaryLines inherits VerticalLayout {
+    in property <SummaryRow> summary;
+
+    spacing: 2px;
+
+    if root.summary.party != "": Text {
+        text: @tr("Party: {}", root.summary.party);
+        overflow: elide;
+    }
+    if root.summary.play-time != "": Text {
+        text: @tr("Play time: {}", root.summary.play-time);
+        overflow: elide;
+    }
+    if root.summary.location != "": Text {
+        text: @tr("Location: {}", root.summary.location);
+        overflow: elide;
+    }
+}

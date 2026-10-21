@@ -1,4 +1,9 @@
 import { AboutSlint, StandardButton, VerticalBox } from "std-widgets.slint";
+import { EditorPage } from "editor.slint";
+import { HomeScreen } from "home.slint";
+import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
+
+export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
 
 export component AboutDialog inherits Dialog {
     in property <string> app-version;
@@ -35,6 +40,23 @@ export component MainWindow inherits Window {
     callback about-requested();
     callback quit-requested();
 
+    in property <[GameRow]> games;
+    in property <bool> scanning;
+    in property <bool> scan-failed;
+    in property <int> skipped-count;
+    in-out property <bool> owned-only: true;
+    callback owned-only-toggled(bool);
+    callback rescan-requested();
+    callback slot-clicked(int);
+    in property <bool> has-open-problem;
+    in property <OpenProblem> open-problem;
+    in property <bool> busy;
+    in property <bool> editor-open;
+    in property <SummaryRow> editor-summary;
+    callback open-file-requested();
+    callback back-requested();
+    callback problem-dismissed();
+
     title: @tr("NeoFFSE");
     preferred-width: 800px;
     preferred-height: 600px;
@@ -56,8 +78,23 @@ export component MainWindow inherits Window {
         }
     }
 
-    Text {
-        text: @tr("Final Fantasy save editor");
-        horizontal-alignment: center;
+    if !root.editor-open: HomeScreen {
+        games: root.games;
+        scanning: root.scanning;
+        scan-failed: root.scan-failed;
+        skipped-count: root.skipped-count;
+        owned-only <=> root.owned-only;
+        busy: root.busy;
+        has-open-problem: root.has-open-problem;
+        open-problem: root.open-problem;
+        owned-only-toggled(on) => { root.owned-only-toggled(on); }
+        rescan-requested => { root.rescan-requested(); }
+        open-file-requested => { root.open-file-requested(); }
+        slot-clicked(key) => { root.slot-clicked(key); }
+        problem-dismissed => { root.problem-dismissed(); }
+    }
+    if root.editor-open: EditorPage {
+        summary: root.editor-summary;
+        back-requested => { root.back-requested(); }
     }
 }
