@@ -1,4 +1,7 @@
 import { AboutSlint, StandardButton, VerticalBox } from "std-widgets.slint";
+import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
+
+export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types.slint";
 
 export component AboutDialog inherits Dialog {
     in property <string> app-version;
@@ -34,6 +37,17 @@ export component AboutDialog inherits Dialog {
 export component MainWindow inherits Window {
     callback about-requested();
     callback quit-requested();
+
+    in property <[GameRow]> games;
+    in property <bool> scanning;
+    in property <int> skipped-count;
+    in-out property <bool> owned-only: true;
+    callback owned-only-toggled(bool);
+    callback rescan-requested();
+    callback slot-clicked(int);
+    in property <bool> has-open-problem;
+    // Declared now so the enum is reachable from the public API.
+    in property <OpenProblem> open-problem;
 
     title: @tr("NeoFFSE");
     preferred-width: 800px;

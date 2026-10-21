@@ -2708,10 +2708,12 @@ version = "0.2.0"
 dependencies = [
  "i-slint-backend-testing",
  "neoffse",
+ "neoffse-testkit",
  "rfd",
  "slint",
  "slint-build",
  "sys-locale",
+ "tempfile",
 ]
 
 [[package]]

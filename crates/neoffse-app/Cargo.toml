@@ -30,6 +30,8 @@ slint-build = "=1.18.1"
 
 [dev-dependencies]
 i-slint-backend-testing = "=1.18.1"
+neoffse-testkit = { workspace = true }
+tempfile = "3.27.0"
 
 [lints]
 workspace = true

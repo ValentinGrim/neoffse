@@ -8,6 +8,7 @@
 )]
 
 pub mod dispatch;
+pub mod home;
 pub mod language;
 pub mod picker;
 
@@ -20,7 +21,7 @@ mod generated {
 }
 
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, run_async};
-pub use generated::{AboutDialog, MainWindow};
+pub use generated::{AboutDialog, FolderOrigin, FolderRow, GameRow, MainWindow, OpenProblem, SlotKind, SlotRow, SummaryRow};
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
 use slint::{CloseRequestResponse, ComponentHandle};
