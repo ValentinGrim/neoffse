@@ -1,37 +1,13 @@
-import { Button, ListView, Palette, ScrollView } from "std-widgets.slint";
+import { ScrollView } from "std-widgets.slint";
 import { EntityPage, FieldRow, ItemList, ItemRow, SectionData } from "editor-types.slint";
 import { EditorBridge } from "bridge.slint";
-import { FieldEditor, FieldLine, PickerField } from "fields.slint";
-import { LookText } from "frames.slint";
-
-// The left column of a character page: one row per entity.
-export component EntityList inherits Rectangle {
-    in property <[EntityPage]> pages;
-    in property <int> selected;
-    callback chosen(int);
-
-    width: 200px;
-
-    ListView {
-        for page[index] in root.pages: Rectangle {
-            height: 32px;
-            background: index == root.selected ? Palette.accent-background.with-alpha(0.3)
-                : touch.has-hover ? #80808030
-                : transparent;
-
-            touch := TouchArea {
-                clicked => { root.chosen(index); }
-            }
-            Text {
-                x: 8px;
-                width: parent.width - 16px;
-                vertical-alignment: center;
-                overflow: elide;
-                text: page.label;
-            }
-        }
-    }
-}
+import { ThemedButton } from "controls.slint";
+import { FieldEditor, FieldLine, LockMark } from "fields.slint";
+import { PickerField } from "picker.slint";
+import { LookText, PortraitFrame, RuleLine } from "frames.slint";
+import { Icons } from "icons.slint";
+import { Look } from "look.slint";
+import { Theme } from "theme.slint";
 
 // The fields of one entity, scrolling when they outgrow the page.
 export component FieldList inherits ScrollView {
@@ -48,31 +24,65 @@ export component FieldList inherits ScrollView {
     }
 }
 
-// One Party character: the name over the fields. Back returns to the cards.
+// One Party character: a portrait frame, the name and the job over the
+// fields. Back returns to the cards. The portrait and the job come from the
+// character's card, so a game with no cards shows the name alone.
 export component CharacterEditPage inherits VerticalLayout {
+    in property <Look> look: Theme.look;
     in property <EntityPage> page;
+    // Index of `page` among the party pages: the card that matches it.
+    in property <int> index;
 
-    spacing: 6px;
+    private property <bool> has-card: root.index >= 0 && root.index < EditorBridge.overview.cards.length;
 
-    LookText {
-        text: root.page.label;
-        color: self.look.selected;
-        overflow: elide;
+    spacing: root.look.spacing;
+
+    HorizontalLayout {
+        spacing: root.look.padding;
+
+        if root.has-card: PortraitFrame {
+            look: root.look;
+            initial: EditorBridge.overview.cards[root.index].initial;
+            width: 48px;
+            height: 48px;
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+
+            LookText {
+                look: root.look;
+                text: root.page.label;
+                color: root.look.selected;
+                overflow: elide;
+            }
+            if root.has-card && EditorBridge.overview.cards[root.index].job != "": LookText {
+                look: root.look;
+                text: EditorBridge.overview.cards[root.index].job;
+                font-size: root.look.font-small;
+                color: root.look.muted;
+                overflow: elide;
+            }
+        }
+    }
+    RuleLine {
+        look: root.look;
     }
     FieldList {
         fields: root.page.fields;
     }
 }
 
-component ReadOnlyNote inherits Text {
-    font-size: 12px;
-    opacity: 0.7;
+component ReadOnlyNote inherits LookText {
+    font-size: self.look.font-small;
+    color: self.look.muted;
     text: @tr("Read only");
 }
 
-// Party and Magic: the entities on the left, the selected one's fields on
-// the right.
+// Magic: one button per character above the selected character's read-only
+// slots.
 export component CharacterPage inherits VerticalLayout {
+    in property <Look> look: Theme.look;
     in property <[EntityPage]> pages;
     // Every field of the section is read only.
     in property <bool> read-only;
@@ -81,104 +91,136 @@ export component CharacterPage inherits VerticalLayout {
     // `selected` held inside the page count, so a shorter list never leaves it dangling.
     private property <int> current: max(0, min(root.selected, root.pages.length - 1));
 
-    spacing: 6px;
+    spacing: root.look.spacing;
 
-    if root.read-only: ReadOnlyNote { }
-    HorizontalLayout {
-        spacing: 8px;
+    if root.pages.length == 0: LookText {
+        look: root.look;
+        text: @tr("Nothing to show.");
+    }
+    if root.pages.length > 0: HorizontalLayout {
+        spacing: root.look.spacing;
+        alignment: start;
 
-        if root.pages.length == 0: Text {
-            text: @tr("Nothing to show.");
+        for page[index] in root.pages: ThemedButton {
+            look: root.look;
+            text: page.label;
+            primary: index == root.current;
+            enabled: !EditorBridge.blocked;
+            clicked => { root.selected = index; }
         }
-        if root.pages.length > 0: EntityList {
-            pages: root.pages;
-            selected: root.current;
-            chosen(index) => { root.selected = index; }
-        }
-        if root.pages.length > 0: FieldList {
-            fields: root.pages[root.current].fields;
-        }
+    }
+    if root.read-only: ReadOnlyNote {
+        look: root.look;
+    }
+    if root.pages.length > 0: RuleLine {
+        look: root.look;
+    }
+    if root.pages.length > 0: FieldList {
+        fields: root.pages[root.current].fields;
     }
 }
 
 component ItemLine inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
     in property <ItemRow> item;
 
-    spacing: 12px;
+    spacing: root.look.padding;
 
-    Text {
-        width: 180px;
-        vertical-alignment: center;
+    LookText {
+        look: root.look;
+        min-width: 96px;
+        preferred-width: 240px;
+        max-width: 240px;
         overflow: elide;
+        color: root.look.label;
         text: root.item.label;
     }
     for field in root.item.fields: FieldEditor {
+        look: root.look;
+        name: root.item.label;
         field: field;
         show-lock: !root.item.locked;
     }
-    Rectangle { }
-    if root.item.removable: Button {
+    Rectangle {
+        horizontal-stretch: 1;
+    }
+    if root.item.locked: LockMark {
+        look: root.look;
+    }
+    if root.item.removable: ThemedButton {
+        look: root.look;
         text: @tr("Remove");
+        accessible-name: @tr("Remove {}", root.item.label);
+        icon: Icons.delete;
+        has-icon: true;
         enabled: root.item.can-remove && !EditorBridge.blocked;
         clicked => { EditorBridge.item-remove-requested(root.item.key); }
-    }
-    Text {
-        width: 48px;
-        vertical-alignment: center;
-        font-size: 11px;
-        opacity: 0.7;
-        text: root.item.locked ? @tr("locked") : "";
     }
 }
 
 component ItemBlock inherits VerticalLayout {
+    in property <Look> look: Theme.look;
     in property <ItemList> list;
 
     spacing: 6px;
 
-    Text {
-        text: root.list.title;
-        font-size: 16px;
-        font-weight: 700;
-        overflow: elide;
-    }
-    for item in root.list.rows: ItemLine {
-        item: item;
-    }
-    if root.list.insertable: HorizontalLayout {
-        alignment: start;
-        PickerField {
-            width: 220px;
+    HorizontalLayout {
+        spacing: root.look.padding;
+
+        LookText {
+            look: root.look;
+            horizontal-stretch: 1;
+            text: root.list.title;
+            color: root.look.selected;
+            overflow: elide;
+        }
+        if root.list.insertable: PickerField {
+            look: root.look;
             entries: EditorBridge.picker-entries;
             enabled: !EditorBridge.blocked;
+            icon: Icons.add;
+            has-icon: true;
             button-text: @tr("Add...");
+            accessible-name: @tr("Add to {}", root.list.title);
             opened => { EditorBridge.list-picker-query(root.list.key, ""); }
             query-changed(text) => { EditorBridge.list-picker-query(root.list.key, text); }
             chosen(id) => { EditorBridge.item-add-requested(root.list.key, id); }
         }
     }
+    RuleLine {
+        look: root.look;
+    }
+    for item in root.list.rows: ItemLine {
+        look: root.look;
+        item: item;
+    }
 }
 
 // Inventory: the single-field entities (gil) on top, then each item list.
 export component InventoryPage inherits ScrollView {
+    in property <Look> look: Theme.look;
     in property <SectionData> section;
 
     VerticalLayout {
         padding: 8px;
         padding-right: 20px;
-        spacing: 12px;
+        spacing: root.look.padding;
 
-        if root.section.read-only: ReadOnlyNote { }
+        if root.section.read-only: ReadOnlyNote {
+            look: root.look;
+        }
         VerticalLayout {
             spacing: 6px;
             for page in root.section.pages: VerticalLayout {
                 spacing: 6px;
                 for field in page.fields: FieldLine {
+                    look: root.look;
                     field: field;
                 }
             }
         }
         for list in root.section.lists: ItemBlock {
+            look: root.look;
             list: list;
         }
     }

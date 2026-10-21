@@ -61,13 +61,13 @@ export global NoticeText {
 export global SummaryLine {
     pure public function rest(summary: SummaryRow) -> string {
         if summary.play-time != "" && summary.location != "" {
-            return @tr("{} · {} · {}", SlotText.name(summary.kind, summary.number), summary.play-time, summary.location);
+            return @tr("{} - {} - {}", SlotText.name(summary.kind, summary.number), summary.play-time, summary.location);
         }
         if summary.play-time != "" {
-            return @tr("{} · {}", SlotText.name(summary.kind, summary.number), summary.play-time);
+            return @tr("{} - {}", SlotText.name(summary.kind, summary.number), summary.play-time);
         }
         if summary.location != "" {
-            return @tr("{} · {}", SlotText.name(summary.kind, summary.number), summary.location);
+            return @tr("{} - {}", SlotText.name(summary.kind, summary.number), summary.location);
         }
         return SlotText.name(summary.kind, summary.number);
     }

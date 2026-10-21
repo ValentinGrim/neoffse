@@ -1,6 +1,7 @@
 //! Key and pointer events sent through `Window::dispatch_event` on the
 //! testing backend, and the editor navigation state.
 
+use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::platform::{Key, PointerEventButton, WindowEvent};
 use slint::{ComponentHandle, LogicalPosition, SharedString};
 
@@ -49,5 +50,48 @@ impl Ui {
     pub(crate) fn make_dirty(&self) {
         self.commit(self.gil().key, "500");
         assert_eq!(self.pending(), 1);
+    }
+
+    /// The element with `role` whose accessible label is `label`.
+    pub(crate) fn element(&self, label: &str, role: AccessibleRole) -> ElementHandle {
+        ElementHandle::find_by_accessible_label(&self.window, label)
+            .find(|element| element.accessible_role() == Some(role))
+            .unwrap_or_else(|| panic!("no {role:?} labelled {label}"))
+    }
+
+    /// Whether an element with `role` and `label` exists now.
+    pub(crate) fn has_element(&self, label: &str, role: AccessibleRole) -> bool {
+        ElementHandle::find_by_accessible_label(&self.window, label).any(|element| element.accessible_role() == Some(role))
+    }
+
+    /// The text box labelled `label`.
+    pub(crate) fn input(&self, label: &str) -> ElementHandle {
+        self.element(label, AccessibleRole::TextInput)
+    }
+
+    /// The text of the box labelled `label`.
+    pub(crate) fn input_text(&self, label: &str) -> String {
+        self.input(label).accessible_value().expect("a text value").to_string()
+    }
+
+    /// Clicks the text box labelled `label`, which gives it the focus.
+    pub(crate) fn focus_input(&self, label: &str) {
+        self.input(label).mock_single_click(PointerEventButton::Left);
+    }
+
+    /// Types `text`, one key per character.
+    pub(crate) fn type_text(&self, text: &str) {
+        for character in text.chars() {
+            self.press(character.to_string());
+        }
+    }
+
+    /// Replaces the text of the focused box: End, then Backspace once per character.
+    pub(crate) fn replace_text(&self, label: &str, text: &str) {
+        self.key(Key::End);
+        for _ in self.input_text(label).chars() {
+            self.key(Key::Backspace);
+        }
+        self.type_text(text);
     }
 }

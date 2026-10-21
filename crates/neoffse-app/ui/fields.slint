@@ -1,12 +1,23 @@
-import { Button, CheckBox, ComboBox, LineEdit, ListView, Palette } from "std-widgets.slint";
-import { FieldKind, FieldRow, PickerEntry } from "editor-types.slint";
+import { ComboBox } from "std-widgets.slint";
+import { FieldKind, FieldRow } from "editor-types.slint";
 import { EditorBridge } from "bridge.slint";
+import { ThemedCheck, ThemedEdit } from "controls.slint";
+import { LookText } from "frames.slint";
+import { Icon, Icons } from "icons.slint";
+import { PickerField } from "picker.slint";
+import { Look } from "look.slint";
+import { Theme } from "theme.slint";
 
 // A text box that sends one edit per commit: Enter or focus loss, and only
 // when the text differs from `source`. After every commit, accepted or
-// refused, the box shows the document's value again.
+// refused, the box shows the document's value again. Escape puts the
+// document's value back when the text differs, and passes the key on to the
+// page (Back) when it does not.
 export component CommitEdit inherits Rectangle {
+    in property <Look> look: Theme.look;
     in property <string> source;
+    // The accessible name.
+    in property <string> label;
     in property <bool> enabled: true;
     in property <TextHorizontalAlignment> alignment: left;
     callback committed(string);
@@ -25,13 +36,22 @@ export component CommitEdit inherits Rectangle {
 
     changed source => { edit.text = root.source; }
 
-    edit := LineEdit {
+    edit := ThemedEdit {
+        look: root.look;
         width: 100%;
         height: 100%;
         text: root.source;
+        label: root.label;
         enabled: root.enabled;
-        horizontal-alignment: root.alignment;
+        alignment: root.alignment;
         accepted => { root.commit(); }
+        escaped => {
+            if self.text != root.source {
+                self.text = root.source;
+                return true;
+            }
+            return false;
+        }
         changed has-focus => {
             if !self.has-focus {
                 root.commit();
@@ -40,80 +60,23 @@ export component CommitEdit inherits Rectangle {
     }
 }
 
-// A button that opens a searchable list of entries. Rust filters the list:
-// `query-changed` asks for a new one, `entries` holds the answer.
-export component PickerField inherits Rectangle {
-    in property <string> button-text;
-    in property <bool> enabled: true;
-    in property <[PickerEntry]> entries;
-    callback opened();
-    callback query-changed(string);
-    callback chosen(int);
+// The small "locked" mark: a padlock and a word.
+export component LockMark inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
 
-    private property <string> query;
+    spacing: 4px;
 
-    min-width: button.min-width;
-    min-height: button.min-height;
-    preferred-width: button.preferred-width;
-    preferred-height: button.preferred-height;
-
-    button := Button {
-        width: 100%;
-        height: 100%;
-        text: root.button-text;
-        enabled: root.enabled;
-        clicked => {
-            root.query = "";
-            root.opened();
-            popup.show();
-        }
+    Icon {
+        source: Icons.lock;
+        tint: root.look.muted;
+        width: root.look.font-body;
+        y: (parent.height - self.height) / 2;
     }
-
-    popup := PopupWindow {
-        x: 0px;
-        y: root.height;
-        width: 280px;
-        height: 280px;
-        close-policy: close-on-click-outside;
-        forward-focus: search;
-
-        Rectangle {
-            background: Palette.background;
-            border-width: 1px;
-            border-color: Palette.border;
-            border-radius: 4px;
-
-            VerticalLayout {
-                padding: 6px;
-                spacing: 6px;
-
-                search := LineEdit {
-                    text <=> root.query;
-                    placeholder-text: @tr("Search");
-                    edited(text) => { root.query-changed(text); }
-                }
-                ListView {
-                    for entry in root.entries: Rectangle {
-                        height: 28px;
-                        background: touch.has-hover ? Palette.accent-background.with-alpha(0.25) : transparent;
-
-                        touch := TouchArea {
-                            clicked => {
-                                root.chosen(entry.id);
-                                popup.close();
-                            }
-                        }
-                        Text {
-                            x: 8px;
-                            width: parent.width - 16px;
-                            vertical-alignment: center;
-                            overflow: elide;
-                            text: entry.name != "" ? entry.name : @tr("Entry {}", entry.id);
-                        }
-                    }
-                }
-            }
-        }
+    LookText {
+        look: root.look;
+        text: @tr("locked");
+        font-size: root.look.font-small;
+        color: root.look.muted;
     }
 }
 
@@ -121,43 +84,56 @@ export component PickerField inherits Rectangle {
 // bridge; the control never holds the value, so a refusal shows the document's
 // value again.
 export component FieldEditor inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
     in property <FieldRow> field;
+    // The accessible name; the field's label when empty. An item row passes
+    // the item's name, so its count reads as "Potion", not "Count".
+    in property <string> name;
     // The small "locked" mark; a row that shows its own mark turns this off.
     in property <bool> show-lock: true;
 
-    spacing: 8px;
+    private property <string> label: root.name != "" ? root.name : root.field.label;
 
-    if root.field.kind == FieldKind.label: Text {
+    spacing: root.look.spacing;
+
+    if root.field.kind == FieldKind.label: LookText {
+        look: root.look;
         horizontal-stretch: 1;
-        vertical-alignment: center;
         overflow: elide;
         text: root.field.shown != "" ? root.field.shown : root.field.text;
     }
     if root.field.kind == FieldKind.text: CommitEdit {
+        look: root.look;
         horizontal-stretch: 1;
         source: root.field.text;
+        label: root.label;
         enabled: root.field.editable && !EditorBridge.blocked;
         committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
     }
     if root.field.kind == FieldKind.number: CommitEdit {
-        max-width: 200px;
+        look: root.look;
+        preferred-width: 180px;
+        max-width: 180px;
         source: root.field.text;
+        label: root.label;
         enabled: root.field.editable && !EditorBridge.blocked;
         alignment: right;
         committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
     }
-    if root.field.kind == FieldKind.number && root.field.cap != "": Text {
-        vertical-alignment: center;
-        font-size: 11px;
-        opacity: 0.7;
+    if root.field.kind == FieldKind.number && root.field.cap != "": LookText {
+        look: root.look;
+        font-size: root.look.font-small;
+        color: root.look.muted;
         text: @tr("game limit {}", root.field.cap);
     }
-    if root.field.kind == FieldKind.number && root.field.above-cap: Text {
-        vertical-alignment: center;
-        font-size: 11px;
-        color: #d08000;
+    if root.field.kind == FieldKind.number && root.field.above-cap: LookText {
+        look: root.look;
+        font-size: root.look.font-small;
+        color: root.look.warning;
         text: @tr("above the game limit");
     }
+    // The one std control left in the editor: no field of FF I has this kind,
+    // and a themed drop-down is a later task.
     if root.field.kind == FieldKind.choice: ComboBox {
         model: root.field.names;
         current-index: root.field.name-index;
@@ -168,24 +144,34 @@ export component FieldEditor inherits HorizontalLayout {
         }
     }
     if root.field.kind == FieldKind.choice: CommitEdit {
-        max-width: 200px;
+        look: root.look;
+        preferred-width: 180px;
+        max-width: 180px;
         source: root.field.text;
+        label: root.label;
         enabled: root.field.editable && !EditorBridge.blocked;
         alignment: right;
         committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
     }
     if root.field.kind == FieldKind.picker: PickerField {
-        width: 220px;
+        look: root.look;
+        preferred-width: 264px;
+        max-width: 264px;
         entries: EditorBridge.picker-entries;
         enabled: root.field.editable && !EditorBridge.blocked;
+        icon: Icons.expand-more;
+        has-icon: true;
+        icon-trailing: true;
         button-text: root.field.known && root.field.shown != "" ? root.field.shown
             : root.field.known ? @tr("Entry {}", root.field.text)
             : @tr("Unknown ({})", root.field.text);
+        accessible-name: @tr("{}: {}", root.label, self.button-text);
         opened => { EditorBridge.field-picker-query(root.field.key, ""); }
         query-changed(text) => { EditorBridge.field-picker-query(root.field.key, text); }
         chosen(id) => { EditorBridge.field-picked(root.field.key, id); }
     }
-    if root.field.kind == FieldKind.toggle: CheckBox {
+    if root.field.kind == FieldKind.toggle: ThemedCheck {
+        look: root.look;
         checked: root.field.checked;
         enabled: root.field.editable && !EditorBridge.blocked;
         toggled => {
@@ -193,27 +179,34 @@ export component FieldEditor inherits HorizontalLayout {
             self.checked = root.field.checked;
         }
     }
-    if root.field.locked && root.show-lock && root.field.kind != FieldKind.label: Text {
-        vertical-alignment: center;
-        font-size: 11px;
-        opacity: 0.7;
-        text: @tr("locked");
+    if root.field.locked && root.show-lock && root.field.kind != FieldKind.label: LockMark {
+        look: root.look;
+    }
+    // Takes the leftover width, so a fixed-width control keeps its width.
+    if root.field.kind != FieldKind.text && root.field.kind != FieldKind.label: Rectangle {
+        horizontal-stretch: 1;
     }
 }
 
 // A field with its label on the left.
 export component FieldLine inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
     in property <FieldRow> field;
 
-    spacing: 12px;
+    spacing: root.look.padding;
 
-    Text {
-        width: 180px;
-        vertical-alignment: center;
+    LookText {
+        look: root.look;
+        min-width: 96px;
+        preferred-width: 240px;
+        max-width: 240px;
         overflow: elide;
+        color: root.look.label;
         text: root.field.label;
     }
     FieldEditor {
+        look: root.look;
+        horizontal-stretch: 1;
         field: root.field;
     }
 }

@@ -17,6 +17,8 @@ export component ThemedButton inherits Rectangle {
     in property <string> text;
     in property <image> icon;
     in property <bool> has-icon;
+    // The icon follows the text instead of leading it.
+    in property <bool> icon-trailing;
     in property <bool> primary;
     in property <bool> enabled: true;
     // The accessible name when it differs from `text`; an icon-only button needs it.
@@ -69,7 +71,7 @@ export component ThemedButton inherits Rectangle {
         spacing: root.look.spacing;
         alignment: center;
 
-        if root.has-icon: Icon {
+        if root.has-icon && !root.icon-trailing: Icon {
             source: root.icon;
             tint: root.ink;
             width: root.look.font-body * 1.25;
@@ -83,6 +85,13 @@ export component ThemedButton inherits Rectangle {
             font-size: root.look.font-body;
             vertical-alignment: center;
             overflow: elide;
+        }
+        if root.has-icon && root.icon-trailing: Icon {
+            source: root.icon;
+            tint: root.ink;
+            width: root.look.font-body * 1.25;
+            height: root.look.font-body * 1.25;
+            y: (parent.height - self.height) / 2;
         }
     }
     FocusRing {
@@ -149,19 +158,23 @@ export component ThemedEdit inherits Rectangle {
             return reject;
         }
 
+        // The placeholder sits over the box, so it never pushes the input aside.
+        if root.placeholder != "" && input.text == "": Text {
+            x: root.look.spacing;
+            width: parent.width - 2 * root.look.spacing;
+            height: parent.height;
+            text: root.placeholder;
+            color: root.look.muted;
+            font-family: root.look.font-family;
+            font-size: root.look.font-body;
+            vertical-alignment: center;
+            horizontal-alignment: root.alignment;
+            overflow: elide;
+        }
         HorizontalLayout {
             padding-left: root.look.spacing;
             padding-right: root.look.spacing;
 
-            if root.placeholder != "" && input.text == "": Text {
-                text: root.placeholder;
-                color: root.look.muted;
-                font-family: root.look.font-family;
-                font-size: root.look.font-body;
-                vertical-alignment: center;
-                horizontal-alignment: root.alignment;
-                overflow: elide;
-            }
             input := TextInput {
                 color: root.enabled ? root.look.text : root.look.muted;
                 font-family: root.look.font-family;
