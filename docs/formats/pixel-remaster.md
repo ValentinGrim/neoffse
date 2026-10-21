@@ -44,7 +44,7 @@ Platforms covered:
 | Source | Location | Used for |
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
-| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix; bundles and files listed in [Game master data](#game-master-data); read with UnityPy 1.25.4 from copies of the bundles | IDs, kinds and English and French names of the FF I items, equipment, abilities, jobs, commands, maps and monsters, and the bounds in `game_constant_int.csv` ([Game master data](#game-master-data) and the three sections after it) [D] |
+| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix; bundles and files listed in [Game master data](#game-master-data); read with UnityPy 1.25.4 from copies of the bundles | IDs, kinds and English and French names of the FF I items, equipment, abilities, jobs, commands, maps and monsters, the base HP and experience tables, and the bounds in `game_constant_int.csv` ([Game master data](#game-master-data) and the four sections after it) [D] |
 | Go editor tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | the FF I names the editor uses, compared with the game ([Go editor tables](#go-editor-tables)) |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
 | Real saves | one Steam save folder per game, read-only copies | every [M] fact about the files |
@@ -645,7 +645,7 @@ The three `…KeySettings` values are dictionaries whose values are more diction
 The game stores its IDs and their names in its own data files.
 `content.csv` gives each `contentId` a type and a name key, and the message files turn the key into text in each language.
 NeoFFSE builds its tables from these files.
-Every fact below and in the three sections after it comes from the FF I install, build 20249397 [D].
+Every fact below and in the four sections after it comes from the FF I install, build 20249397 [D].
 The installs of the other five games were not read.
 
 **Where the files sit.**
@@ -750,7 +750,7 @@ The rows, not the keys, carry the right name [D]:
   No row that `content.csv` reaches falls outside these groups.
 - `attribute_group.csv` maps a `resistance_attribute` value to attributes.
 - `item.csv` holds the rows that type 1 points to, and its `type_id` separates items from key items (below).
-  `weapon.csv` holds the rows that type 2 points to; only its `parts_group_id` was read.
+  `weapon.csv` holds the rows that type 2 points to; only its `parts_group_id` and `max_hp_up` were read.
 
 **Item or key item.**
 `content.csv` gives both kinds `type_id` 1.
@@ -765,6 +765,30 @@ Example: `item.csv` row 1 (`1,1,1,1`: `id`, `sort_id`, `type_id`, `system_id`) i
 Every type-2 row has `system_id` 0, a sell price of 0 and both function groups at 0.
 Every type-1 row has a menu or battle function group other than 0.
 The labels "item" and "key item" come from the name-key prefixes and the icons, not from game code [I].
+
+### Maximum HP and experience tables
+
+The game computes the maximum HP and the experience to the next level from three master files.
+The save stores neither figure, so a tool that shows them reads these tables, and every fact below is [D] unless a tag says otherwise.
+
+**Maximum HP.**
+`character_status.csv` (6 rows) holds the base HP in its `hp` column: 35, 30, 33, 30, 33 and 25 for `id` 1 to 6.
+A save's `characterStatusId` selects the row; the row is the base class, and `intermediate_growth_curve.csv` maps jobs 1 and 7 to character 1, jobs 2 and 8 to character 2, and so on.
+`game_constant_int.csv` holds `MAX_HP` 999 ([Bounds in the master data](#bounds-in-the-master-data)).
+The `max_hp_up` column of `weapon.csv` (41 rows) and `armor.csv` (44 rows) holds 0 on every row, and the stat columns of `job.csv` hold 0 on all 12 rows, so equipment and job add no HP.
+The formula is in [Characters](#characters).
+
+**Experience.**
+`exp_table.csv` (99 rows: `id`, `type_id`, `group_id`, `lv`, `total_exp`) gives the total experience a character needs to reach a level.
+Level 2 holds 14 and level 99 holds 1 471 455, and each row's `total_exp` exceeds the row before.
+Level 1 holds 0, so the figure is the total to reach a level and cannot be the total to leave it.
+`id` equals `lv`, and every row holds 1 in `type_id` and in `group_id`.
+FF I has one experience curve: `intermediate_growth_curve.csv` (12 rows, one per job 1 to 12) holds `exp_table_group_id` 1 on every row.
+
+**Export requirement.**
+A table export for these figures keeps `character_status.csv` (`id`, `hp`) and `exp_table.csv` (`lv`, `total_exp`).
+It checks that `group_id` is 1 on every `exp_table.csv` row and `exp_table_group_id` is 1 on every `intermediate_growth_curve.csv` row.
+A build that adds a second curve then fails the export instead of yielding wrong numbers [I].
 
 ### Ability, job and command tables
 
@@ -1060,7 +1084,7 @@ Identify a character by `id`; names repeat and change.
 | Key | Type | Notes |
 |---|---|---|
 | `id` | int | 1 to N, unique [M]; NeoFFSE refuses a file that repeats an `id` [I] |
-| `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the status names the base class [I]. No other meaning measured |
+| `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the id names the `character_status.csv` row, the base class, whose `hp` is the base of the maximum HP ([Maximum HP and experience tables](#maximum-hp-and-experience-tables)) [M, D, G] |
 | `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
 | `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; names in `job.csv` ([ID spaces and tables](#id-spaces-and-tables)) |
 | `name` | string | raw UTF-8, may hold non-ASCII [M]; two FF I heroes may share a name, FF VI has two Mogs [C, `d8a6c6f`] |
@@ -1081,16 +1105,23 @@ NeoFFSE edits the characters in place and never inserts or removes a character r
 Several `addtional…` names hold a gain on top of a base the file does not store:
 
 - `addtionalLevel` grows with `currentExp` in both game states [M].
+  In all 8 character states it equals the level the experience gives: `total_exp(addtionalLevel) <= currentExp < total_exp(addtionalLevel + 1)` ([Maximum HP and experience tables](#maximum-hp-and-experience-tables)) [M, D].
   The menu level equals the field, with no offset: the menu shows 69 for a value of 69 [G].
   The Go editor labels it "Level" (`coreStats.go`) [C].
   The game caps the level at 99 (`MAX_LV`) [D].
-- `addtionalMaxHp` is a gain over a per-character base, not the maximum.
-  `currentHP` exceeds it in 7 of 8 character states, by a difference that stays constant per character across both game states [M].
-  In the eighth state `currentHP` is 999 and `addtionalMaxHp` is 1 097; the same character's difference in the other game state is 35, so base plus gain would be 1 132.
-  The game states a maximum HP of 999 (`MAX_HP`) and no bound for the gain field [D].
-  The menu shows a maximum HP of 999 for that character [G]: the game displays min(base + `addtionalMaxHp`, 999).
-  The stored gain exceeds the cap.
+- `currentExp` is the total experience, not the experience inside the level.
+  The menu's "next level" figure is `total_exp(addtionalLevel + 1) - currentExp` ([Maximum HP and experience tables](#maximum-hp-and-experience-tables)).
+  It matches the menu for all 4 characters of the matching game state: 20 295, 916, 11 681 and 11 681 [M, D, G].
+- `addtionalMaxHp` is a gain over a per-class base, not the maximum.
+  The file stores no maximum.
+  The menu shows `min(base + addtionalMaxHp, MAX_HP)`, where `base` is the `hp` column of the `character_status.csv` row whose `id` equals the character's `characterStatusId` (35, 30, 33, 30, 33 and 25 for ids 1 to 6), and `MAX_HP` is 999 ([Maximum HP and experience tables](#maximum-hp-and-experience-tables)) [M, D, G].
+  Equipment adds nothing: `max_hp_up` is 0 on every `weapon.csv` and `armor.csv` row [D].
+  The formula gives the menu's maximum HP for all 4 characters of the matching game state: 999, 863, 930 and 679 [M, D, G].
+  Character 1 exercises the cap: base plus gain is 1 132 and the menu shows 999.
+  The stored gain exceeds the cap, and the game states no bound for the gain field [D].
   Whether the game clamps an edited gain field is open ([Open questions](#open-questions)).
+  `currentHP` minus `addtionalMaxHp` equals the base when the character is at full HP, which holds for all 8 measured states.
+  For a wounded character the difference falls below the base, so it cannot serve as the base.
   The Go editor labels the field "HP Max" (`coreStats.go`) [C], which the data contradicts.
 - `currentMP` and `addtionalMaxMp` hold 0 in all 8 states.
   FF I stores spell charges per spell level in `currentMpCountList` and `addtionalMaxMpCountList` (keys 1 to 8, values 0 to 9) [M].
@@ -1474,7 +1505,7 @@ Each point needs a real save or an in-game test.
    None of the 34 files had a stream length divisible by 32.
 5. The `timeStamp` layout: FF I and FF II used different layouts on one machine, and the setting that picks the layout is unknown.
 6. `timeStampTicks`: local time or UTC?
-7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `characterStatusId`, `pointIn`, `playableCharacterCorpsId`, `skillLevelTargets`, `abilityDictionary`, `scenarioFlags`, and the FF II `learnedAbilityList`.
+7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `pointIn`, `playableCharacterCorpsId`, `skillLevelTargets`, `abilityDictionary`, `scenarioFlags`, and the FF II `learnedAbilityList`.
 8. Does the game accept an inventory item missing from a non-empty `normalOwnedItemSortIdList`?
 9. The PlayStation variant: file layout after extraction, presence of a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not measured.
@@ -1496,3 +1527,16 @@ Each point needs a real save or an in-game test.
     The Go editor does not [C].
 20. Which game holds the measured `mapData.mapId` values up to 228, and does `mapId` reference `map.csv`?
     FF I's `map.csv` lists IDs 1 to 127 and 800 to 802 [D], and the link rests on the Go editor's code [C] ([Party position and map](#party-position-and-map)).
+21. Maximum HP of a wounded character.
+    All 8 measured character states sit at full HP, so `currentHP` equals `min(base + addtionalMaxHp, MAX_HP)` there.
+    The menu readings cannot exclude a menu whose maximum equals `currentHP`.
+    The match of the base on 7 states makes that reading unlikely [I].
+    A saved character with lowered HP, read in the menu as a current and maximum pair, would settle it.
+22. Does the menu level come from `addtionalLevel` or from the experience?
+    The two agree in all 8 states, so the readings cannot tell, and the next-level figure is the same either way.
+    A load of a copy where they disagree (a `currentExp` below `total_exp(addtionalLevel)`) would settle it.
+23. The next-level display at level 99.
+    `exp_table.csv` has no row for level 100, and no measured save holds a character at level 99.
+24. A `currentExp` at or above `total_exp(addtionalLevel + 1)`.
+    The next-level formula then gives zero or a negative number.
+    What the game shows, and whether it raises the level in the next battle, is unproven.
