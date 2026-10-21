@@ -1,19 +1,11 @@
 //! The Linux search: Steam roots, their libraries, and the Proton prefixes.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::library_list::library_paths;
-use super::{Discovery, Environment, Origin, SteamGame, probe, settle};
-use crate::error::{IoError, Operation};
+use super::steam::{installs, libraries, roots};
+use super::{Discovery, Environment, Origin, SteamGame, probe};
 
-/// A canonical library and the canonical root that named it first.
-struct Library {
-    root: PathBuf,
-    path: PathBuf,
-}
-
-/// Probes every library of every root for every game.
+/// Probes every library of every root for every game, then lists the installs.
 ///
 /// Source: `docs/formats/pixel-remaster.md#steam-roots-and-libraries`. The
 /// search does not run without a home.
@@ -28,9 +20,9 @@ pub(super) fn search(environment: &Environment, games: &[SteamGame<'_>], found: 
     // game's library": Steam can leave a prefix away from the library that
     // installs the game, or behind after an uninstall. Every library is
     // probed for every game, and every hit is returned.
-    for library in libraries {
+    for library in &libraries {
         let origin = Origin::SteamLibrary {
-            root: library.root,
+            root: library.root.clone(),
             library: library.path.clone(),
         };
         for game in games {
@@ -45,6 +37,7 @@ pub(super) fn search(environment: &Environment, games: &[SteamGame<'_>], found: 
             probe(&steam_dir, game, &origin, found);
         }
     }
+    installs(&libraries, games, found);
 }
 
 /// The places a Steam root can sit, in search order, each spelling once.
@@ -75,73 +68,4 @@ fn candidates(home: &Path, data_home: Option<&Path>) -> Vec<PathBuf> {
         push(base.join(".steam/root"));
     }
     list
-}
-
-/// The canonical candidates that hold a `steamapps` folder, without duplicates.
-///
-/// Three native candidates are links to one folder. Each canonical path is
-/// checked once, so a folder reached five ways reports its `steamapps`
-/// failure once. A candidate that cannot be canonicalized reports its own
-/// failure; `candidates` never repeats a spelling, so none reports twice.
-fn roots(candidates: &[PathBuf], skipped: &mut Vec<IoError>) -> Vec<PathBuf> {
-    let mut tried: Vec<PathBuf> = Vec::new();
-    let mut roots = Vec::new();
-    for candidate in candidates {
-        let Some(canonical) = settle(fs::canonicalize(candidate), Operation::Read, candidate, skipped) else {
-            continue;
-        };
-        if tried.contains(&canonical) {
-            continue;
-        }
-        tried.push(canonical.clone());
-        let steamapps = canonical.join("steamapps");
-        let status = settle(fs::metadata(&steamapps), Operation::Read, &steamapps, skipped);
-        if status.is_some_and(|status| status.is_dir()) {
-            roots.push(canonical);
-        }
-    }
-    roots
-}
-
-/// For each root, the root itself, then the libraries its list names, each
-/// canonical and unique across all roots. The first root to name a library
-/// owns it.
-fn libraries(roots: Vec<PathBuf>, skipped: &mut Vec<IoError>) -> Vec<Library> {
-    let mut libraries: Vec<Library> = Vec::new();
-    for root in roots {
-        add(&mut libraries, &root, root.clone());
-        let list = root.join("steamapps").join("libraryfolders.vdf");
-        let Some(text) = settle(fs::read_to_string(&list), Operation::Read, &list, skipped) else {
-            continue;
-        };
-        match library_paths(&text) {
-            Ok(paths) => {
-                for path in paths {
-                    // A relative path would resolve against the process's current
-                    // folder, so discovery would walk a folder it was not pointed at.
-                    if !path.is_absolute() {
-                        skipped.push(IoError::LibraryListInvalid {
-                            path: list.clone(),
-                            source: "a library path is not absolute".into(),
-                        });
-                        continue;
-                    }
-                    if let Some(canonical) = settle(fs::canonicalize(&path), Operation::Read, &path, skipped) {
-                        add(&mut libraries, &root, canonical);
-                    }
-                }
-            }
-            Err(source) => skipped.push(IoError::LibraryListInvalid { path: list, source }),
-        }
-    }
-    libraries
-}
-
-fn add(libraries: &mut Vec<Library>, root: &Path, path: PathBuf) {
-    if libraries.iter().all(|library| library.path != path) {
-        libraries.push(Library {
-            root: root.to_path_buf(),
-            path,
-        });
-    }
 }

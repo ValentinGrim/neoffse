@@ -57,7 +57,7 @@ fn report_for(id: &'static str, folders: &[SaveFolder]) -> GameReport {
 }
 
 #[allow(clippy::print_stderr, reason = "a manual run prints its counts on stderr")]
-fn print_report(reports: &[GameReport], skipped: usize) {
+fn print_report(reports: &[GameReport], installs: usize, skipped: usize) {
     let mut lines: Vec<String> = reports
         .iter()
         .map(|report| {
@@ -76,6 +76,7 @@ fn print_report(reports: &[GameReport], skipped: usize) {
             )
         })
         .collect();
+    lines.push(format!("installs: {installs}"));
     lines.push(format!("skipped: {skipped}"));
     eprintln!("{}", lines.join("\n"));
 }
@@ -94,7 +95,7 @@ fn discovery_finds_a_decodable_save_for_each_of_the_six_games() {
     let found = discover(&Environment::platform(), &games);
 
     let reports: Vec<GameReport> = GAMES.iter().map(|game| report_for(game.id, &found.folders)).collect();
-    print_report(&reports, found.skipped.len());
+    print_report(&reports, found.installs.len(), found.skipped.len());
 
     for report in &reports {
         assert!(!report.decodable.is_empty(), "{}: no save folder found", report.id);
