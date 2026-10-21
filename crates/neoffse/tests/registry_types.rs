@@ -9,7 +9,7 @@ use common::{folder_with, slot_bytes, slot_name};
 use neoffse::core::{FormatError, Game};
 use neoffse::data::Language;
 use neoffse::io::error::IoError;
-use neoffse::{Error, OpenSave, Registry, Scan};
+use neoffse::{Error, Registry, Scan, Session};
 
 fn is_send<T: Send>() {}
 fn is_send_sync<T: Send + Sync>() {}
@@ -19,11 +19,11 @@ fn the_types_cross_threads() {
     is_send_sync::<Registry>();
     is_send_sync::<Error>();
     is_send_sync::<Scan>();
-    is_send::<OpenSave>();
+    is_send::<Session>();
 }
 
 #[test]
-fn debug_of_an_open_save_holds_the_game_and_the_name_only() {
+fn debug_of_a_session_holds_the_game_and_the_name_only() {
     let bytes = slot_bytes();
     let dir = folder_with(&[(slot_name(2), &bytes)]);
     let save = Registry::new(Language::En).open(dir.path(), slot_name(2), None).unwrap();

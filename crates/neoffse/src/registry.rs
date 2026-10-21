@@ -1,7 +1,8 @@
 //! The registry of shipped formats: detection, folder scan and open.
 
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Arc;
 
 use neoffse_core::{Detection, FileProbe, FormatError, Game, PROBE_HEAD_LEN, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_data::Language;
@@ -11,13 +12,17 @@ use neoffse_io::error::IoError;
 use neoffse_io::files;
 
 use crate::error::Error;
+use crate::session::Session;
+
+/// The game, format and document of a successful open.
+type Opened = (Game, Arc<dyn SaveFormat>, Box<dyn SaveDocument>);
 
 /// The formats NeoFFSE ships, one per supported game.
 ///
 /// The registry is `Send + Sync`. Its `Debug` lists the games.
 pub struct Registry {
     /// In `Game::ALL` order: `detect` and `open` rely on it for ties.
-    formats: Vec<Box<dyn SaveFormat>>,
+    formats: Vec<Arc<dyn SaveFormat>>,
 }
 
 /// A format's claim on a file: its game and how sure it is.
@@ -54,34 +59,6 @@ pub struct Scan {
     pub unreadable: Vec<IoError>,
 }
 
-/// A save the registry opened, with what the save pipeline needs later.
-///
-/// `Debug` shows the game and the file name only: the document and the bytes
-/// are save content, and `dir` is a personal path.
-#[non_exhaustive]
-pub struct OpenSave {
-    /// The opened document.
-    pub document: Box<dyn SaveDocument>,
-    /// The game of the format that opened the file.
-    pub game: Game,
-    /// The folder the file was read from.
-    pub dir: PathBuf,
-    /// The file name inside `dir`.
-    pub name: String,
-    /// The bytes `open` read and gave the format, for the save pipeline's
-    /// check that the file did not change on disk.
-    pub original: SaveFiles,
-}
-
-impl fmt::Debug for OpenSave {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenSave")
-            .field("game", &self.game.id())
-            .field("name", &self.name)
-            .finish_non_exhaustive()
-    }
-}
-
 impl fmt::Debug for Registry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Registry")
@@ -102,7 +79,7 @@ impl Registry {
     #[must_use]
     pub fn new(language: Language) -> Self {
         Self {
-            formats: vec![Box::new(Ff1Format::with_language(language))],
+            formats: vec![Arc::new(Ff1Format::with_language(language))],
         }
     }
 
@@ -115,7 +92,11 @@ impl Registry {
     /// The format of `game`, or `None` when the registry has none.
     #[must_use]
     pub fn format(&self, game: Game) -> Option<&dyn SaveFormat> {
-        self.formats.iter().find(|format| format.game() == game).map(|format| &**format)
+        self.shared(game).map(|format| &**format)
+    }
+
+    fn shared(&self, game: Game) -> Option<&Arc<dyn SaveFormat>> {
+        self.formats.iter().find(|format| format.game() == game)
     }
 
     /// Finds the format that claims a file.
@@ -176,11 +157,12 @@ impl Registry {
         })
     }
 
-    /// Reads the file `name` of `dir` and opens it.
+    /// Reads the file `name` of `dir`, opens it and starts its [`Session`].
     ///
     /// With `game: Some(game)`, the format of `game` opens it. With `None`,
     /// every format tries in `Game::ALL` order and the first that opens the
-    /// file wins, whatever the file's name.
+    /// file wins, whatever the file's name. The session starts clean, with
+    /// the bytes read as its [`original`](Session::original).
     ///
     /// # Errors
     ///
@@ -190,33 +172,27 @@ impl Registry {
     /// - [`Error::UnsupportedGame`]: the registry has no format for `game`.
     /// - [`Error::NoFormat`]: no format opened the file; one attempt per
     ///   format tried.
-    pub fn open(&self, dir: &Path, name: &str, game: Option<Game>) -> Result<OpenSave, Error> {
+    pub fn open(&self, dir: &Path, name: &str, game: Option<Game>) -> Result<Session, Error> {
         let bytes = files::read(dir, name).map_err(|source| Error::Io { source })?;
         let mut original = SaveFiles::new();
         original.push(name, bytes).map_err(|source| Error::Format { source })?;
-        let (game, document) = match game {
+        let (game, format, document) = match game {
             Some(game) => {
-                let format = self.format(game).ok_or(Error::UnsupportedGame { game })?;
+                let format = self.shared(game).ok_or(Error::UnsupportedGame { game })?;
                 let document = format.open(&original).map_err(|source| Error::Format { source })?;
-                (game, document)
+                (game, Arc::clone(format), document)
             }
             None => self.open_any(&original)?,
         };
-        Ok(OpenSave {
-            document,
-            game,
-            dir: dir.to_path_buf(),
-            name: name.to_owned(),
-            original,
-        })
+        Ok(Session::opened(format, document, game, dir.to_path_buf(), name.to_owned(), original))
     }
 
-    fn open_any(&self, files: &SaveFiles) -> Result<(Game, Box<dyn SaveDocument>), Error> {
+    fn open_any(&self, files: &SaveFiles) -> Result<Opened, Error> {
         let mut attempts: Vec<(Game, FormatError)> = Vec::new();
         for game in Game::ALL {
-            let Some(format) = self.format(*game) else { continue };
+            let Some(format) = self.shared(*game) else { continue };
             match format.open(files) {
-                Ok(document) => return Ok((*game, document)),
+                Ok(document) => return Ok((*game, Arc::clone(format), document)),
                 Err(error) => attempts.push((*game, error)),
             }
         }

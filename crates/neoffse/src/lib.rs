@@ -8,10 +8,14 @@
 //!
 //! - [`Registry`]: the formats NeoFFSE ships. It claims the files of a
 //!   folder ([`Registry::scan`]) and opens one ([`Registry::open`]).
-//! - [`Error`]: what the registry reports.
+//! - [`Session`]: one opened save with its edit history. It edits in the
+//!   default or the expert mode, undoes and redoes, tells whether the
+//!   document differs from the files read, and discards the edits by
+//!   reopening the bytes held in memory.
+//! - [`Error`]: what the registry and the session report.
 //!
-//! The edit history, the save pipeline that links a format's encoder to the
-//! verified write of [`io`], and the restore of a backup come next.
+//! The save pipeline that links a format's encoder to the verified write of
+//! [`io`], and the restore of a backup, come next.
 //!
 //! `pub use neoffse_core as core` shadows the `core` prelude crate at this
 //! crate's root: inside the facade, write `::core` for the standard library.
@@ -23,6 +27,8 @@ pub use neoffse_io as io;
 
 mod error;
 mod registry;
+mod session;
 
 pub use error::Error;
-pub use registry::{Claim, Found, OpenSave, Registry, Scan};
+pub use registry::{Claim, Found, Registry, Scan};
+pub use session::Session;
