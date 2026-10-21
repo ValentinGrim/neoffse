@@ -14,9 +14,10 @@
 //!   reopening the bytes held in memory, and saves ([`Session::save`]): a
 //!   running-game check, a newer-on-disk check, the format's encoder, a
 //!   backup and the verified atomic write of [`io`].
+//! - [`Registry::backups`] and [`Registry::restore`]: the registry also lists
+//!   the backups of a game and restores one, with no session and no format:
+//!   the main case is a file that no longer opens.
 //! - [`Error`]: what the registry and the session report.
-//!
-//! The restore of a backup comes next.
 //!
 //! `pub use neoffse_core as core` shadows the `core` prelude crate at this
 //! crate's root: inside the facade, write `::core` for the standard library.
@@ -27,7 +28,9 @@ pub use neoffse_format_pr as pr;
 pub use neoffse_io as io;
 
 mod error;
+mod executables;
 mod registry;
+mod restore;
 mod session;
 
 pub use error::Error;
