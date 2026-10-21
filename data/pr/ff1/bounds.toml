@@ -6,7 +6,7 @@
 # Message bundle: message_assets_all_0fa953164799e15ca32394768bad704a.bundle (sha256 a754d4b520027ae0a85cd9a8fe97727a6633dd3c006542f66b494829ee363950).
 # Format reference: docs/formats/pixel-remaster.md#game-master-data
 # One entry per game_constant_int.csv row whose key_name starts with MAX_: the key name as the game spells it, and value1.
-# docs/formats/pixel-remaster.md#bounds-in-the-master-data says which save field each cap bounds.
+# docs/formats/pixel-remaster.md#bounds-in-the-master-data says which save field each named cap bounds; the others have no known save field.
 
 [bounds]
 MAX_GIL = 999999

@@ -30,8 +30,7 @@ struct ContentFile {
 struct ContentRow {
     id: u32,
     kind: String,
-    #[serde(default)]
-    placeholder: bool,
+    placeholder: Option<bool>,
     name_en: String,
     name_fr: String,
 }
@@ -97,7 +96,49 @@ pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> 
     let monsters: MonsterFile = read("monsters.toml", sources.monsters)?;
     names("monsters.toml", &monsters.monster, TableKind::Monster, &mut tables)?;
     let bounds: BoundsFile = read("bounds.toml", sources.bounds)?;
+    check_bounds(&bounds.bounds)?;
     Ok(Parsed { tables, bounds: bounds.bounds })
+}
+
+fn rule(file: &'static str, row: String, rule: &'static str) -> DataError {
+    DataError::Rule { file, row, rule }
+}
+
+/// Every key starts with `MAX_` and no cap is negative.
+fn check_bounds(bounds: &BTreeMap<String, i64>) -> Result<(), DataError> {
+    for (key, value) in bounds {
+        if !key.starts_with("MAX_") {
+            return Err(rule("bounds.toml", key.clone(), "key without the MAX_ prefix"));
+        }
+        if *value < 0 {
+            return Err(rule("bounds.toml", key.clone(), "negative bound"));
+        }
+    }
+    Ok(())
+}
+
+/// The empty-slot flag of a content row: absent or `true`, only on an
+/// equipment kind, once per kind.
+fn check_placeholder(row: &ContentRow, kind: TableKind, seen: &mut Vec<TableKind>) -> Result<bool, DataError> {
+    const NAME: &str = "content.toml";
+    let Some(flag) = row.placeholder else {
+        return Ok(false);
+    };
+    let at = || format!("id {}", row.id);
+    if !flag {
+        return Err(rule(NAME, at(), "placeholder written as false"));
+    }
+    if !matches!(
+        kind,
+        TableKind::Weapon | TableKind::Shield | TableKind::Armor | TableKind::Helmet | TableKind::Gloves
+    ) {
+        return Err(rule(NAME, at(), "placeholder on a non-equipment kind"));
+    }
+    if seen.contains(&kind) {
+        return Err(rule(NAME, at(), "second placeholder of a kind"));
+    }
+    seen.push(kind);
+    Ok(true)
 }
 
 fn read<'de, T: Deserialize<'de>>(file: &'static str, text: &'de str) -> Result<T, DataError> {
@@ -119,6 +160,7 @@ fn rise(file: &'static str, last: &mut u32, id: u32) -> Result<(), DataError> {
 fn content(file: &ContentFile, tables: &mut BTreeMap<TableKind, Vec<Entry>>) -> Result<(), DataError> {
     const NAME: &str = "content.toml";
     let mut last = 0;
+    let mut seen = Vec::new();
     for row in &file.content {
         rise(NAME, &mut last, row.id)?;
         let kind = match row.kind.as_str() {
@@ -137,10 +179,11 @@ fn content(file: &ContentFile, tables: &mut BTreeMap<TableKind, Vec<Entry>>) -> 
                 });
             }
         };
+        let placeholder = check_placeholder(row, kind, &mut seen)?;
         tables.entry(kind).or_default().push(Entry {
             id: row.id,
             kind,
-            placeholder: row.placeholder,
+            placeholder,
             name_en: row.name_en.clone(),
             name_fr: row.name_fr.clone(),
             ability: None,
@@ -167,6 +210,12 @@ fn abilities(file: &AbilityFile, tables: &mut BTreeMap<TableKind, Vec<Entry>>) -
                 });
             }
         };
+        if row.level > 8 {
+            return Err(rule(NAME, format!("id {}", row.id), "level above 8"));
+        }
+        if row.content_id == 0 {
+            return Err(rule(NAME, format!("id {}", row.id), "content_id 0"));
+        }
         tables.entry(TableKind::Ability).or_default().push(Entry {
             id: row.id,
             kind: TableKind::Ability,

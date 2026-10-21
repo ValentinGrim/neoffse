@@ -127,6 +127,12 @@ fn bounds_match_the_master_data() {
         ("MAX_LUCK", 99),
         ("MAX_ATTACK", 255),
         ("MAX_DEFENSE", 255),
+        // The doc's row "and the matching rows" for ability attack, ability
+        // defense, accuracy and evasion.
+        ("MAX_ABILITY_ATTACK", 255),
+        ("MAX_ABILITY_DEFENSE", 255),
+        ("MAX_ACCURACY_RATE", 255),
+        ("MAX_EVASION_RATE", 255),
     ] {
         assert_eq!(ff1().bound(key), Some(value), "{key}");
     }
@@ -138,4 +144,49 @@ fn bound_keys_keep_the_game_spelling() {
     assert_eq!(ff1().bound("MAX_MP"), None);
     let keys: Vec<&str> = ff1().bounds().map(|(key, _)| key).collect();
     assert!(keys.windows(2).all(|pair| pair[0] < pair[1]));
+}
+
+#[test]
+fn content_ids_run_from_2_to_202() {
+    // #game-master-data: types 1 to 3 hold 121 content ids, from 2 to 202.
+    let mut ids: Vec<u32> = CONTENT_KINDS
+        .iter()
+        .flat_map(|kind| ff1().table(*kind).unwrap().iter().map(|entry| entry.id))
+        .collect();
+    ids.sort_unstable();
+    assert_eq!(ids.len(), 121);
+    assert_eq!((ids.first(), ids.last()), (Some(&2), Some(&202)));
+}
+
+#[test]
+fn the_crown_is_key_item_46() {
+    // #game-master-data, "Item or key item"
+    let crown = ff1().entry(TableKind::KeyItem, 46).unwrap();
+    assert_eq!((crown.name_en.as_str(), crown.name_fr.as_str()), ("Crown", "Couronne"));
+    assert!(!crown.placeholder);
+}
+
+#[test]
+fn x_potion_nunchaku_and_knights_armor_are_real_rows() {
+    // #go-editor-tables: content ids the Go editor lacked, none an empty slot.
+    let found = |id| ff1().content(id).unwrap();
+    assert_eq!((found(4).kind, found(4).name_en.as_str()), (TableKind::Item, "X-Potion"));
+    assert_eq!((found(104).kind, found(104).name_en.as_str()), (TableKind::Weapon, "Nunchaku"));
+    assert_eq!((found(105).kind, found(105).name_en.as_str()), (TableKind::Weapon, "Iron Nunchaku"));
+    assert_eq!((found(151).kind, found(151).name_en.as_str()), (TableKind::Armor, "Knight's Armor"));
+    for id in [4, 104, 105, 151, 166] {
+        assert!(!found(id).placeholder, "content {id} is no empty slot");
+    }
+}
+
+#[test]
+fn commands_run_from_1_to_6_in_both_languages() {
+    // #ability-job-and-command-tables
+    let ids: Vec<u32> = ff1().table(TableKind::Command).unwrap().iter().map(|entry| entry.id).collect();
+    assert_eq!(ids, (1..=6).collect::<Vec<u32>>());
+    let french = ["Attaque", "Défense", "Magie", "Objets", "Fuite", "Retour"];
+    for (index, name) in french.iter().enumerate() {
+        let id = u32::try_from(index + 1).unwrap();
+        assert_eq!(names(TableKind::Command, id).1, *name, "command {id}");
+    }
 }
