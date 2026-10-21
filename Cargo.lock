@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "neoffse-core",
  "neoffse-data",
@@ -2699,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "i-slint-backend-testing",
  "neoffse",
@@ -2727,7 +2727,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse-format-pr"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "base64",
  "flate2",
@@ -2742,7 +2742,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse-io"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "directories",
  "keyvalues-parser",
