@@ -1,6 +1,8 @@
 //! The FF I format: detection by slot name and the typed open.
 
-use neoffse_core::{Detection, FieldId, FileProbe, FormatError, Game, SaveDocument, SaveFiles, SaveFormat};
+use std::collections::HashSet;
+
+use neoffse_core::{Detection, EditError, FieldId, FileProbe, FormatError, Game, RowId, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_data::{GameTables, Language, tables_for};
 
 use super::save::Ff1Document;
@@ -8,7 +10,7 @@ use super::summary::decode_error;
 use super::{Ff1Model, GAME, names};
 use crate::container::decode;
 use crate::document::Document;
-use crate::games::identify_counted;
+use crate::games::{check_markers, game_of_count};
 use crate::open_error::OpenError;
 use crate::slots;
 
@@ -65,14 +67,19 @@ impl Ff1Format {
     /// (`docs/formats/pixel-remaster.md#telling-the-games-apart`). It rests
     /// on counts measured on one Steam build, so a build that changes a
     /// transportation table makes it refuse that build's slots. The shape
-    /// check needs the character list and the two item lists, nothing else.
+    /// check needs the character list and the two item lists, nothing else,
+    /// and each key of a list (`id` or `contentId`) must appear once: the
+    /// model looks a row up by key, so a repeated key would make a `Remove`
+    /// that its inverse cannot undo.
     ///
     /// # Errors
     ///
     /// `FormatError::Decode` for every failure. Its source is an
     /// [`OpenError`] (`FileCount`, `NotASlot`, `OtherGame`), a `CodecError`
     /// for bytes that are no container, or a `DocumentError` for text that is
-    /// no JSON.
+    /// no JSON. A list that is missing or holds a row of another shape, and a
+    /// repeated `id` or `contentId` (`EditError::DuplicateRow` as the source
+    /// of `NotASlot`), are not a slot.
     pub fn open_document(&self, files: &SaveFiles) -> Result<Ff1Document, FormatError> {
         if files.len() != 1 {
             return Err(decode_error(OpenError::FileCount { found: files.len() }));
@@ -82,19 +89,28 @@ impl Ff1Format {
         };
         let decoded = decode(bytes).map_err(decode_error)?;
         let mut document = Document::parse(&decoded.json).map_err(decode_error)?;
-        match identify_counted(&mut document) {
-            Ok((GAME, _)) => {}
-            Ok((game, vehicles)) => return Err(decode_error(OpenError::OtherGame { found: Some(game), vehicles })),
-            Err(error) => return Err(decode_error(error)),
+        let (game, vehicles) = game_of_count(&mut document).map_err(decode_error)?;
+        if game != GAME {
+            return Err(decode_error(OpenError::OtherGame { found: Some(game), vehicles }));
         }
+        check_markers(&mut document, GAME, vehicles).map_err(decode_error)?;
         let mut model = Ff1Model::new(document, self.tables);
         for collection in [names::CHARACTER, names::INVENTORY, names::KEY_ITEMS] {
-            model
-                .rows(&FieldId::new(collection))
-                .map_err(|source| decode_error(OpenError::NotASlot { source: Box::new(source) }))?;
+            let not_a_slot = |source| decode_error(OpenError::NotASlot { source: Box::new(source) });
+            let keys = model.rows(&FieldId::new(collection)).map_err(not_a_slot)?;
+            if let Some(key) = repeated_key(&keys) {
+                let row = RowId::new(FieldId::new(collection), key).id().clone();
+                return Err(not_a_slot(EditError::DuplicateRow { row }));
+            }
         }
         Ok(Ff1Document::new(model, decoded.container, name.to_owned(), self.language))
     }
+}
+
+/// The first key that appears twice in `keys`, in document order.
+fn repeated_key(keys: &[u32]) -> Option<u32> {
+    let mut seen = HashSet::new();
+    keys.iter().copied().find(|key| !seen.insert(*key))
 }
 
 impl Default for Ff1Format {

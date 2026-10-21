@@ -23,8 +23,10 @@ fn canonical(content_id: u32, count: i64) -> String {
 /// The `count` of `text` when `text` has the shape of the canonical row of
 /// `content_id`: the prefix `{"contentId":K,"count":`, an integer and the
 /// closing brace. It does not decide canonicity: `canonical_row` compares the
-/// stored token with the token of `canonical(..)`, which also rejects a sign,
-/// other spacing and other escapes.
+/// stored token with the token of `canonical(..)`, which rejects other
+/// spacing, another key order and other escapes. A negative count is
+/// canonical (its text is what `canonical(..)` writes) and then fails the
+/// storage check of `Remove` and `row_locked`.
 fn canonical_count(text: &str, content_id: u32) -> Option<i64> {
     let head = format!("{{\"contentId\":{content_id},\"count\":");
     text.strip_prefix(&head)?.strip_suffix('}')?.parse().ok()
@@ -66,6 +68,8 @@ impl Ff1Model {
     pub(super) fn insert(&mut self, row: &RowId, position: Option<usize>, values: &[(&'static str, Value)], policy: CapPolicy) -> Result<Edit, EditError> {
         let (meta, collection) = self.row_collection(row)?;
         meta.check_insert(row, values, policy)?;
+        // `check_insert` refuses a character row (`insertable` is false), so
+        // only an item list reaches this point.
         let Collection::Items(list) = collection else {
             return Err(EditError::ReadOnly { field: row.id().clone() });
         };
@@ -90,6 +94,8 @@ impl Ff1Model {
         }
         let given = values.iter().find(|(name, _)| *name == names::COUNT).map(|(_, value)| value);
         let initial = meta.fields.iter().find(|field| field.name == names::COUNT).map(|field| &field.initial);
+        // `check_insert` already rejected a `count` that is no integer, and the
+        // collection meta gives `count` an integer initial value.
         let Some(Value::Int(count)) = given.or(initial) else {
             return Err(EditError::ReadOnly { field: row.id().clone() });
         };
@@ -101,6 +107,8 @@ impl Ff1Model {
     pub(super) fn remove(&mut self, row: &RowId) -> Result<Edit, EditError> {
         let (meta, collection) = self.row_collection(row)?;
         meta.check_remove(row)?;
+        // `check_remove` refuses a character row (`removable` is false), so
+        // only an item list reaches this point.
         let Collection::Items(list) = collection else {
             return Err(EditError::ReadOnly { field: row.id().clone() });
         };
@@ -118,9 +126,11 @@ impl Ff1Model {
     /// values are: a `character` row (the collection is not removable), a
     /// placeholder row of `inventory`, a row whose id a character wears, or a
     /// row whose stored token is not canonical, whether by its text or by its
-    /// escapes (`docs/formats/pixel-remaster.md#inventory`). A stored `count` of 0 is
-    /// canonical and does not lock: the raw `Remove` refuses it with
-    /// `OutOfRange`.
+    /// escapes (`docs/formats/pixel-remaster.md#inventory`), or a canonical
+    /// row whose stored `count` leaves the storage bound of a count (0, a
+    /// negative number or above `i32::MAX`). `Remove` refuses such a row on
+    /// both interfaces, because its inverse `Insert` could not store the
+    /// count.
     ///
     /// It reads the document and writes nothing.
     ///
@@ -130,7 +140,7 @@ impl Ff1Model {
     /// document does not hold (a character row included), `Format` when a read
     /// fails.
     pub fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
-        let (_, collection) = self.row_collection(row)?;
+        let (meta, collection) = self.row_collection(row)?;
         let index = self.row_index(row, collection)?;
         let Collection::Items(list) = collection else {
             return Ok(true);
@@ -138,6 +148,10 @@ impl Ff1Model {
         if self.is_placeholder(list, row.key()) || self.wearers_of(row.key(), row.id())? > 0 {
             return Ok(true);
         }
-        Ok(self.canonical_row(row, list, index)?.is_none())
+        let Some(count) = self.canonical_row(row, list, index)? else {
+            return Ok(true);
+        };
+        let values = [(names::COUNT, Value::Int(count))];
+        Ok(meta.check_insert(row, &values, CapPolicy::StorageOnly).is_err())
     }
 }

@@ -42,8 +42,12 @@ impl Document {
     ///
     /// # Errors
     ///
-    /// The errors of [`insert_raw`](Self::insert_raw), plus `NonFiniteFloat`.
-    /// The document stays as it was.
+    /// In this order: `TooDeep`, `NonFiniteFloat` for a float that is NaN or
+    /// infinite (before any step of the path runs, so a path that does not
+    /// exist still gives it), then the errors of
+    /// [`insert_raw`](Self::insert_raw) after its `InvalidJson`: any step
+    /// error of the path, `WrongKind`, `IndexOutOfRange`. The document stays
+    /// as it was.
     ///
     /// # Examples
     ///

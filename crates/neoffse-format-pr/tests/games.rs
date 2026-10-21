@@ -183,3 +183,12 @@ fn executables_are_plain_exe_names() {
         assert!(!name.contains(['/', '\\']), "{name:?} holds a separator");
     }
 }
+
+#[test]
+fn every_row_matches_the_game_of_the_same_index() {
+    assert_eq!(GAMES.len(), neoffse_core::Game::ALL.len());
+    for (row, game) in GAMES.iter().zip(neoffse_core::Game::ALL) {
+        assert_eq!(row.id, game.id(), "row {}", row.id);
+        assert_eq!(neoffse_core::Game::from_id(row.id), Some(*game), "row {}", row.id);
+    }
+}

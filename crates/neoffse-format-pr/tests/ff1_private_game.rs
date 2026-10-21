@@ -69,6 +69,16 @@ fn real_equip_keeps_the_game_rules() {
             panic!("{label}: the equip is refused")
         };
         assert_game_rules(&mut model, false);
+        let held = FieldId::new(names::INVENTORY)
+            .with_id(u32::try_from(wanted).unwrap_or(0))
+            .with_name(names::COUNT);
+        if let Ok(Value::Int(inventory_count)) = model.get(&held) {
+            let slot_count = int(&mut model, &slot_field(first, 1).with_name(names::COUNT), label);
+            assert!(
+                slot_count == inventory_count,
+                "{label}: the slot count differs from the inventory count after the equip"
+            );
+        }
         let decoded = decode(&slot.bytes).unwrap_or_else(|_| panic!("{label}: decode failed"));
         let bytes = encode(&model.document().to_json(), &decoded.container).unwrap_or_else(|_| panic!("{label}: encode failed"));
         let again = decode(&bytes).unwrap_or_else(|_| panic!("{label}: second decode failed"));
@@ -145,7 +155,9 @@ fn real_worn_and_placeholder_rows_refuse_removal() {
             if !locked {
                 continue;
             }
-            let refused = model.apply_game(&Edit::remove(RowId::new(inventory.clone(), key)));
+            let target = RowId::new(inventory.clone(), key);
+            assert!(matches!(model.row_locked(&target), Ok(true)), "{label}: inventory.{key} is not reported locked");
+            let refused = model.apply_game(&Edit::remove(target));
             assert!(matches!(refused, Err(EditError::ReadOnly { .. })), "{label}: inventory.{key} is removable");
             assert_eq!(model.document().to_json(), slot.json, "{label}: inventory.{key} changed the text");
         }

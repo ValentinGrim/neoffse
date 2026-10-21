@@ -98,6 +98,10 @@ pub struct Ff1Model {
 impl Ff1Model {
     /// Wraps `document`. Nothing is validated: a document of another shape
     /// fails when a field reads it.
+    ///
+    /// A lookup by `id` or `contentId` takes the first row with that key.
+    /// [`Ff1Format::open_document`](Ff1Format::open_document) refuses a
+    /// document that repeats a key; a model built here accepts it.
     #[must_use]
     pub fn new(document: Document, tables: &'static GameTables) -> Self {
         Self { document, tables }

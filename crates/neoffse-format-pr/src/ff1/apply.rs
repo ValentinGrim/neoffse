@@ -67,6 +67,7 @@ impl Ff1Model {
             Value::Int(int) => Scalar::Int(*int),
             Value::Text(text) => Scalar::Text(text.clone()),
             Value::Bool(flag) => Scalar::Bool(*flag),
+            // Unreachable: `meta.check` above rejects a kind the field's shape does not take.
             _ => return Err(EditError::ReadOnly { field: field.clone() }),
         };
         self.document.set(&path, &scalar).map_err(|source| format_error(field, source))?;

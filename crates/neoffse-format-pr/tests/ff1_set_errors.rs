@@ -97,7 +97,9 @@ fn storage_bounds_hold_under_both_policies() {
         let result = try_set(&count(names::INVENTORY, 89), 0, policy);
         assert!(matches!(result, Err(EditError::OutOfRange { min: 1, .. })));
     }
-    assert!(try_set(&power, STORAGE_MAX, ENFORCE).is_ok());
+    // Magic has no game cap, so Enforce takes the storage maximum.
+    assert!(try_set(&character_field(1, names::MAGIC), STORAGE_MAX, ENFORCE).is_ok());
+    assert!(try_set(&power, STORAGE_MAX, STORAGE_ONLY).is_ok());
     assert!(try_set(&character_field(1, names::LEVEL), STORAGE_MAX, STORAGE_ONLY).is_ok());
 }
 
@@ -108,6 +110,7 @@ fn caps_under_enforce_and_storage_only() {
         (character_field(1, names::LEVEL), 99),
         (character_field(1, names::EXP), 9_999_999),
         (character_field(1, names::HP), 999),
+        (character_field(1, names::POWER), 99),
         (character_field(1, names::CHARGES).with_id(1), 9),
         (count(names::INVENTORY, 100), 99),
     ];

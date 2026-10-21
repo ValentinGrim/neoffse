@@ -170,3 +170,31 @@ fn an_inserted_object_element_accepts_a_later_set() {
     document.set(&b, &Scalar::Int(5)).unwrap();
     assert_eq!(document.to_json(), r#"{"list":[{"a":1,"b":5}]}"#);
 }
+
+#[test]
+fn row_operations_keep_the_text_of_a_sibling_that_a_read_parsed() {
+    let text = r#"{"list": [{ "a": 1 }, { "b": 2 }]}"#;
+    let first = [Segment::Key("list"), Segment::Index(0), Segment::Key("a")];
+    let second = [Segment::Key("list"), Segment::Index(1), Segment::Key("b")];
+
+    let mut document = doc(text);
+    assert_eq!(document.get(&first).unwrap(), Scalar::Int(1));
+    assert_eq!(document.get(&second).unwrap(), Scalar::Int(2));
+    document.insert(&LIST, 2, &Scalar::Int(3)).unwrap();
+    assert_eq!(document.to_json(), r#"{"list":[{ "a": 1 },{ "b": 2 },3]}"#);
+
+    let mut document = doc(r#"{"list": [{ "a": 1 }, { "b": 2 }, 3]}"#);
+    assert_eq!(document.get(&first).unwrap(), Scalar::Int(1));
+    assert_eq!(document.get(&second).unwrap(), Scalar::Int(2));
+    assert_eq!(document.remove(&LIST, 2).unwrap(), "3");
+    assert_eq!(document.to_json(), r#"{"list":[{ "a": 1 },{ "b": 2 }]}"#);
+}
+
+#[test]
+fn remove_returns_the_stored_text_of_an_element_that_a_read_parsed() {
+    let mut document = doc(r#"{"list": [{ "a": 1 }, 2]}"#);
+    let a = [Segment::Key("list"), Segment::Index(0), Segment::Key("a")];
+    assert_eq!(document.get(&a).unwrap(), Scalar::Int(1));
+    assert_eq!(document.remove(&LIST, 0).unwrap(), r#"{ "a": 1 }"#);
+    assert_eq!(document.to_json(), r#"{"list":[2]}"#);
+}

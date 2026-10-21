@@ -172,10 +172,15 @@ fn detect_goes_through_the_slot_table() {
 
 #[test]
 fn debug_holds_no_save_content() {
-    let document = open(&standard_files(&Container::game()));
+    let mut document = open(&standard_files(&Container::game()));
+    // The opened document holds the names and the play time the Debug text must hide.
+    assert_eq!(document.summary().unwrap().party, ["Aria", "Bram", "Cleo", "Zoé"]);
+    assert!(document.summary().unwrap().play_time.is_some_and(|time| time.as_secs() == 13_621));
     let printed = format!("{document:?}");
     assert!(printed.contains("Ff1Document"));
-    assert!(!printed.contains("Aria") && !printed.contains("13621"), "{printed}");
+    for hidden in ["Aria", "Bram", "Cleo", "Zoé", "13621", "123456"] {
+        assert!(!printed.contains(hidden), "Debug prints the value {hidden}");
+    }
 }
 
 #[test]

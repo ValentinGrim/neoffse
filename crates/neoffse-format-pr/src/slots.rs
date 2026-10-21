@@ -6,7 +6,7 @@
 //! names no game, and the facade breaks the tie between the six formats with
 //! the game of the save folder.
 
-use neoffse_core::{Confidence, Detection, FileProbe, SaveSlot};
+use neoffse_core::{Confidence, Detection, FileProbe, PROBE_HEAD_LEN, SaveSlot};
 
 use crate::container::text::split;
 
@@ -100,11 +100,13 @@ pub fn slot_for_name(name: &str) -> Option<SaveSlot> {
 /// a non-empty run of base64 characters (`A-Z a-z 0-9 + / =`) up to the
 /// trailing whitespace
 /// (`docs/formats/pixel-remaster.md#bom-and-line-end`,
-/// `docs/formats/pixel-remaster.md#base64`).
+/// `docs/formats/pixel-remaster.md#base64`). The check reads at most
+/// [`PROBE_HEAD_LEN`] bytes, even when a caller widened the public `head`
+/// field.
 #[must_use]
 pub fn detect(probe: &FileProbe<'_>) -> Option<Detection> {
     let slot = slot_for_name(probe.name)?;
-    let confidence = if looks_like_container(probe.head) {
+    let confidence = if looks_like_container(probe.head.get(..PROBE_HEAD_LEN).unwrap_or(probe.head)) {
         Confidence::Likely
     } else {
         Confidence::Possible
