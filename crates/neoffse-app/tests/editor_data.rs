@@ -247,3 +247,19 @@ fn debug_prints_flags_only() {
     assert!(printed.contains("open: true") && printed.contains("expert: false"));
     assert!(!printed.contains("Aria"));
 }
+
+#[test]
+fn a_section_of_read_only_fields_says_so() {
+    let site = editing_site();
+    let ed = editing(&site);
+    for expert in [false, true] {
+        ed.editor().set_expert(expert);
+        let data = ed.data();
+        assert!(data.magic.read_only, "Magic holds only read-only fields");
+        assert!(!data.party.read_only);
+        assert!(!data.inventory.read_only);
+    }
+    let mut locks = FakeLocks::answering(false);
+    let built = build(&party_only(), Game::Ff1Pr, Language::En, false, &mut locks);
+    assert!(!built.data.magic.read_only, "an absent section is not read only");
+}

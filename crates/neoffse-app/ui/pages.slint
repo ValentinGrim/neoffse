@@ -1,0 +1,167 @@
+import { Button, ListView, Palette, ScrollView } from "std-widgets.slint";
+import { EntityPage, FieldRow, ItemList, ItemRow, SectionData } from "editor-types.slint";
+import { EditorBridge } from "bridge.slint";
+import { FieldEditor, FieldLine, PickerField } from "fields.slint";
+
+// The left column of a character page: one row per entity.
+export component EntityList inherits Rectangle {
+    in property <[EntityPage]> pages;
+    in property <int> selected;
+    callback chosen(int);
+
+    width: 200px;
+
+    ListView {
+        for page[index] in root.pages: Rectangle {
+            height: 32px;
+            background: index == root.selected ? Palette.accent-background.with-alpha(0.3)
+                : touch.has-hover ? #80808030
+                : transparent;
+
+            touch := TouchArea {
+                clicked => { root.chosen(index); }
+            }
+            Text {
+                x: 8px;
+                width: parent.width - 16px;
+                vertical-alignment: center;
+                overflow: elide;
+                text: page.label;
+            }
+        }
+    }
+}
+
+// The fields of one entity, scrolling when they outgrow the page.
+export component FieldList inherits ScrollView {
+    in property <[FieldRow]> fields;
+
+    VerticalLayout {
+        padding: 8px;
+        padding-right: 20px;
+        spacing: 6px;
+
+        for field in root.fields: FieldLine {
+            field: field;
+        }
+    }
+}
+
+component ReadOnlyNote inherits Text {
+    font-size: 12px;
+    opacity: 0.7;
+    text: @tr("Read only");
+}
+
+// Party and Magic: the entities on the left, the selected one's fields on
+// the right.
+export component CharacterPage inherits VerticalLayout {
+    in property <[EntityPage]> pages;
+    // Every field of the section is read only.
+    in property <bool> read-only;
+
+    private property <int> selected;
+    // `selected` held inside the page count, so a shorter list never leaves it dangling.
+    private property <int> current: max(0, min(root.selected, root.pages.length - 1));
+
+    spacing: 6px;
+
+    if root.read-only: ReadOnlyNote { }
+    HorizontalLayout {
+        spacing: 8px;
+
+        if root.pages.length == 0: Text {
+            text: @tr("Nothing to show.");
+        }
+        if root.pages.length > 0: EntityList {
+            pages: root.pages;
+            selected: root.current;
+            chosen(index) => { root.selected = index; }
+        }
+        if root.pages.length > 0: FieldList {
+            fields: root.pages[root.current].fields;
+        }
+    }
+}
+
+component ItemLine inherits HorizontalLayout {
+    in property <ItemRow> item;
+
+    spacing: 12px;
+
+    Text {
+        width: 180px;
+        vertical-alignment: center;
+        overflow: elide;
+        text: root.item.label;
+    }
+    for field in root.item.fields: FieldEditor {
+        field: field;
+        show-lock: !root.item.locked;
+    }
+    Rectangle { }
+    if root.item.removable: Button {
+        text: @tr("Remove");
+        enabled: root.item.can-remove;
+        clicked => { EditorBridge.item-remove-requested(root.item.key); }
+    }
+    Text {
+        width: 48px;
+        vertical-alignment: center;
+        font-size: 11px;
+        opacity: 0.7;
+        text: root.item.locked ? @tr("locked") : "";
+    }
+}
+
+component ItemBlock inherits VerticalLayout {
+    in property <ItemList> list;
+
+    spacing: 6px;
+
+    Text {
+        text: root.list.title;
+        font-size: 16px;
+        font-weight: 700;
+        overflow: elide;
+    }
+    for item in root.list.rows: ItemLine {
+        item: item;
+    }
+    if root.list.insertable: HorizontalLayout {
+        alignment: start;
+        PickerField {
+            width: 220px;
+            entries: EditorBridge.picker-entries;
+            button-text: @tr("Add...");
+            opened => { EditorBridge.list-picker-query(root.list.key, ""); }
+            query-changed(text) => { EditorBridge.list-picker-query(root.list.key, text); }
+            chosen(id) => { EditorBridge.item-add-requested(root.list.key, id); }
+        }
+    }
+}
+
+// Inventory: the single-field entities (gil) on top, then each item list.
+export component InventoryPage inherits ScrollView {
+    in property <SectionData> section;
+
+    VerticalLayout {
+        padding: 8px;
+        padding-right: 20px;
+        spacing: 12px;
+
+        if root.section.read-only: ReadOnlyNote { }
+        VerticalLayout {
+            spacing: 6px;
+            for page in root.section.pages: VerticalLayout {
+                spacing: 6px;
+                for field in page.fields: FieldLine {
+                    field: field;
+                }
+            }
+        }
+        for list in root.section.lists: ItemBlock {
+            list: list;
+        }
+    }
+}

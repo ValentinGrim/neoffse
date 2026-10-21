@@ -8,6 +8,7 @@
 )]
 
 pub mod connect;
+pub mod connect_editor;
 pub mod dispatch;
 pub mod editor;
 pub mod home;
@@ -24,6 +25,7 @@ mod generated {
 }
 
 pub use connect::{App, connect_home, refresh_home};
+pub use connect_editor::{connect_editor, refresh_editor};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::EditorViewModel;
 pub use generated::{
@@ -58,6 +60,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     connect_about(&main_window, &about);
     connect_quit(&main_window);
     connect_home(&main_window, &app);
+    connect_editor(&main_window, &app);
     main_window.run()
 }
 

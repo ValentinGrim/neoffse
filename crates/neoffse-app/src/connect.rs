@@ -15,6 +15,7 @@ use neoffse::io::discovery::Environment;
 use slint::{ComponentHandle, ModelRc, VecModel, Weak};
 
 use crate::MainWindow;
+use crate::connect_editor::refresh_editor;
 use crate::dispatch::Dispatcher;
 use crate::editor::EditorViewModel;
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
@@ -151,6 +152,7 @@ fn show_outcome(window: &MainWindow, app: &App, outcome: OpenOutcome) {
     match outcome {
         OpenOutcome::Opened => {
             if let Some(summary) = app.editor.summary() {
+                refresh_editor(window, app);
                 window.set_editor_summary(summary);
                 window.set_editor_open(true);
                 window.set_has_open_problem(false);

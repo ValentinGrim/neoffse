@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use neoffse::data::Language;
-use neoffse_app::{App, FilePicker, GameRow, MainWindow, SlotRow, connect_home};
+use neoffse_app::{App, FilePicker, GameRow, MainWindow, SlotRow, connect_editor, connect_home};
 
 use super::{FixedPicker, Manual, Site, environment, items, registry, slots_of};
 
@@ -32,6 +32,7 @@ impl Ui {
         );
         let window = MainWindow::new().unwrap();
         connect_home(&window, &app);
+        connect_editor(&window, &app);
         Self { window, app, manual, picker }
     }
 

@@ -49,5 +49,6 @@ export struct FieldRow {
 export struct EntityPage { label: string, fields: [FieldRow] }
 export struct ItemRow { key: int, label: string, fields: [FieldRow], locked: bool, removable: bool, can-remove: bool }
 export struct ItemList { key: int, title: string, rows: [ItemRow], insertable: bool }
-export struct SectionData { present: bool, pages: [EntityPage], lists: [ItemList] }
+// `read-only`: the section holds fields and every one is read only.
+export struct SectionData { present: bool, read-only: bool, pages: [EntityPage], lists: [ItemList] }
 export struct EditorData { party: SectionData, inventory: SectionData, magic: SectionData }

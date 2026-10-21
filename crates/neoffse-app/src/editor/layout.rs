@@ -126,10 +126,13 @@ impl Builder<'_> {
                 None => pages.push(entity),
             }
         }
+        let mut every = section.entities.iter().flat_map(|entity| &entity.fields).peekable();
+        let read_only = every.peek().is_some() && every.all(|view| view.meta.read_only);
         let pages: Vec<EntityPage> = pages.into_iter().map(|entity| self.page(entity)).collect();
         let lists: Vec<ItemList> = collections.into_iter().zip(rows).map(|(meta, entities)| self.list(meta, &entities)).collect();
         SectionData {
             present: true,
+            read_only,
             pages: model_of(pages),
             lists: model_of(lists),
         }

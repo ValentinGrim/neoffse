@@ -1,8 +1,11 @@
-import { Button, ScrollView } from "std-widgets.slint";
+import { Button, TabWidget } from "std-widgets.slint";
 import { SummaryRow } from "types.slint";
-import { SlotText, SummaryLines } from "text.slint";
+import { EditorBridge } from "bridge.slint";
+import { NoticeText, SummaryLine } from "text.slint";
+import { CharacterPage, InventoryPage } from "pages.slint";
 
-// The editor page. It shows the summary of the open save and a Back button.
+// The editor page: the summary of the open save, the notice bar, and one tab
+// per section the save can hold.
 export component EditorPage inherits VerticalLayout {
     in property <SummaryRow> summary;
     callback back-requested();
@@ -11,25 +14,68 @@ export component EditorPage inherits VerticalLayout {
     spacing: 8px;
 
     HorizontalLayout {
-        alignment: start;
+        spacing: 12px;
         Button {
             text: @tr("Back");
             clicked => { root.back-requested(); }
         }
+        Text {
+            vertical-alignment: center;
+            font-size: 16px;
+            font-weight: 700;
+            text: root.summary.game;
+        }
+        Text {
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+            text: SummaryLine.rest(root.summary);
+        }
     }
-    Text {
-        text: root.summary.game;
-        font-size: 20px;
-        font-weight: 700;
-        overflow: elide;
+    if EditorBridge.has-notice: HorizontalLayout {
+        spacing: 8px;
+        Text {
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+            text: NoticeText.sentence(EditorBridge.notice);
+        }
+        Button {
+            text: @tr("OK");
+            clicked => { EditorBridge.notice-dismissed(); }
+        }
     }
-    Text {
-        text: SlotText.name(root.summary.kind, root.summary.number);
-        font-weight: 600;
-        overflow: elide;
+    TabWidget {
+        vertical-stretch: 1;
+
+        Tab {
+            title: @tr("Party");
+            if EditorBridge.data.party.present: CharacterPage {
+                pages: EditorBridge.data.party.pages;
+                read-only: EditorBridge.data.party.read-only;
+            }
+            if !EditorBridge.data.party.present: Text {
+                text: @tr("This save has no such section.");
+            }
+        }
+        Tab {
+            title: @tr("Inventory");
+            if EditorBridge.data.inventory.present: InventoryPage {
+                section: EditorBridge.data.inventory;
+            }
+            if !EditorBridge.data.inventory.present: Text {
+                text: @tr("This save has no such section.");
+            }
+        }
+        Tab {
+            title: @tr("Magic");
+            if EditorBridge.data.magic.present: CharacterPage {
+                pages: EditorBridge.data.magic.pages;
+                read-only: EditorBridge.data.magic.read-only;
+            }
+            if !EditorBridge.data.magic.present: Text {
+                text: @tr("This save has no such section.");
+            }
+        }
     }
-    SummaryLines {
-        summary: root.summary;
-    }
-    Rectangle { }
 }

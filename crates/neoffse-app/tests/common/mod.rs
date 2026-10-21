@@ -4,6 +4,7 @@
 #![allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod bridge;
 mod editor;
 mod manual;
 mod open;
@@ -19,6 +20,7 @@ use neoffse_app::home::HomeViewModel;
 use neoffse_app::{GameRow, SlotRow};
 use slint::{Model, ModelRc};
 
+pub(crate) use bridge::open_editor;
 pub(crate) use editor::{
     Editing, FakeLocks, Part, all_fields, count_of, editing, editing_site, field, fields, item_label, list, lists, page, pages, row_of, rows, section,
 };
