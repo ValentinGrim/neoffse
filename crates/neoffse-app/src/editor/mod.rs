@@ -8,7 +8,8 @@
 //! data or a generated Slint type, so a test calls it without a screen.
 //! [`build`] turns a `SaveView` into the Slint data, and [`EditorViewModel`]
 //! sends each commit to the session as one edit. `leave` asks before a dirty
-//! session closes. The Slint side lives in `ui/editor-types.slint` and
+//! session closes. `overview` shapes the party cards; it is the one module
+//! that names game fields. The Slint side lives in `ui/editor-types.slint` and
 //! `ui/bridge.slint`.
 
 mod field_row;
@@ -18,6 +19,7 @@ mod layout;
 mod leave;
 mod model;
 mod notice;
+mod overview;
 mod pick;
 
 pub use input::{Input, value_for};
@@ -26,4 +28,5 @@ pub use layout::{Built, Locks, build};
 pub use leave::{Leave, LeaveAnswer};
 pub use model::EditorViewModel;
 pub use notice::{notice_of, problem_notice};
+pub use overview::overview;
 pub use pick::{entry_name, picker_entries};

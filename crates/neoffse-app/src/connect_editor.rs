@@ -14,7 +14,7 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel, Weak};
 
 use crate::editor::{EditorViewModel, Input, problem_notice};
 use crate::theme::sync_theme;
-use crate::{App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, PickerEntry, SectionData};
+use crate::{App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, Overview, PickerEntry, SectionData};
 
 /// Wires the editor callbacks of the [`EditorBridge`] global to `app.editor`.
 ///
@@ -95,9 +95,13 @@ fn refresh_with(window: &MainWindow, app: &App, notice: Option<EditNotice>) {
     let failure = match app.editor.data() {
         Ok(data) => {
             apply(&bridge, data);
+            bridge.set_overview(app.editor.overview());
             None
         }
-        Err(notice) => Some(notice),
+        Err(notice) => {
+            bridge.set_overview(Overview::default());
+            Some(notice)
+        }
     };
     let notice = notice.or(failure);
     let offer = notice.as_ref().is_some_and(|notice| app.editor.offers_expert(notice));

@@ -1,10 +1,12 @@
-import { EditorData, EditNotice, PickerEntry } from "editor-types.slint";
+import { EditorData, EditNotice, Overview, PickerEntry } from "editor-types.slint";
 
 // The state and the callbacks of the editor page. Rust fills it through
 // `window.global::<EditorBridge>()`, so the nested components read it
 // without property drilling.
 export global EditorBridge {
     in property <EditorData> data;
+    // The party overview the cards read.
+    in property <Overview> overview;
     in property <[PickerEntry]> picker-entries;
     in property <bool> has-notice;
     in property <EditNotice> notice;

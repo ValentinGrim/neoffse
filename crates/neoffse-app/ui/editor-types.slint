@@ -52,3 +52,29 @@ export struct ItemList { key: int, title: string, rows: [ItemRow], insertable: b
 // `read-only`: the section holds fields and every one is read only.
 export struct SectionData { present: bool, read-only: bool, pages: [EntityPage], lists: [ItemList] }
 export struct EditorData { party: SectionData, inventory: SectionData, magic: SectionData }
+
+// One character of the party overview. The numbers are decimal strings; an
+// entry is "" when the save or the data lacks it.
+export struct CharacterCard {
+    // Index into `party.pages`: the page this card opens.
+    page: int,
+    // The page label.
+    name: string,
+    // First letter of `name`, upper case; "" for an empty name.
+    initial: string,
+    // The job name in the game-data language; "" when the tables lack it.
+    job: string,
+    level: string,
+    // Current HP.
+    hp: string,
+    // "": the save holds no maximum.
+    hp-max: string,
+    // Current charges, spell level 1 first; empty when the game has none.
+    charges: [string],
+    exp: string,
+    // "": the data holds no experience table.
+    next-exp: string,
+}
+
+// `present` is false for a game with no card builder. `gil` is "" when absent.
+export struct Overview { present: bool, cards: [CharacterCard], gil: string }

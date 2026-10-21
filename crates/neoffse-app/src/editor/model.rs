@@ -12,9 +12,10 @@ use super::input::{Input, value_for};
 use super::layout::{FieldSlot, Layout, Locks, build};
 use super::leave::Leave;
 use super::notice::{notice_of, problem_notice};
+use super::overview::overview;
 use super::pick::{entry_name, picker_entries};
 use crate::state::AppState;
-use crate::{EditNotice, EditProblem, EditorData, PickerEntry, SummaryRow};
+use crate::{EditNotice, EditProblem, EditorData, Overview, PickerEntry, SummaryRow};
 
 /// Answers the builder's lock questions from a session. A failed query
 /// counts as locked.
@@ -129,6 +130,22 @@ impl EditorViewModel {
                 Err(notice)
             }
         }
+    }
+
+    /// The party overview of the open save. A default (`present` false) when
+    /// no save is open or the view fails. It reads the session again, so the
+    /// cards agree with [`data`](Self::data) after an edit. The result holds
+    /// save content: never log it. UI thread only.
+    #[must_use]
+    pub fn overview(&self) -> Overview {
+        let Some(session) = self.shared.state.session() else {
+            return Overview::default();
+        };
+        let mut session = lock_session(&session);
+        let game = session.game();
+        session
+            .view()
+            .map_or_else(|_| Overview::default(), |view| overview(&view, game, self.shared.language))
     }
 
     /// Sends the edit one commit means.
