@@ -10,12 +10,13 @@
 //!   folder ([`Registry::scan`]) and opens one ([`Registry::open`]).
 //! - [`Session`]: one opened save with its edit history. It edits in the
 //!   default or the expert mode, undoes and redoes, tells whether the
-//!   document differs from the files read, and discards the edits by
-//!   reopening the bytes held in memory.
+//!   document differs from the files read, discards the edits by
+//!   reopening the bytes held in memory, and saves ([`Session::save`]): a
+//!   running-game check, a newer-on-disk check, the format's encoder, a
+//!   backup and the verified atomic write of [`io`].
 //! - [`Error`]: what the registry and the session report.
 //!
-//! The save pipeline that links a format's encoder to the verified write of
-//! [`io`], and the restore of a backup, come next.
+//! The restore of a backup comes next.
 //!
 //! `pub use neoffse_core as core` shadows the `core` prelude crate at this
 //! crate's root: inside the facade, write `::core` for the standard library.
@@ -31,4 +32,4 @@ mod session;
 
 pub use error::Error;
 pub use registry::{Claim, Found, Registry, Scan};
-pub use session::Session;
+pub use session::{Running, Saved, Session};

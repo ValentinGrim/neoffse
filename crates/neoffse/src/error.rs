@@ -34,4 +34,17 @@ pub enum Error {
         /// One entry per format tried, in `Game::ALL` order, with its error.
         attempts: Vec<(Game, FormatError)>,
     },
+    /// The game's process is running and the caller asked to refuse.
+    #[error("the game is running")]
+    GameRunning {
+        /// The executable names found running.
+        executables: Vec<&'static str>,
+    },
+    /// A file differs from the bytes the session read: another program wrote
+    /// it since the open.
+    #[error("the save file changed on disk")]
+    ChangedOnDisk {
+        /// The file name, a personal value: it appears in `Debug` only.
+        name: String,
+    },
 }
