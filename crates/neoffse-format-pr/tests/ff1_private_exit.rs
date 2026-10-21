@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 use common::edit_proof::Subject;
 use common::exit_cases::{ALWAYS, build, run};
-use common::ff1_real::slots;
+use common::ff1_real::{must, must_some, slots};
 use neoffse_core::{Capability, Edit, EditError, FieldId, Key, RowId, SaveDocument, Value};
 use neoffse_format_pr::container;
 use neoffse_format_pr::ff1::{GAME, names};
@@ -65,7 +65,7 @@ fn real_slots_prove_every_edit_kind() {
         }
     }
     report(&format!(
-        "ff1 private exit: {} slots ({compact} compact), {cases_run} cases run ({raw_run} also through apply), skipped: {}, non-empty sort lists: {sort_lists}",
+        "ff1 private exit: {} slots ({compact} compact), {cases_run} cases run ({raw_run} also through apply), cases not built: {}, non-empty sort lists: {sort_lists}",
         slots.len(),
         skipped_line(&skipped),
     ));
@@ -73,8 +73,10 @@ fn real_slots_prove_every_edit_kind() {
 
 /// The decoded text and container of `document` equal the subject's.
 fn assert_original(subject: &Subject, document: &dyn SaveDocument, what: &str) {
-    let files = document.encode().unwrap();
-    let after = container::decode(files.get(&subject.name).unwrap()).unwrap();
+    let label = &subject.label;
+    let files = must(document.encode(), &format!("{label} {what}: encode failed"));
+    let written = must_some(files.get(&subject.name), &format!("{label} {what}: the encoding lacks the file"));
+    let after = must(container::decode(written), &format!("{label} {what}: decode failed"));
     assert!(after.json == subject.json, "{} {what}: the text changed", subject.label);
     assert!(after.container == subject.container, "{} {what}: the container changed", subject.label);
 }
@@ -137,8 +139,8 @@ fn real_refused_edits_write_nothing() {
             );
         }
         let mut document = subject.open();
-        let view = document.view().unwrap();
-        let party = view.section(Capability::Party).unwrap();
+        let view = must(document.view(), &format!("{}: the view does not read", subject.label));
+        let party = must_some(view.section(Capability::Party), &format!("{}: no Party section", subject.label));
         let Some([_, Key::Id(character)]) = party.entities.first().map(|entity| entity.id.keys()) else {
             panic!("{}: no character", subject.label)
         };

@@ -85,7 +85,8 @@ impl SaveView {
     }
 
     /// The entity and the field view whose `FieldView::id` equals `id`.
-    /// Matches ids, never labels.
+    /// Matches ids, never labels. The first match in section, entity and
+    /// field order wins.
     #[must_use]
     pub fn find(&self, id: &FieldId) -> Option<(&Entity, &FieldView)> {
         self.sections
@@ -95,6 +96,7 @@ impl SaveView {
     }
 
     /// The metadata of the collection whose `CollectionMeta::id` equals `id`.
+    /// The first match in section and collection order wins.
     #[must_use]
     pub fn collection(&self, id: &FieldId) -> Option<&CollectionMeta> {
         self.sections.iter().flat_map(|section| &section.collections).find(|meta| meta.id == *id)
@@ -108,6 +110,8 @@ impl SaveView {
 /// [`collections`](Section::collections), so the UI shows the rows and the
 /// add and remove controls the flags allow. Gil belongs to
 /// `Capability::Inventory`.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Section {
@@ -136,6 +140,8 @@ impl Section {
 /// `id` is the prefix every one of its fields' ids starts with
 /// (`FieldId::starts_with`); for a row of a collection it is `RowId::id()`.
 /// The view enforces neither rule.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Entity {
@@ -160,6 +166,8 @@ impl Entity {
 }
 
 /// One field with its metadata and its current value.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FieldView {

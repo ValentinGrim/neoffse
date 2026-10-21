@@ -100,8 +100,9 @@ impl Node {
         }
     }
 
-    /// Marks an edit at or below this node. Call it after `array_items` or
-    /// another call that parsed the level, so `dirty` keeps implying `body`.
+    /// Marks an edit at or below this node. Call it on a node whose level an
+    /// earlier call parsed, so `dirty` keeps implying `body`: the row
+    /// operations call it after the length check, which parsed the array.
     pub(super) fn touch(&mut self) {
         self.dirty = true;
     }

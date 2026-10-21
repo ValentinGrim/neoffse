@@ -8,6 +8,22 @@ use neoffse_format_pr::container::decode;
 use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME};
 
+/// The value of `result`, or a panic with `what` alone. The `Err` is dropped
+/// because its text can quote save content.
+#[track_caller]
+pub(crate) fn must<T, E>(result: Result<T, E>, what: &str) -> T {
+    result.unwrap_or_else(|_| panic!("{what}"))
+}
+
+/// The value of `option`, or a panic with `what`.
+#[track_caller]
+pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
+    match option {
+        Some(value) => value,
+        None => panic!("{what}"),
+    }
+}
+
 /// One private slot file.
 pub(crate) struct RealSlot {
     /// `ff1` plus the first 8 characters of the file name.

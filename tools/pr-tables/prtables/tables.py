@@ -207,7 +207,7 @@ _FF1 = Game(
             "One entry per game_constant_int.csv row whose key_name starts with MAX_: "
             "the key name as the game spells it, and value1.",
             "docs/formats/pixel-remaster.md#bounds-in-the-master-data says which save "
-            "field each cap bounds.",
+            "field each named cap bounds; the others have no known save field.",
         ),
     ),
 )

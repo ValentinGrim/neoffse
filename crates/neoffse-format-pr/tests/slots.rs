@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use neoffse_core::{Confidence, Detection, FileProbe, SaveSlot};
+use neoffse_core::{Confidence, Detection, FileProbe, PROBE_HEAD_LEN, SaveSlot};
 use neoffse_format_pr::slots::{SLOT_FILES, detect, slot_for_id, slot_for_name};
 
 /// 44 base64 characters, the shape of the head of a real file.
@@ -165,4 +165,21 @@ fn the_probe_keeps_only_the_first_256_bytes() {
     head.extend_from_slice(b" not base64");
     let probe = FileProbe::new(SLOT_FILES[2].name, 1000, &head);
     assert_eq!(detect(&probe).unwrap().confidence, Confidence::Likely);
+}
+
+#[test]
+fn detect_reads_no_more_than_the_probe_head_length() {
+    let mut long = HEAD[..44].repeat(6);
+    long.truncate(PROBE_HEAD_LEN);
+    assert_eq!(long.len(), PROBE_HEAD_LEN);
+    long.extend_from_slice(b"\x00\xff!");
+    let name = SLOT_FILES[0].name;
+    let mut widened = probe(name, HEAD);
+    widened.head = &long[..];
+    assert_eq!(detect(&widened).unwrap().confidence, Confidence::Likely);
+    // Inside the first PROBE_HEAD_LEN bytes a bad byte still downgrades the claim.
+    let mut broken = long.clone();
+    broken[10] = b'!';
+    widened.head = &broken[..];
+    assert_eq!(detect(&widened).unwrap().confidence, Confidence::Possible);
 }

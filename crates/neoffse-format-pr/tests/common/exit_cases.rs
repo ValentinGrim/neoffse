@@ -3,6 +3,9 @@
 //! synthetic slot and on every private slot, and no value of a private save is
 //! printed. The expected change sets follow `docs/formats/pixel-remaster.md`
 //! (`#documents-inside-strings`, `#characters`, `#inventory`).
+//!
+//! The matrix leaves out a `Set` of `key_items.<K>.count`: `apply_game`
+//! refuses it, and the model tests cover the refusal.
 
 use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
 use neoffse_format_pr::ff1::names;
@@ -14,7 +17,8 @@ use super::json_diff::{added, removed, value};
 /// Four characters: a non-ASCII letter, a quote and a backslash.
 pub(crate) const NEW_NAME: &str = "Nö\"\\";
 
-/// The cases every FF I slot must allow.
+/// The cases every FF I slot must allow. Every other case depends on the
+/// save (a free item, a worn item, a placeholder, a spell level) and may skip.
 pub(crate) const ALWAYS: [&str; 8] = [
     "gil",
     "level",
@@ -25,6 +29,12 @@ pub(crate) const ALWAYS: [&str; 8] = [
     "insert_item_append",
     "insert_key_item",
 ];
+
+/// The cases the synthetic fixture cannot build, in matrix order: its first
+/// character already wears the shield placeholder (nothing to unequip in slot
+/// 2) and the inventory holds no gloves besides the worn ones and the
+/// placeholder (nothing to equip from the inventory in slot 5).
+pub(crate) const FIXTURE_SKIPS: [&str; 2] = ["unequip_s2", "equip_held_s5"];
 
 #[derive(Debug, Clone)]
 pub(crate) struct Case {
@@ -50,9 +60,14 @@ fn nudge(old: i64, min: i64) -> i64 {
     if old > min { old - 1 } else { old + 1 }
 }
 
-/// A `Set` of an integer field to a nudged value, expected as one changed token.
-fn nudged(facts: &Facts<'_>, name: &'static str, field: FieldId, min: i64, path: String) -> Option<Case> {
+/// A `Set` of an integer field to a nudged value, expected as one changed
+/// token. `None` when the field is absent or the nudged value exceeds its cap
+/// (an old value above the cap).
+pub(super) fn nudged(facts: &Facts<'_>, name: &'static str, field: FieldId, min: i64, path: String) -> Option<Case> {
     let new = nudge(facts.int(&field)?, min);
+    if facts.view.find(&field)?.1.meta.cap.is_some_and(|cap| new > cap) {
+        return None;
+    }
     let proof = Proof {
         changes: vec![value(&path)],
         view: vec![ViewChange::Set(field.clone(), Value::Int(new))],
@@ -196,6 +211,7 @@ pub(crate) fn build(subject: &Subject) -> Built {
             facts.free_key.and_then(|key| remove(&facts, "remove_key_item", Facts::key_item(key), KEYS)),
         ),
     ];
+    singles.extend(super::exit_fields::field_cases(&facts));
     singles.extend(super::exit_equip::equip_cases(&facts));
     let find = |wanted: &str| singles.iter().find(|(name, _)| *name == wanted).and_then(|(_, case)| case.as_ref());
     let composed = compose(&[find("gil"), find("level"), find("insert_item_middle"), find("remove_key_item")]);

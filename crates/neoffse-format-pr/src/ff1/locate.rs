@@ -2,8 +2,8 @@
 //!
 //! Rows are found by the value of `id` or `contentId`, dictionary entries by
 //! their key, never by position (`docs/formats/pixel-remaster.md#characters`,
-//! pitfall 22). Every lookup is a read: it parses levels and never marks one
-//! dirty.
+//! `docs/formats/pixel-remaster.md#known-pitfalls`, item 22). Every lookup is
+//! a read: it parses levels and never marks one dirty.
 
 use neoffse_core::{EditError, FieldId, RowId};
 
@@ -62,8 +62,9 @@ pub(super) fn row_keys(document: &mut Document, collection: Collection) -> Resul
         .collect()
 }
 
-/// Index of the element of `collection` whose key is `wanted`. Other keys are
-/// compared as integers, so an odd value elsewhere does not hide this one.
+/// Index of the first element of `collection` whose key is `wanted`. Keys are
+/// read in order up to the match: an element whose key is no integer, before
+/// the match, fails the call with `WrongKind` instead of being skipped.
 pub(super) fn find_row(document: &mut Document, collection: Collection, wanted: u32) -> Result<Option<usize>, DocumentError> {
     let target = collection.target();
     for index in 0..document.array_len(&target)? {

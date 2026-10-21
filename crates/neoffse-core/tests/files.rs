@@ -83,12 +83,10 @@ fn an_empty_file_is_a_file() {
 fn debug_shows_names_and_counts_not_bytes() {
     let mut files = SaveFiles::new();
     files.push("slot.sav", b"SECRET-5c1e".repeat(3)).unwrap();
-    let shown = format!("{files:?}");
-    assert!(shown.contains("slot.sav"));
-    assert!(shown.contains("33"));
-    assert!(!shown.contains("SECRET-5c1e"));
-    let decimal: Vec<String> = b"SECRET-5c1e".iter().map(u8::to_string).collect();
-    assert!(!shown.contains(&decimal.join(", ")));
+    assert_eq!(format!("{files:?}"), r#"["slot.sav": 33 bytes]"#);
+    files.push("b", vec![]).unwrap();
+    assert_eq!(format!("{files:?}"), r#"["slot.sav": 33 bytes, "b": 0 bytes]"#);
+    assert_eq!(format!("{:?}", SaveFiles::new()), "[]");
 }
 
 #[test]

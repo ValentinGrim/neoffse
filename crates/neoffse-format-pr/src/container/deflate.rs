@@ -17,6 +17,8 @@ const CHUNK_LEN: usize = 16 * 1024;
 
 /// The result of [`inflate`]. A later version may add fields, and only
 /// [`inflate`] builds one.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Inflated {

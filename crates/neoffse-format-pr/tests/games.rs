@@ -33,7 +33,7 @@ fn the_table_holds_the_six_games_in_order() {
     }
 }
 
-const HEADER: [&str; 4] = ["Game", "Steam app ID", "Game folder under My Games", "Executable"];
+const HEADER: [&str; 4] = ["Game", "Steam app ID", "Game folder in My Games", "Executable"];
 
 /// The cells of every line of the Games table, header and separator
 /// included, backticks stripped.
@@ -115,7 +115,7 @@ fn a_changed_document_row_is_detected() {
     let found = mismatches(&extra_cell);
     assert!(found.iter().any(|message| message.contains("FF III PR")), "{found:?}");
 
-    let renamed_label = format!("{head}{}", table.replacen("| Executable |", "| Program |", 1));
+    let renamed_label = format!("{head}{}", table.replacen("Executable", "Program", 1));
     assert_ne!(renamed_label, document, "the Executable label must appear after the heading");
     let found = mismatches(&renamed_label);
     assert!(found.iter().any(|message| message.contains("header")), "{found:?}");
@@ -181,5 +181,14 @@ fn executables_are_plain_exe_names() {
         assert!(stem.is_some(), "{name:?} lacks the lowercase .exe extension");
         assert_ne!(stem, Some(""), "{name:?} has no stem");
         assert!(!name.contains(['/', '\\']), "{name:?} holds a separator");
+    }
+}
+
+#[test]
+fn every_row_matches_the_game_of_the_same_index() {
+    assert_eq!(GAMES.len(), neoffse_core::Game::ALL.len());
+    for (row, game) in GAMES.iter().zip(neoffse_core::Game::ALL) {
+        assert_eq!(row.id, game.id(), "row {}", row.id);
+        assert_eq!(neoffse_core::Game::from_id(row.id), Some(*game), "row {}", row.id);
     }
 }

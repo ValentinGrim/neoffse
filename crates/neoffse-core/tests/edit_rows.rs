@@ -55,14 +55,36 @@ fn insert_a_duplicate_key_is_refused() {
 }
 
 #[test]
-fn insert_a_key_outside_the_table_is_refused() {
-    for key in [0, 201] {
+fn insert_a_key_outside_the_table_is_refused_under_enforce() {
+    let mut model = Model::sample();
+    let error = model.apply(&insert(150, None, None), ENFORCE).unwrap_err();
+    assert!(matches!(
+        error,
+        EditError::UnknownId { ref field, id: 150 } if *field == *row(150).id()
+    ));
+    assert_eq!(model.rows(), [3, 7, 9]);
+}
+
+#[test]
+fn insert_a_key_outside_the_table_passes_under_storage_only() {
+    let mut model = Model::sample();
+    let inverse = model.apply(&insert(150, None, None), CapPolicy::StorageOnly).unwrap();
+    assert_eq!(model.rows(), [3, 7, 9, 150]);
+    assert_eq!(inverse, Edit::Remove { row: row(150) });
+}
+
+#[test]
+fn insert_a_key_outside_the_storage_bound_is_out_of_range() {
+    for (key, policy) in [(0, ENFORCE), (201, ENFORCE), (0, CapPolicy::StorageOnly), (201, CapPolicy::StorageOnly)] {
         let mut model = Model::sample();
-        let error = model.apply(&insert(key, None, None), ENFORCE).unwrap_err();
-        assert!(matches!(
-            error,
-            EditError::UnknownId { ref field, id } if *field == *row(key).id() && id == i64::from(key)
-        ));
+        let error = model.apply(&insert(key, None, None), policy).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                EditError::OutOfRange { ref field, value, min: 1, max: 200 } if *field == *row(key).id() && value == i64::from(key)
+            ),
+            "key {key}: {error:?}"
+        );
         assert_eq!(model.rows(), [3, 7, 9]);
     }
 }

@@ -1,7 +1,8 @@
-//! The equip oracle: the expected result of `Set character.<id>.equipment.1`
-//! computed from the tree before the edit and the equip plan of
-//! `Ff1Model::apply_game` (`docs/formats/pixel-remaster.md#equipment-slots`,
-//! `#inventory`), without running the model.
+//! The equip oracle: the expected result of `Set character.<id>.equipment.<S>`
+//! for the five slots, computed from the tree before the edit and the equip
+//! plan of `Ff1Model::apply_game`
+//! (`docs/formats/pixel-remaster.md#equipment-slots`, `#inventory`), without
+//! running the model. A slot whose table or save lacks an ingredient skips.
 
 use neoffse_core::{Edit, RowId, TableKind, Value};
 use neoffse_format_pr::ff1::names;
@@ -11,31 +12,48 @@ use super::exit_cases::Case;
 use super::exit_facts::{CHARS, Facts, INV};
 use super::json_diff::{added, value};
 
-/// Which weapon the case equips.
+/// Which item the case equips.
 #[derive(Clone, Copy)]
 enum Pick {
-    /// The first weapon the inventory does not hold.
+    /// The first item of the slot's table that the inventory does not hold.
     New,
-    /// The first weapon the inventory holds.
+    /// The first item of the slot's table that the inventory holds.
     Held,
-    /// The placeholder of the weapon table.
+    /// The placeholder of the slot's table.
     Unequip,
 }
 
+/// The table of each equipment slot, slot 1 first.
+const SLOT_TABLES: [TableKind; 5] = [TableKind::Weapon, TableKind::Shield, TableKind::Armor, TableKind::Helmet, TableKind::Gloves];
+
+/// Case names by slot: new, held, unequip.
+const NAMES: [[&str; 3]; 5] = [
+    ["equip_new", "equip_held", "unequip"],
+    ["equip_new_s2", "equip_held_s2", "unequip_s2"],
+    ["equip_new_s3", "equip_held_s3", "unequip_s3"],
+    ["equip_new_s4", "equip_held_s4", "unequip_s4"],
+    ["equip_new_s5", "equip_held_s5", "unequip_s5"],
+];
+
 pub(super) fn equip_cases(facts: &Facts<'_>) -> Vec<(&'static str, Option<Case>)> {
-    [("equip_new", Pick::New), ("equip_held", Pick::Held), ("unequip", Pick::Unequip)]
-        .map(|(name, pick)| (name, equip(facts, name, pick)))
-        .into()
+    let mut cases = Vec::new();
+    for (index, (kind, names)) in SLOT_TABLES.into_iter().zip(NAMES).enumerate() {
+        let slot = u32::try_from(index + 1).unwrap_or(1);
+        for (name, pick) in names.into_iter().zip([Pick::New, Pick::Held, Pick::Unequip]) {
+            cases.push((name, equip(facts, name, pick, slot, kind)));
+        }
+    }
+    cases
 }
 
-/// The weapon id to equip in slot 1, different from the current one.
-fn choose(facts: &Facts<'_>, pick: Pick, current: i64) -> Option<u32> {
-    let weapons = facts.tables.table(TableKind::Weapon)?;
+/// The id of `kind` to equip, different from the current one.
+fn choose(facts: &Facts<'_>, pick: Pick, kind: TableKind, current: i64) -> Option<u32> {
+    let items = facts.tables.table(kind)?;
     let candidate = match pick {
-        Pick::Unequip => facts.tables.placeholder(TableKind::Weapon)?.id,
+        Pick::Unequip => facts.tables.placeholder(kind)?.id,
         Pick::New | Pick::Held => {
             let wanted = matches!(pick, Pick::Held);
-            weapons
+            items
                 .iter()
                 .find(|entry| !entry.placeholder && i64::from(entry.id) != current && facts.inv_rows.contains(&entry.id) == wanted)?
                 .id
@@ -44,15 +62,15 @@ fn choose(facts: &Facts<'_>, pick: Pick, current: i64) -> Option<u32> {
     (i64::from(candidate) != current).then_some(candidate)
 }
 
-/// The equipment slots, other than slot 1 of the first character, that hold
+/// The equipment slots, other than `slot` of the first character, that hold
 /// `id`.
-fn other_wearers(facts: &Facts<'_>, id: u32) -> usize {
+fn other_wearers(facts: &Facts<'_>, id: u32, own_slot: u32) -> usize {
     let tree = &facts.subject.tree;
     let mut found = 0;
     for character in 0..facts.characters {
         let keys = format!("{CHARS}[{character}].equipmentList.keys");
         for slot in 1..=names::EQUIPMENT_SLOTS {
-            if character == facts.char_index && slot == 1 {
+            if character == facts.char_index && slot == own_slot {
                 continue;
             }
             let Some(index) = tree.find_int(&keys, i64::from(slot)) else { continue };
@@ -63,19 +81,19 @@ fn other_wearers(facts: &Facts<'_>, id: u32) -> usize {
     found
 }
 
-fn equip(facts: &Facts<'_>, name: &'static str, pick: Pick) -> Option<Case> {
+fn equip(facts: &Facts<'_>, name: &'static str, pick: Pick, slot: u32, kind: TableKind) -> Option<Case> {
     let tree = &facts.subject.tree;
-    let slot_index = tree.find_int(&format!("{}.equipmentList.keys", facts.char_path), 1)?;
-    let slot = format!("{}.equipmentList.values[{slot_index}]", facts.char_path);
-    let (id_path, count_path) = (format!("{slot}.contentId"), format!("{slot}.count"));
+    let slot_index = tree.find_int(&format!("{}.equipmentList.keys", facts.char_path), i64::from(slot))?;
+    let entry = format!("{}.equipmentList.values[{slot_index}]", facts.char_path);
+    let (id_path, count_path) = (format!("{entry}.contentId"), format!("{entry}.count"));
     let old_count = tree.int(&count_path)?;
-    let target = choose(facts, pick, tree.int(&id_path)?)?;
+    let target = choose(facts, pick, kind, tree.int(&id_path)?)?;
     let placeholder = facts.tables.content(target)?.placeholder;
-    let slot_field = facts.field(names::EQUIPMENT).with_id(1);
+    let slot_field = facts.field(names::EQUIPMENT).with_id(slot);
     let held = tree.find_row(INV, "contentId", i64::from(target));
     let row = RowId::new(neoffse_core::FieldId::new(names::INVENTORY), target);
     let stored = |index: usize| tree.int(&format!("{INV}[{index}].count"));
-    let needed = i64::try_from(other_wearers(facts, target) + 1).ok()?;
+    let needed = i64::try_from(other_wearers(facts, target, slot) + 1).ok()?;
 
     let mut proof = Proof {
         changes: vec![value(&id_path)],

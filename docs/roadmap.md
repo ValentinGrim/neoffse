@@ -2,10 +2,13 @@
 
 NeoFFSE reaches its first release, v0.7.0, in six milestones and a release
 stage: foundations, the PR codec, file safety, the PR domain, the app on
-FF I, FF II to VI, then the release. Each step moves the crates it touches
-to the next minor version: M0 delivers 0.1.0, M1 0.2.0, and so on up to
-0.6.0 for M5, then the release stage delivers v0.7.0. A step closes when
-its exit checks pass, and the next one opens after that.
+FF I, FF II to VI, then the release. Each milestone raises by one the minor
+version of every crate it touches, so a crate's version counts its own
+updates: after M3, `neoffse-core` is 0.3.0, `neoffse-data` 0.2.0,
+`neoffse-format-pr` 0.4.0 and `neoffse-io` 0.3.0. The milestone
+branches count from `v0.1.0` for M0, so M3 is on `v0.4.0`, and the release
+stage delivers v0.7.0. A step closes when its exit checks pass, and the
+next one opens after that.
 [Layers and milestone boundaries](architecture.md#layers-and-milestone-boundaries)
 lists the crates each milestone closes.
 
@@ -97,7 +100,10 @@ intended change and no other difference (see
 **Scope.** The `neoffse` facade (format registry, edit history, save
 pipeline), the Home screen with detected saves, the FF I editor
 sections, the change review, save, the Restore page, the About dialog
-(see [UI architecture](architecture.md#ui-architecture)). Portraits use
+(see [UI architecture](architecture.md#ui-architecture)). The FF I
+Magic section lists the learned spells and stays read only at first;
+writing spells waits for research on the spell slot rules
+([Abilities](formats/pixel-remaster.md#abilities)). Portraits use
 the silhouettes. Local extraction (see
 [Visual assets](architecture.md#visual-assets)) waits for research on
 the Unity asset bundles.

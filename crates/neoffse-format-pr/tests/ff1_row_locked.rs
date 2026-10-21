@@ -69,10 +69,29 @@ fn a_row_stored_with_other_escapes_is_locked() {
 }
 
 #[test]
-fn a_zero_count_is_canonical_and_stays_unlocked() {
-    let mut data = SlotData::standard();
-    data.inventory.push(Row::new(4, 0));
-    assert!(!model(&data.render()).row_locked(&item(4)).unwrap());
+fn a_canonical_row_with_a_count_outside_the_storage_bound_is_locked() {
+    for count in [0_i64, -1, 2_147_483_648] {
+        let mut data = SlotData::standard();
+        data.inventory.push(Row::raw(format!("{{\"contentId\":4,\"count\":{count}}}")));
+        let mut model = model(&data.render());
+        assert!(model.row_locked(&item(4)).unwrap(), "count {count}");
+        let removal = Edit::remove(item(4));
+        for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
+            let result = model.apply(&removal, policy);
+            assert!(matches!(result, Err(EditError::OutOfRange { .. })), "count {count}");
+        }
+        let result = model.apply_game(&removal);
+        assert!(matches!(result, Err(EditError::OutOfRange { .. })), "count {count} through apply_game");
+    }
+}
+
+#[test]
+fn the_storage_bounds_of_the_count_stay_unlocked() {
+    for count in [1, 2_147_483_647] {
+        let mut data = SlotData::standard();
+        data.inventory.push(Row::new(4, count));
+        assert!(!model(&data.render()).row_locked(&item(4)).unwrap(), "count {count}");
+    }
 }
 
 #[test]

@@ -7,7 +7,7 @@ use neoffse_core::{EditError, FieldId, Key};
 use super::names;
 use crate::document::Segment;
 
-/// A path into the document; every key name is a literal of this module.
+/// A path into the document; every key name is a `'static` literal.
 pub(super) type Path = Vec<Segment<'static>>;
 
 /// The two lists of `userData` that hold `{contentId, count}` rows.
@@ -194,6 +194,21 @@ impl Stat {
             Stat::Spirit => "addtionalSpirit",
             Stat::Luck => "addtionalLuck",
             Stat::Magic => "addtionalMagic",
+        }
+    }
+
+    /// The `bounds.toml` key of the stat's game cap, spelled as the game
+    /// spells it (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`).
+    /// Magic has no cap.
+    pub(super) fn bound_key(self) -> Option<&'static str> {
+        match self {
+            Stat::Power => Some("MAX_STRNGTH"),
+            Stat::Vitality => Some("MAX_VITALITY"),
+            Stat::Agility => Some("MAX_AGILITY"),
+            Stat::Intelligence => Some("MAX_INTELIGENCE"),
+            Stat::Spirit => Some("MAX_SPRIT"),
+            Stat::Luck => Some("MAX_LUCK"),
+            Stat::Magic => None,
         }
     }
 }

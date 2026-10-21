@@ -107,7 +107,9 @@ impl Ff1Model {
         list == List::Inventory && self.tables.content(key).is_some_and(|entry| entry.placeholder)
     }
 
-    /// The number of equipment slots that hold `content_id`.
+    /// The number of equipment slots that hold `content_id`. A key item is
+    /// never worn, so a `key_items` row that goes through this check always
+    /// passes it.
     pub(super) fn wearers_of(&mut self, content_id: u32, field: &FieldId) -> Result<usize, EditError> {
         wearers(&mut self.document, content_id).map_err(|source| format_error(field, source))
     }

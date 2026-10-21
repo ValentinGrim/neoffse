@@ -3,6 +3,8 @@ use serde_json::{Number, Value};
 use super::{DocumentError, Segment, render_path};
 
 /// A JSON scalar read from or written to a [`Document`](super::Document).
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Scalar {
     /// `null`.

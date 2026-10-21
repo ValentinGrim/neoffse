@@ -50,16 +50,17 @@ fn table() -> Vec<Row> {
         row(character(names::HP), "HP", Some(999), &[]),
         row(character(names::MAX_HP_GAIN), "Max HP gain", None, &[]),
     ];
+    // The six stats take the 99 of their MAX_* key; Magic has no cap.
     let stats = [
-        (names::POWER, "Power"),
-        (names::VITALITY, "Vitality"),
-        (names::AGILITY, "Agility"),
-        (names::INTELLIGENCE, "Intelligence"),
-        (names::SPIRIT, "Spirit"),
-        (names::LUCK, "Luck"),
-        (names::MAGIC, "Magic"),
+        (names::POWER, "Power", Some(99)),
+        (names::VITALITY, "Vitality", Some(99)),
+        (names::AGILITY, "Agility", Some(99)),
+        (names::INTELLIGENCE, "Intelligence", Some(99)),
+        (names::SPIRIT, "Spirit", Some(99)),
+        (names::LUCK, "Luck", Some(99)),
+        (names::MAGIC, "Magic", None),
     ];
-    rows.extend(stats.map(|(name, label)| row(character(name), label, None, &[])));
+    rows.extend(stats.map(|(name, label, cap)| row(character(name), label, cap, &[])));
     for number in 1..=8 {
         rows.push(row(level(names::CHARGES, number), &format!("Charges, level {number}"), Some(9), &[]));
         rows.push(row(
@@ -131,6 +132,12 @@ fn caps_come_from_the_game_tables() {
         (character(names::HP), 999, "MAX_HP"),
         (level(names::CHARGES, 1), 9, "MAX_MAGICAL_TIMES"),
         (count, 99, "MAX_ITEM"),
+        (character(names::POWER), 99, "MAX_STRNGTH"),
+        (character(names::VITALITY), 99, "MAX_VITALITY"),
+        (character(names::AGILITY), 99, "MAX_AGILITY"),
+        (character(names::INTELLIGENCE), 99, "MAX_INTELIGENCE"),
+        (character(names::SPIRIT), 99, "MAX_SPRIT"),
+        (character(names::LUCK), 99, "MAX_LUCK"),
     ];
     for (field, cap, key) in capped {
         assert_eq!(model.field_meta(&field).unwrap().cap, Some(cap), "{field}");
@@ -139,24 +146,14 @@ fn caps_come_from_the_game_tables() {
 }
 
 #[test]
-fn gains_stats_and_slot_counts_have_no_cap() {
+fn gains_magic_and_slot_counts_have_no_cap() {
     let model = standard_model();
-    let mut fields = vec![
+    let fields = [
         character(names::MAX_HP_GAIN),
         level(names::CHARGES_MAX_GAIN, 1),
         slot(1).with_name(names::COUNT),
+        character(names::MAGIC),
     ];
-    for name in [
-        names::POWER,
-        names::VITALITY,
-        names::AGILITY,
-        names::INTELLIGENCE,
-        names::SPIRIT,
-        names::LUCK,
-        names::MAGIC,
-    ] {
-        fields.push(character(name));
-    }
     for field in fields {
         assert_eq!(model.field_meta(&field).unwrap().cap, None, "{field}");
     }

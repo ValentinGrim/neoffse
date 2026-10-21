@@ -55,8 +55,12 @@ impl GameTables {
     /// # Errors
     ///
     /// Returns the first [`DataError`]: a TOML error, a `kind` string it does
-    /// not know, or an id that is below 1 or does not rise above the id
-    /// before it in its file.
+    /// not know, an id that is below 1 or does not rise above the id before
+    /// it in its file, or a row that breaks a rule of the file contract
+    /// ([`DataError::Rule`]): an ability level above 8, an ability
+    /// `content_id` of 0, a placeholder written as `false`, a placeholder
+    /// outside the five equipment kinds or repeated in one kind, a cap key
+    /// without the `MAX_` prefix, or a negative cap.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
         let parsed = parse_sources(sources)?;
         Ok(GameTables {

@@ -181,6 +181,8 @@ impl fmt::Display for RowId {
 /// lists the `u32` flags and the `i64` ticks). A reference into an ID table
 /// is an `Int`, and the field's metadata says which table. Floats are absent
 /// on purpose, since `f64` has no `Eq`; a later version may add a variant.
+///
+/// `Debug` prints save content: never log it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Value {

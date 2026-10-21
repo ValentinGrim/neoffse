@@ -130,15 +130,25 @@ const MARKERS: [(Game, &[Segment<'static>]); 3] = [
 /// `OpenError::OtherGame { found: None, .. }` for a count no game has, and
 /// `found: Some(game)` when a marker key contradicts the count.
 pub fn identify(document: &mut Document) -> Result<Game, OpenError> {
-    identify_counted(document).map(|(game, _)| game)
+    let (game, vehicles) = game_of_count(document)?;
+    check_markers(document, game, vehicles)?;
+    Ok(game)
 }
 
-/// [`identify`] with the vehicle count, for a caller that reports it.
-pub(crate) fn identify_counted(document: &mut Document) -> Result<(Game, usize), OpenError> {
+/// Steps 1 to 3: the game whose vehicle count the document holds, with the
+/// count. `OtherGame { found: None, .. }` for a count no game has.
+pub(crate) fn game_of_count(document: &mut Document) -> Result<(Game, usize), OpenError> {
     let vehicles = document.array_len(&VEHICLES).map_err(not_a_slot)?;
-    let Some(&(_, game)) = VEHICLE_COUNTS.iter().find(|(count, _)| *count == vehicles) else {
-        return Err(OpenError::OtherGame { found: None, vehicles });
-    };
+    match VEHICLE_COUNTS.iter().find(|(count, _)| *count == vehicles) {
+        Some(&(_, game)) => Ok((game, vehicles)),
+        None => Err(OpenError::OtherGame { found: None, vehicles }),
+    }
+}
+
+/// Step 4: refuses `document` when it holds the marker key of a game other
+/// than `game`. `vehicles` is the count that named `game`, reported in the
+/// error.
+pub(crate) fn check_markers(document: &mut Document, game: Game, vehicles: usize) -> Result<(), OpenError> {
     for (marker_game, path) in MARKERS {
         if marker_game != game && holds(document, path)? {
             return Err(OpenError::OtherGame {
@@ -147,7 +157,7 @@ pub(crate) fn identify_counted(document: &mut Document) -> Result<(Game, usize),
             });
         }
     }
-    Ok((game, vehicles))
+    Ok(())
 }
 
 /// Whether `path` exists. An absent key is `false`; any other failure is not

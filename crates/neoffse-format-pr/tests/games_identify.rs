@@ -156,3 +156,37 @@ fn identify_leaves_a_spaced_document_byte_for_byte() {
     assert!(identify(&mut document).is_err());
     assert_eq!(document.to_json(), refused);
 }
+
+const FF6_MARKER: (&str, &str) = (r#"\"moveCount\":10"#, r#"\"otherPartyDataList\":[],\"moveCount\":10"#);
+
+#[test]
+fn open_names_the_game_of_the_count_before_any_marker() {
+    let text = replaced(&with_vehicles(7), FF6_MARKER.0, FF6_MARKER.1);
+    match open_error(open_text(&text)) {
+        OpenError::OtherGame { found, vehicles } => assert_eq!((found, vehicles), (Some(Game::Ff2Pr), 7)),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn identify_names_the_marker_game_when_the_marker_contradicts_the_count() {
+    let text = replaced(&with_vehicles(7), FF6_MARKER.0, FF6_MARKER.1);
+    assert!(matches!(
+        identified(&text),
+        Err(OpenError::OtherGame {
+            found: Some(Game::Ff6Pr),
+            vehicles: 7
+        })
+    ));
+}
+
+#[test]
+fn a_marker_path_that_crosses_a_value_of_the_wrong_kind_is_not_a_slot() {
+    let text = replaced(
+        &SlotData::standard().render(),
+        r#"\"cheatSettingsData\":{"#,
+        r#"\"cheatSettingsData\":1,\"x\":{"#,
+    );
+    assert!(matches!(identified(&text), Err(OpenError::NotASlot { .. })));
+    assert!(matches!(open_error(open_text(&text)), OpenError::NotASlot { .. }));
+}

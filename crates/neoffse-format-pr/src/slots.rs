@@ -3,10 +3,10 @@
 //!
 //! The six games share these names, so nothing here carries a game. A
 //! name is the only proof of a slot: the head of a file is base64 text that
-//! names no game, and the facade breaks the tie between the six formats with
-//! the game of the save folder.
+//! names no game, and the facade (M4) breaks the tie between the six formats
+//! with the game of the save folder.
 
-use neoffse_core::{Confidence, Detection, FileProbe, SaveSlot};
+use neoffse_core::{Confidence, Detection, FileProbe, PROBE_HEAD_LEN, SaveSlot};
 
 use crate::container::text::split;
 
@@ -92,19 +92,21 @@ pub fn slot_for_name(name: &str) -> Option<SaveSlot> {
 /// container and [`Confidence::Possible`] otherwise. It never gives
 /// [`Confidence::Certain`]: at most 256 bytes of base64 text name no game,
 /// and proving a slot would take a partial inflate. The six Pixel Remaster
-/// formats return the same claim for the same file, and the facade breaks
-/// the tie with the game of the save folder. [`Detection::slot`] comes from
+/// formats return the same claim for the same file, and the facade (M4)
+/// breaks the tie with the game of the save folder. [`Detection::slot`] comes from
 /// the name.
 ///
 /// The head looks like a container when, after an optional BOM, it holds
 /// a non-empty run of base64 characters (`A-Z a-z 0-9 + / =`) up to the
 /// trailing whitespace
 /// (`docs/formats/pixel-remaster.md#bom-and-line-end`,
-/// `docs/formats/pixel-remaster.md#base64`).
+/// `docs/formats/pixel-remaster.md#base64`). The check reads at most
+/// [`PROBE_HEAD_LEN`] bytes, even when a caller widened the public `head`
+/// field.
 #[must_use]
 pub fn detect(probe: &FileProbe<'_>) -> Option<Detection> {
     let slot = slot_for_name(probe.name)?;
-    let confidence = if looks_like_container(probe.head) {
+    let confidence = if looks_like_container(probe.head.get(..PROBE_HEAD_LEN).unwrap_or(probe.head)) {
         Confidence::Likely
     } else {
         Confidence::Possible

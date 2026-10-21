@@ -10,13 +10,34 @@ use proptest::prelude::*;
 
 const LIST: [Segment<'static>; 1] = [Segment::Key("list")];
 
-/// Compact JSON values: numbers, strings and objects.
+/// JSON values in several layouts: numbers, finite floats, strings, compact
+/// and spaced objects, and a string that holds an object document.
 fn element() -> impl Strategy<Value = String> {
     prop_oneof![
         any::<i64>().prop_map(|n| n.to_string()),
+        any::<f64>()
+            .prop_filter("finite", |x| x.is_finite())
+            .prop_map(|x| serde_json::to_string(&x).unwrap()),
         "[a-z\\\\\"/ ]{0,6}".prop_map(|s| serde_json::to_string(&s).unwrap()),
         any::<u8>().prop_map(|n| format!(r#"{{"a":{n},"b":[{n},"x"]}}"#)),
+        any::<u8>().prop_map(|n| format!(r#"{{ "a": {n} }}"#)),
+        any::<u8>().prop_map(|n| serde_json::to_string(&format!(r#"{{ "a": {n} }}"#)).unwrap()),
     ]
+}
+
+/// A `get` into the element `pick` selects, down to the key `a` of the object
+/// or of the document in the string: the read parses the levels it crosses and
+/// must not change the text any operation hands back. A kind that holds no
+/// `a` fails, and the failure is the point.
+fn probe(document: &mut Document, len: usize, pick: prop::sample::Index) {
+    if len == 0 {
+        return;
+    }
+    let index = pick.index(len);
+    let at = [Segment::Key("list"), Segment::Index(index)];
+    let _ = document.get(&at);
+    let _ = document.get(&[at[0], at[1], Segment::Key("a")]);
+    let _ = document.get(&[at[0], at[1], Segment::Doc, Segment::Key("a")]);
 }
 
 fn compact(items: &[String]) -> String {
@@ -29,10 +50,11 @@ fn raw_of(document: &mut Document, index: usize) -> String {
 
 proptest! {
     #[test]
-    fn insert_then_remove_is_the_identity(items in vec(element(), 0..6), value in element()) {
+    fn insert_then_remove_is_the_identity(items in vec(element(), 0..6), value in element(), pick in any::<prop::sample::Index>()) {
         let text = compact(&items);
         for index in 0..=items.len() {
             let mut document = Document::parse(&text).unwrap();
+            probe(&mut document, items.len(), pick);
             document.insert_raw(&LIST, index, &value).unwrap();
             prop_assert_eq!(document.remove(&LIST, index).unwrap(), value.clone());
             prop_assert_eq!(document.to_json(), text.clone());
@@ -40,10 +62,11 @@ proptest! {
     }
 
     #[test]
-    fn remove_then_insert_raw_is_the_identity(items in vec(element(), 1..6)) {
+    fn remove_then_insert_raw_is_the_identity(items in vec(element(), 1..6), pick in any::<prop::sample::Index>()) {
         let text = compact(&items);
         for (index, item) in items.iter().enumerate() {
             let mut document = Document::parse(&text).unwrap();
+            probe(&mut document, items.len(), pick);
             let removed = document.remove(&LIST, index).unwrap();
             prop_assert_eq!(&removed, item);
             document.insert_raw(&LIST, index, &removed).unwrap();
@@ -54,11 +77,12 @@ proptest! {
     #[test]
     fn a_sequence_of_row_edits_matches_a_vector_model(
         start in vec(element(), 0..4),
-        ops in vec((any::<bool>(), any::<prop::sample::Index>(), element()), 0..24),
+        ops in vec((any::<bool>(), any::<prop::sample::Index>(), any::<prop::sample::Index>(), element()), 0..24),
     ) {
         let mut model = start.clone();
         let mut document = Document::parse(&compact(&start)).unwrap();
-        for (insert, pick, value) in ops {
+        for (insert, pick, looked, value) in ops {
+            probe(&mut document, model.len(), looked);
             if insert {
                 let index = pick.index(model.len() + 1);
                 document.insert_raw(&LIST, index, &value).unwrap();
