@@ -33,7 +33,7 @@ fn the_table_holds_the_six_games_in_order() {
     }
 }
 
-const HEADER: [&str; 4] = ["Game", "Steam app ID", "Game folder under My Games", "Executable"];
+const HEADER: [&str; 4] = ["Game", "Steam app ID", "Game folder in My Games", "Executable"];
 
 /// The cells of every line of the Games table, header and separator
 /// included, backticks stripped.
@@ -115,7 +115,7 @@ fn a_changed_document_row_is_detected() {
     let found = mismatches(&extra_cell);
     assert!(found.iter().any(|message| message.contains("FF III PR")), "{found:?}");
 
-    let renamed_label = format!("{head}{}", table.replacen("| Executable |", "| Program |", 1));
+    let renamed_label = format!("{head}{}", table.replacen("Executable", "Program", 1));
     assert_ne!(renamed_label, document, "the Executable label must appear after the heading");
     let found = mismatches(&renamed_label);
     assert!(found.iter().any(|message| message.contains("header")), "{found:?}");

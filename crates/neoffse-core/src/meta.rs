@@ -1,7 +1,8 @@
 //! Field metadata: what an editor needs to show and check one field.
 //!
-//! [`FieldMeta`] is the contract of `docs/architecture.md#principles` rule 3.
-//! The view model of the app derives the widget from it: a non-empty
+//! [`FieldMeta`] is the contract between a format and the app
+//! (`docs/architecture.md#ui-architecture`). The view model derives the
+//! widget from it: a non-empty
 //! [`tables`](FieldMeta::tables) gives a searchable dropdown, non-empty
 //! [`names`](FieldMeta::names) a dropdown beside the raw value, [`Shape::Int`]
 //! a spin box clamped to the bounds with a warning above
