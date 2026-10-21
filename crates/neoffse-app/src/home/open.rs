@@ -162,7 +162,7 @@ fn open_one(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> 
     };
     match session.summary() {
         Ok(summary) => {
-            let row = summary_row_of(&summary);
+            let row = summary_row_of(&summary, name);
             Worked::Opened(Box::new(session), row)
         }
         Err(_) => Worked::Failed(OpenProblem::NotASave),

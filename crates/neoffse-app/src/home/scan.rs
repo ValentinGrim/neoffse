@@ -98,8 +98,7 @@ fn supported_slots(registry: &Registry, game: Game, folder: &SaveFolder) -> (Vec
                 .ok()
                 .and_then(|mut session| session.summary().ok());
             // The session drops here, before the next file opens.
-            let slot = summary.as_ref().and_then(|summary| summary.slot).or(found.claim.detection.slot);
-            let (kind, number) = slot_kind(slot);
+            let (kind, number) = slot_kind_of(summary.as_ref(), &found.name);
             SlotData {
                 key: 0,
                 name: found.name,
@@ -125,8 +124,8 @@ fn named_slots(folder: &SaveFolder) -> (Vec<SlotData>, usize) {
         .files
         .into_iter()
         .filter_map(|file| {
-            let slot = slot_for_name(&file.name)?;
-            let (kind, number) = slot_kind(Some(slot));
+            slot_for_name(&file.name)?;
+            let (kind, number) = slot_kind_of(None, &file.name);
             Some(SlotData {
                 key: 0,
                 name: file.name,
@@ -141,7 +140,14 @@ fn named_slots(folder: &SaveFolder) -> (Vec<SlotData>, usize) {
     (slots, skipped)
 }
 
-pub(super) fn slot_kind(slot: Option<SaveSlot>) -> (SlotKind, i32) {
+/// The single rule for a slot's kind and number, shared by the Home rows and
+/// the editor page: the summary's slot, else the one the file name gives,
+/// else `Other`.
+pub(super) fn slot_kind_of(summary: Option<&SaveSummary>, name: &str) -> (SlotKind, i32) {
+    slot_kind(summary.and_then(|summary| summary.slot).or_else(|| slot_for_name(name)))
+}
+
+fn slot_kind(slot: Option<SaveSlot>) -> (SlotKind, i32) {
     match slot {
         Some(SaveSlot::Numbered(number)) => (SlotKind::Numbered, i32::try_from(number).unwrap_or(i32::MAX)),
         Some(SaveSlot::Auto) => (SlotKind::AutoSave, 0),

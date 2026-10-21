@@ -7,6 +7,7 @@
     reason = "Slint's tree (winit, wayland, objc2, windows-sys, rustix, hashbrown, thiserror, tiny-skia and others) resolves several crates at more than one version; the workspace cannot unify them"
 )]
 
+pub mod connect;
 pub mod dispatch;
 pub mod home;
 pub mod language;
@@ -21,10 +22,15 @@ mod generated {
     slint::include_modules!();
 }
 
+pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use generated::{AboutDialog, FolderOrigin, FolderRow, GameRow, MainWindow, OpenProblem, SlotKind, SlotRow, SummaryRow};
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
+use std::sync::Arc;
+
+use neoffse::Registry;
+use neoffse::io::discovery::Environment;
 use slint::{CloseRequestResponse, ComponentHandle};
 
 /// Builds the windows, wires them together and runs the event loop.
@@ -33,10 +39,13 @@ use slint::{CloseRequestResponse, ComponentHandle};
 ///
 /// Returns the platform error when a window or the event loop cannot start.
 pub fn run() -> Result<(), slint::PlatformError> {
+    let registry = Arc::new(Registry::new(system_language()));
+    let app = App::new(registry, Environment::platform(), Arc::new(NativePicker), Arc::new(EventLoopDispatcher));
     let main_window = MainWindow::new()?;
     let about = new_about_dialog()?;
     connect_about(&main_window, &about);
     connect_quit(&main_window);
+    connect_home(&main_window, &app);
     main_window.run()
 }
 

@@ -57,7 +57,10 @@ fn a_click_opens_the_session_off_the_ui_thread() {
 
 #[test]
 fn the_state_holds_a_shared_session() {
-    let (site, _) = one_slot();
+    let (site, dir) = one_slot();
+    // A file named for slot 3 whose JSON id is 2: the summary's slot wins on
+    // both screens.
+    fs::write(dir.join(slot_file(3)), slot_bytes(2)).unwrap();
     let flow = Flow::new(&site, None);
     let outcomes = Outcomes::new();
     flow.click(slot_file(1), &outcomes);
@@ -74,6 +77,17 @@ fn the_state_holds_a_shared_session() {
     assert_eq!(flow.state.summary().unwrap(), slot.summary);
     assert_eq!(flow.editor.summary().unwrap(), slot.summary);
     assert_eq!(slot.summary.party.as_str(), "Aria, Bram, Cleo, Zoé");
+
+    flow.click(slot_file(3), &outcomes);
+    flow.manual.run_all();
+    let shown = flow.editor.summary().unwrap();
+    let home_slot = slots_of(&home_rows[0])
+        .into_iter()
+        .find(|slot| slot.summary.number == 2)
+        .expect("the file reads as slot 2");
+    assert_eq!(shown.kind, home_slot.summary.kind);
+    assert_eq!(shown.number, home_slot.summary.number);
+    assert_eq!(shown, home_slot.summary);
 }
 
 #[test]

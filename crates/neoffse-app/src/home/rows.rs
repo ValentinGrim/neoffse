@@ -3,7 +3,7 @@
 use neoffse::core::{Game, SaveSummary};
 use slint::{ModelRc, VecModel};
 
-use super::scan::{slot_kind, summary_data};
+use super::scan::{slot_kind_of, summary_data};
 use super::{FolderData, GameData, HomeData, SlotData, SummaryData};
 use crate::{FolderRow, GameRow, SlotKind, SlotRow, SummaryRow};
 
@@ -70,9 +70,10 @@ fn summary_row(title: &str, kind: SlotKind, number: i32, found: Option<&SummaryD
 }
 
 /// The row the editor page shows for an open save: the same mapping as a
-/// Home slot with a summary.
-pub(super) fn summary_row_of(summary: &SaveSummary) -> SummaryRow {
-    let (kind, number) = slot_kind(summary.slot);
+/// Home slot with a summary. `name` is the file name, the fallback of the
+/// slot rule.
+pub(super) fn summary_row_of(summary: &SaveSummary, name: &str) -> SummaryRow {
+    let (kind, number) = slot_kind_of(Some(summary), name);
     summary_row(&title_of(summary.game), kind, number, Some(&summary_data(summary)))
 }
 

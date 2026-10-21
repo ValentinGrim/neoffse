@@ -1,0 +1,35 @@
+import { Button, ScrollView } from "std-widgets.slint";
+import { SummaryRow } from "types.slint";
+import { SlotText, SummaryLines } from "text.slint";
+
+// The editor page. It shows the summary of the open save and a Back button.
+export component EditorPage inherits VerticalLayout {
+    in property <SummaryRow> summary;
+    callback back-requested();
+
+    padding: 12px;
+    spacing: 8px;
+
+    HorizontalLayout {
+        alignment: start;
+        Button {
+            text: @tr("Back");
+            clicked => { root.back-requested(); }
+        }
+    }
+    Text {
+        text: root.summary.game;
+        font-size: 20px;
+        font-weight: 700;
+        overflow: elide;
+    }
+    Text {
+        text: SlotText.name(root.summary.kind, root.summary.number);
+        font-weight: 600;
+        overflow: elide;
+    }
+    SummaryLines {
+        summary: root.summary;
+    }
+    Rectangle { }
+}

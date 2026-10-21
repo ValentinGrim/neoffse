@@ -8,6 +8,7 @@ mod manual;
 mod open;
 mod site;
 mod slots;
+mod window;
 
 use std::sync::Arc;
 
@@ -21,6 +22,7 @@ pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
+pub(crate) use window::Ui;
 
 pub(crate) fn registry() -> Arc<Registry> {
     Arc::new(Registry::new(Language::En))
