@@ -7,8 +7,8 @@
 
 use slint::{CloseRequestResponse, ComponentHandle, Weak};
 
-use crate::connect::refresh_home;
-use crate::connect_editor::refresh_editor;
+use super::editor::refresh_editor;
+use super::refresh_home;
 use crate::editor::{Leave, LeaveAnswer};
 use crate::{AboutDialog, App, EditorBridge, MainWindow};
 

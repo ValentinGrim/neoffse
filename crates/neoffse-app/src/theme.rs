@@ -1,7 +1,7 @@
 //! Picks the look of the window from the open save's game.
 //!
-//! The `.slint` side holds every colour, size and font (`ui/theme.slint`,
-//! `ui/shell.slint`). This module only maps a game to the theme that draws it.
+//! The `.slint` side holds every colour, size and font (`ui/theme/theme.slint`,
+//! `ui/theme/shell.slint`). This module only maps a game to the theme that draws it.
 
 use neoffse::core::Game;
 use slint::ComponentHandle;

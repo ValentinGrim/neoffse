@@ -6,6 +6,9 @@
 //! dispatcher upgrades the weak handle and does nothing when the window is
 //! gone.
 
+pub mod editor;
+pub mod guard;
+
 use std::fmt;
 use std::sync::Arc;
 
@@ -14,8 +17,8 @@ use neoffse::data::Language;
 use neoffse::io::discovery::Environment;
 use slint::{ComponentHandle, ModelRc, VecModel, Weak};
 
-use crate::connect_editor::refresh_editor;
-use crate::connect_guard::sync_expert;
+use self::editor::refresh_editor;
+use self::guard::sync_expert;
 use crate::dispatch::Dispatcher;
 use crate::editor::{EditorViewModel, Leave, LeaveAnswer};
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};

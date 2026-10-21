@@ -1,13 +1,13 @@
 import { ScrollView } from "std-widgets.slint";
-import { EntityPage, FieldRow, ItemList, ItemRow, SectionData } from "editor-types.slint";
+import { EntityPage, FieldRow, ItemList, ItemRow, SectionData } from "../../types/editor.slint";
 import { EditorBridge } from "bridge.slint";
-import { ThemedButton } from "controls.slint";
+import { ThemedButton } from "../../widgets/controls.slint";
 import { FieldEditor, FieldLine, LockMark } from "fields.slint";
-import { PickerField } from "picker.slint";
-import { LookText, PortraitFrame, RuleLine } from "frames.slint";
-import { Icons } from "icons.slint";
-import { Look } from "look.slint";
-import { Theme } from "theme.slint";
+import { PickerField } from "../../widgets/picker.slint";
+import { LookText, PortraitFrame, RuleLine } from "../../widgets/frames.slint";
+import { Icons } from "../../theme/icons.slint";
+import { Look } from "../../theme/look.slint";
+import { Theme } from "../../theme/theme.slint";
 
 // The fields of one entity, scrolling when they outgrow the page.
 export component FieldList inherits ScrollView {

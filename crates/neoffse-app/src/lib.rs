@@ -8,8 +8,6 @@
 )]
 
 pub mod connect;
-pub mod connect_editor;
-pub mod connect_guard;
 pub mod dispatch;
 pub mod editor;
 pub mod home;
@@ -26,9 +24,9 @@ mod generated {
     slint::include_modules!();
 }
 
+pub use connect::editor::{connect_editor, refresh_editor};
+pub use connect::guard::{connect_close, connect_expert};
 pub use connect::{App, connect_home, refresh_home};
-pub use connect_editor::{connect_editor, refresh_editor};
-pub use connect_guard::{connect_close, connect_expert};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
 pub use generated::{

@@ -1,15 +1,9 @@
-import { Fonts } from "fonts.slint";
-import { FrameStyle, Look } from "look.slint";
-import { Shell } from "shell.slint";
-
-// One theme per game family. To add a game's theme: write one `Look` value
-// (a new `global`), add one branch to `Theme.look`, add one value to `ThemeId`
-// and one arm to `theme_for` in `src/theme.rs`. No screen changes.
-export enum ThemeId { app, pr }
+import { Fonts } from "../../theme/fonts.slint";
+import { FrameStyle, Look } from "../../theme/look.slint";
 
 // The Pixel Remaster menu: blue gradient windows, light bevelled borders,
 // white text, cyan labels. All six Pixel Remaster games share it.
-global PrLook {
+export global PrLook {
     out property <Look> look: {
         font-family: Fonts.pixel,
         font-family-strong: Fonts.pixel,
@@ -42,10 +36,4 @@ global PrLook {
         padding: 12px,
         spacing: 8px,
     };
-}
-
-export global Theme {
-    in property <ThemeId> id: ThemeId.app;
-    // The look of the open game; the app theme is the shell's.
-    out property <Look> look: root.id == ThemeId.pr ? PrLook.look : Shell.look;
 }

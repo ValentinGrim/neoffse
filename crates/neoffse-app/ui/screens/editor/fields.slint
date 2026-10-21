@@ -1,12 +1,12 @@
 import { ComboBox } from "std-widgets.slint";
-import { FieldKind, FieldRow } from "editor-types.slint";
+import { FieldKind, FieldRow } from "../../types/editor.slint";
 import { EditorBridge } from "bridge.slint";
-import { ThemedCheck, ThemedEdit } from "controls.slint";
-import { LookText } from "frames.slint";
-import { Icon, Icons } from "icons.slint";
-import { PickerField } from "picker.slint";
-import { Look } from "look.slint";
-import { Theme } from "theme.slint";
+import { ThemedCheck, ThemedEdit } from "../../widgets/controls.slint";
+import { LookText } from "../../widgets/frames.slint";
+import { Icon, Icons } from "../../theme/icons.slint";
+import { PickerField } from "../../widgets/picker.slint";
+import { Look } from "../../theme/look.slint";
+import { Theme } from "../../theme/theme.slint";
 
 // A text box that sends one edit per commit: Enter or focus loss, and only
 // when the text differs from `source`. After every commit, accepted or

@@ -9,8 +9,8 @@
 //! [`build`] turns a `SaveView` into the Slint data, and [`EditorViewModel`]
 //! sends each commit to the session as one edit. `leave` asks before a dirty
 //! session closes. `overview` shapes the party cards; it is the one module
-//! that names game fields. The Slint side lives in `ui/editor-types.slint` and
-//! `ui/bridge.slint`.
+//! that names game fields. The Slint side lives in
+//! `ui/types/editor.slint` and `ui/screens/editor/bridge.slint`.
 
 mod field_row;
 mod input;

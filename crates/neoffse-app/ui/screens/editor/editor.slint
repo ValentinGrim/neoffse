@@ -1,16 +1,16 @@
-import { SummaryRow } from "types.slint";
+import { SummaryRow } from "../../types/home.slint";
 import { EditorBridge } from "bridge.slint";
-import { EditorCommand } from "editor-types.slint";
-import { IconButton } from "controls.slint";
-import { Frame, LookText } from "frames.slint";
-import { Icons } from "icons.slint";
-import { PartyCards } from "cards.slint";
-import { CommandList, StatusPanel } from "menu.slint";
-import { NoticeBar } from "notice.slint";
-import { SummaryLine } from "text.slint";
+import { EditorCommand } from "../../types/editor.slint";
+import { IconButton } from "../../widgets/controls.slint";
+import { Frame, LookText } from "../../widgets/frames.slint";
+import { Icons } from "../../theme/icons.slint";
+import { PartyCards } from "../../games/pr/cards.slint";
+import { CommandList, StatusPanel } from "../../games/pr/menu.slint";
+import { NoticeBar } from "notice-bar.slint";
+import { SummaryLine } from "../../widgets/text.slint";
 import { CharacterEditPage, CharacterPage, InventoryPage } from "pages.slint";
-import { Look } from "look.slint";
-import { Theme } from "theme.slint";
+import { Look } from "../../theme/look.slint";
+import { Theme } from "../../theme/theme.slint";
 
 component NoSection inherits LookText {
     text: @tr("This save has no such section.");

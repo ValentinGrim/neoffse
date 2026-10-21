@@ -1,7 +1,6 @@
-import { EditorBridge } from "bridge.slint";
 import { IconButton, ThemedButton } from "controls.slint";
-import { Icon, Icons } from "icons.slint";
-import { Shell } from "shell.slint";
+import { Icon, Icons } from "../theme/icons.slint";
+import { Shell } from "../theme/shell.slint";
 import { ShellText } from "shell-text.slint";
 import { NoticeText } from "text.slint";
 
@@ -60,14 +59,4 @@ export component NoticeStrip inherits Rectangle {
             clicked => { root.dismissed(); }
         }
     }
-}
-
-// The notice bar of the editor: the sentence for the last refused edit, and
-// the switch to expert mode when the refusal was a game limit.
-export component NoticeBar inherits NoticeStrip {
-    text: NoticeText.sentence(EditorBridge.notice);
-    offer-text: EditorBridge.offer-expert ? @tr("Switch to expert mode") : "";
-    enabled: !EditorBridge.blocked;
-    offer-clicked => { EditorBridge.expert-toggle-requested(); }
-    dismissed => { EditorBridge.notice-dismissed(); }
 }
