@@ -7,7 +7,7 @@
 mod common;
 
 use common::ff1_format::one_file;
-use common::ff1_real::{files, slots};
+use common::ff1_real::{files, must, must_some, slots};
 use common::{GAMES, save_files};
 use neoffse_core::{CapPolicy, Confidence, Edit, FieldId, FileProbe, FormatError, SaveDocument, Value};
 use neoffse_format_pr::container::decode;
@@ -20,8 +20,10 @@ fn gil() -> FieldId {
     FieldId::new(names::GIL)
 }
 
-fn holds_user_data(json: &str) -> bool {
-    Document::parse(json).unwrap().raw(&[Segment::Key("userData")]).is_ok()
+fn holds_user_data(json: &str, label: &str) -> bool {
+    must(Document::parse(json), &format!("{label}: parse failed"))
+        .raw(&[Segment::Key("userData")])
+        .is_ok()
 }
 
 #[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
@@ -37,9 +39,11 @@ fn real_slot_files_open_and_round_trip() {
         let Ok(document) = Ff1Format::new().open_document(&files) else {
             panic!("{}: the file does not open", slot.label)
         };
-        let original = decode(&slot.bytes).unwrap();
-        let encoded = document.encode().unwrap();
-        let again = decode(encoded.get(&slot.name).unwrap()).unwrap();
+        let label = &slot.label;
+        let original = must(decode(&slot.bytes), &format!("{label}: decode failed"));
+        let encoded = must(document.encode(), &format!("{label}: encode failed"));
+        let written = must_some(encoded.get(&slot.name), &format!("{label}: the encoding lacks the file"));
+        let again = must(decode(written), &format!("{label}: second decode failed"));
         assert!(again.json == original.json, "{}: the JSON text changed", slot.label);
         assert!(again.container == original.container, "{}: the container changed", slot.label);
         assert!(document.verify(&encoded).is_ok(), "{}: verify refuses the encoding", slot.label);
@@ -52,22 +56,19 @@ fn real_detection_agrees_with_the_files() {
     let Some(files) = files() else { return };
     let format = Ff1Format::new();
     for file in files {
-        let json = decode(&file.bytes).unwrap().json;
+        let json = must(decode(&file.bytes), &format!("{}: decode failed", file.label)).json;
         let probe = FileProbe::new(&file.name, file.bytes.len() as u64, &file.bytes);
         let detection = neoffse_core::SaveFormat::detect(&format, &probe);
-        if holds_user_data(&json) {
+        if holds_user_data(&json, &file.label) {
             let Some(detection) = detection else {
                 panic!("{}: a slot is not detected", file.label)
             };
-            assert_eq!(detection.confidence, Confidence::Likely, "{}", file.label);
-            let mut document = format.open_document(&one_file(&file.name, file.bytes.clone())).unwrap();
-            assert_eq!(
-                detection.slot,
-                document.summary().unwrap().slot,
-                "{}: detection and summary disagree",
-                file.label
-            );
-            assert_eq!(detection.slot, slot_for_name(&file.name), "{}", file.label);
+            assert!(detection.confidence == Confidence::Likely, "{}: a slot is not Likely", file.label);
+            let opened = format.open_document(&one_file(&file.name, file.bytes.clone()));
+            let mut document = must(opened, &format!("{}: the slot does not open", file.label));
+            let summary = must(document.summary(), &format!("{}: the summary does not read", file.label));
+            assert!(detection.slot == summary.slot, "{}: detection and summary disagree", file.label);
+            assert!(detection.slot == slot_for_name(&file.name), "{}: detection and file name disagree", file.label);
         } else {
             assert!(detection.is_none(), "{}: a non-slot file is detected", file.label);
         }
@@ -78,7 +79,8 @@ fn real_detection_agrees_with_the_files() {
 fn real_non_slot_files_do_not_open() {
     let Some(files) = files() else { return };
     for file in files {
-        if holds_user_data(&decode(&file.bytes).unwrap().json) {
+        let decoded = must(decode(&file.bytes), &format!("{}: decode failed", file.label));
+        if holds_user_data(&decoded.json, &file.label) {
             continue;
         }
         let result = Ff1Format::new().open_document(&one_file(&file.name, file.bytes.clone()));
@@ -93,8 +95,9 @@ fn real_non_slot_files_do_not_open() {
 fn real_apply_then_inverse_restores_the_text() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut document = Ff1Format::new().open_document(&one_file(&slot.name, slot.bytes.clone())).unwrap();
-        let view = document.view().unwrap();
+        let opened = Ff1Format::new().open_document(&one_file(&slot.name, slot.bytes.clone()));
+        let mut document = must(opened, &format!("{}: the file does not open", slot.label));
+        let view = must(document.view(), &format!("{}: the view does not read", slot.label));
         let Some((_, field)) = view.find(&gil()) else {
             continue;
         };
@@ -110,7 +113,9 @@ fn real_apply_then_inverse_restores_the_text() {
             "{}: the inverse is refused",
             slot.label
         );
-        let text = decode(document.encode().unwrap().get(&slot.name).unwrap()).unwrap().json;
+        let encoded = must(document.encode(), &format!("{}: encode failed", slot.label));
+        let written = must_some(encoded.get(&slot.name), &format!("{}: the encoding lacks the file", slot.label));
+        let text = must(decode(written), &format!("{}: second decode failed", slot.label)).json;
         assert!(text == slot.json, "{}: the text changed after the inverse", slot.label);
     }
 }
@@ -122,7 +127,8 @@ fn real_verify_refuses_another_slot() {
         neoffse_testkit::skip("ff1 holds no two slots with different texts");
         return;
     };
-    let document = Ff1Format::new().open_document(&one_file(&first.name, first.bytes.clone())).unwrap();
+    let opened = Ff1Format::new().open_document(&one_file(&first.name, first.bytes.clone()));
+    let document = must(opened, &format!("{}: the file does not open", first.label));
     let swapped = one_file(&first.name, second.bytes.clone());
     assert!(
         matches!(document.verify(&swapped), Err(FormatError::VerifyMismatch { .. })),
@@ -137,19 +143,21 @@ fn real_saves_identify_their_game() {
         let Some(paths) = save_files(folder) else { continue };
         let (mut slots, mut opened, mut others) = (0, 0, 0);
         for path in paths {
-            let name = path.file_name().unwrap().to_string_lossy().into_owned();
-            let bytes = std::fs::read(&path).unwrap();
+            let name = must_some(path.file_name(), &format!("{folder}: a file has no name"))
+                .to_string_lossy()
+                .into_owned();
             let label = format!("{folder} {}", name.chars().take(8).collect::<String>());
+            let bytes = must(std::fs::read(&path), &format!("{label}: read failed"));
             let Ok(decoded) = decode(&bytes) else { panic!("{label}: decode failed") };
             let Ok(mut document) = Document::parse(&decoded.json) else {
                 panic!("{label}: parse failed")
             };
             let outcome = identify(&mut document);
             let opens = Ff1Format::new().open_document(&one_file(&name, bytes)).is_ok();
-            if holds_user_data(&decoded.json) {
+            if holds_user_data(&decoded.json, &label) {
                 slots += 1;
                 assert!(matches!(outcome, Ok(found) if found == *game), "{label}: wrong game");
-                assert_eq!(opens, *game == neoffse_core::Game::Ff1Pr, "{label}: the FF I format's decision is wrong");
+                assert!(opens == (*game == neoffse_core::Game::Ff1Pr), "{label}: the FF I format's decision is wrong");
                 opened += usize::from(opens);
             } else {
                 others += 1;

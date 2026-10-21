@@ -1,7 +1,7 @@
 //! The game's rules for an FF I slot, checked through the public model.
 //!
-//! A message carries the field path and never a value: the callers also run
-//! it on private saves.
+//! A message carries the field path and never a value or an error text: the
+//! callers also run it on private saves.
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ fn int(model: &mut Ff1Model, field: &FieldId) -> Result<i64, String> {
     match model.get(field) {
         Ok(Value::Int(value)) => Ok(value),
         Ok(_) => Err(format!("{field}: not an integer")),
-        Err(error) => Err(format!("{field}: {error}")),
+        Err(_) => Err(format!("{field}: does not read")),
     }
 }
 
@@ -31,9 +31,8 @@ pub(crate) fn violations(model: &mut Ff1Model, copy_counts: bool) -> Vec<String>
     let mut found = Vec::new();
     let mut note = |kind: &str, text: String| found.push(format!("{kind}: {text}"));
     let inventory_id = FieldId::new(names::INVENTORY);
-    let keys = match model.rows(&inventory_id) {
-        Ok(keys) => keys,
-        Err(error) => return vec![format!("read: {inventory_id}: {error}")],
+    let Ok(keys) = model.rows(&inventory_id) else {
+        return vec![format!("read: {inventory_id}: rows do not read")];
     };
     let mut counts = HashMap::new();
     for key in keys {

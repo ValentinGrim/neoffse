@@ -14,11 +14,12 @@ use neoffse_format_pr::container::{self, Decoded};
 use neoffse_format_pr::document::Document;
 use neoffse_format_pr::ff1::{Ff1Model, GAME};
 
+use super::edit_paths::{describe, shown, spaced_levels};
 pub(crate) use super::edit_subject::{Subject, open_files};
 pub(crate) use super::edit_view::ViewChange;
 use super::edit_view::{mismatch, raises_worn_count};
 use super::ff1_rules::violations;
-use super::json_diff::{Change, assert_changes, diff_trees, layout_chain};
+use super::json_diff::{Change, assert_changes_with, diff_trees, layout_chain};
 use super::json_tree::Tree;
 
 /// The interface an edit goes through: `apply_game`, or `apply` under `Enforce`
@@ -183,13 +184,20 @@ impl Run<'_> {
     }
 
     /// Step 4: the structural diff against the expected list plus the
-    /// `Layout` chain of the rewritten ancestors.
+    /// `Layout` chain of the rewritten ancestors, then the check that each
+    /// level of that chain is compact in the encoded text
+    /// (`docs/formats/pixel-remaster.md#write-rules`).
     fn check_diff(&self, json: &str) -> Tree {
+        let before = &self.subject.tree;
         let after = Tree::parse(json);
-        let actual = diff_trees(&self.subject.tree, &after);
+        let actual = diff_trees(before, &after);
+        let chain = layout_chain(before, &self.proof.changes);
         let mut expected = self.proof.changes.clone();
-        expected.extend(layout_chain(&self.subject.tree, &self.proof.changes));
-        assert_changes(&self.label, &actual, &expected);
+        expected.extend(chain.iter().cloned());
+        assert_changes_with(&self.label, &actual, &expected, &|change| describe(before, change));
+        if let Some(path) = spaced_levels(&after, &chain).first() {
+            self.fail(format!("the rewritten level {} is not compact", shown(before, path)));
+        }
         after
     }
 
@@ -197,7 +205,7 @@ impl Run<'_> {
     fn check_texts(&self, after: &Tree) {
         for (path, text) in &self.proof.texts {
             if after.raw_at(path) != Some(text.as_str()) {
-                self.fail(format!("wrong text at {path}"));
+                self.fail(format!("wrong text at {}", shown(&self.subject.tree, path)));
             }
         }
     }

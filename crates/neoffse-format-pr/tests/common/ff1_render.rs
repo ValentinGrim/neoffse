@@ -1,6 +1,9 @@
 //! The JSON text of a synthetic FF I slot: the nesting of the string
 //! documents and the key order of `docs/formats/pixel-remaster.md#slot-keys`
-//! and `docs/formats/pixel-remaster.md#characters`.
+//! and `docs/formats/pixel-remaster.md#characters`. The ability keys follow
+//! the measured FF I rules of `docs/formats/pixel-remaster.md#abilities`.
+
+use neoffse_format_pr::ff1::GAME;
 
 use super::embed;
 use super::ff1_save::{Character, Row, SlotData};
@@ -39,6 +42,7 @@ pub(super) fn user_data(slot: &SlotData) -> String {
     let sort_ids: Vec<String> = slot.sort_ids.iter().map(ToString::to_string).collect();
     let vehicle = r#"{"position":{"x":1000.0,"y":1000.0,"z":-1000.0},"direction":0,"id":1,"mapId":-1,"enable":false,"timeStampTicks":0}"#;
     let released: Vec<String> = (1..=12).map(|job| job.to_string()).collect();
+    let learned = learned_ids(slot).iter().map(ToString::to_string).collect::<Vec<_>>();
     let mut pairs: Vec<(&str, String)> = vec![
         ("corpsList", embed(&corps_list)),
         ("corpsSlots", embed(&dict(&["0", "1", "2"].map(String::from), &vec![embed(&corps_list); 3]))),
@@ -61,7 +65,7 @@ pub(super) fn user_data(slot: &SlotData) -> String {
         ("warehouseItemList", empty()),
         ("ownedKeyWaordList", empty()),
         ("ownedMagicList", empty()),
-        ("learnedAbilityList", empty()),
+        ("learnedAbilityList", embed(&list(&learned))),
         ("escapeCount", "0".to_owned()),
         ("battleCount", "42".to_owned()),
         ("corpsSlotIndex", "0".to_owned()),
@@ -98,6 +102,50 @@ fn numbers(entries: &[(u32, u32)]) -> String {
     let keys: Vec<String> = entries.iter().map(|(key, _)| key.to_string()).collect();
     let values: Vec<String> = entries.iter().map(|(_, value)| value.to_string()).collect();
     dict(&keys, &values)
+}
+
+/// The union of the party's `abilityId`s, ascending
+/// (`docs/formats/pixel-remaster.md#abilities`: `learnedAbilityList`).
+fn learned_ids(slot: &SlotData) -> Vec<u32> {
+    let mut ids: Vec<u32> = slot
+        .characters
+        .iter()
+        .flat_map(|character| character.abilities.iter().map(|(id, _)| *id))
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    ids
+}
+
+/// The spell level of an ability, from the ability table.
+fn spell_level(content_id: u32) -> u32 {
+    let tables = neoffse_data::tables_for(GAME).expect("the FF I tables are embedded");
+    let info = tables.ability_by_content(content_id).and_then(|entry| entry.ability);
+    u32::from(info.expect("a fixture spell is in the ability table").level)
+}
+
+/// The eight `abilitySlotDataList` documents: three slots per spell level,
+/// each holding `""` or the ability object of a spell of that level, in
+/// the order of `abilityList`.
+fn spell_slots(character: &Character) -> Vec<String> {
+    (1..=8)
+        .map(|level| {
+            let mut held = character
+                .abilities
+                .iter()
+                .filter(|(_, content)| spell_level(*content) == level)
+                .map(|(ability, content)| embed(&ability_object(*ability, *content)));
+            let values: Vec<String> = (0..3).map(|_| held.next().unwrap_or_else(|| "\"\"".to_owned())).collect();
+            assert!(held.next().is_none(), "more than three spells at level {level}");
+            let keys = ["1", "2", "3"].map(String::from);
+            embed(&format!("{{\"level\":{level},\"slotInfo\":{}}}", embed(&dict(&keys, &values))))
+        })
+        .collect()
+}
+
+/// `skillLevel` is 0 in FF I (`docs/formats/pixel-remaster.md#abilities`).
+fn ability_object(ability: u32, content: u32) -> String {
+    format!("{{\"abilityId\":{ability},\"contentId\":{content},\"skillLevel\":0}}")
 }
 
 fn render_parameter(character: &Character) -> String {
@@ -156,11 +204,10 @@ fn render_character(character: &Character) -> String {
     let abilities: Vec<String> = character
         .abilities
         .iter()
-        .map(|(ability, content)| embed(&format!("{{\"abilityId\":{ability},\"contentId\":{content},\"skillLevel\":1}}")))
+        .map(|(ability, content)| embed(&ability_object(*ability, *content)))
         .collect();
-    let slots: Vec<String> = (1..=8)
-        .map(|level| embed(&format!("{{\"level\":{level},\"slotInfo\":{}}}", embed(&dict(&[], &[])))))
-        .collect();
+    let slots = spell_slots(character);
+    let owned: Vec<String> = character.abilities.iter().map(|(_, content)| content.to_string()).collect();
     let jobs: Vec<String> = (1..=12)
         .map(|job| embed(&format!("{{\"id\":{job},\"level\":1,\"currentProficiency\":0}}")))
         .collect();
@@ -177,7 +224,7 @@ fn render_character(character: &Character) -> String {
         ("abilitySlotDataList", embed(&list(&slots))),
         ("jobList", embed(&list(&jobs))),
         ("equipmentList", embed(&dict(&equipment_keys, &equipment_values))),
-        ("additionOrderOwnedAbilityIds", embed(&list(&[]))),
+        ("additionOrderOwnedAbilityIds", embed(&list(&owned))),
         ("sortOrderOwnedAbilityIds", embed(&list(&[]))),
         ("abilityDictionary", embed(&dict(&[], &[]))),
         ("skillLevelTargets", embed(&dict(&[], &[]))),

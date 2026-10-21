@@ -5,8 +5,8 @@
 
 mod common;
 
-use common::ff1_real::{RealSlot, slots};
-use common::ff1_rules::assert_game_rules;
+use common::ff1_real::{RealSlot, must, slots};
+use common::ff1_rules::violations;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
@@ -24,6 +24,16 @@ fn int(model: &mut Ff1Model, field: &FieldId, label: &str) -> i64 {
     }
 }
 
+fn rows(model: &mut Ff1Model, list: &'static str, label: &str) -> Vec<u32> {
+    must(model.rows(&FieldId::new(list)), &format!("{label}: {list} rows do not read"))
+}
+
+/// Fails with the label and the breached rules, each a field path.
+fn assert_rules(model: &mut Ff1Model, label: &str) {
+    let found = violations(model, false);
+    assert!(found.is_empty(), "{label}: {}", found.join("; "));
+}
+
 fn first_two(model: &mut Ff1Model, label: &str) -> (u32, u32) {
     match model.rows(&FieldId::new(names::CHARACTER)).as_deref() {
         Ok([first, second, ..]) => (*first, *second),
@@ -34,7 +44,7 @@ fn first_two(model: &mut Ff1Model, label: &str) -> (u32, u32) {
 /// Every field the model maps that a game edit can move, with its value.
 fn snapshot(model: &mut Ff1Model, label: &str) -> Vec<(FieldId, i64)> {
     let mut fields = Vec::new();
-    for id in model.rows(&FieldId::new(names::CHARACTER)).unwrap() {
+    for id in rows(model, names::CHARACTER, label) {
         fields.extend(
             names::character_fields(id)
                 .into_iter()
@@ -43,16 +53,16 @@ fn snapshot(model: &mut Ff1Model, label: &str) -> Vec<(FieldId, i64)> {
     }
     for list in [names::INVENTORY, names::KEY_ITEMS] {
         let collection = FieldId::new(list);
-        for key in model.rows(&collection).unwrap() {
+        for key in rows(model, list, label) {
             fields.push(collection.clone().with_id(key).with_name(names::COUNT));
         }
     }
     fields.into_iter().map(|field| (field.clone(), int(model, &field, label))).collect()
 }
 
-fn run(model: &mut Ff1Model, set: &neoffse_core::ChangeSet) {
+fn run(model: &mut Ff1Model, set: &neoffse_core::ChangeSet, label: &str) {
     let applied = set.apply_with(STORAGE_ONLY, |edit, policy| model.apply(edit, policy));
-    assert!(applied.is_ok(), "the raw interface refuses a game change");
+    assert!(applied.is_ok(), "{label}: the raw interface refuses a game change");
 }
 
 #[test]
@@ -62,13 +72,13 @@ fn real_equip_keeps_the_game_rules() {
         let label = &slot.label;
         let mut model = slot.model();
         let (first, second) = first_two(&mut model, label);
-        assert_game_rules(&mut model, false);
+        assert_rules(&mut model, label);
         let wanted = int(&mut model, &slot_field(second, 1), label);
         let edit = Edit::set(slot_field(first, 1), Value::Int(wanted));
         let Ok(change) = model.apply_game(&edit) else {
             panic!("{label}: the equip is refused")
         };
-        assert_game_rules(&mut model, false);
+        assert_rules(&mut model, label);
         let held = FieldId::new(names::INVENTORY)
             .with_id(u32::try_from(wanted).unwrap_or(0))
             .with_name(names::COUNT);
@@ -89,13 +99,12 @@ fn real_equip_keeps_the_game_rules() {
             json: again.json,
         }
         .model();
-        assert_eq!(
-            snapshot(&mut rebuilt, label),
-            snapshot(&mut model, label),
+        assert!(
+            snapshot(&mut rebuilt, label) == snapshot(&mut model, label),
             "{label}: reads after the round trip"
         );
-        run(&mut rebuilt, &change.inverse);
-        assert_eq!(rebuilt.document().to_json(), slot.json, "{label}: undo on the rebuilt model");
+        run(&mut rebuilt, &change.inverse, label);
+        assert!(rebuilt.document().to_json() == slot.json, "{label}: undo on the rebuilt model");
     }
 }
 
@@ -126,10 +135,10 @@ fn real_unequip_and_re_equip_restore_the_text() {
         let Ok(equip) = model.apply_game(&back) else {
             panic!("{label}: the re-equip is refused")
         };
-        assert_eq!(snapshot(&mut model, label), before, "{label}: reads after the round trip");
-        run(&mut model, &equip.inverse);
-        run(&mut model, &unequip.inverse);
-        assert_eq!(model.document().to_json(), slot.json, "{label}: both undos");
+        assert!(snapshot(&mut model, label) == before, "{label}: reads after the round trip");
+        run(&mut model, &equip.inverse, label);
+        run(&mut model, &unequip.inverse, label);
+        assert!(model.document().to_json() == slot.json, "{label}: both undos");
     }
 }
 
@@ -143,14 +152,14 @@ fn real_worn_and_placeholder_rows_refuse_removal() {
         let label = &slot.label;
         let mut model = slot.model();
         let inventory = FieldId::new(names::INVENTORY);
-        let rows = model.rows(&inventory).unwrap_or_else(|_| panic!("{label}: inventory rows do not read"));
+        let held = rows(&mut model, names::INVENTORY, label);
         let mut worn = Vec::new();
-        for character in model.rows(&FieldId::new(names::CHARACTER)).unwrap() {
+        for character in rows(&mut model, names::CHARACTER, label) {
             for number in 1..=names::EQUIPMENT_SLOTS {
                 worn.push(int(&mut model, &slot_field(character, number), label));
             }
         }
-        for key in rows {
+        for key in held {
             let locked = tables.content(key).is_some_and(|entry| entry.placeholder) || worn.contains(&i64::from(key));
             if !locked {
                 continue;
@@ -159,7 +168,7 @@ fn real_worn_and_placeholder_rows_refuse_removal() {
             assert!(matches!(model.row_locked(&target), Ok(true)), "{label}: inventory.{key} is not reported locked");
             let refused = model.apply_game(&Edit::remove(target));
             assert!(matches!(refused, Err(EditError::ReadOnly { .. })), "{label}: inventory.{key} is removable");
-            assert_eq!(model.document().to_json(), slot.json, "{label}: inventory.{key} changed the text");
+            assert!(model.document().to_json() == slot.json, "{label}: inventory.{key} changed the text");
         }
     }
 }

@@ -62,6 +62,12 @@ fn relative_env_value_resolves_from_the_workspace_root() {
 }
 
 #[test]
+fn a_tilde_in_the_env_value_is_not_expanded() {
+    let root = Path::new("/work/space");
+    assert_eq!(resolve_saves_root(Some(OsStr::new("~/saves")), root), root.join("~/saves"));
+}
+
+#[test]
 fn list_save_files_sorts_files_and_skips_folders() {
     let dir = temp_dir("list_save_files_sorts_files_and_skips_folders");
     std::fs::write(dir.join("b"), b"b").unwrap();
