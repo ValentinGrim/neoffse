@@ -4,8 +4,7 @@ use std::error::Error as StdError;
 use std::fs;
 use std::path::Path;
 
-use neoffse_core::{FormatError, Game, SaveFiles};
-use neoffse_format_pr::games::GAMES;
+use neoffse_core::{FormatError, SaveFiles};
 use neoffse_io::atomic::{self, FileOps, RealFileOps};
 use neoffse_io::backup::{self, Backup, Moment, Request};
 use neoffse_io::dirs::DataDir;
@@ -13,6 +12,7 @@ use neoffse_io::{files, process};
 
 use super::Session;
 use crate::error::Error;
+use crate::executables::executables_of;
 
 /// Whether [`Session::save`] stops when the game's process is found.
 ///
@@ -99,7 +99,7 @@ impl Session {
             return Ok(Saved { backup: None });
         }
         if running == Running::Refuse {
-            let executables = executables_of(self.game);
+            let executables = executables_of(self.game.id());
             if !executables.is_empty() {
                 let found = probe(&executables);
                 if !found.is_empty() {
@@ -154,12 +154,6 @@ impl Session {
         }
         Ok(())
     }
-}
-
-/// The executable names of `game`: one for a Pixel Remaster game, none for a
-/// game with no `GAMES` row.
-fn executables_of(game: Game) -> Vec<&'static str> {
-    GAMES.iter().filter(|row| row.id == game.id()).map(|row| row.executable).collect()
 }
 
 /// `files` with the bytes of `name` replaced by `bytes`.
