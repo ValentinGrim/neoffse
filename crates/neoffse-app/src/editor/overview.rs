@@ -22,8 +22,9 @@ use crate::{CharacterCard, Overview};
 /// `present` is false for a game without a card builder (today every game
 /// but FF I), and no card is built. A value the view lacks, or holds as
 /// another kind, gives an empty string for that entry. `hp_max` and
-/// `next_exp` stay empty: the save holds no maximum and the data holds no
-/// experience table yet.
+/// `next_exp` come from the view fields `names::MAX_HP` and
+/// `names::NEXT_LEVEL`; `next_exp` is empty at level 99, where no next row
+/// exists.
 ///
 /// The result holds names and numbers from the save: never log it. Builds
 /// Slint models: UI thread only.
@@ -68,10 +69,10 @@ fn card(entity: &Entity, index: usize, game: Game, language: Language) -> Charac
         job: job(field(names::JOB), game, language).into(),
         level: number(field(names::LEVEL)).into(),
         hp: number(field(names::HP)).into(),
-        hp_max: SharedString::new(),
+        hp_max: number(field(names::MAX_HP)).into(),
         charges: model_of(charges),
         exp: number(field(names::EXP)).into(),
-        next_exp: SharedString::new(),
+        next_exp: number(field(names::NEXT_LEVEL)).into(),
     }
 }
 
