@@ -1,4 +1,4 @@
-//! Raw rows of the six files and their conversion to entries.
+//! Raw rows of the table files and their conversion to entries.
 //!
 //! Every raw struct refuses unknown fields: that guards the schema of
 //! `tools/pr-tables`, not the content. A column the tool adds fails the
@@ -11,12 +11,14 @@ use serde::Deserialize;
 
 use crate::entry::{AbilityInfo, AbilityKind, Entry};
 use crate::error::DataError;
+use crate::growth::{Growth, parse_growth};
 use crate::tables::Sources;
 
 /// The tables and caps of one game, before `GameTables` wraps them.
 pub(crate) struct Parsed {
     pub(crate) tables: BTreeMap<TableKind, Vec<Entry>>,
     pub(crate) bounds: BTreeMap<String, i64>,
+    pub(crate) growth: Growth,
 }
 
 #[derive(Deserialize)]
@@ -84,7 +86,7 @@ struct BoundsFile {
     bounds: BTreeMap<String, i64>,
 }
 
-/// Parses the six texts in file order and returns the first error.
+/// Parses the seven texts in file order and returns the first error.
 pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> {
     let mut tables = BTreeMap::new();
     content(&read("content.toml", sources.content)?, &mut tables)?;
@@ -97,7 +99,12 @@ pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> 
     names("monsters.toml", &monsters.monster, TableKind::Monster, &mut tables)?;
     let bounds: BoundsFile = read("bounds.toml", sources.bounds)?;
     check_bounds(&bounds.bounds)?;
-    Ok(Parsed { tables, bounds: bounds.bounds })
+    let growth = parse_growth(sources.growth)?;
+    Ok(Parsed {
+        tables,
+        bounds: bounds.bounds,
+        growth,
+    })
 }
 
 fn rule(file: &'static str, row: String, rule: &'static str) -> DataError {
@@ -141,7 +148,7 @@ fn check_placeholder(row: &ContentRow, kind: TableKind, seen: &mut Vec<TableKind
     Ok(true)
 }
 
-fn read<'de, T: Deserialize<'de>>(file: &'static str, text: &'de str) -> Result<T, DataError> {
+pub(crate) fn read<'de, T: Deserialize<'de>>(file: &'static str, text: &'de str) -> Result<T, DataError> {
     toml::from_str(text).map_err(|source| DataError::Toml {
         file,
         source: Box::new(source),
@@ -149,7 +156,7 @@ fn read<'de, T: Deserialize<'de>>(file: &'static str, text: &'de str) -> Result<
 }
 
 /// Requires each id to be at least 1 and above the id before it.
-fn rise(file: &'static str, last: &mut u32, id: u32) -> Result<(), DataError> {
+pub(crate) fn rise(file: &'static str, last: &mut u32, id: u32) -> Result<(), DataError> {
     if id <= *last {
         return Err(DataError::IdOrder { file, id });
     }

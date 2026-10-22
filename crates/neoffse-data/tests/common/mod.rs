@@ -98,7 +98,38 @@ MAX_HP = 999
 MAX_LV = 99
 ";
 
-/// Six small valid texts: two rows per array file (three in `content`) and
+pub(crate) const GROWTH: &str = r"# minimal/growth.toml
+
+[[character_status]]
+id = 1
+hp = 10
+
+[[character_status]]
+id = 2
+hp = 20
+
+[[character_status]]
+id = 4
+hp = 30
+
+[[exp_table]]
+lv = 1
+total_exp = 0
+
+[[exp_table]]
+lv = 2
+total_exp = 5
+
+[[exp_table]]
+lv = 3
+total_exp = 12
+
+[[exp_table]]
+lv = 4
+total_exp = 40
+";
+
+/// Seven small valid texts: two rows per array file (three in `content`) and
 /// three caps.
 pub(crate) fn minimal() -> Sources<'static> {
     Sources {
@@ -108,5 +139,6 @@ pub(crate) fn minimal() -> Sources<'static> {
         commands: COMMANDS,
         monsters: MONSTERS,
         bounds: BOUNDS,
+        growth: GROWTH,
     }
 }

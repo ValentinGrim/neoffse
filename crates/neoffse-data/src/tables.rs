@@ -6,6 +6,7 @@ use neoffse_core::{Game, TableKind};
 
 use crate::entry::Entry;
 use crate::error::DataError;
+use crate::growth::Growth;
 use crate::parse::parse_sources;
 
 /// The seven tables whose ids share one content id space
@@ -20,7 +21,7 @@ const CONTENT_KINDS: [TableKind; 7] = [
     TableKind::Gloves,
 ];
 
-/// The text of the six files of one game.
+/// The text of the seven files of one game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sources<'a> {
     /// `content.toml`: items, key items and equipment.
@@ -35,6 +36,8 @@ pub struct Sources<'a> {
     pub monsters: &'a str,
     /// `bounds.toml`: the game's caps.
     pub bounds: &'a str,
+    /// `growth.toml`: base HP per class and experience per level.
+    pub growth: &'a str,
 }
 
 /// The immutable tables and caps of one game.
@@ -45,11 +48,12 @@ pub struct GameTables {
     game: Game,
     tables: BTreeMap<TableKind, Vec<Entry>>,
     bounds: BTreeMap<String, i64>,
+    growth: Growth,
 }
 
 impl GameTables {
-    /// Parses the six texts of `game` in the order content, abilities, jobs,
-    /// commands, monsters, bounds. The function reads no disk and keeps no
+    /// Parses the seven texts of `game` in the order content, abilities, jobs,
+    /// commands, monsters, bounds, growth. The function reads no disk and keeps no
     /// global state.
     ///
     /// # Errors
@@ -60,13 +64,16 @@ impl GameTables {
     /// ([`DataError::Rule`]): an ability level above 8, an ability
     /// `content_id` of 0, a placeholder written as `false`, a placeholder
     /// outside the five equipment kinds or repeated in one kind, a cap key
-    /// without the `MAX_` prefix, or a negative cap.
+    /// without the `MAX_` prefix, or a negative cap. `growth.toml` adds its
+    /// own rules: status ids rise from 1, levels run 1, 2, ... without a gap,
+    /// `total_exp` rises strictly, and neither array is empty.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
         let parsed = parse_sources(sources)?;
         Ok(GameTables {
             game,
             tables: parsed.tables,
             bounds: parsed.bounds,
+            growth: parsed.growth,
         })
     }
 
@@ -125,5 +132,19 @@ impl GameTables {
     /// Every cap, ascending by key.
     pub fn bounds(&self) -> impl Iterator<Item = (&str, i64)> {
         self.bounds.iter().map(|(key, value)| (key.as_str(), *value))
+    }
+
+    /// The base HP of the `character_status` row with that id (the
+    /// `characterStatusId` of a save). `None` for an id without a row.
+    #[must_use]
+    pub fn base_hp(&self, status_id: u32) -> Option<u32> {
+        self.growth.base_hp(status_id)
+    }
+
+    /// The total experience a character needs to reach `level`: 0 at level 1.
+    /// `None` for level 0 and for a level above the last row (99 in FF I).
+    #[must_use]
+    pub fn exp_to_reach(&self, level: u32) -> Option<u32> {
+        self.growth.exp_to_reach(level)
     }
 }

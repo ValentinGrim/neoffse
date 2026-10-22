@@ -85,10 +85,18 @@ fn bounds_are_read_by_key() {
 
 #[test]
 fn crlf_text_parses_the_same() {
-    let crlf: Vec<String> = [CONTENT, ABILITIES, common::JOBS, common::COMMANDS, common::MONSTERS, common::BOUNDS]
-        .iter()
-        .map(|text| text.replace('\n', "\r\n"))
-        .collect();
+    let crlf: Vec<String> = [
+        CONTENT,
+        ABILITIES,
+        common::JOBS,
+        common::COMMANDS,
+        common::MONSTERS,
+        common::BOUNDS,
+        common::GROWTH,
+    ]
+    .iter()
+    .map(|text| text.replace('\n', "\r\n"))
+    .collect();
     let sources = Sources {
         content: &crlf[0],
         abilities: &crlf[1],
@@ -96,6 +104,7 @@ fn crlf_text_parses_the_same() {
         commands: &crlf[3],
         monsters: &crlf[4],
         bounds: &crlf[5],
+        growth: &crlf[6],
     };
     assert_eq!(GameTables::parse(Game::Ff1Pr, &sources).unwrap(), tables());
 }

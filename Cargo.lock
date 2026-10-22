@@ -2726,7 +2726,7 @@ dependencies = [
 
 [[package]]
 name = "neoffse-data"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "neoffse-core",
  "serde",
