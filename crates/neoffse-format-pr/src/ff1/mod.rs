@@ -69,6 +69,7 @@ mod lists;
 mod locate;
 mod meta;
 pub mod names;
+mod rolls;
 mod save;
 mod summary;
 mod view;
@@ -82,6 +83,7 @@ pub use crate::open_error::OpenError;
 use binding::{Binding, Collection};
 pub use format::Ff1Format;
 use locate::{format_error, locate, read_ability, read_int, read_text, row_keys};
+pub use rolls::{Rolls, ThreadRolls};
 pub use save::Ff1Document;
 
 /// The game of this module.
