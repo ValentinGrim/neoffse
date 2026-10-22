@@ -50,6 +50,28 @@ pub fn growth_notice(levels: u32) -> EditNotice {
     }
 }
 
+/// The info notice after a save: `EditProblem::Saved`. `value` is the backup
+/// time `stamp_of` gives, or empty when the save made no backup.
+#[must_use]
+pub fn saved_notice(stamp: Option<&str>) -> EditNotice {
+    EditNotice {
+        value: stamp.unwrap_or_default().into(),
+        ..problem_notice(EditProblem::Saved, "")
+    }
+}
+
+/// The notice for a save that failed: `EditProblem::SaveFailed`, no number.
+#[must_use]
+pub fn save_failed_notice() -> EditNotice {
+    problem_notice(EditProblem::SaveFailed, "")
+}
+
+/// The notice for a reload that failed: `EditProblem::ReloadFailed`, no number.
+#[must_use]
+pub fn reload_failed_notice() -> EditNotice {
+    problem_notice(EditProblem::ReloadFailed, "")
+}
+
 fn problem_of(error: &EditError) -> EditProblem {
     match error {
         EditError::ReadOnly { .. } => EditProblem::ReadOnly,

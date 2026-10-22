@@ -4,7 +4,15 @@
 export enum FieldKind { label, text, number, choice, picker, toggle }
 // The commands of the editor menu. The command list shows them in this order.
 export enum EditorCommand { party, items, magic }
-export enum EditProblem { not-a-number, read-only, out-of-range, above-cap, unknown-id, duplicate-row, missing-row, not-editable, reloaded, stats-raised, internal }
+export enum EditProblem { not-a-number, read-only, out-of-range, above-cap, unknown-id, duplicate-row, missing-row, not-editable, reloaded, stats-raised, saved, save-failed, reload-failed, internal }
+
+// What a row of the review list shows.
+export enum ReviewKind { heading, field, added, removed }
+
+// One row of the review list. `heading`: `entity` is the group name. `field`:
+// `entity`, `label`, `before` and `after`. `added` and `removed`: `entity`
+// only. Unused strings are "".
+export struct ReviewRow { kind: ReviewKind, entity: string, label: string, before: string, after: string }
 
 // `name` is "" when the table gives none.
 export struct PickerEntry { id: int, name: string }

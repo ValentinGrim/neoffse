@@ -1,4 +1,4 @@
-import { EditorCommand, EditorData, EditNotice, Overview, PickerEntry } from "../../types/editor.slint";
+import { EditorCommand, EditorData, EditNotice, Overview, PickerEntry, ReviewRow } from "../../types/editor.slint";
 
 // The state and the callbacks of the editor page. Rust fills it through
 // `window.global::<EditorBridge>()`, so the nested components read it
@@ -23,8 +23,21 @@ export global EditorBridge {
     // The Party command's page: -1 is the overview of the cards, otherwise an
     // index into `data.party.pages`.
     in-out property <int> character: -1;
-    // A modal dialog covers the page: the controls under it stop taking input.
-    out property <bool> blocked: root.expert-warning-open || root.discard-dialog-open;
+    // The count of unsaved changes: the distance to the clean point.
+    in property <int> pending-count;
+    in property <bool> can-undo;
+    in property <bool> can-redo;
+    // The net difference the review dialog lists, rebuilt on each open.
+    in property <[ReviewRow]> review-rows;
+    in property <bool> review-open;
+    in property <bool> game-running-open;
+    in property <bool> changed-on-disk-open;
+    // A save or a reload runs on a worker.
+    in property <bool> working;
+    // A modal dialog covers the page, or a worker runs: the controls under it
+    // stop taking input.
+    out property <bool> blocked: root.expert-warning-open || root.discard-dialog-open || root.review-open
+        || root.game-running-open || root.changed-on-disk-open || root.working;
 
     // Key and text, for the text and number kinds.
     callback field-text-committed(int, string);
@@ -48,4 +61,14 @@ export global EditorBridge {
     callback expert-warning-cancelled();
     callback discard-confirmed();
     callback discard-cancelled();
+    callback undo-requested();
+    callback redo-requested();
+    callback review-requested();
+    callback review-cancelled();
+    callback save-requested();
+    callback save-anyway-confirmed();
+    callback save-anyway-cancelled();
+    callback reload-confirmed();
+    callback reload-cancelled();
+    callback discard-review-requested();
 }
