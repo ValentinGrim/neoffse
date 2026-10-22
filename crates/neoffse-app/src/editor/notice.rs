@@ -40,6 +40,16 @@ pub fn problem_notice(problem: EditProblem, label: &str) -> EditNotice {
     }
 }
 
+/// The info notice for `levels` grown levels: `EditProblem::StatsRaised`,
+/// `value` the decimal count, no other number.
+#[must_use]
+pub fn growth_notice(levels: u32) -> EditNotice {
+    EditNotice {
+        value: levels.to_string().into(),
+        ..problem_notice(EditProblem::StatsRaised, "")
+    }
+}
+
 fn problem_of(error: &EditError) -> EditProblem {
     match error {
         EditError::ReadOnly { .. } => EditProblem::ReadOnly,

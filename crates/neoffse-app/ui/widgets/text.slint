@@ -52,6 +52,12 @@ export global NoticeText {
         if notice.problem == EditProblem.reloaded {
             return @tr("The change failed and the save was reloaded. Unsaved changes are gone.");
         }
+        if notice.problem == EditProblem.stats-raised {
+            if notice.value == "1" {
+                return @tr("Stats raised for 1 level with a random draw, like the game. Undo to cancel.");
+            }
+            return @tr("Stats raised for {} levels with a random draw, like the game. Undo to cancel.", notice.value);
+        }
         return @tr("An internal error stopped the edit.");
     }
 }

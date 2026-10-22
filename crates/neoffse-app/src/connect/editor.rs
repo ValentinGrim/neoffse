@@ -12,7 +12,7 @@
 
 use slint::{ComponentHandle, Model, ModelRc, VecModel, Weak};
 
-use crate::editor::{EditorViewModel, Input, problem_notice};
+use crate::editor::{EditorViewModel, Input, growth_notice, levels_gained, problem_notice};
 use crate::theme::sync_theme;
 use crate::{App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, Overview, PickerEntry, SectionData};
 
@@ -81,9 +81,24 @@ pub fn refresh_editor(window: &MainWindow, app: &App) {
 }
 
 /// Runs `action`, then refreshes with the notice it returned.
+///
+/// An action that went through in default mode may have raised levels, and
+/// the game interface then grew the stats with random draws
+/// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`). The overview before
+/// and after tells how many levels grew, and the page says so. An error
+/// notice wins over that info notice.
 fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel) -> Option<EditNotice>) {
     if let Some(window) = weak.upgrade() {
+        let before = window.global::<EditorBridge>().get_overview();
         let notice = action(&app.editor);
+        let notice = notice.or_else(|| {
+            let gained = if app.editor.expert() {
+                0
+            } else {
+                levels_gained(&before, &app.editor.overview())
+            };
+            (gained > 0).then(|| growth_notice(gained))
+        });
         refresh_with(&window, app, notice);
     }
 }
