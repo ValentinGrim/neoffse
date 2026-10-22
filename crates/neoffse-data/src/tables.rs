@@ -6,7 +6,7 @@ use neoffse_core::{Game, TableKind};
 
 use crate::entry::Entry;
 use crate::error::DataError;
-use crate::growth::Growth;
+use crate::growth::{Growth, GrowthStep};
 use crate::parse::parse_sources;
 
 /// The seven tables whose ids share one content id space
@@ -36,7 +36,7 @@ pub struct Sources<'a> {
     pub monsters: &'a str,
     /// `bounds.toml`: the game's caps.
     pub bounds: &'a str,
-    /// `growth.toml`: base HP per class and experience per level.
+    /// `growth.toml`: base stats per class, experience per level and growth rows.
     pub growth: &'a str,
 }
 
@@ -65,8 +65,10 @@ impl GameTables {
     /// `content_id` of 0, a placeholder written as `false`, a placeholder
     /// outside the five equipment kinds or repeated in one kind, a cap key
     /// without the `MAX_` prefix, or a negative cap. `growth.toml` adds its
-    /// own rules: status ids rise from 1, levels run 1, 2, ... without a gap,
-    /// `total_exp` rises strictly, and neither array is empty.
+    /// own rules: status ids rise from 1, `total_exp` rises strictly, job and
+    /// group ids rise, every group starts at level 2 and holds one value per
+    /// level of `exp_table` in each column, `hp_value1` is 0 or 1, every job
+    /// names a group that exists, and no table is empty.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
         let parsed = parse_sources(sources)?;
         Ok(GameTables {
@@ -146,5 +148,22 @@ impl GameTables {
     #[must_use]
     pub fn exp_to_reach(&self, level: u32) -> Option<u32> {
         self.growth.exp_to_reach(level)
+    }
+
+    /// The base vitality of the `character_status` row with that id (the
+    /// `characterStatusId` of a save), the base of the HP rule
+    /// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`). `None` for an id
+    /// without a row.
+    #[must_use]
+    pub fn base_vitality(&self, status_id: u32) -> Option<u32> {
+        self.growth.base_vitality(status_id)
+    }
+
+    /// The growth row of the job's growth group at `level`. `None` for a job
+    /// without a row in `intermediate_growth_curve`, for level 0 and 1, and
+    /// above the last level of the group (99 in FF I).
+    #[must_use]
+    pub fn growth_step(&self, job_id: u32, level: u32) -> Option<GrowthStep> {
+        self.growth.growth_step(job_id, level)
     }
 }

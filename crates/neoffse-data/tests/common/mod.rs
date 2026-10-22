@@ -103,31 +103,120 @@ pub(crate) const GROWTH: &str = r"# minimal/growth.toml
 [[character_status]]
 id = 1
 hp = 10
+vitality = 7
 
 [[character_status]]
 id = 2
 hp = 20
+vitality = 8
 
 [[character_status]]
 id = 4
 hp = 30
+vitality = 9
 
-[[exp_table]]
-lv = 1
-total_exp = 0
+[exp_table]
+total_exp = [0, 5, 12, 40]
 
-[[exp_table]]
-lv = 2
-total_exp = 5
+[[intermediate_growth_curve]]
+job_id = 1
+growth_curve_group_id = 1
 
-[[exp_table]]
-lv = 3
-total_exp = 12
+[[intermediate_growth_curve]]
+job_id = 2
+growth_curve_group_id = 2
 
-[[exp_table]]
-lv = 4
-total_exp = 40
+[[intermediate_growth_curve]]
+job_id = 5
+growth_curve_group_id = 2
+
+[[growth_curve]]
+group_id = 1
+first_lv = 2
+hp_value1 = [0, 1, 0]
+strength = [1, 1, 1]
+vitality = [0, 1, 2]
+agility = [0, 0, 0]
+intelligence = [0, 0, 0]
+spirit = [0, 0, 0]
+magic = [0, 0, 0]
+luck = [1, 1, 1]
+accuracy_rate = [4, 4, 4]
+magic_evasion_rate = [5, 5, 5]
+magical_times1 = [1, 1, 1]
+magical_times2 = [2, 2, 2]
+magical_times3 = [3, 3, 3]
+magical_times4 = [4, 4, 4]
+magical_times5 = [5, 5, 5]
+magical_times6 = [6, 6, 6]
+magical_times7 = [7, 7, 7]
+magical_times8 = [8, 8, 8]
+
+[[growth_curve]]
+group_id = 2
+first_lv = 2
+hp_value1 = [0, 1, 0]
+strength = [2, 2, 2]
+vitality = [0, 1, 2]
+agility = [0, 0, 0]
+intelligence = [0, 0, 0]
+spirit = [0, 0, 0]
+magic = [0, 0, 0]
+luck = [1, 1, 1]
+accuracy_rate = [5, 5, 5]
+magic_evasion_rate = [6, 6, 6]
+magical_times1 = [1, 1, 1]
+magical_times2 = [2, 2, 2]
+magical_times3 = [3, 3, 3]
+magical_times4 = [4, 4, 4]
+magical_times5 = [5, 5, 5]
+magical_times6 = [6, 6, 6]
+magical_times7 = [7, 7, 7]
+magical_times8 = [8, 8, 8]
 ";
+
+/// `[a, b, c]` of `value(level)` for the levels 2 to `last`.
+fn column(last: u32, value: impl Fn(u32) -> u32) -> String {
+    let values: Vec<String> = (2..=last).map(|level| value(level).to_string()).collect();
+    format!("[{}]", values.join(", "))
+}
+
+/// One `[[growth_curve]]` entry of the minimal formula (see `GROWTH`) for
+/// group `g`, covering the levels 2 to `last`.
+pub(crate) fn group_text(g: u32, last: u32) -> String {
+    let mut lines = vec!["[[growth_curve]]".to_string(), format!("group_id = {g}"), "first_lv = 2".to_string()];
+    let mut line = |key: &str, value: &dyn Fn(u32) -> u32| lines.push(format!("{key} = {}", column(last, value)));
+    line("hp_value1", &|level| level % 2);
+    line("strength", &|_| g);
+    line("vitality", &|level| level - 2);
+    line("agility", &|_| 0);
+    line("intelligence", &|_| 0);
+    line("spirit", &|_| 0);
+    line("magic", &|_| 0);
+    line("luck", &|_| 1);
+    line("accuracy_rate", &|_| g + 3);
+    line("magic_evasion_rate", &|_| g + 4);
+    for k in 1..=8 {
+        line(&format!("magical_times{k}"), &|_| k);
+    }
+    lines.join("\n") + "\n\n"
+}
+
+/// `(job_id, group)` pairs as `[[intermediate_growth_curve]]` entries.
+pub(crate) fn job_text(jobs: &[(u32, u32)]) -> String {
+    let rows: Vec<String> = jobs
+        .iter()
+        .map(|(job, group)| format!("[[intermediate_growth_curve]]\njob_id = {job}\ngrowth_curve_group_id = {group}\n\n"))
+        .collect();
+    rows.concat()
+}
+
+/// Valid job and group entries: job `g` reads group `g` for every `g` in
+/// `groups`, and each group covers the levels 2 to `last`.
+pub(crate) fn curve_text(groups: &[u32], last: u32) -> String {
+    let jobs: Vec<(u32, u32)> = groups.iter().map(|g| (*g, *g)).collect();
+    job_text(&jobs) + &groups.iter().map(|g| group_text(*g, last)).collect::<String>()
+}
 
 /// Seven small valid texts: two rows per array file (three in `content`) and
 /// three caps.
