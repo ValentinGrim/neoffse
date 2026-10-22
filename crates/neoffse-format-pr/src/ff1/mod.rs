@@ -20,7 +20,7 @@
 //!   bounds. `CapPolicy::StorageOnly` is the expert mode of an app.
 //! - [`Ff1Model::apply_game`] edits the way the game would. It enforces caps
 //!   and tables, expands an equipment `Set` into the slot, the inventory row
-//!   and the slot count, refuses the edits the game never makes, and returns a
+//!   and the slot count, sets Level and Experience together, refuses the edits the game never makes, and returns a
 //!   `GameChange`. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
 //!   the rows and fields it refuses whatever the value. A spell slot is read
 //!   only in both interfaces.
@@ -63,6 +63,7 @@ mod binding;
 mod derived;
 mod format;
 mod game;
+mod level;
 mod lists;
 mod locate;
 mod meta;

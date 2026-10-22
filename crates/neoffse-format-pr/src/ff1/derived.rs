@@ -61,12 +61,25 @@ fn max_hp(tables: &GameTables, status: Option<i64>, gain: Option<i64>) -> Option
     Some(i64::from(base).saturating_add(gain?).clamp(0, cap))
 }
 
+/// The highest level whose total experience is at most `exp`, found in the
+/// ascending totals of the experience table
+/// (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`). Level 1
+/// holds 0, so the answer is at least 1 for any table with rows; `None` only
+/// for an empty table.
+pub(super) fn level_for(tables: &GameTables, exp: u32) -> Option<u32> {
+    (1..)
+        .map_while(|level| tables.exp_to_reach(level).map(|total| (level, total)))
+        .take_while(|(_, total)| *total <= exp)
+        .last()
+        .map(|(level, _)| level)
+}
+
 /// The experience still needed for the next level. The level comes from the
-/// experience alone, never from the stored `addtionalLevel`: the first total
-/// above `exp` is the one of level L + 1, and level 1 holds 0. `None` for a
-/// negative experience and for L = 99, which has no next row.
+/// experience alone, never from the stored `addtionalLevel`: the total of
+/// level L + 1 minus `exp`. `None` for a negative experience and for L = 99,
+/// which has no next row.
 fn next_level(tables: &GameTables, exp: Option<i64>) -> Option<i64> {
     let exp = u32::try_from(exp?).ok()?;
-    let next = (2..).map_while(|level| tables.exp_to_reach(level)).find(|total| *total > exp)?;
+    let next = tables.exp_to_reach(level_for(tables, exp)?.checked_add(1)?)?;
     Some(i64::from(next - exp))
 }

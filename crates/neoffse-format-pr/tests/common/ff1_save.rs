@@ -44,6 +44,8 @@ pub(crate) struct Character {
     pub equipment: Vec<Equip>,
     /// Ability objects of `abilityList`: `abilityId`, `contentId`.
     pub abilities: Vec<(u32, u32)>,
+    /// A key of the character or of its `parameter` to leave out, by name.
+    pub omit: Option<&'static str>,
 }
 
 /// A row of an item list: the JSON text of the element, so a test can break it.
@@ -155,6 +157,7 @@ fn standard_character(index: usize) -> Character {
             })
             .collect(),
         abilities: if id == 3 { vec![(5, 213), (6, 214)] } else { Vec::new() },
+        omit: None,
     }
 }
 

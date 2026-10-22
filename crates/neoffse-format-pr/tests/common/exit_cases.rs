@@ -41,6 +41,9 @@ pub(crate) struct Case {
     pub name: &'static str,
     pub edits: Vec<Edit>,
     pub proof: Proof,
+    /// The proof under `apply_game` when it differs from `proof`: a level
+    /// edit also moves the experience (`docs/formats/pixel-remaster.md#level-up-in-ff-i`).
+    pub linked: Option<Proof>,
     /// Also run through `apply` under `Enforce`.
     pub raw: bool,
 }
@@ -52,7 +55,13 @@ pub(crate) struct Built {
 }
 
 pub(super) fn case(name: &'static str, edits: Vec<Edit>, proof: Proof) -> Case {
-    Case { name, edits, proof, raw: true }
+    Case {
+        name,
+        edits,
+        proof,
+        linked: None,
+        raw: true,
+    }
 }
 
 /// `old - 1` when `old > min`, else `old + 1`.
@@ -74,6 +83,27 @@ pub(super) fn nudged(facts: &Facts<'_>, name: &'static str, field: FieldId, min:
         texts: vec![(path, new.to_string())],
     };
     Some(case(name, vec![Edit::set(field, Value::Int(new))], proof))
+}
+
+/// The level nudge. Under `apply_game` the experience also moves to the first
+/// point of the new level, unless it already sits there.
+fn level(facts: &Facts<'_>) -> Option<Case> {
+    let path = format!("{}.parameter.addtionalLevel", facts.char_path);
+    let mut case = nudged(facts, "level", facts.field(names::LEVEL), 1, path)?;
+    let Some(Edit::Set { value: Value::Int(new), .. }) = case.edits.first() else {
+        return Some(case);
+    };
+    let first = i64::from(facts.tables.exp_to_reach(u32::try_from(*new).ok()?)?);
+    let exp = facts.field(names::EXP);
+    let mut linked = case.proof.clone();
+    if facts.int(&exp)? != first {
+        let path = format!("{}.currentExp", facts.char_path);
+        linked.changes.push(value(&path));
+        linked.view.push(ViewChange::Set(exp, Value::Int(first)));
+        linked.texts.push((path, first.to_string()));
+    }
+    case.linked = Some(linked);
+    Some(case)
 }
 
 fn job(facts: &Facts<'_>) -> Option<Case> {
@@ -173,15 +203,22 @@ fn compose(parts: &[Option<&Case>]) -> Option<Case> {
             view: Vec::new(),
             texts: Vec::new(),
         },
+        linked: None,
         raw: true,
     };
+    let mut linked = joined.proof.clone();
     for part in parts {
         let part = (*part)?;
+        let game = part.linked.as_ref().unwrap_or(&part.proof);
+        linked.changes.extend(game.changes.iter().cloned());
+        linked.view.extend(game.view.iter().cloned());
+        linked.texts.extend(game.texts.iter().cloned());
         joined.edits.extend(part.edits.iter().cloned());
         joined.proof.changes.extend(part.proof.changes.iter().cloned());
         joined.proof.view.extend(part.proof.view.iter().cloned());
         joined.proof.texts.extend(part.proof.texts.iter().cloned());
     }
+    joined.linked = Some(linked);
     Some(joined)
 }
 
@@ -193,7 +230,7 @@ pub(crate) fn build(subject: &Subject) -> Built {
     let gil = FieldId::new(names::GIL);
     let mut singles = vec![
         ("gil", nudged(&facts, "gil", gil, 0, "userData.owendGil".to_owned())),
-        ("level", nudged(&facts, "level", facts.field(names::LEVEL), 1, parameter("addtionalLevel"))),
+        ("level", level(&facts)),
         ("stat", nudged(&facts, "stat", facts.field(names::POWER), 0, parameter("addtionalPower"))),
         ("job", job(&facts)),
         ("name", rename(&facts)),
@@ -231,7 +268,7 @@ pub(crate) fn build(subject: &Subject) -> Built {
 
 /// `prove` with `How::Game`, then with `How::Raw` when the case allows it.
 pub(crate) fn run(subject: &Subject, case: &Case) {
-    prove(subject, case.name, &case.edits, How::Game, &case.proof);
+    prove(subject, case.name, &case.edits, How::Game, case.linked.as_ref().unwrap_or(&case.proof));
     if case.raw {
         prove(subject, case.name, &case.edits, How::Raw, &case.proof);
     }

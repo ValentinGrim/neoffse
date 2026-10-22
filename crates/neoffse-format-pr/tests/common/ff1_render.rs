@@ -183,6 +183,7 @@ fn render_parameter(character: &Character) -> String {
         ("addtionalMagicDefenseCount", "0".to_owned()),
         ("currentConditionList", embed(&list(&[]))),
     ];
+    let pairs: Vec<_> = pairs.into_iter().filter(|(key, _)| Some(*key) != character.omit).collect();
     object(&pairs, ":")
 }
 
@@ -237,6 +238,7 @@ fn render_character(character: &Character) -> String {
         ("magicStoneId", "0".to_owned()),
         ("magicLearningValue", "0".to_owned()),
     ]);
+    pairs.retain(|(key, _)| Some(*key) != character.omit);
     object(&pairs, ":")
 }
 

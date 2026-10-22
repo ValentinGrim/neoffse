@@ -266,7 +266,7 @@ fn an_equip_is_atomic() {
 #[test]
 fn pass_through_edits_become_one_plain_edit() {
     let edits = [
-        Edit::set(character_field(1, names::LEVEL), Value::Int(40)),
+        Edit::set(character_field(1, names::POWER), Value::Int(40)),
         Edit::insert(row(7), None, Vec::new()),
         Edit::remove(row(100)),
         Edit::remove(RowId::new(FieldId::new(names::KEY_ITEMS), 45)),

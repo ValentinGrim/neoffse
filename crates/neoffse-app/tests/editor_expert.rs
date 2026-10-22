@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{editing_site, open_editor};
+use common::{Part, editing_site, field, open_editor};
 use neoffse_app::EditProblem;
 use neoffse_app::editor::{Leave, LeaveAnswer};
 
@@ -184,4 +184,32 @@ fn back_through_the_window_resets_the_bridge_flags() {
     assert!(!ui.window.get_editor_open());
     assert!(!ui.bridge().get_expert_mode());
     assert!(!ui.bridge().get_expert_menu_checked());
+}
+
+fn experience(ui: &common::Ui) -> String {
+    field(&ui.bridge_data(), Part::Party, "Aria", "Experience").text.to_string()
+}
+
+#[test]
+fn a_level_commit_refreshes_the_experience_in_the_default_mode() {
+    let site = editing_site();
+    let ui = open_editor(&site);
+    assert_eq!(experience(&ui), "100100");
+
+    ui.commit(ui.level().key, "40");
+    assert!(!ui.bridge().get_has_notice());
+    assert_eq!(ui.level().text, "40");
+    assert_eq!(experience(&ui), "207299");
+    assert_eq!(ui.pending(), 1, "the level and the experience make one history entry");
+}
+
+#[test]
+fn a_level_commit_leaves_the_experience_in_expert_mode() {
+    let site = editing_site();
+    let ui = open_editor(&site);
+    turn_on(&ui);
+
+    ui.commit(ui.level().key, "40");
+    assert_eq!(ui.level().text, "40");
+    assert_eq!(experience(&ui), "100100");
 }

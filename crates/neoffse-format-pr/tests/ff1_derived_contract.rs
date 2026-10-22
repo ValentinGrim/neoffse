@@ -132,25 +132,38 @@ fn an_edit_moves_the_computed_values() {
 
     let exp = model.apply_game(&set(2, names::EXP, 100_000)).unwrap();
     assert_eq!(shown(&mut model, 2, names::NEXT_LEVEL), Some(3811));
-    assert_eq!(diff(&text, &model.document().to_json()), [value(&format!("{CHARACTER_PATH}[1].currentExp"))]);
+    // The game interface also sets the level the experience reaches (31).
+    assert_eq!(
+        diff(&text, &model.document().to_json()),
+        [
+            value(&format!("{CHARACTER_PATH}[1].currentExp")),
+            value(&format!("{CHARACTER_PATH}[1].parameter.addtionalLevel"))
+        ]
+    );
     run(&mut model, &exp.inverse);
     assert_eq!(model.document().to_json(), text);
 
-    // The level does not count: the figure follows the experience.
+    // A raw edit of the level links nothing: the figure follows the experience.
     for level in [40, 99] {
-        let change = model.apply_game(&set(1, names::LEVEL, level)).unwrap();
+        let inverse = model.apply(&set(1, names::LEVEL, level), CapPolicy::Enforce).unwrap();
         assert_eq!(shown(&mut model, 1, names::NEXT_LEVEL), Some(3711), "level {level}");
         assert_eq!(
             diff(&text, &model.document().to_json()),
             [value(&format!("{CHARACTER_PATH}[0].parameter.addtionalLevel"))]
         );
-        run(&mut model, &change.inverse);
+        model.apply(&inverse, CapPolicy::Enforce).unwrap();
         assert_eq!(model.document().to_json(), text);
     }
 
     let top = model.apply_game(&set(1, names::EXP, 1_471_455)).unwrap();
     assert_eq!(shown(&mut model, 1, names::NEXT_LEVEL), None);
-    assert_eq!(diff(&text, &model.document().to_json()), [value(&format!("{CHARACTER_PATH}[0].currentExp"))]);
+    assert_eq!(
+        diff(&text, &model.document().to_json()),
+        [
+            value(&format!("{CHARACTER_PATH}[0].currentExp")),
+            value(&format!("{CHARACTER_PATH}[0].parameter.addtionalLevel"))
+        ]
+    );
     run(&mut model, &top.inverse);
     assert_eq!(shown(&mut model, 1, names::NEXT_LEVEL), Some(3711));
     assert_eq!(model.document().to_json(), text);
