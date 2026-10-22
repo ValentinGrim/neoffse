@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use neoffse::Session;
 use neoffse::core::Game;
+use neoffse::io::dirs::DataDir;
 
 use crate::SummaryRow;
 
@@ -15,14 +16,15 @@ struct Opened {
     summary: SummaryRow,
 }
 
-/// What the app holds across screens: the open save. The type is
-/// `Send + Sync`.
+/// What the app holds across screens: the open save and the data folder
+/// the backups go to. The type is `Send + Sync`.
 ///
 /// `Debug` prints whether a save is open and its game id, never a name or a
 /// path.
 #[derive(Default)]
 pub struct AppState {
     opened: Mutex<Option<Opened>>,
+    data_dir: Mutex<Option<DataDir>>,
 }
 
 impl fmt::Debug for AppState {
@@ -68,6 +70,20 @@ impl AppState {
     #[must_use]
     pub fn summary(&self) -> Option<SummaryRow> {
         self.lock().as_ref().map(|opened| opened.summary.clone())
+    }
+
+    /// The data folder a save writes its backup into. `None` until
+    /// [`set_data_dir`](Self::set_data_dir): only `run` sets it from the
+    /// platform folder, so a state built by a test never touches that folder
+    /// and its saves fail.
+    #[must_use]
+    pub fn data_dir(&self) -> Option<DataDir> {
+        self.data_dir.lock().unwrap_or_else(PoisonError::into_inner).clone()
+    }
+
+    /// Sets the data folder for the backups.
+    pub fn set_data_dir(&self, data: DataDir) {
+        *self.data_dir.lock().unwrap_or_else(PoisonError::into_inner) = Some(data);
     }
 
     /// Drops the session without a question. The question for a dirty

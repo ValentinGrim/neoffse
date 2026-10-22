@@ -5,15 +5,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use neoffse::Session;
-use neoffse::core::{Edit, EditError, FieldId, RowId, TableKind};
+use neoffse::core::{FieldId, RowId, TableKind};
 use neoffse::data::Language;
+use neoffse::io::process;
 
-use super::input::{Input, value_for};
 use super::layout::{FieldSlot, Layout, Locks, build};
 use super::leave::Leave;
-use super::notice::{notice_of, problem_notice};
+use super::notice::problem_notice;
 use super::overview::overview;
-use super::pick::{entry_name, picker_entries};
+use super::pick::picker_entries;
 use crate::state::AppState;
 use crate::{EditNotice, EditProblem, EditorData, Overview, PickerEntry, SummaryRow};
 
@@ -31,13 +31,21 @@ impl Locks for SessionLocks<'_> {
     }
 }
 
+/// The process scan a save runs under `Running::Refuse`: the executable names
+/// of the game in, the names found running out.
+pub(super) type Probe = Arc<dyn Fn(&[&'static str]) -> Vec<&'static str> + Send + Sync>;
+
 pub(super) struct Shared {
     pub(super) state: Arc<AppState>,
-    language: Language,
+    pub(super) language: Language,
     layout: Mutex<Layout>,
-    expert: AtomicBool,
+    pub(super) expert: AtomicBool,
     /// The leave request that waits for the user's answer.
     pub(super) pending: Mutex<Option<Leave>>,
+    /// Set from the call of `save` to its `done`: the worker holds the
+    /// session lock for that time.
+    pub(super) saving: AtomicBool,
+    pub(super) probe: Mutex<Probe>,
 }
 
 /// The editor page: reads the open session, applies edits, keeps the expert
@@ -60,11 +68,11 @@ impl fmt::Debug for EditorViewModel {
     }
 }
 
-fn not_editable() -> EditNotice {
+pub(super) fn not_editable() -> EditNotice {
     problem_notice(EditProblem::NotEditable, "")
 }
 
-fn lock_session(session: &Mutex<Session>) -> MutexGuard<'_, Session> {
+pub(super) fn lock_session(session: &Mutex<Session>) -> MutexGuard<'_, Session> {
     session.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
@@ -80,6 +88,8 @@ impl EditorViewModel {
                 layout: Mutex::new(Layout::default()),
                 expert: AtomicBool::new(false),
                 pending: Mutex::new(None),
+                saving: AtomicBool::new(false),
+                probe: Mutex::new(Arc::new(process::running)),
             }),
         }
     }
@@ -148,57 +158,6 @@ impl EditorViewModel {
             .map_or_else(|_| Overview::default(), |view| overview(&view, game, self.shared.language))
     }
 
-    /// Sends the edit one commit means.
-    ///
-    /// `None`: the edit went through, or the value equals the shown one and
-    /// nothing was sent. `Some`: the notice to show. A key outside the table
-    /// of the last [`data`](Self::data) call, or a call with no save open,
-    /// gives a `not-editable` notice. The caller refreshes with `data`.
-    #[must_use]
-    #[allow(
-        clippy::needless_pass_by_value,
-        reason = "the glue builds the input at the call and has no use for it afterwards"
-    )]
-    pub fn commit(&self, key: i32, input: Input) -> Option<EditNotice> {
-        let Some(slot) = self.field_slot(key) else {
-            return Some(not_editable());
-        };
-        let value = match value_for(&slot.meta, &input) {
-            Ok(value) => value,
-            Err(problem) => return Some(problem_notice(problem, &slot.label)),
-        };
-        if value == slot.value {
-            return None;
-        }
-        self.send(&Edit::set(slot.id, value), &slot.label)
-    }
-
-    /// Adds row `entry_id` to list `list`. The row takes the collection's
-    /// initial values.
-    #[must_use]
-    pub fn add_row(&self, list: i32, entry_id: i32) -> Option<EditNotice> {
-        let collection = usize::try_from(list).ok().and_then(|index| self.layout().lists.get(index).cloned());
-        let (Some(collection), Ok(key)) = (collection, u32::try_from(entry_id)) else {
-            return Some(not_editable());
-        };
-        let label = self
-            .layout()
-            .tables
-            .and_then(|tables| entry_name(tables, &collection.key.tables, self.shared.language, i64::from(entry_id)))
-            .unwrap_or_default();
-        self.send(&Edit::insert(RowId::new(collection.id, key), None, Vec::new()), &label)
-    }
-
-    /// Removes row `row`.
-    #[must_use]
-    pub fn remove_row(&self, row: i32) -> Option<EditNotice> {
-        let slot = usize::try_from(row).ok().and_then(|index| self.layout().rows.get(index).cloned());
-        match slot {
-            Some(slot) => self.send(&Edit::remove(slot.row), &slot.label),
-            None => Some(not_editable()),
-        }
-    }
-
     /// The picker entries of field `key`'s tables that match `query`. Empty
     /// for a key the table lacks. Placeholders stay: the placeholder of an
     /// equipment slot is how a slot empties.
@@ -238,28 +197,12 @@ impl EditorViewModel {
         self.shared.state.session().is_some_and(|session| lock_session(&session).is_dirty())
     }
 
-    fn field_slot(&self, key: i32) -> Option<FieldSlot> {
+    pub(super) fn field_slot(&self, key: i32) -> Option<FieldSlot> {
         usize::try_from(key).ok().and_then(|index| self.layout().fields.get(index).cloned())
     }
 
     fn entries(&self, kinds: &[TableKind], query: &str, skip_placeholders: bool) -> Vec<PickerEntry> {
         let tables = self.layout().tables;
         tables.map_or_else(Vec::new, |tables| picker_entries(tables, kinds, self.shared.language, query, skip_placeholders))
-    }
-
-    /// Applies `edit` through the interface the mode picks. A failed rollback
-    /// reloads the save from its last clean state.
-    fn send(&self, edit: &Edit, label: &str) -> Option<EditNotice> {
-        let Some(session) = self.shared.state.session() else {
-            return Some(not_editable());
-        };
-        let mut session = lock_session(&session);
-        let result = if self.expert() { session.edit_expert(edit) } else { session.edit(edit) };
-        let error = result.err()?;
-        let mut notice = notice_of(&error, label);
-        if matches!(error, EditError::RollbackFailed { .. }) && session.discard().is_err() {
-            notice.problem = EditProblem::Internal;
-        }
-        Some(notice)
     }
 }

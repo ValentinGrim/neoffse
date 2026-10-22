@@ -7,8 +7,8 @@
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, PoisonError};
 
 use neoffse::core::Game;
 use neoffse::{Error, Registry, Session};
@@ -129,6 +129,33 @@ impl OpenViewModel {
                 _ => Worked::Failed(OpenProblem::Unreadable),
             },
         });
+    }
+
+    /// Opens the open save again from its file on disk, in place of the
+    /// session. The unsaved changes of the old session are lost; the caller
+    /// asked the user first. The game, folder and file name come from the
+    /// old session.
+    ///
+    /// No save open gives `Failed(UnknownSlot)` and a running open
+    /// `Failed(Busy)`, both at once with no job. A failed open keeps the old
+    /// session. The expert flag is untouched.
+    ///
+    /// `done` runs once on the UI thread. The busy flag is clear by then.
+    pub fn reopen(&self, dispatcher: &Arc<dyn Dispatcher>, done: impl FnOnce(OpenOutcome) + Send + 'static) {
+        let Some(session) = self.shared.state.session() else {
+            done(OpenOutcome::Failed(OpenProblem::UnknownSlot));
+            return;
+        };
+        let (game, dir, name) = {
+            let session = session.lock().unwrap_or_else(PoisonError::into_inner);
+            (session.game(), session.dir().to_path_buf(), session.name().to_owned())
+        };
+        if !self.begin() {
+            done(OpenOutcome::Failed(OpenProblem::Busy));
+            return;
+        }
+        let worker = Arc::clone(&self.shared);
+        self.run(dispatcher, done, move || open_one(&worker.registry, &dir, &name, Some(game)));
     }
 
     /// Takes the busy flag. `false` when it is already taken.
