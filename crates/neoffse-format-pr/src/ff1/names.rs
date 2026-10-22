@@ -10,7 +10,7 @@
 //! `character.<id>.spell.<level>.<slot>`
 //! (`docs/formats/pixel-remaster.md#abilities`, "FF I spell slots").
 
-use neoffse_core::FieldId;
+use neoffse_core::{FieldId, Key};
 
 /// Section of the gil counter, `userData.owendGil`.
 pub const GIL: &str = "gil";
@@ -33,6 +33,13 @@ pub const EXP: &str = "exp";
 pub const HP: &str = "hp";
 /// Maximum HP gain, `parameter.addtionalMaxHp`.
 pub const MAX_HP_GAIN: &str = "max_hp_gain";
+/// Maximum HP shown by the menu, computed. Read only
+/// (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`).
+pub const MAX_HP: &str = "max_hp";
+/// Experience to the next level shown by the menu, computed. Read only
+/// (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`,
+/// "Next-level figure").
+pub const NEXT_LEVEL: &str = "next_level";
 /// Power stat, `parameter.addtionalPower`.
 pub const POWER: &str = "power";
 /// Vitality stat, `parameter.addtionalVitality`.
@@ -86,7 +93,7 @@ const SCALARS: [&str; 13] = [
     MAGIC,
 ];
 
-/// The 39 field ids of one character, in display order: the 13 scalar
+/// The 39 stored field ids of one character, in display order: the 13 scalar
 /// fields, `charges.1` to `charges.8`, `charges_max_gain.1` to
 /// `charges_max_gain.8`, then for each slot 1 to 5 the pair `equipment.<S>`
 /// and `equipment.<S>.count`.
@@ -101,6 +108,34 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
         let slot_field = character().with_name(EQUIPMENT).with_id(slot);
         fields.push(slot_field.clone());
         fields.push(slot_field.with_name(COUNT));
+    }
+    fields
+}
+
+/// The two computed field ids of one character: `max_hp`, then `next_level`.
+/// Neither has a document path.
+#[must_use]
+pub fn derived_fields(id: u32) -> Vec<FieldId> {
+    [MAX_HP, NEXT_LEVEL]
+        .iter()
+        .map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name))
+        .collect()
+}
+
+/// The 41 field ids of the Party entity of one character, in view order:
+/// [`character_fields`] with `next_level` after `exp` and `max_hp` after `hp`.
+#[must_use]
+pub fn party_fields(id: u32) -> Vec<FieldId> {
+    let [max_hp, next_level] = [MAX_HP, NEXT_LEVEL].map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name));
+    let mut fields = Vec::with_capacity(41);
+    for field in character_fields(id) {
+        let derived = match field.keys().last() {
+            Some(Key::Name(EXP)) => Some(next_level.clone()),
+            Some(Key::Name(HP)) => Some(max_hp.clone()),
+            _ => None,
+        };
+        fields.push(field);
+        fields.extend(derived);
     }
     fields
 }

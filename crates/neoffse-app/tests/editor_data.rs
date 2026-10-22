@@ -26,7 +26,7 @@ fn ff1_builds_three_present_sections() {
     assert!(data.party.present && data.inventory.present && data.magic.present);
     let party = pages(&data.party);
     assert_eq!(party.iter().map(|page| page.label.to_string()).collect::<Vec<_>>(), NAMES);
-    assert!(party.iter().all(|page| fields(page).len() == 39));
+    assert!(party.iter().all(|page| fields(page).len() == 41));
     assert_eq!(lists(&data.party).len(), 0);
 
     let inventory = pages(&data.inventory);
@@ -53,6 +53,8 @@ fn widget_kinds_follow_the_meta() {
             let label = row.label.to_string();
             let expected = if label == "Name" {
                 FieldKind::Text
+            } else if label == "Max HP" || label == "Next level" {
+                FieldKind::Label
             } else if label == "Job" || SLOTS.contains(&label.as_str()) {
                 FieldKind::Picker
             } else {

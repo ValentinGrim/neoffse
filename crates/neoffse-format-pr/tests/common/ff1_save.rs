@@ -25,7 +25,8 @@ pub(crate) struct Equip {
 #[derive(Debug, Clone)]
 pub(crate) struct Character {
     pub id: u32,
-    pub status_id: u32,
+    /// Raw number text of `characterStatusId`; `None` leaves the key out.
+    pub status_id: Option<String>,
     pub job: u32,
     pub name: String,
     /// Raw number text of `addtionalLevel`.
@@ -135,7 +136,7 @@ fn standard_character(index: usize) -> Character {
     let base = id;
     Character {
         id,
-        status_id: STATUS[index],
+        status_id: Some(STATUS[index].to_string()),
         job: JOBS[index],
         name: NAMES[index].to_owned(),
         level: (30 + id).to_string(),

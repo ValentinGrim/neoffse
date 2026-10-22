@@ -88,7 +88,7 @@ fn find_entry(document: &mut Document, dictionary: &[Segment<'static>], wanted: 
     Ok(None)
 }
 
-fn missing_row(collection: &'static str, key: u32) -> EditError {
+pub(super) fn missing_row(collection: &'static str, key: u32) -> EditError {
     EditError::MissingRow {
         row: RowId::new(FieldId::new(collection), key).id().clone(),
     }
@@ -96,8 +96,11 @@ fn missing_row(collection: &'static str, key: u32) -> EditError {
 
 /// The path to the value of `binding`. `MissingRow` for an absent row,
 /// `UnknownField` for a dictionary without the key, `Format` for a read that
-/// fails.
+/// fails, `ReadOnly` for a computed field, which has no path.
 pub(super) fn locate(document: &mut Document, binding: &Binding, field: &FieldId) -> Result<Path, EditError> {
+    if binding.is_derived() {
+        return Err(EditError::ReadOnly { field: field.clone() });
+    }
     let failed = |source| format_error(field, source);
     match *binding {
         Binding::Gil => Ok(vec![Segment::Key("userData"), Segment::Doc, Segment::Key("owendGil")]),
@@ -187,6 +190,8 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
             let dictionary = with(with(base, &parameter), &[Segment::Key(list), Segment::Doc]);
             entry_value(document, dictionary, level)?
         }
+        // `locate` refuses a computed field before it gets here.
+        Part::MaxHp | Part::NextLevel => return Err(Located::Absent),
         Part::Spell { level, slot } => {
             let target = with(base, &[Segment::Key("abilitySlotDataList"), Segment::Doc, Segment::Key("target")]);
             let index = find_level(document, &target, level)?.ok_or(Located::Absent)?;

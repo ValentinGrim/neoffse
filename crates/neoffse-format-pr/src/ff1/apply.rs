@@ -16,7 +16,7 @@ use crate::document::Segment;
 impl Ff1Model {
     /// Applies `edit` to the document and returns the edit that undoes it.
     ///
-    /// A `Set` of a read-only field (a spell slot) is `ReadOnly` as soon as
+    /// A `Set` of a read-only field (a spell slot, `max_hp`, `next_level`) is `ReadOnly` as soon as
     /// the field resolves. Otherwise it checks, in this order: the field
     /// resolves, its row and dictionary key exist, the value fits the storage
     /// bounds (both policies), the game cap (`Enforce` only) and the ID
@@ -41,7 +41,7 @@ impl Ff1Model {
     /// `UnknownField`, `MissingRow`, `WrongType`, `OutOfRange`, `AboveCap`,
     /// `UnknownId` (a job, an equipment id or a row key that no table lists,
     /// under `Enforce`), `DuplicateRow`, `PositionOutOfRange`,
-    /// `NotACollection`, `ReadOnly` (a character row, a spell slot, a row that
+    /// `NotACollection`, `ReadOnly` (a character row, a spell slot, a computed field, a row that
     /// cannot be restored byte for byte), `UnknownField` for a bad row value name, and
     /// `Format` for a document of another shape or a stored value that is no
     /// integer.

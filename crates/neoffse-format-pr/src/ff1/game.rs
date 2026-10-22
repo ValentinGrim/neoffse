@@ -82,9 +82,9 @@ impl Ff1Model {
     }
 
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
-    /// value: a spell slot, the `count` of an equipment slot, the `count` of a placeholder
-    /// row of `inventory`, present in the list or not, and the `count` of any
-    /// key item (the game holds one of each). A count that only refuses values
+    /// value: a computed field (`max_hp`, `next_level`), a spell slot, the
+    /// `count` of an equipment slot, the `count` of a placeholder row of
+    /// `inventory`, present in the list or not, and the `count` of any key item (the game holds one of each). A count that only refuses values
     /// below the wearers is unlocked.
     ///
     /// It resolves the field and reads the tables, not the document.
@@ -95,7 +95,7 @@ impl Ff1Model {
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
             Binding::Character {
-                part: Part::SlotCount(_) | Part::Spell { .. },
+                part: Part::SlotCount(_) | Part::Spell { .. } | Part::MaxHp | Part::NextLevel,
                 ..
             } => true,
             Binding::Count { list, key } => list == List::KeyItems || self.is_placeholder(list, key),

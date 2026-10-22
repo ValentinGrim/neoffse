@@ -55,6 +55,13 @@ fn int(label: impl Into<String>, min: i64, bound: Option<(&GameTables, &str)>) -
     meta
 }
 
+/// A computed field: an integer the editor shows and never sets.
+fn derived_meta(label: &'static str, bound: Option<(&GameTables, &str)>) -> FieldMeta {
+    let mut meta = int(label, 0, bound);
+    meta.read_only = true;
+    meta
+}
+
 fn stat_label(stat: Stat) -> &'static str {
     match stat {
         Stat::Power => "Power",
@@ -84,6 +91,8 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
             Part::Exp => int("Experience", 0, capped("MAX_EXP")),
             Part::Hp => int("HP", 0, capped("MAX_HP")),
             Part::MaxHpGain => int("Max HP gain", 0, None),
+            Part::MaxHp => derived_meta("Max HP", capped("MAX_HP")),
+            Part::NextLevel => derived_meta("Next level", None),
             Part::Stat(stat) => int(stat_label(stat), 0, stat.bound_key().map(|key| (tables, key))),
             Part::Charges(level) => int(format!("Charges, level {level}"), 0, capped("MAX_MAGICAL_TIMES")),
             Part::ChargesMaxGain(level) => int(format!("Max charges gain, level {level}"), 0, None),

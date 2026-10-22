@@ -23,7 +23,7 @@ fn opening_a_save_fills_the_bridge() {
     }
     let party = pages(&data.party);
     assert_eq!(party.len(), 4);
-    assert!(party.iter().all(|page| page.fields.row_count() == 39));
+    assert!(party.iter().all(|page| page.fields.row_count() == 41));
     let inventory: Vec<usize> = lists(&data.inventory).iter().map(|list| list.rows.row_count()).collect();
     assert_eq!(inventory, [29, 9]);
     assert!(!ui.window.global::<EditorBridge>().get_has_notice());

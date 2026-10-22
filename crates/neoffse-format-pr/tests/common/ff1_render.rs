@@ -211,9 +211,11 @@ fn render_character(character: &Character) -> String {
     let jobs: Vec<String> = (1..=12)
         .map(|job| embed(&format!("{{\"id\":{job},\"level\":1,\"currentProficiency\":0}}")))
         .collect();
-    let pairs: Vec<(&str, String)> = vec![
-        ("id", character.id.to_string()),
-        ("characterStatusId", character.status_id.to_string()),
+    let mut pairs: Vec<(&str, String)> = vec![("id", character.id.to_string())];
+    if let Some(status) = &character.status_id {
+        pairs.push(("characterStatusId", status.clone()));
+    }
+    pairs.extend([
         ("isEnableCorps", "true".to_owned()),
         ("jobId", character.job.to_string()),
         ("name", serde_json::Value::String(character.name.clone()).to_string()),
@@ -234,7 +236,7 @@ fn render_character(character: &Character) -> String {
         ("ownedMonsterId", "0".to_owned()),
         ("magicStoneId", "0".to_owned()),
         ("magicLearningValue", "0".to_owned()),
-    ];
+    ]);
     object(&pairs, ":")
 }
 
