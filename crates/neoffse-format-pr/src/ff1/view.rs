@@ -33,7 +33,7 @@ fn character_label(id: u32, fields: &[FieldView]) -> String {
 
 impl Ff1Model {
     /// A snapshot of the slot: a Party section with one entity per character
-    /// in document order (41 fields each, `names::party_fields`: the 39 stored
+    /// in document order (43 fields each, `names::party_fields`: the 41 stored
     /// fields plus the computed `max_hp` and `next_level`), an Inventory section with the gil entity, the rows
     /// of `inventory` and the rows of `key_items`, then a Magic section with
     /// one entity per character in the same order. A Magic entity holds the

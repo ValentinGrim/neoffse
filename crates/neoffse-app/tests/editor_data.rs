@@ -26,7 +26,7 @@ fn ff1_builds_three_present_sections() {
     assert!(data.party.present && data.inventory.present && data.magic.present);
     let party = pages(&data.party);
     assert_eq!(party.iter().map(|page| page.label.to_string()).collect::<Vec<_>>(), NAMES);
-    assert!(party.iter().all(|page| fields(page).len() == 41));
+    assert!(party.iter().all(|page| fields(page).len() == 43));
     assert_eq!(lists(&data.party).len(), 0);
 
     let inventory = pages(&data.inventory);

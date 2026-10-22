@@ -9,6 +9,11 @@
 //! `docs/formats/pixel-remaster.md#inventory`. A spell slot is
 //! `character.<id>.spell.<level>.<slot>`
 //! (`docs/formats/pixel-remaster.md#abilities`, "FF I spell slots").
+//!
+//! Under the game interface a rise of [`LEVEL`] or [`EXP`] to a higher level
+//! also moves [`MAX_HP_GAIN`], the seven stats, [`ACCURACY_GAIN`],
+//! [`MAGIC_EVASION_GAIN`] and [`CHARGES_MAX_GAIN`], one growth step per level
+//! gained (`docs/formats/pixel-remaster.md#level-up-in-ff-i`).
 
 use neoffse_core::{FieldId, Key};
 
@@ -54,6 +59,10 @@ pub const SPIRIT: &str = "spirit";
 pub const LUCK: &str = "luck";
 /// Magic stat, `parameter.addtionalMagic`.
 pub const MAGIC: &str = "magic";
+/// Accuracy growth, `parameter.addtionalAccuracyRate`.
+pub const ACCURACY_GAIN: &str = "accuracy_gain";
+/// Magic evasion growth, `parameter.addtionalAbilityEvasionRate`.
+pub const MAGIC_EVASION_GAIN: &str = "magic_evasion_gain";
 /// Current spell charges per spell level, `parameter.currentMpCountList`.
 pub const CHARGES: &str = "charges";
 /// Maximum spell charges gain per spell level, `parameter.addtionalMaxMpCountList`.
@@ -77,7 +86,7 @@ pub const EQUIPMENT_SLOTS: u32 = 5;
 pub const SPELL_SLOTS: u32 = 3;
 
 /// The scalar fields of a character, in display order.
-const SCALARS: [&str; 13] = [
+const SCALARS: [&str; 15] = [
     NAME,
     JOB,
     LEVEL,
@@ -91,9 +100,11 @@ const SCALARS: [&str; 13] = [
     SPIRIT,
     LUCK,
     MAGIC,
+    ACCURACY_GAIN,
+    MAGIC_EVASION_GAIN,
 ];
 
-/// The 39 stored field ids of one character, in display order: the 13 scalar
+/// The 41 stored field ids of one character, in display order: the 15 scalar
 /// fields, `charges.1` to `charges.8`, `charges_max_gain.1` to
 /// `charges_max_gain.8`, then for each slot 1 to 5 the pair `equipment.<S>`
 /// and `equipment.<S>.count`.
@@ -122,12 +133,12 @@ pub fn derived_fields(id: u32) -> Vec<FieldId> {
         .collect()
 }
 
-/// The 41 field ids of the Party entity of one character, in view order:
+/// The 43 field ids of the Party entity of one character, in view order:
 /// [`character_fields`] with `next_level` after `exp` and `max_hp` after `hp`.
 #[must_use]
 pub fn party_fields(id: u32) -> Vec<FieldId> {
     let [max_hp, next_level] = [MAX_HP, NEXT_LEVEL].map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name));
-    let mut fields = Vec::with_capacity(41);
+    let mut fields = Vec::with_capacity(43);
     for field in character_fields(id) {
         let derived = match field.keys().last() {
             Some(Key::Name(EXP)) => Some(next_level.clone()),

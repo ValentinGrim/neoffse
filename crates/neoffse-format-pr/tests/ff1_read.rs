@@ -53,7 +53,7 @@ fn int(value: i64) -> Value {
     Value::Int(value)
 }
 
-/// The 39 expected values of character `id` (1 to 4), in `character_fields` order.
+/// The 41 expected values of character `id` (1 to 4), in `character_fields` order.
 fn expected(id: u32) -> Vec<Value> {
     let index = usize::try_from(id).unwrap() - 1;
     let id = i64::from(id);
@@ -66,6 +66,8 @@ fn expected(id: u32) -> Vec<Value> {
         int(GAINS[index]),
     ];
     values.extend(STATS[index].map(int));
+    // The synthetic renderer stores `id * 3 + 140` (accuracy) and `id * 3 + 130` (magic evasion).
+    values.extend([int(id * 3 + 140), int(id * 3 + 130)]);
     values.extend((1..=8).map(|level| int((level + id) % 10)));
     values.extend((1..=8).map(|level| int((2 * level + id) % 8)));
     for slot in EQUIPMENT[index] {
@@ -78,7 +80,7 @@ fn expected(id: u32) -> Vec<Value> {
 fn assert_characters_read(model: &mut Ff1Model, ids: &[u32]) {
     for &id in ids {
         let fields = names::character_fields(id);
-        assert_eq!(fields.len(), 39);
+        assert_eq!(fields.len(), 41);
         for (field, want) in fields.iter().zip(expected(id)) {
             assert_eq!(model.get(field).unwrap(), want, "{field}");
         }

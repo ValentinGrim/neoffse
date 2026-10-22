@@ -17,9 +17,13 @@
 //! 0 to 8 and its `content_id` is not 0, `placeholder` appears only as `true`,
 //! only on an equipment kind and once per kind, and every cap key starts with
 //! `MAX_` and holds no negative value. A row that breaks a value rule gives
-//! [`DataError::Rule`]. `growth.toml` has its own rules: status ids rise from 1,
-//! experience levels run 1, 2, ... without a gap, `total_exp` rises strictly,
-//! and neither array is empty.
+//! [`DataError::Rule`]. `growth.toml` holds base HP and vitality per class, the
+//! total experience per level and the growth rows of the level-up rule, one
+//! array per column and growth group. It has its own rules: status ids rise
+//! from 1, `total_exp` rises strictly, group and job ids rise, every group
+//! starts at level 2 and covers every level of `exp_table` in each column,
+//! `hp_value1` is 0 or 1, every job names an existing group, and no table is
+//! empty.
 //!
 //! - [`embedded`]: the tables the crate ships, [`sources_for`] and [`tables_for`].
 //! - [`entry`]: the rows of a table, [`Entry`], its [`AbilityInfo`] and
@@ -36,12 +40,14 @@
 //! assert_eq!(potion.name(Language::En), "Potion");
 //! assert_eq!(tables.bound("MAX_GIL"), Some(999_999));
 //! assert_eq!(tables.base_hp(1), Some(35));
+//! assert_eq!(tables.base_vitality(1), Some(15));
 //! assert_eq!(tables.exp_to_reach(2), Some(14));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
 //! [`TableKind`]: neoffse_core::TableKind
 
+mod curve;
 pub mod embedded;
 pub mod entry;
 pub mod error;
@@ -52,4 +58,5 @@ pub mod tables;
 pub use embedded::{sources_for, tables_for};
 pub use entry::{AbilityInfo, AbilityKind, Entry, Language};
 pub use error::DataError;
+pub use growth::GrowthStep;
 pub use tables::{GameTables, Sources};

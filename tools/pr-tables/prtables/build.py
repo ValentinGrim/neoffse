@@ -15,7 +15,7 @@ from collections.abc import Mapping
 from . import ExportError
 from .tables import AbilitySpec, BoundsSpec, ContentSpec, MonsterSpec, NamedSpec
 
-Row = dict[str, str | int | bool]  # field order is insertion order
+Row = dict[str, str | int | bool | list[int]]  # field order is insertion order
 Csvs = Mapping[str, list[dict[str, str]]]  # CSV file name -> rows
 Names = Mapping[str, Mapping[str, str]]  # language -> message key -> text
 

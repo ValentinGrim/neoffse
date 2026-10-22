@@ -197,7 +197,9 @@ fn a_level_commit_refreshes_the_experience_in_the_default_mode() {
     assert_eq!(experience(&ui), "100100");
 
     ui.commit(ui.level().key, "40");
-    assert!(!ui.bridge().get_has_notice());
+    // The nine levels gained grew the stats: the info notice says so.
+    assert_eq!(ui.bridge().get_notice().problem, neoffse_app::EditProblem::StatsRaised);
+    assert_eq!(ui.bridge().get_notice().value, "9");
     assert_eq!(ui.level().text, "40");
     assert_eq!(experience(&ui), "207299");
     assert_eq!(ui.pending(), 1, "the level and the experience make one history entry");

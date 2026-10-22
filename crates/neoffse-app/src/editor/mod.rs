@@ -27,6 +27,6 @@ pub use kind::field_kind;
 pub use layout::{Built, Locks, build};
 pub use leave::{Leave, LeaveAnswer};
 pub use model::EditorViewModel;
-pub use notice::{notice_of, problem_notice};
-pub use overview::overview;
+pub use notice::{growth_notice, notice_of, problem_notice};
+pub use overview::{levels_gained, overview};
 pub use pick::{entry_name, picker_entries};

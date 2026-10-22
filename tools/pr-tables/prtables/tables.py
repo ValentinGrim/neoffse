@@ -73,12 +73,13 @@ class BoundsSpec:
 
 @dataclass(frozen=True)
 class GrowthSpec:
-    """Base HP per class and experience per level."""
+    """Base HP and vitality per class, experience per level, growth rows per job."""
 
     file: str
-    status_csv: str  # columns id, hp
+    status_csv: str  # columns id, hp, vitality
     exp_csv: str  # columns type_id, group_id, lv, total_exp
-    curve_csv: str  # column exp_table_group_id
+    curve_csv: str  # columns job_id, growth_curve_group_id, exp_table_group_id
+    step_csv: str  # columns group_id, lv, hp_value1, the stat columns, the mode columns
     notes: tuple[str, ...]
 
 
@@ -107,6 +108,7 @@ class Game:
         names.update((self.monsters.csv, self.monsters.book_csv, self.monsters.group_csv))
         names.add(self.bounds.csv)
         names.update((self.growth.status_csv, self.growth.exp_csv, self.growth.curve_csv))
+        names.add(self.growth.step_csv)
         return tuple(sorted(names))
 
 
@@ -228,14 +230,27 @@ _FF1 = Game(
         status_csv="character_status.csv",
         exp_csv="exp_table.csv",
         curve_csv="intermediate_growth_curve.csv",
+        step_csv="growth_curve.csv",
         notes=(
             "character_status: one row per character_status.csv row. id is the "
-            "characterStatusId of a save, hp the base HP "
-            "(docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables).",
-            "exp_table: one row per level. total_exp is the total experience a "
-            "character needs to reach lv, so level 1 holds 0.",
+            "characterStatusId of a save, hp the base HP, vitality the base vitality "
+            "of the HP rule "
+            "(docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables, "
+            "#level-up-in-ff-i).",
+            "exp_table: total_exp lists the total experience a character needs to "
+            "reach each level, in level order from 1, so the first value is 0.",
+            "intermediate_growth_curve: one row per job. job_id is the jobId of a "
+            "save, growth_curve_group_id the growth group its level-ups read.",
+            "growth_curve: one entry per growth group. Each column is a list in level "
+            "order from first_lv, so index 0 is level first_lv. hp_value1 of 1 forces "
+            "the strong HP bonus, a stat column of 0 rolls 1 in 8, magical_times1 to "
+            "magical_times8 are the spell charges of the level "
+            "(docs/formats/pixel-remaster.md#level-up-in-ff-i).",
             "The tool stops when exp_table.csv holds more than one curve (type_id or "
             "group_id) or intermediate_growth_curve.csv names another one.",
+            "The tool stops when a growth_curve.csv row uses a mode the rule does not "
+            "cover: insert_type_1 or insert_type_2 other than 3, insert_type_3 other "
+            "than 1, or hp_value2, mp_value1 or mp_value2 other than 0.",
         ),
     ),
 )

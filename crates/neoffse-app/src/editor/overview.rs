@@ -10,7 +10,7 @@
 use neoffse::core::{Capability, Entity, FieldId, FieldView, Game, SaveView, Value};
 use neoffse::data::{Language, tables_for};
 use neoffse::pr::ff1::names;
-use slint::SharedString;
+use slint::{Model, SharedString};
 
 use super::field_row::model_of;
 use super::pick::entry_name;
@@ -34,6 +34,30 @@ pub fn overview(view: &SaveView, game: Game, language: Language) -> Overview {
         Game::Ff1Pr => ff1_overview(view, game, language),
         _ => Overview::default(),
     }
+}
+
+/// The levels the cards gained between two overviews: for each card present
+/// in both (matched by `page`), the rise of the level when both levels are
+/// numbers and the second is higher. Zero for an overview with `present`
+/// false, a missing card, a text that is no number, or a fall.
+///
+/// It reads `CharacterCard::page` and `CharacterCard::level` only, so it
+/// names no game field. The sum saturates at `u32::MAX`.
+#[must_use]
+pub fn levels_gained(before: &Overview, after: &Overview) -> u32 {
+    if !before.present || !after.present {
+        return 0;
+    }
+    let old: Vec<CharacterCard> = before.cards.iter().collect();
+    after
+        .cards
+        .iter()
+        .filter_map(|new| {
+            let old = old.iter().find(|card| card.page == new.page)?;
+            let rise = new.level.parse::<i64>().ok()?.saturating_sub(old.level.parse::<i64>().ok()?);
+            (rise > 0).then(|| u32::try_from(rise).unwrap_or(u32::MAX))
+        })
+        .fold(0, u32::saturating_add)
 }
 
 fn ff1_overview(view: &SaveView, game: Game, language: Language) -> Overview {

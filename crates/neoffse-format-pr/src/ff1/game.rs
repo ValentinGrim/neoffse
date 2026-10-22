@@ -13,8 +13,9 @@
 use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FieldMeta, GameChange, RowId, Shape, Value};
 
 use super::binding::{Binding, Collection, List, Part};
+use super::level::Plan;
 use super::locate::{find_row, format_error, wearers};
-use super::{Ff1Model, meta, names};
+use super::{Ff1Model, Rolls, ThreadRolls, meta, names};
 
 /// The upper storage bound of a count field.
 fn storage_max(meta: &FieldMeta) -> i64 {
@@ -62,7 +63,11 @@ impl Ff1Model {
     /// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`). The linked step is
     /// left out when the stored value already matches, a level 0 is
     /// `OutOfRange` with `min` 1, and raw [`apply`](Self::apply) links
-    /// nothing. Every other edit is one plain edit.
+    /// nothing. When the level rises, the plan ends with the growth step of
+    /// each level gained, as the game applies it after a battle; that step
+    /// draws random numbers from [`ThreadRolls`], and
+    /// [`apply_game_with`](Self::apply_game_with) takes another source. Every
+    /// other edit is one plain edit.
     ///
     /// The plan applies all or none: a failure at any step gives the document
     /// back byte for byte.
@@ -70,14 +75,40 @@ impl Ff1Model {
     /// # Errors
     ///
     /// The errors of [`apply`](Self::apply) under `Enforce`, plus the game
-    /// rules above.
+    /// rules above and `UnknownId` for a job or a status without a growth row.
     pub fn apply_game(&mut self, edit: &Edit) -> Result<GameChange, EditError> {
-        let plan = self.plan(edit)?;
+        self.apply_game_with(edit, &mut ThreadRolls)
+    }
+
+    /// [`apply_game`](Self::apply_game) with a caller-supplied source for the
+    /// random draws of a level-up. A test scripts it; `apply_game` passes
+    /// [`ThreadRolls`].
+    ///
+    /// The requested edit and its link apply under `CapPolicy::Enforce`. The
+    /// growth edits apply under `CapPolicy::StorageOnly`: the game stores the
+    /// raw sums and clamps on read, so a stat can pass its cap
+    /// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`, "What a step leaves
+    /// alone"). The storage bounds still hold. `forward` holds the concrete
+    /// edits, so `Session::undo` and `redo` give the drawn values back.
+    ///
+    /// # Errors
+    ///
+    /// The errors of `apply_game`.
+    pub fn apply_game_with(&mut self, edit: &Edit, rolls: &mut dyn Rolls) -> Result<GameChange, EditError> {
+        let Plan { edits, enforced } = self.plan(edit, rolls)?;
         // A step that rolls back leaves its levels rewritten compact; the
         // snapshot gives a failed plan back byte for byte.
-        let snapshot = (plan.len() > 1).then(|| self.document.clone());
-        let forward: ChangeSet = plan.into_iter().collect();
-        match forward.apply_with(CapPolicy::Enforce, |step, policy| self.apply(step, policy)) {
+        let snapshot = (edits.len() > 1).then(|| self.document.clone());
+        let forward: ChangeSet = edits.into_iter().collect();
+        let mut applied = 0;
+        // `apply_with` rolls back under `StorageOnly`; only a forward call
+        // arrives under `Enforce`.
+        let result = forward.apply_with(CapPolicy::Enforce, |step, policy| {
+            let growing = policy == CapPolicy::Enforce && applied >= enforced;
+            applied += 1;
+            self.apply(step, if growing { CapPolicy::StorageOnly } else { policy })
+        });
+        match result {
             Ok(inverse) => Ok(GameChange::new(forward, inverse)),
             Err(error) => {
                 if let Some(document) = snapshot {
@@ -125,12 +156,12 @@ impl Ff1Model {
     }
 
     /// The plain edits of `edit`, after the game rules; no write happens.
-    fn plan(&mut self, edit: &Edit) -> Result<Vec<Edit>, EditError> {
+    fn plan(&mut self, edit: &Edit, rolls: &mut dyn Rolls) -> Result<Plan, EditError> {
         match edit {
-            Edit::Set { field, value } => self.plan_set(edit, field, value),
+            Edit::Set { field, value } => self.plan_set(edit, field, value, rolls),
             Edit::Insert { row, values, .. } => {
                 self.check_insert_rules(row, values)?;
-                Ok(vec![edit.clone()])
+                Ok(vec![edit.clone()].into())
             }
             Edit::Remove { row } => {
                 if let Some(Collection::Items(list)) = Collection::of(&row.collection()) {
@@ -139,13 +170,13 @@ impl Ff1Model {
                         return Err(EditError::ReadOnly { field: row.id().clone() });
                     }
                 }
-                Ok(vec![edit.clone()])
+                Ok(vec![edit.clone()].into())
             }
-            _ => Ok(vec![edit.clone()]),
+            _ => Ok(vec![edit.clone()].into()),
         }
     }
 
-    fn plan_set(&mut self, edit: &Edit, field: &FieldId, value: &Value) -> Result<Vec<Edit>, EditError> {
+    fn plan_set(&mut self, edit: &Edit, field: &FieldId, value: &Value, rolls: &mut dyn Rolls) -> Result<Plan, EditError> {
         if self.field_locked(field)? {
             return Err(EditError::ReadOnly { field: field.clone() });
         }
@@ -153,21 +184,21 @@ impl Ff1Model {
         let field_meta = meta::field_meta(&binding, self.tables);
         field_meta.check(field, value, CapPolicy::Enforce)?;
         let Value::Int(number) = *value else {
-            return Ok(vec![edit.clone()]);
+            return Ok(vec![edit.clone()].into());
         };
         match binding {
             Binding::Count { key, .. } => {
                 let worn = self.wearers_of(key, field)?;
                 check_floor(field, number, worn, &field_meta)?;
-                Ok(vec![edit.clone()])
+                Ok(vec![edit.clone()].into())
             }
-            Binding::Character { id, part: Part::Level } => self.level_plan(id, number),
-            Binding::Character { id, part: Part::Exp } => self.exp_plan(id, number),
+            Binding::Character { id, part: Part::Level } => self.level_plan(id, number, rolls),
+            Binding::Character { id, part: Part::Exp } => self.exp_plan(id, number, rolls),
             Binding::Character { part: Part::Slot(_), .. } => match u32::try_from(number) {
-                Ok(content_id) => self.equip_plan(field, content_id),
-                Err(_) => Ok(vec![edit.clone()]),
+                Ok(content_id) => self.equip_plan(field, content_id).map(Plan::from),
+                Err(_) => Ok(vec![edit.clone()].into()),
             },
-            _ => Ok(vec![edit.clone()]),
+            _ => Ok(vec![edit.clone()].into()),
         }
     }
 

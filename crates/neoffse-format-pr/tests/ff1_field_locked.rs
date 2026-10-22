@@ -58,7 +58,7 @@ fn every_other_field_is_unlocked() {
         assert!(!model.field_locked(&field).unwrap(), "{field}");
         seen += 1;
     }
-    assert_eq!(seen, 34);
+    assert_eq!(seen, 36);
     for field in [FieldId::new(names::GIL), count(names::INVENTORY, 89), count(names::INVENTORY, 202)] {
         assert!(!model.field_locked(&field).unwrap(), "{field}");
     }

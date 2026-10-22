@@ -15,6 +15,7 @@ pub(crate) mod exit_cases;
 pub(crate) mod exit_equip;
 mod exit_facts;
 mod exit_fields;
+mod exit_growth;
 pub(crate) mod ff1_ability_rules;
 pub(crate) mod ff1_format;
 pub(crate) mod ff1_magic;
@@ -22,9 +23,11 @@ pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
 pub(crate) mod ff1_rules;
 pub(crate) mod ff1_save;
+pub(crate) mod growth_oracle;
 pub(crate) mod json_diff;
 mod json_scan;
 pub(crate) mod json_tree;
+pub(crate) mod rolls;
 
 use neoffse_format_pr::document::Segment;
 

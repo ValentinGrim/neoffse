@@ -145,13 +145,13 @@ fn an_absent_key_leaves_the_field_out() {
     let (_, view) = view_of(&slot);
     let party = &view.section(Capability::Party).unwrap().entities;
     let count_3 = character(3).with_name(names::EQUIPMENT).with_id(3).with_name(names::COUNT);
-    assert_eq!(party[2].fields.len(), 40);
+    assert_eq!(party[2].fields.len(), 42);
     assert!(party[2].fields.iter().all(|field| field.id != count_3));
     let charges_3 = character(1).with_name(names::CHARGES).with_id(3);
-    assert_eq!(party[0].fields.len(), 40);
+    assert_eq!(party[0].fields.len(), 42);
     assert!(party[0].fields.iter().all(|field| field.id != charges_3));
-    assert_eq!(party[1].fields.len(), 41);
-    assert_eq!(party[3].fields.len(), 41);
+    assert_eq!(party[1].fields.len(), 43);
+    assert_eq!(party[3].fields.len(), 43);
 
     let slot = SlotData {
         gil: None,

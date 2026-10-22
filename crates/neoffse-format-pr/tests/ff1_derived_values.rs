@@ -103,7 +103,7 @@ fn next_level_is_absent_without_a_next_row() {
         assert!(matches!(model.get(&field), Err(EditError::UnknownField { .. })), "level {level}, exp {exp}");
         let view = model.view(Language::En).unwrap();
         assert!(!party_ids(&view, 1).contains(&field.to_string()), "level {level}, exp {exp}");
-        assert_eq!(party_ids(&view, 1).len(), 40);
+        assert_eq!(party_ids(&view, 1).len(), 42);
     }
     let mut model = first("1", 0, "99", 1_471_454);
     let view = model.view(Language::En).unwrap();
@@ -127,8 +127,8 @@ fn a_negative_experience_leaves_next_level_out() {
     let mut model = Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap());
     assert!(matches!(next_level_of(&mut model, 1), Err(EditError::UnknownField { .. })));
     let view = model.view(Language::En).unwrap();
-    assert_eq!(party_ids(&view, 1).len(), 40);
-    assert_eq!(party_ids(&view, 2).len(), 41);
+    assert_eq!(party_ids(&view, 1).len(), 42);
+    assert_eq!(party_ids(&view, 2).len(), 43);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn an_unknown_status_leaves_max_hp_out() {
         assert!(matches!(max_hp_of(&mut model, 1), Err(EditError::UnknownField { .. })), "status {status}");
         let view = model.view(Language::En).unwrap();
         let ids = party_ids(&view, 1);
-        assert_eq!(ids.len(), 40, "status {status}");
+        assert_eq!(ids.len(), 42, "status {status}");
         assert!(!ids.contains(&character_field(1, names::MAX_HP).to_string()), "status {status}");
         assert!(ids.contains(&character_field(1, names::NEXT_LEVEL).to_string()), "status {status}");
     }
@@ -174,7 +174,7 @@ fn a_missing_status_key_leaves_max_hp_out_and_next_level_in() {
     assert_eq!(next_level_of(&mut model, 1).unwrap(), Value::Int(3711));
     let view = model.view(Language::En).unwrap();
     let ids = party_ids(&view, 1);
-    assert_eq!(ids.len(), 40);
+    assert_eq!(ids.len(), 42);
     assert!(ids.contains(&character_field(1, names::NEXT_LEVEL).to_string()));
 }
 

@@ -2,8 +2,9 @@
 //!
 //! [`Ff1Model`] maps the lossless [`Document`] of a slot onto the field
 //! vocabulary of [`names`]: characters (name, job, level, experience, HP,
-//! stats, spell charges, five equipment slots, spell slots, and the two
-//! computed read-only fields `max_hp` and `next_level`), the two item
+//! stats, accuracy and magic evasion gains, spell charges, five equipment
+//! slots, spell slots, and the two computed read-only fields `max_hp` and
+//! `next_level`), the two item
 //! lists and gil (`docs/formats/pixel-remaster.md#characters`,
 //! `docs/formats/pixel-remaster.md#equipment-slots`,
 //! `docs/formats/pixel-remaster.md#inventory`). A read finds a character by
@@ -21,7 +22,10 @@
 //! - [`Ff1Model::apply_game`] edits the way the game would. It enforces caps
 //!   and tables, expands an equipment `Set` into the slot, the inventory row
 //!   and the slot count, sets Level and Experience together, refuses the edits the game never makes, and returns a
-//!   `GameChange`. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
+//!   `GameChange`. A rise of the level also applies the growth step of each
+//!   level gained, with random draws from [`Rolls`]: [`Ff1Model::apply_game`]
+//!   uses [`ThreadRolls`] and [`Ff1Model::apply_game_with`] takes a source of
+//!   the caller. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
 //!   the rows and fields it refuses whatever the value. A spell slot is read
 //!   only in both interfaces.
 //!
@@ -63,11 +67,13 @@ mod binding;
 mod derived;
 mod format;
 mod game;
+mod growth;
 mod level;
 mod lists;
 mod locate;
 mod meta;
 pub mod names;
+mod rolls;
 mod save;
 mod summary;
 mod view;
@@ -81,6 +87,7 @@ pub use crate::open_error::OpenError;
 use binding::{Binding, Collection};
 pub use format::Ff1Format;
 use locate::{format_error, locate, read_ability, read_int, read_text, row_keys};
+pub use rolls::{Rolls, ThreadRolls};
 pub use save::Ff1Document;
 
 /// The game of this module.

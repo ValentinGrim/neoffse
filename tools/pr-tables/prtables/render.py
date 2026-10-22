@@ -60,7 +60,11 @@ def _comment_block(header: Sequence[str]) -> str:
     return "".join(f"# {line}\n" for line in header) + "\n"
 
 
-def _value(key: str, value: str | int | bool) -> str:
+def _value(key: str, value: str | int | bool | Sequence[int]) -> str:
+    if isinstance(value, list):
+        if not value:
+            raise ExportError(f"field {key}: empty list")
+        return "[" + ", ".join(_value(key, item) for item in value) + "]"
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, int):
@@ -70,31 +74,48 @@ def _value(key: str, value: str | int | bool) -> str:
     return toml_string(value)
 
 
+def _block(heading: str, row: Row) -> str:
+    lines = [heading]
+    for key, value in row.items():
+        if not _FIELD_KEY.fullmatch(key):
+            raise ExportError(f"field key {key!r} is not lower-case snake case")
+        lines.append(f"{key} = {_value(key, value)}")
+    return "\n".join(lines)
+
+
+def _name(name: str) -> None:
+    if not _FIELD_KEY.fullmatch(name):
+        raise ExportError(f"array name {name!r} is not lower-case snake case")
+
+
 def _entries(array: str, rows: Sequence[Row]) -> str:
     if not rows:
         raise ExportError(f"array {array} has no row")
-    if not _FIELD_KEY.fullmatch(array):
-        raise ExportError(f"array name {array!r} is not lower-case snake case")
-    entries = []
-    for row in rows:
-        lines = [f"[[{array}]]"]
-        for key, value in row.items():
-            if not _FIELD_KEY.fullmatch(key):
-                raise ExportError(f"field key {key!r} is not lower-case snake case")
-            lines.append(f"{key} = {_value(key, value)}")
-        entries.append("\n".join(lines))
-    return "\n\n".join(entries)
+    _name(array)
+    return "\n\n".join(_block(f"[[{array}]]", row) for row in rows)
+
+
+def _section(name: str, content: Sequence[Row] | Row) -> str:
+    """An array of tables for a sequence of rows, one plain table for a row."""
+    if isinstance(content, Mapping):
+        _name(name)
+        return _block(f"[{name}]", content)
+    return _entries(name, content)
 
 
 def render_array(header: Sequence[str], array: str, rows: Sequence[Row]) -> str:
     return _comment_block(header) + _entries(array, rows) + "\n"
 
 
-def render_arrays(header: Sequence[str], arrays: Sequence[tuple[str, Sequence[Row]]]) -> str:
-    """Several arrays in one file, in the given order, one blank line between entries."""
+def render_arrays(
+    header: Sequence[str], arrays: Sequence[tuple[str, Sequence[Row] | Row]]
+) -> str:
+    """Several sections in one file, in the given order, one blank line between entries.
+
+    A sequence of rows is an array of tables; a single row is a plain table."""
     if not arrays:
         raise ExportError("no array to render")
-    return _comment_block(header) + "\n\n".join(_entries(a, r) for a, r in arrays) + "\n"
+    return _comment_block(header) + "\n\n".join(_section(a, r) for a, r in arrays) + "\n"
 
 
 def render_table(header: Sequence[str], table: str, values: Mapping[str, int]) -> str:
