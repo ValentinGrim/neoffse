@@ -52,9 +52,9 @@ fn a_character_name_that_is_a_number_is_a_wrong_kind() {
 }
 
 #[test]
-fn a_character_has_39_fields_in_display_order() {
+fn a_character_has_41_fields_in_display_order() {
     let fields = names::character_fields(1);
-    assert_eq!(fields.len(), 39);
+    assert_eq!(fields.len(), 41);
     assert_eq!(fields[0], character_field(1, names::NAME));
     let model = common::ff1_save::standard_model();
     let sample = [

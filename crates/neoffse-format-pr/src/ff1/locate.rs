@@ -180,6 +180,8 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
         Part::Level => with(with(base, &parameter), &key("addtionalLevel")),
         Part::Hp => with(with(base, &parameter), &key("currentHP")),
         Part::MaxHpGain => with(with(base, &parameter), &key("addtionalMaxHp")),
+        Part::AccuracyGain => with(with(base, &parameter), &key("addtionalAccuracyRate")),
+        Part::MagicEvasionGain => with(with(base, &parameter), &key("addtionalAbilityEvasionRate")),
         Part::Stat(stat) => with(with(base, &parameter), &key(stat.document_key())),
         Part::Charges(level) | Part::ChargesMaxGain(level) => {
             let list = if matches!(part, Part::Charges(_)) {

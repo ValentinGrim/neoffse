@@ -91,6 +91,8 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
             Part::Exp => int("Experience", 0, capped("MAX_EXP")),
             Part::Hp => int("HP", 0, capped("MAX_HP")),
             Part::MaxHpGain => int("Max HP gain", 0, None),
+            Part::AccuracyGain => int("Accuracy gain", 0, None),
+            Part::MagicEvasionGain => int("Magic evasion gain", 0, None),
             Part::MaxHp => derived_meta("Max HP", capped("MAX_HP")),
             Part::NextLevel => derived_meta("Next level", None),
             Part::Stat(stat) => int(stat_label(stat), 0, stat.bound_key().map(|key| (tables, key))),

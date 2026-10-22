@@ -74,7 +74,7 @@ fn the_computed_rows_follow_their_sources_on_the_page() {
     let site = editing_site();
     let ed = editing(&site);
     let labels = labels(&ed, "Aria");
-    assert_eq!(labels.len(), 41);
+    assert_eq!(labels.len(), 43);
     assert_eq!(labels[..8], ["Name", "Job", "Level", "Experience", "Next level", "HP", "Max HP", "Max HP gain"]);
     assert_eq!(labels[8], "Power");
 }
@@ -125,7 +125,7 @@ fn level_99_empties_next_exp() {
     assert_eq!(aria.next_exp, "");
     assert_eq!(aria.hp_max, "446");
     let labels = labels(&ed, "Aria");
-    assert_eq!(labels.len(), 40);
+    assert_eq!(labels.len(), 42);
     assert!(!labels.iter().any(|label| label == "Next level"));
 }
 

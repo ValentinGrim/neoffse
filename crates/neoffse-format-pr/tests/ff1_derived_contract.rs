@@ -74,7 +74,7 @@ fn the_two_fields_sit_next_to_their_sources() {
     }
     let stored = names::character_fields(1);
     let derived = names::derived_fields(1);
-    assert_eq!((stored.len(), derived.len(), names::party_fields(1).len()), (39, 2, 41));
+    assert_eq!((stored.len(), derived.len(), names::party_fields(1).len()), (41, 2, 43));
     assert!(derived.iter().all(|field| !stored.contains(field)));
     assert_eq!(derived, [character_field(1, names::MAX_HP), character_field(1, names::NEXT_LEVEL)]);
 }

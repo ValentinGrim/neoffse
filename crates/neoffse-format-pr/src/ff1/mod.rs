@@ -2,8 +2,9 @@
 //!
 //! [`Ff1Model`] maps the lossless [`Document`] of a slot onto the field
 //! vocabulary of [`names`]: characters (name, job, level, experience, HP,
-//! stats, spell charges, five equipment slots, spell slots, and the two
-//! computed read-only fields `max_hp` and `next_level`), the two item
+//! stats, accuracy and magic evasion gains, spell charges, five equipment
+//! slots, spell slots, and the two computed read-only fields `max_hp` and
+//! `next_level`), the two item
 //! lists and gil (`docs/formats/pixel-remaster.md#characters`,
 //! `docs/formats/pixel-remaster.md#equipment-slots`,
 //! `docs/formats/pixel-remaster.md#inventory`). A read finds a character by

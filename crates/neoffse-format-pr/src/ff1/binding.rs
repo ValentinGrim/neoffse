@@ -106,6 +106,10 @@ pub(super) enum Part {
     Exp,
     Hp,
     MaxHpGain,
+    /// `addtionalAccuracyRate`.
+    AccuracyGain,
+    /// `addtionalAbilityEvasionRate`.
+    MagicEvasionGain,
     /// Computed from the status table, read only.
     MaxHp,
     /// Computed from the experience table, read only.
@@ -194,6 +198,8 @@ impl Part {
             [Key::Name(names::EXP)] => Some(Self::Exp),
             [Key::Name(names::HP)] => Some(Self::Hp),
             [Key::Name(names::MAX_HP_GAIN)] => Some(Self::MaxHpGain),
+            [Key::Name(names::ACCURACY_GAIN)] => Some(Self::AccuracyGain),
+            [Key::Name(names::MAGIC_EVASION_GAIN)] => Some(Self::MagicEvasionGain),
             [Key::Name(names::MAX_HP)] => Some(Self::MaxHp),
             [Key::Name(names::NEXT_LEVEL)] => Some(Self::NextLevel),
             [Key::Name(names::POWER)] => Some(Self::Stat(Stat::Power)),
