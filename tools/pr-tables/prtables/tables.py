@@ -72,6 +72,17 @@ class BoundsSpec:
 
 
 @dataclass(frozen=True)
+class GrowthSpec:
+    """Base HP per class and experience per level."""
+
+    file: str
+    status_csv: str  # columns id, hp
+    exp_csv: str  # columns type_id, group_id, lv, total_exp
+    curve_csv: str  # column exp_table_group_id
+    notes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Game:
     id: str
     label: str
@@ -86,6 +97,7 @@ class Game:
     named: tuple[NamedSpec, ...]  # jobs, commands, in this order
     monsters: MonsterSpec
     bounds: BoundsSpec
+    growth: GrowthSpec
 
     def csv_files(self) -> tuple[str, ...]:
         """Every CSV the specs read, sorted, no repeat."""
@@ -94,6 +106,7 @@ class Game:
         names.update(spec.csv for spec in self.named)
         names.update((self.monsters.csv, self.monsters.book_csv, self.monsters.group_csv))
         names.add(self.bounds.csv)
+        names.update((self.growth.status_csv, self.growth.exp_csv, self.growth.curve_csv))
         return tuple(sorted(names))
 
 
@@ -208,6 +221,21 @@ _FF1 = Game(
             "the key name as the game spells it, and value1.",
             "docs/formats/pixel-remaster.md#bounds-in-the-master-data says which save "
             "field each named cap bounds; the others have no known save field.",
+        ),
+    ),
+    growth=GrowthSpec(
+        file="growth.toml",
+        status_csv="character_status.csv",
+        exp_csv="exp_table.csv",
+        curve_csv="intermediate_growth_curve.csv",
+        notes=(
+            "character_status: one row per character_status.csv row. id is the "
+            "characterStatusId of a save, hp the base HP "
+            "(docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables).",
+            "exp_table: one row per level. total_exp is the total experience a "
+            "character needs to reach lv, so level 1 holds 0.",
+            "The tool stops when exp_table.csv holds more than one curve (type_id or "
+            "group_id) or intermediate_growth_curve.csv names another one.",
         ),
     ),
 )
