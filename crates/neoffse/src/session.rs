@@ -11,6 +11,7 @@ use neoffse_core::{
 
 use crate::error::Error;
 
+mod changes;
 mod save;
 
 pub use save::{Running, Saved};
@@ -23,6 +24,7 @@ pub use save::{Running, Saved};
 /// the recorded changes. The dirty state counts the distance to a clean
 /// point, the state of the files as read. [`Session::discard`] reopens the
 /// document from the bytes read, held in memory, and touches no file.
+/// [`Session::changes`] lists what differs from that clean point.
 ///
 /// `Session` is `Send` and not `Sync`: a caller that shares it across
 /// threads wraps it in a lock.
