@@ -2,7 +2,8 @@
 //!
 //! [`Ff1Model`] maps the lossless [`Document`] of a slot onto the field
 //! vocabulary of [`names`]: characters (name, job, level, experience, HP,
-//! stats, spell charges, five equipment slots, spell slots), the two item
+//! stats, spell charges, five equipment slots, spell slots, and the two
+//! computed read-only fields `max_hp` and `next_level`), the two item
 //! lists and gil (`docs/formats/pixel-remaster.md#characters`,
 //! `docs/formats/pixel-remaster.md#equipment-slots`,
 //! `docs/formats/pixel-remaster.md#inventory`). A read finds a character by
@@ -19,7 +20,7 @@
 //!   bounds. `CapPolicy::StorageOnly` is the expert mode of an app.
 //! - [`Ff1Model::apply_game`] edits the way the game would. It enforces caps
 //!   and tables, expands an equipment `Set` into the slot, the inventory row
-//!   and the slot count, refuses the edits the game never makes, and returns a
+//!   and the slot count, sets Level and Experience together, refuses the edits the game never makes, and returns a
 //!   `GameChange`. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
 //!   the rows and fields it refuses whatever the value. A spell slot is read
 //!   only in both interfaces.
@@ -59,8 +60,10 @@
 
 mod apply;
 mod binding;
+mod derived;
 mod format;
 mod game;
+mod level;
 mod lists;
 mod locate;
 mod meta;
@@ -143,16 +146,26 @@ impl Ff1Model {
         row_keys(&mut self.document, kind).map_err(|source| format_error(collection, source))
     }
 
-    /// The value of `field`.
+    /// The value of `field`. `max_hp` and `next_level` are computed from the
+    /// document and the tables: the base HP of the character's status row plus
+    /// the stored gain, held to the `MAX_HP` cap, and the experience still
+    /// needed for the next level, read from `currentExp` alone.
     ///
     /// # Errors
     ///
-    /// `UnknownField` for an undeclared path or a dictionary without the key,
+    /// `UnknownField` for an undeclared path, a dictionary without the key, a
+    /// computed field whose key or table row is missing (and `next_level` at
+    /// level 99 or with a negative experience),
     /// `MissingRow` for an absent character or item, `Format` when the
     /// document holds another shape: a float or an oversized integer where
     /// an integer belongs, a non-string name.
     pub fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
         let binding = Binding::resolve(field)?;
+        if let Binding::Character { id, part } = binding
+            && binding.is_derived()
+        {
+            return derived::value(&mut self.document, self.tables, id, part, field);
+        }
         let path = locate(&mut self.document, &binding, field)?;
         let read = if binding.is_text() {
             read_text(&mut self.document, &path).map(Value::Text)

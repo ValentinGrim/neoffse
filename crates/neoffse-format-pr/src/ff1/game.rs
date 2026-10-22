@@ -6,7 +6,9 @@
 //! in the inventory with a count of at least its wearers, a slot `count`
 //! copies the inventory count, the placeholder rows stay alone, and a key item
 //! keeps a `count` of 1. A `Set` of an equipment slot expands into plain
-//! edits; every other edit passes as one.
+//! edits, and so does a `Set` of Level or Experience, which each move the
+//! other (`docs/formats/pixel-remaster.md#level-up-in-ff-i`); every other
+//! edit passes as one.
 
 use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FieldMeta, GameChange, RowId, Shape, Value};
 
@@ -55,7 +57,12 @@ impl Ff1Model {
     /// the placeholder of the slot is the unequip: the first and third steps
     /// only, the slot `count` copies the count of the placeholder row (omitted
     /// when the row is absent), and the item that left stays in the inventory.
-    /// Every other edit is one plain edit.
+    /// A `Set` of a level or an experience also sets the other: the level
+    /// that experience reaches, or the first experience point of that level
+    /// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`). The linked step is
+    /// left out when the stored value already matches, a level 0 is
+    /// `OutOfRange` with `min` 1, and raw [`apply`](Self::apply) links
+    /// nothing. Every other edit is one plain edit.
     ///
     /// The plan applies all or none: a failure at any step gives the document
     /// back byte for byte.
@@ -82,9 +89,9 @@ impl Ff1Model {
     }
 
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
-    /// value: a spell slot, the `count` of an equipment slot, the `count` of a placeholder
-    /// row of `inventory`, present in the list or not, and the `count` of any
-    /// key item (the game holds one of each). A count that only refuses values
+    /// value: a computed field (`max_hp`, `next_level`), a spell slot, the
+    /// `count` of an equipment slot, the `count` of a placeholder row of
+    /// `inventory`, present in the list or not, and the `count` of any key item (the game holds one of each). A count that only refuses values
     /// below the wearers is unlocked.
     ///
     /// It resolves the field and reads the tables, not the document.
@@ -95,7 +102,7 @@ impl Ff1Model {
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
             Binding::Character {
-                part: Part::SlotCount(_) | Part::Spell { .. },
+                part: Part::SlotCount(_) | Part::Spell { .. } | Part::MaxHp | Part::NextLevel,
                 ..
             } => true,
             Binding::Count { list, key } => list == List::KeyItems || self.is_placeholder(list, key),
@@ -154,6 +161,8 @@ impl Ff1Model {
                 check_floor(field, number, worn, &field_meta)?;
                 Ok(vec![edit.clone()])
             }
+            Binding::Character { id, part: Part::Level } => self.level_plan(id, number),
+            Binding::Character { id, part: Part::Exp } => self.exp_plan(id, number),
             Binding::Character { part: Part::Slot(_), .. } => match u32::try_from(number) {
                 Ok(content_id) => self.equip_plan(field, content_id),
                 Err(_) => Ok(vec![edit.clone()]),

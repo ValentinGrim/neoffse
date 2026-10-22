@@ -72,8 +72,13 @@ fn every_private_slot_builds_its_cards() {
                 assert_eq!(*shown, page_text, "private slot {opened}: card {index} charges, level {}", level + 1);
             }
             assert_eq!(card.job, on_page(page, "Job").shown, "private slot {opened}: card {index} job");
-            assert_eq!(card.hp_max, "", "private slot {opened}: card {index} hp-max");
-            assert_eq!(card.next_exp, "", "private slot {opened}: card {index} next-exp");
+            assert_ne!(card.hp_max.as_str(), "", "private slot {opened}: card {index} has no Max HP");
+            assert_eq!(card.hp_max, on_page(page, "Max HP").text, "private slot {opened}: card {index} Max HP");
+            let next = fields(page)
+                .into_iter()
+                .find(|row| row.label == "Next level")
+                .map_or_else(String::new, |row| row.text.to_string());
+            assert_eq!(card.next_exp.as_str(), next, "private slot {opened}: card {index} Next level");
         }
         let gil = field(&data, Part::Inventory, "Gil", "Gil").text;
         assert_eq!(built.gil, gil, "private slot {opened}: gil");

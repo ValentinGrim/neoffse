@@ -33,7 +33,8 @@ fn character_label(id: u32, fields: &[FieldView]) -> String {
 
 impl Ff1Model {
     /// A snapshot of the slot: a Party section with one entity per character
-    /// in document order, an Inventory section with the gil entity, the rows
+    /// in document order (41 fields each, `names::party_fields`: the 39 stored
+    /// fields plus the computed `max_hp` and `next_level`), an Inventory section with the gil entity, the rows
     /// of `inventory` and the rows of `key_items`, then a Magic section with
     /// one entity per character in the same order. A Magic entity holds the
     /// read-only spell slots of its character (`names::spell_fields`) and its
@@ -78,7 +79,7 @@ impl Ff1Model {
         for id in self.rows_of(&character)? {
             let entity_id = character.clone().with_id(id);
             let mut fields = Vec::new();
-            for field in names::character_fields(id) {
+            for field in names::party_fields(id) {
                 fields.extend(self.field_view(field)?);
             }
             let label = character_label(id, &fields);

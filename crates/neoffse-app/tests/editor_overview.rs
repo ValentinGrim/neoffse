@@ -92,18 +92,6 @@ fn the_spell_levels_come_in_order() {
 }
 
 #[test]
-fn hp_max_and_next_level_stay_empty() {
-    // This test names the open data task: it fails on purpose when the
-    // maximum HP and the experience table land, and its author changes it.
-    let site = editing_site();
-    let ed = editing(&site);
-    for card in cards(&ed) {
-        assert_eq!(card.hp_max, "");
-        assert_eq!(card.next_exp, "");
-    }
-}
-
-#[test]
 fn the_initial_is_the_first_letter() {
     let site = editing_site();
     let ed = editing(&site);

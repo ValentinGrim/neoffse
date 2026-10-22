@@ -17,6 +17,7 @@ const FF1: Sources<'static> = Sources {
     commands: include_str!("../../../data/pr/ff1/commands.toml"),
     monsters: include_str!("../../../data/pr/ff1/monsters.toml"),
     bounds: include_str!("../../../data/pr/ff1/bounds.toml"),
+    growth: include_str!("../../../data/pr/ff1/growth.toml"),
 };
 
 static FF1_TABLES: OnceLock<GameTables> = OnceLock::new();

@@ -8,7 +8,7 @@
 //! `maps` table yet.
 //!
 //! [`tables_for`] gives the parsed tables of a game, [`GameTables::parse`]
-//! parses any six texts, and callers look entries up by [`TableKind`] and id.
+//! parses any seven texts, and callers look entries up by [`TableKind`] and id.
 //! Names repeat inside a table, so an id is the only key. The role of the
 //! crate among the others is in `docs/architecture.md#crate-roles`.
 //!
@@ -17,13 +17,15 @@
 //! 0 to 8 and its `content_id` is not 0, `placeholder` appears only as `true`,
 //! only on an equipment kind and once per kind, and every cap key starts with
 //! `MAX_` and holds no negative value. A row that breaks a value rule gives
-//! [`DataError::Rule`].
+//! [`DataError::Rule`]. `growth.toml` has its own rules: status ids rise from 1,
+//! experience levels run 1, 2, ... without a gap, `total_exp` rises strictly,
+//! and neither array is empty.
 //!
 //! - [`embedded`]: the tables the crate ships, [`sources_for`] and [`tables_for`].
 //! - [`entry`]: the rows of a table, [`Entry`], its [`AbilityInfo`] and
 //!   [`AbilityKind`] for an ability row, and the [`Language`] of a name.
 //! - [`error`]: [`DataError`], why a set of texts failed to parse.
-//! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the six texts that build them.
+//! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the seven texts that build them.
 //!
 //! ```
 //! use neoffse_core::{Game, TableKind};
@@ -33,6 +35,8 @@
 //! let potion = tables.entry(TableKind::Item, 2).ok_or("no item 2")?;
 //! assert_eq!(potion.name(Language::En), "Potion");
 //! assert_eq!(tables.bound("MAX_GIL"), Some(999_999));
+//! assert_eq!(tables.base_hp(1), Some(35));
+//! assert_eq!(tables.exp_to_reach(2), Some(14));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
@@ -41,6 +45,7 @@
 pub mod embedded;
 pub mod entry;
 pub mod error;
+mod growth;
 mod parse;
 pub mod tables;
 

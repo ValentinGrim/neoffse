@@ -106,6 +106,10 @@ pub(super) enum Part {
     Exp,
     Hp,
     MaxHpGain,
+    /// Computed from the status table, read only.
+    MaxHp,
+    /// Computed from the experience table, read only.
+    NextLevel,
     Stat(Stat),
     /// `currentMpCountList`, spell level 1 to 8.
     Charges(u32),
@@ -161,6 +165,17 @@ impl Binding {
         matches!(self, Self::Character { part: Part::Spell { .. }, .. })
     }
 
+    /// True for a computed field, which has no document path.
+    pub(super) fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            Self::Character {
+                part: Part::MaxHp | Part::NextLevel,
+                ..
+            }
+        )
+    }
+
     /// True for the one text field, `name`.
     pub(super) fn is_text(&self) -> bool {
         matches!(self, Self::Character { part: Part::Name, .. })
@@ -179,6 +194,8 @@ impl Part {
             [Key::Name(names::EXP)] => Some(Self::Exp),
             [Key::Name(names::HP)] => Some(Self::Hp),
             [Key::Name(names::MAX_HP_GAIN)] => Some(Self::MaxHpGain),
+            [Key::Name(names::MAX_HP)] => Some(Self::MaxHp),
+            [Key::Name(names::NEXT_LEVEL)] => Some(Self::NextLevel),
             [Key::Name(names::POWER)] => Some(Self::Stat(Stat::Power)),
             [Key::Name(names::VITALITY)] => Some(Self::Stat(Stat::Vitality)),
             [Key::Name(names::AGILITY)] => Some(Self::Stat(Stat::Agility)),

@@ -70,7 +70,7 @@ def _value(key: str, value: str | int | bool) -> str:
     return toml_string(value)
 
 
-def render_array(header: Sequence[str], array: str, rows: Sequence[Row]) -> str:
+def _entries(array: str, rows: Sequence[Row]) -> str:
     if not rows:
         raise ExportError(f"array {array} has no row")
     if not _FIELD_KEY.fullmatch(array):
@@ -83,7 +83,18 @@ def render_array(header: Sequence[str], array: str, rows: Sequence[Row]) -> str:
                 raise ExportError(f"field key {key!r} is not lower-case snake case")
             lines.append(f"{key} = {_value(key, value)}")
         entries.append("\n".join(lines))
-    return _comment_block(header) + "\n\n".join(entries) + "\n"
+    return "\n\n".join(entries)
+
+
+def render_array(header: Sequence[str], array: str, rows: Sequence[Row]) -> str:
+    return _comment_block(header) + _entries(array, rows) + "\n"
+
+
+def render_arrays(header: Sequence[str], arrays: Sequence[tuple[str, Sequence[Row]]]) -> str:
+    """Several arrays in one file, in the given order, one blank line between entries."""
+    if not arrays:
+        raise ExportError("no array to render")
+    return _comment_block(header) + "\n\n".join(_entries(a, r) for a, r in arrays) + "\n"
 
 
 def render_table(header: Sequence[str], table: str, values: Mapping[str, int]) -> str:
