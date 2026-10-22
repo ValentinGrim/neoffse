@@ -158,12 +158,12 @@ def _render_all(
     text = render_table(header, "bounds", values)
     check_roundtrip(text, {"bounds": values})
     outputs.append(_Output(game.bounds.file, text, len(values), []))
-    status, exp = build_growth(game.growth, csvs)
+    tables = build_growth(game.growth, csvs)
     header = file_header(game, game.growth.file, prov, game.growth.notes)
-    expected = {"character_status": status, "exp_table": exp}
-    text = render_arrays(header, list(expected.items()))
-    check_roundtrip(text, expected)
-    outputs.append(_Output(game.growth.file, text, len(status) + len(exp), []))
+    text = render_arrays(header, list(tables.items()))
+    check_roundtrip(text, tables)
+    count = sum(1 if isinstance(rows, dict) else len(rows) for rows in tables.values())
+    outputs.append(_Output(game.growth.file, text, count, []))
     return outputs
 
 

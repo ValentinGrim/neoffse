@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
-"""Build the base HP and experience rows of growth.toml.
+"""Build the rows of growth.toml.
 
-The rules come from docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables:
-one experience curve, levels 1 to N without a gap, total experience rising
-strictly from 0 at level 1.
+The rules for base HP and experience come from
+docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables: one
+experience curve, levels 1 to N without a gap, total experience rising
+strictly from 0 at level 1. curve.py holds the job and growth rows.
 """
 
 from . import ExportError
 from .build import Csvs, Row, _index, _int
+from .curve import build_curve
 from .tables import GrowthSpec
 
 
@@ -20,7 +22,14 @@ def _status_rows(spec: GrowthSpec, csvs: Csvs) -> list[Row]:
         if row_id < 1:
             raise ExportError(f"{spec.status_csv}: id {row_id} is below 1")
         where = f"{spec.status_csv}, id {row_id}"
-        rows.append({"id": row_id, "hp": _int(indexed[row_id], "hp", where=where)})
+        row = indexed[row_id]
+        rows.append(
+            {
+                "id": row_id,
+                "hp": _int(row, "hp", where=where),
+                "vitality": _int(row, "vitality", where=where),
+            }
+        )
     return rows
 
 
@@ -72,6 +81,15 @@ def _exp_rows(spec: GrowthSpec, csvs: Csvs) -> list[Row]:
     return [{"lv": level, "total_exp": totals[level]} for level in levels]
 
 
-def build_growth(spec: GrowthSpec, csvs: Csvs) -> tuple[list[Row], list[Row]]:
-    """The `character_status` rows, then the `exp_table` rows."""
-    return _status_rows(spec, csvs), _exp_rows(spec, csvs)
+def build_growth(spec: GrowthSpec, csvs: Csvs) -> dict[str, list[Row] | Row]:
+    """The sections of growth.toml by name, in file order.
+
+    exp_table is one table whose total_exp list is indexed by level - 1."""
+    exp = _exp_rows(spec, csvs)
+    jobs, steps = build_curve(spec, csvs, int(exp[-1]["lv"]))
+    return {
+        "character_status": _status_rows(spec, csvs),
+        "exp_table": {"total_exp": [int(row["total_exp"]) for row in exp]},
+        "intermediate_growth_curve": jobs,
+        "growth_curve": steps,
+    }
