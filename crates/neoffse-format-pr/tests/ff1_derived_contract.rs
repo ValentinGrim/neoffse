@@ -157,13 +157,11 @@ fn an_edit_moves_the_computed_values() {
 
     let top = model.apply_game(&set(1, names::EXP, 1_471_455)).unwrap();
     assert_eq!(shown(&mut model, 1, names::NEXT_LEVEL), None);
-    assert_eq!(
-        diff(&text, &model.document().to_json()),
-        [
-            value(&format!("{CHARACTER_PATH}[0].currentExp")),
-            value(&format!("{CHARACTER_PATH}[0].parameter.addtionalLevel"))
-        ]
-    );
+    // The 68 levels gained also grow the stats (`ff1_levelup.rs` holds the values).
+    let changes = diff(&text, &model.document().to_json());
+    assert!(changes.contains(&value(&format!("{CHARACTER_PATH}[0].currentExp"))));
+    assert!(changes.contains(&value(&format!("{CHARACTER_PATH}[0].parameter.addtionalLevel"))));
+    assert!(changes.len() > 2, "the growth edits are in the diff");
     run(&mut model, &top.inverse);
     assert_eq!(shown(&mut model, 1, names::NEXT_LEVEL), Some(3711));
     assert_eq!(model.document().to_json(), text);

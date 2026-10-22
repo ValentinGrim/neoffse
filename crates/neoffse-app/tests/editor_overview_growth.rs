@@ -123,7 +123,9 @@ fn level_99_empties_next_exp() {
     let aria = &cards(&ed)[0];
     assert_eq!(aria.level, "99");
     assert_eq!(aria.next_exp, "");
-    assert_eq!(aria.hp_max, "446");
+    // The 68 levels gained add at least 10 HP each: 35 + 411 + 680 passes the
+    // cap, so the card shows MAX_HP whatever the draws.
+    assert_eq!(aria.hp_max, "999");
     let labels = labels(&ed, "Aria");
     assert_eq!(labels.len(), 42);
     assert!(!labels.iter().any(|label| label == "Next level"));

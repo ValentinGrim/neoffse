@@ -46,6 +46,9 @@ pub(crate) struct Case {
     pub linked: Option<Proof>,
     /// Also run through `apply` under `Enforce`.
     pub raw: bool,
+    /// Run through `How::Rolled`, with the growth edits in `proof`, and not
+    /// through `apply`.
+    pub rolled: bool,
 }
 
 pub(crate) struct Built {
@@ -61,6 +64,7 @@ pub(super) fn case(name: &'static str, edits: Vec<Edit>, proof: Proof) -> Case {
         proof,
         linked: None,
         raw: true,
+        rolled: false,
     }
 }
 
@@ -86,8 +90,12 @@ pub(super) fn nudged(facts: &Facts<'_>, name: &'static str, field: FieldId, min:
 }
 
 /// The level nudge. Under `apply_game` the experience also moves to the first
-/// point of the new level, unless it already sits there.
+/// point of the new level, unless it already sits there. A level 1 would nudge
+/// up and grow stats: `level_up` covers that case.
 fn level(facts: &Facts<'_>) -> Option<Case> {
+    if facts.int(&facts.field(names::LEVEL))? <= 1 {
+        return None;
+    }
     let path = format!("{}.parameter.addtionalLevel", facts.char_path);
     let mut case = nudged(facts, "level", facts.field(names::LEVEL), 1, path)?;
     let Some(Edit::Set { value: Value::Int(new), .. }) = case.edits.first() else {
@@ -205,6 +213,7 @@ fn compose(parts: &[Option<&Case>]) -> Option<Case> {
         },
         linked: None,
         raw: true,
+        rolled: false,
     };
     let mut linked = joined.proof.clone();
     for part in parts {
@@ -231,6 +240,7 @@ pub(crate) fn build(subject: &Subject) -> Built {
     let mut singles = vec![
         ("gil", nudged(&facts, "gil", gil, 0, "userData.owendGil".to_owned())),
         ("level", level(&facts)),
+        ("level_up", super::exit_growth::level_up(&facts)),
         ("stat", nudged(&facts, "stat", facts.field(names::POWER), 0, parameter("addtionalPower"))),
         ("job", job(&facts)),
         ("name", rename(&facts)),
@@ -266,9 +276,11 @@ pub(crate) fn build(subject: &Subject) -> Built {
     built
 }
 
-/// `prove` with `How::Game`, then with `How::Raw` when the case allows it.
+/// `prove` with `How::Game` (`How::Rolled` for a growth case), then with
+/// `How::Raw` when the case allows it.
 pub(crate) fn run(subject: &Subject, case: &Case) {
-    prove(subject, case.name, &case.edits, How::Game, case.linked.as_ref().unwrap_or(&case.proof));
+    let how = if case.rolled { How::Rolled } else { How::Game };
+    prove(subject, case.name, &case.edits, how, case.linked.as_ref().unwrap_or(&case.proof));
     if case.raw {
         prove(subject, case.name, &case.edits, How::Raw, &case.proof);
     }

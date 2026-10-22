@@ -21,12 +21,16 @@ use super::edit_view::{mismatch, raises_worn_count};
 use super::ff1_rules::violations;
 use super::json_diff::{Change, assert_changes_with, diff_trees, layout_chain};
 use super::json_tree::Tree;
+use super::rolls::Script;
 
 /// The interface an edit goes through: `apply_game`, or `apply` under `Enforce`
 /// (`apply_all` when a case holds several edits, to cover that override).
+/// `Rolled` replays the forward set of `Ff1Model::apply_game_with` (every roll
+/// fails) on the boxed document under `StorageOnly`, as a `Session` redo does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum How {
     Game,
+    Rolled,
     Raw,
 }
 
@@ -62,7 +66,7 @@ struct Pair {
 /// 7. Undo on the edited document and check the original text returns.
 /// 8. Redo and check the encoding equals the one of step 3.
 /// 9. Undo on the reopened document and check the original text returns.
-/// 10. For `How::Game`, check the edited slot against the game rules.
+/// 10. Unless `How::Raw`, check the edited slot against the game rules.
 ///
 /// # Panics
 ///
@@ -91,7 +95,7 @@ pub(crate) fn prove(subject: &Subject, case: &str, edits: &[Edit], how: How, pro
     }
     run.undo(&mut *reopened, &pairs, "undo after reopen");
     run.expect_restored(&*reopened, "undo after reopen differs");
-    if how == How::Game {
+    if how != How::Raw {
         run.check_rules(&decoded.json, &before);
     }
 }
@@ -130,6 +134,7 @@ impl Run<'_> {
     /// Step 2: applies the edits. A `Raw` run with several edits goes through one `apply_all`.
     fn apply(&self, document: &mut dyn SaveDocument, edits: &[Edit], how: How) -> Vec<Pair> {
         match (how, edits) {
+            (How::Rolled, _) => self.rolled(document, edits),
             (How::Game, _) => edits
                 .iter()
                 .enumerate()
@@ -156,6 +161,31 @@ impl Run<'_> {
                 }
             }
         }
+    }
+
+    /// `How::Rolled`: the forward set comes from a model over the subject's
+    /// text, one edit after the other, and the boxed document replays it.
+    fn rolled(&self, document: &mut dyn SaveDocument, edits: &[Edit]) -> Vec<Pair> {
+        let Some(tables) = neoffse_data::tables_for(GAME) else {
+            self.fail("no FF I tables")
+        };
+        let Ok(parsed) = Document::parse(&self.subject.json) else {
+            self.fail("the document layer refuses the text")
+        };
+        let mut model = Ff1Model::new(parsed, tables);
+        let mut rolls = Script::fixed(false, 20);
+        let mut pairs = Vec::new();
+        for (index, edit) in edits.iter().enumerate() {
+            let change = model.apply_game_with(edit, &mut rolls).unwrap_or_else(|error| self.refused(index, &error));
+            let inverse = document
+                .apply_all(&change.forward, CapPolicy::StorageOnly)
+                .unwrap_or_else(|error| self.refused(index, &error));
+            pairs.push(Pair {
+                forward: change.forward,
+                inverse,
+            });
+        }
+        pairs
     }
 
     /// The file bytes of `document` through the independent decode.

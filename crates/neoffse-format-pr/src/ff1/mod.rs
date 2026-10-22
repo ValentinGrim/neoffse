@@ -22,7 +22,10 @@
 //! - [`Ff1Model::apply_game`] edits the way the game would. It enforces caps
 //!   and tables, expands an equipment `Set` into the slot, the inventory row
 //!   and the slot count, sets Level and Experience together, refuses the edits the game never makes, and returns a
-//!   `GameChange`. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
+//!   `GameChange`. A rise of the level also applies the growth step of each
+//!   level gained, with random draws from [`Rolls`]: [`Ff1Model::apply_game`]
+//!   uses [`ThreadRolls`] and [`Ff1Model::apply_game_with`] takes a source of
+//!   the caller. [`Ff1Model::row_locked`] and [`Ff1Model::field_locked`] name
 //!   the rows and fields it refuses whatever the value. A spell slot is read
 //!   only in both interfaces.
 //!
@@ -64,6 +67,7 @@ mod binding;
 mod derived;
 mod format;
 mod game;
+mod growth;
 mod level;
 mod lists;
 mod locate;

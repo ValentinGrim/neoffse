@@ -9,6 +9,11 @@
 //! `docs/formats/pixel-remaster.md#inventory`. A spell slot is
 //! `character.<id>.spell.<level>.<slot>`
 //! (`docs/formats/pixel-remaster.md#abilities`, "FF I spell slots").
+//!
+//! Under the game interface a rise of [`LEVEL`] or [`EXP`] to a higher level
+//! also moves [`MAX_HP_GAIN`], the seven stats, [`ACCURACY_GAIN`],
+//! [`MAGIC_EVASION_GAIN`] and [`CHARGES_MAX_GAIN`], one growth step per level
+//! gained (`docs/formats/pixel-remaster.md#level-up-in-ff-i`).
 
 use neoffse_core::{FieldId, Key};
 
