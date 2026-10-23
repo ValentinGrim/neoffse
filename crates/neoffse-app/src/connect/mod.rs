@@ -10,6 +10,7 @@ pub mod editor;
 pub mod guard;
 pub mod history;
 pub mod review;
+pub mod save;
 
 use std::fmt;
 use std::sync::Arc;
@@ -135,9 +136,14 @@ pub fn connect_home(window: &MainWindow, app: &App) {
     start_scan(&weak, app);
 }
 
-/// Leaves the editor for Home. A dirty session asks first: the discard dialog
-/// opens and the editor stays until the user decides.
+/// Leaves the editor for Home. Nothing happens while a save or a reload runs.
+/// A dirty session asks first: the discard dialog opens and the editor stays
+/// until the user decides.
 fn go_home(window: &MainWindow, app: &App) {
+    // A save or a reload runs: the worker may hold the session.
+    if window.global::<EditorBridge>().get_working() {
+        return;
+    }
     if app.editor.leave(Leave::Back) == LeaveAnswer::Left {
         window.set_editor_open(false);
         sync_expert(window, app);

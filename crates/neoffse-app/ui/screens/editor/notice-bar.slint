@@ -2,12 +2,13 @@ import { EditorBridge } from "bridge.slint";
 import { NoticeStrip } from "../../widgets/notice.slint";
 import { NoticeText } from "../../widgets/text.slint";
 
-// The notice bar of the editor: the sentence for the last refused edit, and
-// the switch to expert mode when the refusal was a game limit.
+// The notice bar of the editor: the sentence for the last refused edit or
+// outcome, and the switch to expert mode when the refusal was a game limit.
 export component NoticeBar inherits NoticeStrip {
     text: NoticeText.sentence(EditorBridge.notice);
     offer-text: EditorBridge.offer-expert ? @tr("Switch to expert mode") : "";
     enabled: !EditorBridge.blocked;
+    info: NoticeText.is-info(EditorBridge.notice);
     offer-clicked => { EditorBridge.expert-toggle-requested(); }
     dismissed => { EditorBridge.notice-dismissed(); }
 }

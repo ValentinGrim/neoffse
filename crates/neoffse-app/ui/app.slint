@@ -184,4 +184,40 @@ export component MainWindow inherits Window {
         cancelled => { EditorBridge.review-cancelled(); }
         saved => { EditorBridge.save-requested(); }
     }
+    if EditorBridge.game-running-open: ModalDialog {
+        title: @tr("Save while the game runs?");
+        message: @tr("The game is running. Saving now may be lost or overwritten. Save anyway?");
+        cancelled => { EditorBridge.save-anyway-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.save-anyway-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Save anyway");
+            primary: true;
+            clicked => { EditorBridge.save-anyway-confirmed(); }
+        }
+    }
+    if EditorBridge.changed-on-disk-open: ModalDialog {
+        title: @tr("The save changed on disk");
+        message: @tr("The file changed on disk since you opened it. Reload it to continue. Reloading drops your unsaved changes.");
+        cancelled => { EditorBridge.reload-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.reload-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Reload");
+            primary: true;
+            clicked => { EditorBridge.reload-confirmed(); }
+        }
+    }
 }

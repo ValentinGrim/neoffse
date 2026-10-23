@@ -9,6 +9,7 @@ mod editor;
 mod keys;
 mod manual;
 mod open;
+mod rig;
 mod site;
 mod slots;
 mod window;
@@ -27,6 +28,7 @@ pub(crate) use editor::{
 };
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes};
+pub(crate) use rig::{Machine, Rig, rig};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
 pub(crate) use window::Ui;

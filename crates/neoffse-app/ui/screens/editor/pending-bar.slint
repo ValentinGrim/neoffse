@@ -13,6 +13,8 @@ export component PendingBar inherits Rectangle {
     in property <bool> can-redo;
     // False while a dialog covers the page or a worker runs.
     in property <bool> enabled: true;
+    // A save runs: the count gives way to a progress word.
+    in property <bool> working: false;
     callback undo();
     callback redo();
     callback review();
@@ -26,7 +28,7 @@ export component PendingBar inherits Rectangle {
         LookText {
             look: root.look;
             horizontal-stretch: 1;
-            text: root.count == 1 ? @tr("1 unsaved change") : @tr("{} unsaved changes", root.count);
+            text: root.working ? @tr("Working...") : root.count == 1 ? @tr("1 unsaved change") : @tr("{} unsaved changes", root.count);
             overflow: elide;
         }
         ThemedButton {
