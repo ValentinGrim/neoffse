@@ -27,6 +27,7 @@ mod generated {
 pub use connect::editor::{connect_editor, refresh_editor};
 pub use connect::guard::{connect_close, connect_expert};
 pub use connect::history::connect_history;
+pub use connect::review::connect_review;
 pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
@@ -73,6 +74,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     connect_home(&main_window, &app);
     connect_editor(&main_window, &app);
     connect_history(&main_window, &app);
+    connect_review(&main_window, &app);
     connect_expert(&main_window, &app);
     connect_close(&main_window, &about, &app);
     main_window.run()

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use neoffse::data::Language;
 use neoffse_app::{
     AboutDialog, App, FilePicker, GameRow, MainWindow, SlotRow, connect_about, connect_close, connect_editor, connect_expert, connect_history, connect_home,
-    new_about_dialog,
+    connect_review, new_about_dialog,
 };
 
 use super::{FixedPicker, Manual, Site, environment, items, registry, slots_of};
@@ -37,6 +37,7 @@ impl Ui {
         connect_home(&window, &app);
         connect_editor(&window, &app);
         connect_history(&window, &app);
+        connect_review(&window, &app);
         connect_expert(&window, &app);
         Self { window, app, manual, picker }
     }

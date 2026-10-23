@@ -3,6 +3,7 @@ import { ThemedButton } from "widgets/controls.slint";
 import { ModalDialog } from "widgets/dialogs.slint";
 import { EditorBridge } from "screens/editor/bridge.slint";
 import { EditorPage } from "screens/editor/editor.slint";
+import { ReviewDialog } from "screens/editor/review.slint";
 import { Fonts } from "theme/fonts.slint";
 import { HomeScreen } from "screens/home/home.slint";
 import { FrameStyle, Look } from "theme/look.slint";
@@ -178,5 +179,9 @@ export component MainWindow inherits Window {
             primary: true;
             clicked => { EditorBridge.discard-confirmed(); }
         }
+    }
+    if EditorBridge.review-open: ReviewDialog {
+        cancelled => { EditorBridge.review-cancelled(); }
+        saved => { EditorBridge.save-requested(); }
     }
 }

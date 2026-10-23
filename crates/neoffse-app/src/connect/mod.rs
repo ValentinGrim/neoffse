@@ -9,6 +9,7 @@
 pub mod editor;
 pub mod guard;
 pub mod history;
+pub mod review;
 
 use std::fmt;
 use std::sync::Arc;
