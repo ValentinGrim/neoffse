@@ -50,3 +50,11 @@ neoffse-testkit = { path = "crates/neoffse-testkit" }
 # bound, and the largest codec test encrypts and decrypts about 16 MiB
 # (`max_text_len_admits_the_worst_case_payload`).
 opt-level = 2
+# Line tables keep the file and line of each backtrace frame. Full debug
+# info made each neoffse-app test binary about 500 MB, and a test run relinks
+# all of them.
+debug = "line-tables-only"
+
+# Dependencies carry no debug info in test builds.
+[profile.test.package."*"]
+debug = false
