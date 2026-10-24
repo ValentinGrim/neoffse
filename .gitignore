@@ -1,5 +1,7 @@
 # Rust (Cargo.lock is committed: the workspace ships binaries)
 target/
+# Machine-local Cargo settings (a tmpfs target-dir on the owner's machine)
+.cargo/
 
 # Claude Code files (CLAUDE.md, agents, agent memory, pipeline state,
 # settings) stay out of the repository.
