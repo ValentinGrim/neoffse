@@ -44,3 +44,11 @@ licence text. Icons are not code and are not ported.
 | Files | Project and author | Source | License | Notice file | Status |
 |---|---|---|---|---|---|
 | `assets/icons/material-symbols/*.svg` | Material Symbols, Google | <https://github.com/google/material-design-icons> | Apache License 2.0, <https://www.apache.org/licenses/LICENSE-2.0> | `assets/icons/material-symbols/LICENSE` | Outlined, weight 300, fill 0, grade 0, 24 px. Redistributed unmodified, file names shortened |
+
+## Portraits
+
+The editor shows one sprite per Final Fantasy I class. The sprites are original drawings, and no graphic from a game served as a model.
+
+| Files | Project and author | Source | License | Notice file | Status |
+|---|---|---|---|---|---|
+| `assets/portraits/ff1-pr/*.png` | NeoFFSE, original sprites | Drawn for the project | CC0 1.0 Universal, <https://creativecommons.org/publicdomain/zero/1.0/> | `assets/portraits/LICENSE` | Original work, public domain dedication |
