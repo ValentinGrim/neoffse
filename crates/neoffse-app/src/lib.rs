@@ -13,6 +13,7 @@ pub mod editor;
 pub mod home;
 pub mod language;
 pub mod picker;
+pub mod restore;
 pub mod state;
 pub mod theme;
 
@@ -33,9 +34,9 @@ pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
 pub use generated::{
-    AboutDialog, CharacterCard, EditNotice, EditProblem, EditorBridge, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow,
-    Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, ReviewKind, ReviewRow, SectionData, Shell, SlotKind,
-    SlotRow, SummaryRow, Theme, ThemeId,
+    AboutDialog, BackupReason, BackupRow, CharacterCard, EditNotice, EditProblem, EditorBridge, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow,
+    FolderOrigin, FolderRow, Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, RestoreBridge, RestoreNotice,
+    RestoreProblem, ReviewKind, ReviewRow, SectionData, Shell, SlotKind, SlotRow, SummaryRow, Theme, ThemeId,
 };
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};

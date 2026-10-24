@@ -3,6 +3,7 @@ import { ThemedButton } from "widgets/controls.slint";
 import { ModalDialog } from "widgets/dialogs.slint";
 import { EditorBridge } from "screens/editor/bridge.slint";
 import { EditorPage } from "screens/editor/editor.slint";
+import { RestoreBridge } from "screens/restore/bridge.slint";
 import { ReviewDialog } from "screens/editor/review.slint";
 import { Fonts } from "theme/fonts.slint";
 import { HomeScreen } from "screens/home/home.slint";
@@ -13,6 +14,8 @@ import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, Summa
 
 export { CharacterCard, EditNotice, EditProblem, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow, ItemList, ItemRow, Overview, PickerEntry, ReviewKind, ReviewRow, SectionData } from "types/editor.slint";
 export { EditorBridge } from "screens/editor/bridge.slint";
+export { RestoreBridge } from "screens/restore/bridge.slint";
+export { BackupReason, BackupRow, RestoreNotice, RestoreProblem } from "types/restore.slint";
 // Exported so the font imports enter the compiled document and a test reads the family names.
 export { Fonts }
 // The looks: `Theme` follows the open save's game, `Shell` is the app's own.
@@ -85,6 +88,9 @@ export component MainWindow inherits Window {
     callback back-requested();
     callback home-requested();
     callback problem-dismissed();
+    in property <bool> restore-open;
+    callback restore-menu-requested();
+    callback backups-requested(string);
 
     title: @tr("NeoFFSE");
     preferred-width: 800px;

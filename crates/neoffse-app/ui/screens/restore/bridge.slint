@@ -1,0 +1,28 @@
+import { EditorBridge } from "../editor/bridge.slint";
+import { BackupRow, RestoreNotice } from "../../types/restore.slint";
+
+// The state and the callbacks of the Restore page. Rust fills it through
+// `window.global::<RestoreBridge>()`.
+export global RestoreBridge {
+    in property <string> game-title;
+    in property <[BackupRow]> rows;
+    in property <int> unreadable-count;
+    in property <bool> has-notice;
+    in property <RestoreNotice> notice;
+    // The date of the backup the confirmation names; "" when it did not parse.
+    in property <string> pending-stamp;
+    in property <bool> confirm-open;
+    in property <bool> game-running-open;
+    // A restore (and the reopen that follows it) runs on a worker.
+    in property <bool> working;
+    // A dialog covers the page, or a worker runs: the controls stop taking input.
+    out property <bool> blocked: root.confirm-open || root.game-running-open || root.working || EditorBridge.blocked;
+
+    callback back-requested();
+    callback restore-requested(int);
+    callback restore-confirmed();
+    callback restore-cancelled();
+    callback restore-anyway-confirmed();
+    callback restore-anyway-cancelled();
+    callback notice-dismissed();
+}
