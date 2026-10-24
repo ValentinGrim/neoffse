@@ -93,8 +93,10 @@ pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
             window.set_editor_open(false);
             refresh_home(window, app);
         }
+        // The restore starts from here once the open-session step exists.
+        Leave::Restore => {}
         // The session is gone, so the close handler takes the clean path.
-        _ => window.window().dispatch_event(slint::platform::WindowEvent::CloseRequested),
+        Leave::Close => window.window().dispatch_event(slint::platform::WindowEvent::CloseRequested),
     }
 }
 

@@ -14,6 +14,10 @@ pub enum Leave {
     Back,
     /// The window closes.
     Close,
+    /// A restore will replace the open file. Raise it with
+    /// [`EditorViewModel::request_discard`]: `leave` closes a clean session,
+    /// which a restore must not do before it succeeds.
+    Restore,
 }
 
 /// What a leave request needs next.
@@ -30,6 +34,8 @@ impl EditorViewModel {
     /// Leaves now when the session is clean or absent: closes it, turns
     /// expert mode off and answers `Left`. Otherwise remembers `why` and
     /// answers `Ask`. A second request while one waits replaces the first.
+    /// `Leave::Restore` behaves like `Close` here; raise a restore through
+    /// [`request_discard`](Self::request_discard) instead.
     #[must_use]
     pub fn leave(&self, why: Leave) -> LeaveAnswer {
         if self.is_dirty() {
@@ -42,13 +48,22 @@ impl EditorViewModel {
         }
     }
 
-    /// The user chose Discard: closes the session, turns expert mode off and
-    /// returns the remembered reason. `None` when no request was pending; the
-    /// session then stays.
+    /// Remembers `why` as the pending request and closes nothing. The caller
+    /// opens the discard dialog. A second request replaces the first.
+    pub fn request_discard(&self, why: Leave) {
+        *self.pending() = Some(why);
+    }
+
+    /// The user chose Discard: returns the remembered reason. For `Back` and
+    /// `Close` it also closes the session and turns expert mode off; for
+    /// `Restore` the session stays open until the restore has replaced its
+    /// file. `None` when no request was pending; the session then stays.
     #[must_use]
     pub fn confirm_discard(&self) -> Option<Leave> {
         let why = self.pending().take()?;
-        self.back();
+        if why != Leave::Restore {
+            self.back();
+        }
         Some(why)
     }
 

@@ -40,6 +40,7 @@ pub use generated::{
 };
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
+pub use restore::{RestoreOutcome, RestoreViewModel};
 use std::sync::Arc;
 pub use theme::{sync_theme, theme_for};
 
