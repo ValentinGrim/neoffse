@@ -7,6 +7,7 @@
     reason = "Slint's tree (winit, wayland, objc2, windows-sys, rustix, hashbrown, thiserror, tiny-skia and others) resolves several crates at more than one version; the workspace cannot unify them"
 )]
 
+pub mod assets;
 pub mod connect;
 pub mod dispatch;
 pub mod editor;
@@ -25,6 +26,7 @@ mod generated {
     slint::include_modules!();
 }
 
+pub use assets::{AssetProvider, OriginalSprites, PortraitClass, ProviderChain, default_provider};
 pub use connect::editor::{connect_editor, refresh_editor};
 pub use connect::guard::{connect_close, connect_expert};
 pub use connect::history::connect_history;
