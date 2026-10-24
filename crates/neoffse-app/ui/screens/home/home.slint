@@ -5,7 +5,8 @@ import { Icons } from "../../theme/icons.slint";
 import { NoticeStrip } from "../../widgets/notice.slint";
 import { Shell } from "../../theme/shell.slint";
 import { ShellText, ShellTitle } from "../../widgets/shell-text.slint";
-import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotRow } from "../../types/home.slint";
+import { FolderRow, GameRow, OpenProblem, SlotRow } from "../../types/home.slint";
+import { HomeText } from "text.slint";
 import { SlotText, SummaryLines } from "../../widgets/text.slint";
 
 // One slot as a card: its name and its summary, and a click, Enter or Space
@@ -128,18 +129,8 @@ component FolderBlock inherits VerticalLayout {
     in property <bool> busy;
     callback clicked(int);
 
-    pure function origin-text(origin: FolderOrigin) -> string {
-        if origin == FolderOrigin.steam-proton {
-            return @tr("Steam (Proton)");
-        }
-        if origin == FolderOrigin.documents {
-            return @tr("Documents");
-        }
-        return @tr("Other location");
-    }
-
     ShellText {
-        text: root.folder.account > 0 ? @tr("{}, account {}", origin-text(root.folder.origin), root.folder.account) : origin-text(root.folder.origin);
+        text: root.folder.account > 0 ? @tr("{}, account {}", HomeText.origin(root.folder.origin), root.folder.account) : HomeText.origin(root.folder.origin);
         color: Shell.look.muted;
         font-size: Shell.look.font-small;
         font-italic: true;
@@ -162,6 +153,7 @@ component GameBlock inherits Rectangle {
     in property <GameRow> game;
     in property <bool> busy;
     callback clicked(int);
+    callback backups(string);
 
     background: Shell.look.panel-fill;
     border-width: Shell.look.frame-width;
@@ -174,10 +166,21 @@ component GameBlock inherits Rectangle {
         padding: Shell.look.padding;
         spacing: 4px;
 
-        ShellTitle {
-            text: root.game.title;
-            color: root.game.supported ? Shell.look.text : Shell.look.muted;
-            overflow: elide;
+        HorizontalLayout {
+            spacing: Shell.look.spacing;
+            ShellTitle {
+                horizontal-stretch: 1;
+                text: root.game.title;
+                color: root.game.supported ? Shell.look.text : Shell.look.muted;
+                overflow: elide;
+            }
+            ThemedButton {
+                look: Shell.look;
+                text: @tr("Backups");
+                accessible-name: @tr("Backups of {}", root.game.title);
+                enabled: !root.busy;
+                clicked => { root.backups(root.game.id); }
+            }
         }
         Rectangle {
             height: Shell.look.frame-width;
@@ -220,6 +223,7 @@ export component HomeScreen inherits VerticalLayout {
     callback rescan-requested();
     callback open-file-requested();
     callback slot-clicked(int);
+    callback backups-requested(string);
     callback problem-dismissed();
 
     padding: Shell.look.padding;
@@ -283,6 +287,7 @@ export component HomeScreen inherits VerticalLayout {
                 game: game;
                 busy: root.busy;
                 clicked(key) => { root.slot-clicked(key); }
+                backups(id) => { root.backups-requested(id); }
             }
             // Takes the spare height of a short list, so no panel stretches.
             Rectangle {

@@ -1,7 +1,7 @@
-//! The Home screen from the keyboard: Tab reaches the toolbar and then the
-//! slot rows, and Enter or Space opens the focused slot. Key events go through
-//! `Window::dispatch_event` on Slint's testing backend. No window shows and no
-//! event loop runs.
+//! The Home screen from the keyboard: Tab reaches the toolbar, the Backups
+//! button of the game group and then the slot rows, and Enter or Space opens
+//! the focused slot. Key events go through `Window::dispatch_event` on Slint's
+//! testing backend. No window shows and no event loop runs.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
@@ -28,8 +28,9 @@ fn tabbed(tabs: usize) -> (Ui, Site) {
     (ui, site)
 }
 
-/// Tab stops before the first slot: the owned-only check, Refresh, Open a file.
-const TOOLBAR_STOPS: usize = 3;
+/// Tab stops before the first slot: the owned-only check, Refresh, Open a file
+/// and the Backups button of the first game group.
+const TOOLBAR_STOPS: usize = 4;
 
 #[test]
 fn enter_opens_the_first_slot_after_the_toolbar() {
@@ -52,7 +53,7 @@ fn the_toolbar_comes_before_the_slots() {
     let (ui, _site) = tabbed(TOOLBAR_STOPS);
     press(&ui, SharedString::from(Key::Return));
     ui.manual.run_all();
-    assert!(!ui.window.get_editor_open(), "the third stop is a toolbar button, not a slot");
+    assert!(!ui.window.get_editor_open(), "the last stop before the slots is a button, not a slot");
 }
 
 #[test]

@@ -28,6 +28,7 @@ mod generated {
 pub use connect::editor::{connect_editor, refresh_editor};
 pub use connect::guard::{connect_close, connect_expert};
 pub use connect::history::connect_history;
+pub use connect::restore::connect_restore;
 pub use connect::review::connect_review;
 pub use connect::save::connect_save;
 pub use connect::{App, connect_home, refresh_home};
@@ -85,6 +86,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     connect_history(&main_window, &app);
     connect_review(&main_window, &app);
     connect_save(&main_window, &app);
+    connect_restore(&main_window, &app);
     connect_expert(&main_window, &app);
     connect_close(&main_window, &about, &app);
     main_window.run()

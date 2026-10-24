@@ -9,6 +9,7 @@
 pub mod editor;
 pub mod guard;
 pub mod history;
+pub mod restore;
 pub mod review;
 pub mod save;
 

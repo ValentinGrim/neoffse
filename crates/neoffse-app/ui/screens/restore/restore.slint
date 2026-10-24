@@ -1,0 +1,148 @@
+import { ScrollView } from "std-widgets.slint";
+import { IconButton, ThemedButton } from "../../widgets/controls.slint";
+import { Icons } from "../../theme/icons.slint";
+import { NoticeStrip } from "../../widgets/notice.slint";
+import { Shell } from "../../theme/shell.slint";
+import { ShellText, ShellTitle } from "../../widgets/shell-text.slint";
+import { SlotKind } from "../../types/home.slint";
+import { BackupRow } from "../../types/restore.slint";
+import { SlotText } from "../../widgets/text.slint";
+import { RestoreBridge } from "bridge.slint";
+import { RestoreText } from "text.slint";
+
+// One backup as a card: its date, its slot and reason, and a Restore button.
+component BackupLine inherits Rectangle {
+    in property <BackupRow> backup;
+    in property <bool> enabled: true;
+    callback restore(int);
+
+    background: Shell.look.panel-fill;
+    border-width: Shell.look.frame-width;
+    border-color: Shell.look.rule;
+    border-radius: Shell.look.frame-radius;
+    min-height: row.min-height;
+    preferred-height: row.preferred-height;
+
+    row := HorizontalLayout {
+        padding: Shell.look.spacing;
+        padding-left: Shell.look.padding;
+        spacing: Shell.look.spacing;
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            alignment: center;
+
+            ShellText {
+                text: root.backup.stamp == "" ? @tr("Unknown date") : root.backup.stamp;
+                font-family: Shell.look.font-family-strong;
+                font-weight: Shell.look.font-weight-strong;
+                overflow: elide;
+            }
+            ShellText {
+                text: @tr("{} - {}", root.backup.slot-kind == SlotKind.other ? root.backup.file : SlotText.name(root.backup.slot-kind, root.backup.slot-number), RestoreText.reason(root.backup.reason));
+                color: Shell.look.muted;
+                font-size: Shell.look.font-small;
+                overflow: elide;
+            }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Restore");
+            accessible-name: root.backup.stamp == "" ? @tr("Restore this backup") : @tr("Restore the backup of {}", root.backup.stamp);
+            enabled: root.enabled;
+            y: (parent.height - self.height) / 2;
+            clicked => { root.restore(root.backup.key); }
+        }
+    }
+}
+
+// The Restore page: the backups of one game, newest first. It replaces Home or
+// the editor while it is open. The root takes the focus, so Escape does what
+// Back does when no control holds it.
+export component RestorePage inherits FocusScope {
+    // True while a dialog covers the page or a restore runs.
+    private property <bool> covered: RestoreBridge.blocked;
+
+    focus-on-tab-navigation: false;
+
+    init => { self.focus(); }
+    // A dialog's buttons vanish with it, and the focus would go with them.
+    changed covered => {
+        if !root.covered {
+            self.focus();
+        }
+    }
+    key-pressed(event) => {
+        if event.text == Key.Escape && !RestoreBridge.blocked {
+            RestoreBridge.back-requested();
+            return accept;
+        }
+        return reject;
+    }
+
+    VerticalLayout {
+        padding: Shell.look.padding;
+        spacing: Shell.look.spacing;
+
+        HorizontalLayout {
+            spacing: Shell.look.spacing;
+            IconButton {
+                look: Shell.look;
+                icon: Icons.arrow-back;
+                label: @tr("Back");
+                enabled: !RestoreBridge.blocked;
+                clicked => {
+                    root.focus();
+                    RestoreBridge.back-requested();
+                }
+            }
+            ShellTitle {
+                text: @tr("Backups");
+                vertical-alignment: center;
+            }
+            ShellText {
+                horizontal-stretch: 1;
+                text: RestoreBridge.game-title;
+                color: Shell.look.muted;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+        if RestoreBridge.has-notice: NoticeStrip {
+            text: RestoreText.sentence(RestoreBridge.notice);
+            info: RestoreText.is-info(RestoreBridge.notice);
+            enabled: !RestoreBridge.blocked;
+            dismissed => { RestoreBridge.notice-dismissed(); }
+        }
+        if RestoreBridge.working: ShellText {
+            text: @tr("Restoring...");
+            color: Shell.look.muted;
+        }
+        if RestoreBridge.unreadable-count > 0: ShellText {
+            text: RestoreBridge.unreadable-count == 1 ? @tr("1 backup could not be read") : @tr("{} backups could not be read", RestoreBridge.unreadable-count);
+            color: Shell.look.muted;
+            font-size: Shell.look.font-small;
+            overflow: elide;
+        }
+        if RestoreBridge.rows.length == 0 && !RestoreBridge.has-notice: ShellText {
+            text: @tr("No backups yet");
+            color: Shell.look.muted;
+        }
+        ScrollView {
+            VerticalLayout {
+                spacing: Shell.look.spacing;
+                for backup in RestoreBridge.rows: BackupLine {
+                    vertical-stretch: 0;
+                    backup: backup;
+                    enabled: !RestoreBridge.blocked;
+                    restore(key) => { RestoreBridge.restore-requested(key); }
+                }
+                // Takes the spare height of a short list, so no card stretches.
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,43 @@
+// Language-dependent sentences of the Restore page. Rust sends a problem, a
+// reason and a date; the wording lives here.
+
+import { BackupReason, RestoreNotice, RestoreProblem } from "../../types/restore.slint";
+
+export global RestoreText {
+    pure public function sentence(notice: RestoreNotice) -> string {
+        if notice.problem == RestoreProblem.listing-failed {
+            return @tr("The backups could not be read.");
+        }
+        if notice.problem == RestoreProblem.folder-missing {
+            return @tr("The save folder no longer exists. Nothing was restored.");
+        }
+        if notice.problem == RestoreProblem.failed {
+            return @tr("The restore failed. No file was changed.");
+        }
+        if notice.problem == RestoreProblem.incomplete {
+            return @tr("The restore stopped before it finished. Some files may be replaced.");
+        }
+        if notice.problem == RestoreProblem.restored {
+            if notice.value == "" {
+                return @tr("Restored.");
+            }
+            return @tr("Restored. Previous files kept: {}", notice.value);
+        }
+        return @tr("Restored, but the editor could not open the file again.");
+    }
+
+    // A restore that ran draws the info look; a refusal or a failure the warning look.
+    pure public function is-info(notice: RestoreNotice) -> bool {
+        return notice.problem == RestoreProblem.restored;
+    }
+
+    pure public function reason(reason: BackupReason) -> string {
+        if reason == BackupReason.before-save {
+            return @tr("Before save");
+        }
+        if reason == BackupReason.before-restore {
+            return @tr("Before restore");
+        }
+        return @tr("Other backup");
+    }
+}

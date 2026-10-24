@@ -14,10 +14,11 @@ use neoffse::io::backup::Backup;
 use neoffse::io::dirs::DataDir;
 use neoffse::pr::games::GAMES;
 use neoffse_app::home::OpenOutcome;
-use neoffse_app::{RestoreOutcome, RestoreViewModel};
+use neoffse_app::{BackupRow, RestoreBridge, RestoreOutcome, RestoreViewModel};
+use slint::{ComponentHandle, Model};
 use tempfile::TempDir;
 
-use super::{Flow, ID_1, Outcomes, Site, T0, editing_site, listing, make_backup, slot_file, steam_folder};
+use super::{Flow, ID_1, Outcomes, Site, T0, Ui, editing_site, items, listing, make_backup, open_editor, slot_file, steam_folder};
 
 /// Where `done` ran, and with what.
 #[derive(Clone, Default)]
@@ -136,5 +137,70 @@ impl Restoring {
     pub(crate) fn pick(&self, key: i32) {
         assert!(self.vm.show(Game::Ff1Pr).is_none());
         assert!(self.vm.select(key).is_some());
+    }
+}
+
+/// A window wired for the Restore page, over a temporary data folder. It
+/// holds the save folder of FF I, where slot 1 lives.
+pub(crate) struct Paged {
+    pub(crate) ui: Ui,
+    pub(crate) data: TempDir,
+    pub(crate) folder: PathBuf,
+}
+
+impl Paged {
+    /// Home, scanned to the end, nothing open.
+    pub(crate) fn home(site: &Site) -> Self {
+        Self::over(Ui::scanned(site, None), site)
+    }
+
+    /// The editor open on slot 1.
+    pub(crate) fn editing(site: &Site) -> Self {
+        Self::over(open_editor(site), site)
+    }
+
+    fn over(ui: Ui, site: &Site) -> Self {
+        let data = tempfile::tempdir().unwrap();
+        ui.app.state.set_data_dir(DataDir::at(data.path()));
+        Self {
+            ui,
+            data,
+            folder: steam_folder(site, 0, ID_1),
+        }
+    }
+
+    pub(crate) fn data_dir(&self) -> DataDir {
+        DataDir::at(self.data.path())
+    }
+
+    /// Backs up slot 1 as it is now, at `T0` plus `minutes`, UTC.
+    pub(crate) fn backup(&self, reason: &str, minutes: i64) -> Backup {
+        make_backup(&self.data_dir(), "ff1-pr", &self.folder, &[slot_file(1)], reason, T0 + minutes * 60, 0)
+    }
+
+    pub(crate) fn bridge(&self) -> RestoreBridge<'_> {
+        self.ui.window.global::<RestoreBridge>()
+    }
+
+    /// The rows the page shows.
+    pub(crate) fn rows(&self) -> Vec<BackupRow> {
+        items(&self.bridge().get_rows())
+    }
+
+    /// The stamps of the rows, in order.
+    pub(crate) fn stamps(&self) -> Vec<String> {
+        self.rows().iter().map(|row| row.stamp.to_string()).collect()
+    }
+
+    /// Opens the page of FF I from Home.
+    pub(crate) fn open_from_home(&self) {
+        self.ui.window.invoke_backups_requested("ff1-pr".into());
+        assert!(self.ui.window.get_restore_open());
+    }
+
+    /// Opens the page from the File menu with the editor open.
+    pub(crate) fn open_from_menu(&self) {
+        self.ui.window.invoke_restore_menu_requested();
+        assert!(self.ui.window.get_restore_open());
     }
 }
