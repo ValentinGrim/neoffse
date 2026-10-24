@@ -80,12 +80,17 @@ pub fn connect_expert(window: &MainWindow, app: &App) {
     });
 }
 
-/// Completes a leave once the session is gone: closes the discard dialog,
-/// then goes Home (Back) or closes the window (Close).
+/// Completes a leave: closes the discard dialog, then goes Home (Back),
+/// closes the window (Close) or starts the restore (Restore).
 ///
 /// The Discard button and a save that ends a pending leave both end here,
-/// after `confirm_discard` closed the session.
+/// after `confirm_discard` closed the session, except for a restore, which
+/// keeps it until its file has been replaced.
 pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
+    if why == Leave::Restore {
+        // `working` goes up before the dialog closes, so `blocked` never drops.
+        super::restore_run::resume(window, app);
+    }
     window.global::<EditorBridge>().set_discard_dialog_open(false);
     sync_expert(window, app);
     match why {
@@ -93,7 +98,7 @@ pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
             window.set_editor_open(false);
             refresh_home(window, app);
         }
-        // The restore starts from here once the open-session step exists.
+        // Started above; the session stays open for the restore.
         Leave::Restore => {}
         // The session is gone, so the close handler takes the clean path.
         Leave::Close => window.window().dispatch_event(slint::platform::WindowEvent::CloseRequested),

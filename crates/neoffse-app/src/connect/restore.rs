@@ -12,7 +12,7 @@ use neoffse::Running;
 use neoffse::core::Game;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
-use super::restore_run::begin_restore;
+use super::restore_run::{begin_restore, confirm};
 use crate::{App, EditorBridge, MainWindow, RestoreBridge, RestoreNotice};
 
 /// Wires `backups-requested` and `restore-menu-requested` of the window and
@@ -111,9 +111,8 @@ fn connect_flow(window: &MainWindow, app: &App) {
     bridge.on_restore_confirmed({
         let (weak, app) = (weak.clone(), app.clone());
         move || {
-            let Some(window) = weak.upgrade() else { return };
-            if !window.global::<RestoreBridge>().get_working() {
-                begin_restore(&window, &app, Running::Refuse);
+            if let Some(window) = weak.upgrade() {
+                confirm(&window, &app);
             }
         }
     });

@@ -5,13 +5,48 @@
 //! blocks the page from the call until the outcome returns to the UI thread,
 //! and the close request is vetoed meanwhile. A notice carries a date at most,
 //! never a path or an error's text (`docs/architecture.md#errors`).
+//!
+//! When the restore replaces the file the editor holds, the open session is
+//! stale. A dirty session asks the discard question before the restore
+//! starts, without closing; the session is replaced by a reopen once the
+//! restore succeeds, and stays as it was when the restore does not.
 
 use neoffse::Running;
 use slint::ComponentHandle;
 
+use super::editor::refresh_editor;
+use super::guard::sync_expert;
 use super::restore::sync_restore;
+use crate::editor::Leave;
+use crate::home::OpenOutcome;
 use crate::restore::RestoreOutcome;
-use crate::{App, MainWindow, RestoreBridge, RestoreNotice, RestoreProblem};
+use crate::{App, EditorBridge, MainWindow, RestoreBridge, RestoreNotice, RestoreProblem};
+
+/// The Restore button of the confirmation.
+///
+/// A restore that replaces the open file, with unsaved edits in the session,
+/// asks the discard question first. The discard flag goes up before the
+/// confirmation drops, so `blocked` never drops between the two. Any other
+/// restore starts at once under [`Running::Refuse`].
+pub(crate) fn confirm(window: &MainWindow, app: &App) {
+    let bridge = window.global::<RestoreBridge>();
+    if bridge.get_working() {
+        return;
+    }
+    if app.restore.replaces_open_save() && app.editor.is_dirty() {
+        app.editor.request_discard(Leave::Restore);
+        window.global::<EditorBridge>().set_discard_dialog_open(true);
+        bridge.set_confirm_open(false);
+        return;
+    }
+    begin_restore(window, app, Running::Refuse);
+}
+
+/// Starts the restore the user confirmed through the discard dialog, or
+/// through a save that ended the pending leave. The selection is still set.
+pub(crate) fn resume(window: &MainWindow, app: &App) {
+    begin_restore(window, app, Running::Refuse);
+}
 
 /// Starts the restore of the selected backup under `running`.
 ///
@@ -36,11 +71,13 @@ pub(crate) fn begin_restore(window: &MainWindow, app: &App, running: Running) {
 fn end_restore(window: &MainWindow, app: &App, outcome: RestoreOutcome) {
     let bridge = window.global::<RestoreBridge>();
     match outcome {
-        RestoreOutcome::Restored { safety, .. } => {
-            // The open session is not touched yet: the editor learns about a
-            // replaced file in the open-session step.
-            let value = safety.unwrap_or_default();
-            finish_restore(window, app, notice(RestoreProblem::Restored, &value));
+        RestoreOutcome::Restored { safety, replaced_open } => {
+            let restored = notice(RestoreProblem::Restored, &safety.unwrap_or_default());
+            if replaced_open {
+                reopen(window, app, restored);
+            } else {
+                finish_restore(window, app, restored);
+            }
         }
         RestoreOutcome::GameRunning => {
             bridge.set_game_running_open(true);
@@ -54,6 +91,29 @@ fn end_restore(window: &MainWindow, app: &App, outcome: RestoreOutcome) {
         // Another restore is running and clears `working` itself.
         RestoreOutcome::Busy => {}
     }
+}
+
+/// Replaces the open session with the restored file. `working` stays up until
+/// the reopen ends. On success the editor shows the restored data and the
+/// navigation stays; on failure the old session was stale, so it closes and
+/// the page says so (Back then lands on Home).
+fn reopen(window: &MainWindow, app: &App, restored: RestoreNotice) {
+    let (weak, done_app) = (window.as_weak(), app.clone());
+    app.open.reopen(&app.dispatcher, move |outcome| {
+        let Some(window) = weak.upgrade() else { return };
+        if outcome == OpenOutcome::Opened {
+            if let Some(summary) = done_app.editor.summary() {
+                window.set_editor_summary(summary);
+            }
+            refresh_editor(&window, &done_app);
+            finish_restore(&window, &done_app, restored);
+        } else {
+            done_app.editor.back();
+            window.set_editor_open(false);
+            sync_expert(&window, &done_app);
+            finish_restore(&window, &done_app, notice(RestoreProblem::ReopenFailed, ""));
+        }
+    });
 }
 
 /// Ends a restore that wrote nothing: the list stays as it was.

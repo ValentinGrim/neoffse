@@ -7,12 +7,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse::core::{Capability, Edit, FieldId, Game, Value};
 use neoffse::data::Language;
 use neoffse::io::backup::Backup;
 use neoffse::io::dirs::DataDir;
 use neoffse::pr::games::GAMES;
 use neoffse::{Registry, Running, Session};
+use neoffse_app::AboutDialog;
+use slint::ComponentHandle;
 use tempfile::TempDir;
 
 use super::{ID_1, Site, T0, Ui, make_backup, open_editor, slot_file, steam_folder};
@@ -56,6 +59,30 @@ pub(crate) fn rig(site: &Site, machine: Machine) -> Rig {
     Rig { ui, data, file, probes }
 }
 
+/// A shown window with About connected and the close handler installed, the
+/// first slot open on a temporary data folder and a quiet restore probe.
+pub(crate) fn closeable_rig(site: &Site) -> (Rig, AboutDialog) {
+    let (ui, about) = Ui::with_about(site);
+    let key = ui.first_slots()[0].key;
+    ui.window.invoke_slot_clicked(key);
+    ui.manual.run_all();
+    assert!(ui.window.get_editor_open());
+    ui.window.show().unwrap();
+    let data = tempfile::tempdir().unwrap();
+    ui.app.state.set_data_dir(DataDir::at(data.path()));
+    ui.app.restore.set_process_probe(|_| Vec::new());
+    let file = steam_folder(site, 0, ID_1).join(slot_file(1));
+    (
+        Rig {
+            ui,
+            data,
+            file,
+            probes: Arc::default(),
+        },
+        about,
+    )
+}
+
 impl Rig {
     pub(crate) fn data_dir(&self) -> DataDir {
         DataDir::at(self.data.path())
@@ -65,6 +92,16 @@ impl Rig {
     pub(crate) fn open_page(&self) {
         self.ui.window.invoke_restore_menu_requested();
         assert!(self.ui.window.get_restore_open());
+    }
+
+    /// Clicks the row of the backup at `T0`, then Restore in the confirmation.
+    /// Nothing has run: the next step is the worker, or the discard dialog.
+    pub(crate) fn start_restore(&self) {
+        self.ui
+            .element("Restore the backup of 2020-09-13 12:26 UTC", Button)
+            .invoke_accessible_default_action();
+        assert!(self.ui.restore_bridge().get_confirm_open());
+        self.ui.element("Restore", Button).invoke_accessible_default_action();
     }
 
     /// Backs up the rig's file as it is now, at `T0`, UTC.
