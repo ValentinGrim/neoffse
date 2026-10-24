@@ -4,11 +4,13 @@
 #![allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod backups;
 mod bridge;
 mod editor;
 mod keys;
 mod manual;
 mod open;
+mod restoring;
 mod rig;
 mod site;
 mod slots;
@@ -22,13 +24,15 @@ use neoffse_app::home::HomeViewModel;
 use neoffse_app::{GameRow, SlotRow};
 use slint::{Model, ModelRc};
 
+pub(crate) use backups::{T0, listing, make_backup, rewrite_manifest};
 pub(crate) use bridge::open_editor;
 pub(crate) use editor::{
     Editing, FakeLocks, Part, all_fields, count_of, editing, editing_site, field, fields, item_label, list, lists, page, pages, row_of, rows, section,
 };
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes};
-pub(crate) use rig::{Machine, Rig, rig};
+pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
+pub(crate) use rig::{Machine, Rig, closeable_rig, rig};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
 pub(crate) use window::Ui;

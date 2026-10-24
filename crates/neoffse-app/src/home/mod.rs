@@ -21,7 +21,9 @@ use crate::dispatch::{Dispatcher, WorkerPanic, run_async};
 use crate::{FolderOrigin, GameRow, SlotKind};
 
 pub use open::{OpenOutcome, OpenViewModel};
+pub(crate) use rows::title_of;
 pub use scan::scan_home;
+pub(crate) use scan::slot_kind_of;
 
 /// What one scan found. Plain data, `Send`: it crosses from the worker to the
 /// UI thread.

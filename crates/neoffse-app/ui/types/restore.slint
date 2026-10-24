@@ -1,0 +1,26 @@
+// Data contract of the Restore page. Presentation types only: no rule about a
+// backup lives here.
+
+import { SlotKind } from "home.slint";
+
+export enum BackupReason { before-save, before-restore, other }
+
+// One backup of the list. `key` is its index in the last listing. `stamp` is
+// "2026-10-22 14:05 UTC" or "" when the manifest time does not parse. `file` is
+// the first file name of the backup; the page shows it when `slot-kind` is `other`.
+export struct BackupRow {
+    key: int,
+    stamp: string,
+    reason: BackupReason,
+    slot-kind: SlotKind,
+    slot-number: int,
+    file: string,
+}
+
+export enum RestoreProblem { listing-failed, folder-missing, failed, incomplete, restored, reopen-failed }
+
+// `value` is the date of the safety backup for `restored`, "" otherwise.
+export struct RestoreNotice {
+    problem: RestoreProblem,
+    value: string,
+}

@@ -9,6 +9,8 @@
 pub mod editor;
 pub mod guard;
 pub mod history;
+pub mod restore;
+mod restore_run;
 pub mod review;
 pub mod save;
 
@@ -26,6 +28,7 @@ use crate::dispatch::Dispatcher;
 use crate::editor::{EditorViewModel, Leave, LeaveAnswer};
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
 use crate::picker::FilePicker;
+use crate::restore::RestoreViewModel;
 use crate::state::AppState;
 use crate::theme::sync_theme;
 use crate::{EditorBridge, EditorCommand, MainWindow};
@@ -41,7 +44,9 @@ pub struct App {
     pub open: OpenViewModel,
     /// The editor page over the open save.
     pub editor: EditorViewModel,
-    /// The open save, shared by `open` and `editor`.
+    /// The Restore page over one game's backups.
+    pub restore: RestoreViewModel,
+    /// The open save, shared by `open`, `editor` and `restore`.
     pub state: Arc<AppState>,
     /// Where workers run and where their results return.
     pub dispatcher: Arc<dyn Dispatcher>,
@@ -53,6 +58,7 @@ impl fmt::Debug for App {
             .field("home", &self.home)
             .field("open", &self.open)
             .field("editor", &self.editor)
+            .field("restore", &self.restore)
             .field("state", &self.state)
             .finish_non_exhaustive()
     }
@@ -65,8 +71,9 @@ impl App {
         let state = Arc::new(AppState::new());
         Self {
             home: HomeViewModel::new(Arc::clone(&registry), environment),
-            open: OpenViewModel::new(registry, picker, Arc::clone(&state)),
+            open: OpenViewModel::new(Arc::clone(&registry), picker, Arc::clone(&state)),
             editor: EditorViewModel::new(Arc::clone(&state), language),
+            restore: RestoreViewModel::new(registry, Arc::clone(&state)),
             state,
             dispatcher,
         }

@@ -143,7 +143,7 @@ fn named_slots(folder: &SaveFolder) -> (Vec<SlotData>, usize) {
 /// The single rule for a slot's kind and number, shared by the Home rows and
 /// the editor page: the summary's slot, else the one the file name gives,
 /// else `Other`.
-pub(super) fn slot_kind_of(summary: Option<&SaveSummary>, name: &str) -> (SlotKind, i32) {
+pub(crate) fn slot_kind_of(summary: Option<&SaveSummary>, name: &str) -> (SlotKind, i32) {
     slot_kind(summary.and_then(|summary| summary.slot).or_else(|| slot_for_name(name)))
 }
 

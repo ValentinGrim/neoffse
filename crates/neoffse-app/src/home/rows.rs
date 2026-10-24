@@ -20,6 +20,7 @@ fn game_row(game: &GameData) -> GameRow {
         many => (Vec::new(), folder_rows(many, &title)),
     };
     GameRow {
+        id: game.game.id().into(),
         title: title.into(),
         supported: game.supported,
         slots: model(slots),
@@ -78,7 +79,7 @@ pub(super) fn summary_row_of(summary: &SaveSummary, name: &str) -> SummaryRow {
 }
 
 /// `Final Fantasy I` to `Final Fantasy VI`; any other number prints as digits.
-fn title_of(game: Game) -> String {
+pub(crate) fn title_of(game: Game) -> String {
     let number = game.number();
     let numeral = match number {
         1 => "I",
