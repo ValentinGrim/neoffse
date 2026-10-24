@@ -11,6 +11,7 @@ use neoffse::Running;
 use slint::ComponentHandle;
 
 use super::editor::{refresh_editor, refresh_with};
+use super::guard::finish_leave;
 use crate::editor::{SaveOutcome, reload_failed_notice, save_failed_notice, saved_notice};
 use crate::home::OpenOutcome;
 use crate::{App, EditorBridge, MainWindow};
@@ -20,7 +21,11 @@ use crate::{App, EditorBridge, MainWindow};
 ///
 /// A save that meets a running game opens the warning, and one that meets a
 /// file changed on disk opens the reload dialog. Both dialogs leave the
-/// edits in place until the user answers. Call it after
+/// edits in place until the user answers.
+///
+/// A save that ends a pending leave (Back or close, raised by the discard
+/// dialog) completes it. Every other end of the flow cancels the leave and
+/// keeps the user in the editor; the two warnings keep it until answered. Call it after
 /// [`connect_review`](crate::connect_review).
 pub fn connect_save(window: &MainWindow, app: &App) {
     let bridge = window.global::<EditorBridge>();
@@ -49,8 +54,9 @@ pub fn connect_save(window: &MainWindow, app: &App) {
         }
     });
     bridge.on_save_anyway_cancelled({
-        let weak = weak.clone();
+        let (weak, app) = (weak.clone(), app.clone());
         move || {
+            app.editor.cancel_leave();
             if let Some(window) = weak.upgrade() {
                 window.global::<EditorBridge>().set_game_running_open(false);
             }
@@ -64,9 +70,13 @@ pub fn connect_save(window: &MainWindow, app: &App) {
             }
         }
     });
-    bridge.on_reload_cancelled(move || {
-        if let Some(window) = weak.upgrade() {
-            window.global::<EditorBridge>().set_changed_on_disk_open(false);
+    bridge.on_reload_cancelled({
+        let app = app.clone();
+        move || {
+            app.editor.cancel_leave();
+            if let Some(window) = weak.upgrade() {
+                window.global::<EditorBridge>().set_changed_on_disk_open(false);
+            }
         }
     });
 }
@@ -95,6 +105,10 @@ fn end_save(window: &MainWindow, app: &App, outcome: SaveOutcome) {
         SaveOutcome::Saved { stamp } => {
             bridge.set_working(false);
             refresh_with(window, app, Some(saved_notice(stamp.as_deref())));
+            // The session is clean now, so closing it drops nothing.
+            if let Some(why) = app.editor.confirm_discard() {
+                finish_leave(window, app, why);
+            }
         }
         SaveOutcome::GameRunning => {
             bridge.set_game_running_open(true);
@@ -105,6 +119,7 @@ fn end_save(window: &MainWindow, app: &App, outcome: SaveOutcome) {
             bridge.set_working(false);
         }
         SaveOutcome::Failed => {
+            app.editor.cancel_leave();
             bridge.set_working(false);
             refresh_with(window, app, Some(save_failed_notice()));
         }
@@ -119,6 +134,8 @@ fn begin_reload(window: &MainWindow, app: &App) {
     let bridge = window.global::<EditorBridge>();
     bridge.set_working(true);
     bridge.set_changed_on_disk_open(false);
+    // Reloading drops the edits the leave was about: the user stays.
+    app.editor.cancel_leave();
     let (weak, done_app) = (window.as_weak(), app.clone());
     app.open.reopen(&app.dispatcher, move |outcome| {
         let Some(window) = weak.upgrade() else { return };

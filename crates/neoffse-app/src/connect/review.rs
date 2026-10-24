@@ -10,7 +10,11 @@ use slint::{ComponentHandle, ModelRc, VecModel};
 use super::editor::refresh_with;
 use crate::{App, EditorBridge, MainWindow};
 
-/// Wires `review-requested` and `review-cancelled` of the [`EditorBridge`].
+/// Wires `review-requested`, `discard-review-requested` and
+/// `review-cancelled` of the [`EditorBridge`].
+///
+/// `discard-review-requested` (the third button of the discard dialog) closes
+/// that dialog and opens the review with the leave still pending.
 ///
 /// `review-requested` (the bar's button and Ctrl+S) opens nothing while a
 /// save runs, while a dialog covers the page or while the session is clean.
@@ -29,6 +33,17 @@ pub fn connect_review(window: &MainWindow, app: &App) {
                 return;
             }
             open_review(&window, &app);
+        }
+    });
+    bridge.on_discard_review_requested({
+        let (weak, app) = (weak.clone(), app.clone());
+        move || {
+            let Some(window) = weak.upgrade() else { return };
+            window.global::<EditorBridge>().set_discard_dialog_open(false);
+            // The leave stays pending: a save ends it, anything else cancels it.
+            if !open_review(&window, &app) {
+                app.editor.cancel_leave();
+            }
         }
     });
     bridge.on_review_cancelled({

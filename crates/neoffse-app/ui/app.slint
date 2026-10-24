@@ -176,8 +176,13 @@ export component MainWindow inherits Window {
         ThemedButton {
             look: Shell.look;
             text: @tr("Discard");
-            primary: true;
             clicked => { EditorBridge.discard-confirmed(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Review & save");
+            primary: true;
+            clicked => { EditorBridge.discard-review-requested(); }
         }
     }
     if EditorBridge.review-open: ReviewDialog {

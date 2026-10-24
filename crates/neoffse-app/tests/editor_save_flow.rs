@@ -8,6 +8,10 @@
 mod common;
 
 use std::fs;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+use std::time::Duration;
 
 use common::{Machine, Rig, Ui, editing_site, rig};
 use i_slint_backend_testing::AccessibleRole::{Button, Text};
@@ -253,4 +257,44 @@ fn a_save_with_no_net_difference_still_saves() {
     assert_eq!(ui.bridge().get_notice().problem, EditProblem::Saved);
     assert_eq!(rig.backups(), 1);
     assert_eq!(ui.bridge().get_pending_count(), 0);
+}
+
+/// The worker holds the session lock while the probe waits. An edit callback
+/// on the UI thread must answer with the notice and not wait for that lock.
+#[test]
+fn an_edit_during_a_running_save_does_not_wait_for_it() {
+    let site = editing_site();
+    let rig = quiet(&site);
+    let ui = &rig.ui;
+    ui.make_dirty();
+    let gil = ui.gil().key;
+    let (entered_tx, entered) = mpsc::channel::<()>();
+    let (release, release_rx) = mpsc::channel::<()>();
+    let release_rx = Mutex::new(release_rx);
+    let timed_out = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&timed_out);
+    // The probe runs inside `Session::save`, under the session lock.
+    ui.app.editor.set_process_probe(move |_| {
+        entered_tx.send(()).unwrap();
+        let waited = release_rx.lock().unwrap().recv_timeout(Duration::from_secs(10));
+        flag.store(waited.is_err(), Ordering::SeqCst);
+        Vec::new()
+    });
+    ui.bridge().invoke_save_requested();
+    let manual = Arc::clone(&ui.manual);
+    let worker = thread::spawn(move || manual.run_jobs());
+    entered.recv_timeout(Duration::from_secs(10)).expect("the save reached the probe");
+
+    ui.bridge().invoke_field_text_committed(gil, "600".into());
+
+    assert_eq!(ui.bridge().get_notice().problem, EditProblem::NotEditable);
+    assert!(ui.bridge().get_has_notice());
+    assert_eq!(ui.bridge().get_pending_count(), 1);
+    release.send(()).unwrap();
+    worker.join().unwrap();
+    assert!(!timed_out.load(Ordering::SeqCst), "the edit callback waited for the save");
+
+    finish(&rig);
+    assert_eq!(rig.gil_on_disk(), 500);
+    assert_eq!(ui.bridge().get_notice().problem, EditProblem::Saved);
 }

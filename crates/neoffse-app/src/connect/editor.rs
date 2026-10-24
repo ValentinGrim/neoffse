@@ -90,6 +90,12 @@ pub fn refresh_editor(window: &MainWindow, app: &App) {
 /// notice wins over that info notice.
 fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel) -> Option<EditNotice>) {
     if let Some(window) = weak.upgrade() {
+        // The worker holds the session lock during a save, and the refresh
+        // below would wait for it: refuse here, with no refresh.
+        if app.editor.is_saving() {
+            set_notice(&window.global::<EditorBridge>(), Some(problem_notice(EditProblem::NotEditable, "")), false);
+            return;
+        }
         let before = window.global::<EditorBridge>().get_overview();
         let notice = action(&app.editor);
         let notice = notice.or_else(|| {
