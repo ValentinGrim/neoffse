@@ -1,6 +1,6 @@
 //! Wires the Restore page: the entry points (the Backups button of a Home
-//! game group and File > Restore a backup...), Back and the notice's dismiss
-//! button (`docs/architecture.md#ui-architecture`).
+//! game group and File > Restore a backup...), Back, the notice's dismiss
+//! button and the restore flow's dialogs (`docs/architecture.md#ui-architecture`).
 //!
 //! The callbacks hold a `slint::Weak<MainWindow>` and a clone of [`App`],
 //! never a strong window handle. The page replaces Home or the editor while
@@ -8,18 +8,22 @@
 //! editor navigation stay as they were, so Back shows what was below. No
 //! value pushed here carries a path or an error's text.
 
+use neoffse::Running;
 use neoffse::core::Game;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
+use super::restore_run::begin_restore;
 use crate::{App, EditorBridge, MainWindow, RestoreBridge, RestoreNotice};
 
 /// Wires `backups-requested` and `restore-menu-requested` of the window and
-/// `back-requested` and `notice-dismissed` of the [`RestoreBridge`].
+/// the callbacks of the [`RestoreBridge`].
 ///
 /// The Backups button does nothing while an open runs or a restore works. The
 /// menu item does nothing without an open editor, while a dialog covers the
-/// editor, or on the page itself. The Restore button of a row has no handler
-/// yet. Call it after [`connect_save`](crate::connect_save).
+/// editor, or on the page itself. The Restore button of a row asks first; the
+/// restore runs on a worker once the user confirms, and it asks again when the
+/// game runs. Nothing on the page reacts while the restore works. Call it
+/// after [`connect_save`](crate::connect_save).
 pub fn connect_restore(window: &MainWindow, app: &App) {
     let bridge = window.global::<RestoreBridge>();
     let weak = window.as_weak();
@@ -68,6 +72,64 @@ pub fn connect_restore(window: &MainWindow, app: &App) {
             if let Some(window) = weak.upgrade() {
                 window.global::<RestoreBridge>().set_has_notice(false);
             }
+        }
+    });
+    connect_flow(window, app);
+}
+
+/// Wires the confirmation, the running-game warning and the restore itself.
+fn connect_flow(window: &MainWindow, app: &App) {
+    let bridge = window.global::<RestoreBridge>();
+    let weak = window.as_weak();
+
+    bridge.on_restore_requested({
+        let (weak, app) = (weak.clone(), app.clone());
+        move |key| {
+            let Some(window) = weak.upgrade() else { return };
+            let bridge = window.global::<RestoreBridge>();
+            if bridge.get_blocked() {
+                return;
+            }
+            if let Some(row) = app.restore.select(key) {
+                bridge.set_pending_stamp(row.stamp);
+                bridge.set_confirm_open(true);
+            } else if let Some(game) = app.restore.game() {
+                // A stale key: the list changed under the page. List it again.
+                let notice = app.restore.show(game);
+                sync_restore(&window, &app, notice);
+            }
+        }
+    });
+    bridge.on_restore_cancelled({
+        let weak = weak.clone();
+        move || {
+            if let Some(window) = weak.upgrade() {
+                window.global::<RestoreBridge>().set_confirm_open(false);
+            }
+        }
+    });
+    bridge.on_restore_confirmed({
+        let (weak, app) = (weak.clone(), app.clone());
+        move || {
+            let Some(window) = weak.upgrade() else { return };
+            if !window.global::<RestoreBridge>().get_working() {
+                begin_restore(&window, &app, Running::Refuse);
+            }
+        }
+    });
+    bridge.on_restore_anyway_confirmed({
+        let (weak, app) = (weak.clone(), app.clone());
+        move || {
+            let Some(window) = weak.upgrade() else { return };
+            if !window.global::<RestoreBridge>().get_working() {
+                begin_restore(&window, &app, Running::Allow);
+            }
+        }
+    });
+    // The selection survives the warning: the user may start again.
+    bridge.on_restore_anyway_cancelled(move || {
+        if let Some(window) = weak.upgrade() {
+            window.global::<RestoreBridge>().set_game_running_open(false);
         }
     });
 }

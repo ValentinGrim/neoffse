@@ -10,7 +10,7 @@ use slint::{CloseRequestResponse, ComponentHandle, Weak};
 use super::editor::refresh_editor;
 use super::refresh_home;
 use crate::editor::{Leave, LeaveAnswer};
-use crate::{AboutDialog, App, EditorBridge, MainWindow};
+use crate::{AboutDialog, App, EditorBridge, MainWindow, RestoreBridge};
 
 /// Wires expert mode and the discard dialog.
 ///
@@ -106,13 +106,17 @@ pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
 /// `Window::on_close_requested` keeps one handler, and this one hides the
 /// About dialog itself when the close goes through. A clean session or none
 /// at all closes at once. A dirty one keeps the window shown and opens the
-/// discard dialog. While a save or a reload runs (`working`), the window stays
-/// shown with no dialog: the worker holds the session lock, which the leave
-/// request would wait on.
+/// discard dialog. While a save, a reload or a restore runs (`working`), the
+/// window stays shown with no dialog: a save worker holds the session lock,
+/// which the leave request would wait on, and a process that exits in the
+/// middle of a restore leaves a partial one.
 pub fn connect_close(window: &MainWindow, about: &AboutDialog, app: &App) {
     let (weak, about, app) = (window.as_weak(), about.as_weak(), app.clone());
     window.window().on_close_requested(move || {
-        if weak.upgrade().is_some_and(|window| window.global::<EditorBridge>().get_working()) {
+        if weak
+            .upgrade()
+            .is_some_and(|window| window.global::<EditorBridge>().get_working() || window.global::<RestoreBridge>().get_working())
+        {
             return CloseRequestResponse::KeepWindowShown;
         }
         let left = app.editor.leave(Leave::Close) == LeaveAnswer::Left;

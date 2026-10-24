@@ -4,6 +4,7 @@ import { ModalDialog } from "widgets/dialogs.slint";
 import { EditorBridge } from "screens/editor/bridge.slint";
 import { EditorPage } from "screens/editor/editor.slint";
 import { RestoreBridge } from "screens/restore/bridge.slint";
+import { RestoreDialogs } from "screens/restore/dialogs.slint";
 import { RestorePage } from "screens/restore/restore.slint";
 import { ReviewDialog } from "screens/editor/review.slint";
 import { Fonts } from "theme/fonts.slint";
@@ -239,4 +240,5 @@ export component MainWindow inherits Window {
             clicked => { EditorBridge.reload-confirmed(); }
         }
     }
+    RestoreDialogs { }
 }

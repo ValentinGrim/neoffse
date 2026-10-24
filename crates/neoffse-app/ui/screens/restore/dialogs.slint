@@ -1,0 +1,50 @@
+import { ThemedButton } from "../../widgets/controls.slint";
+import { ModalDialog } from "../../widgets/dialogs.slint";
+import { Shell } from "../../theme/shell.slint";
+import { RestoreBridge } from "bridge.slint";
+
+// The two questions a restore can ask: the confirmation, and the warning when
+// the game runs. It covers the window and draws nothing of its own, so it sits
+// last in `MainWindow`, over the page. Cancel takes the focus in both dialogs,
+// so Enter cancels and Escape cancels.
+export component RestoreDialogs inherits Rectangle {
+    width: 100%;
+    height: 100%;
+
+    if RestoreBridge.confirm-open: ModalDialog {
+        title: @tr("Restore a backup");
+        message: RestoreBridge.pending-stamp == "" ? @tr("Restore this backup? Your current files are backed up first.") : @tr("Restore the backup of {}? Your current files are backed up first.", RestoreBridge.pending-stamp);
+        cancelled => { RestoreBridge.restore-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { RestoreBridge.restore-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Restore");
+            primary: true;
+            clicked => { RestoreBridge.restore-confirmed(); }
+        }
+    }
+    if RestoreBridge.game-running-open: ModalDialog {
+        title: @tr("Restore while the game runs?");
+        message: @tr("The game is running. Restoring now may be lost or overwritten. Restore anyway?");
+        cancelled => { RestoreBridge.restore-anyway-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { RestoreBridge.restore-anyway-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Restore anyway");
+            primary: true;
+            clicked => { RestoreBridge.restore-anyway-confirmed(); }
+        }
+    }
+}

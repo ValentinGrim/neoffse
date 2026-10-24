@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, ThreadId};
 
+use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse::Running;
 use neoffse::core::Game;
 use neoffse::io::backup::Backup;
@@ -18,7 +19,7 @@ use neoffse_app::{BackupRow, RestoreBridge, RestoreOutcome, RestoreViewModel};
 use slint::{ComponentHandle, Model};
 use tempfile::TempDir;
 
-use super::{Flow, ID_1, Outcomes, Site, T0, Ui, editing_site, items, listing, make_backup, open_editor, slot_file, steam_folder};
+use super::{Flow, ID_1, Outcomes, Site, T0, Ui, editing_site, items, listing, make_backup, open_editor, slot_bytes, slot_file, steam_folder};
 
 /// Where `done` ran, and with what.
 #[derive(Clone, Default)]
@@ -146,6 +147,9 @@ pub(crate) struct Paged {
     pub(crate) ui: Ui,
     pub(crate) data: TempDir,
     pub(crate) folder: PathBuf,
+    /// How many times the restore's process probe ran.
+    pub(crate) probes: Arc<AtomicUsize>,
+    game_runs: Arc<AtomicBool>,
 }
 
 impl Paged {
@@ -159,14 +163,30 @@ impl Paged {
         Self::over(open_editor(site), site)
     }
 
-    fn over(ui: Ui, site: &Site) -> Self {
+    /// `ui` over a temporary data folder and a scripted restore probe that
+    /// finds no game.
+    pub(crate) fn over(ui: Ui, site: &Site) -> Self {
         let data = tempfile::tempdir().unwrap();
         ui.app.state.set_data_dir(DataDir::at(data.path()));
+        let probes = Arc::new(AtomicUsize::new(0));
+        let game_runs = Arc::new(AtomicBool::new(false));
+        let (counter, runs) = (Arc::clone(&probes), Arc::clone(&game_runs));
+        ui.app.restore.set_process_probe(move |_| {
+            counter.fetch_add(1, Ordering::SeqCst);
+            if runs.load(Ordering::SeqCst) { vec![GAMES[0].executable] } else { Vec::new() }
+        });
         Self {
             ui,
             data,
             folder: steam_folder(site, 0, ID_1),
+            probes,
+            game_runs,
         }
+    }
+
+    /// The probe finds the FF I executable from now on.
+    pub(crate) fn game_runs(&self, runs: bool) {
+        self.game_runs.store(runs, Ordering::SeqCst);
     }
 
     pub(crate) fn data_dir(&self) -> DataDir {
@@ -192,6 +212,21 @@ impl Paged {
         self.rows().iter().map(|row| row.stamp.to_string()).collect()
     }
 
+    /// The bytes of slot 1 in the save folder.
+    pub(crate) fn file(&self) -> Vec<u8> {
+        fs::read(self.folder.join(slot_file(1))).unwrap()
+    }
+
+    /// Clicks the row of the backup at `T0`, then Restore in the confirmation.
+    /// The worker has not run.
+    pub(crate) fn start(&self) {
+        self.ui
+            .element("Restore the backup of 2020-09-13 12:26 UTC", Button)
+            .invoke_accessible_default_action();
+        assert!(self.bridge().get_confirm_open());
+        self.ui.element("Restore", Button).invoke_accessible_default_action();
+    }
+
     /// Opens the page of FF I from Home.
     pub(crate) fn open_from_home(&self) {
         self.ui.window.invoke_backups_requested("ff1-pr".into());
@@ -203,4 +238,16 @@ impl Paged {
         self.ui.window.invoke_restore_menu_requested();
         assert!(self.ui.window.get_restore_open());
     }
+}
+
+/// Home with the page of FF I open. The one backup, made at `T0`, holds
+/// `slot_bytes(1)`; the folder holds `slot_bytes(2)`. The site must outlive
+/// the page.
+pub(crate) fn restore_page() -> (Site, Paged) {
+    let site = editing_site();
+    let p = Paged::home(&site);
+    p.backup("before-save", 0);
+    fs::write(p.folder.join(slot_file(1)), slot_bytes(2)).unwrap();
+    p.open_from_home();
+    (site, p)
 }

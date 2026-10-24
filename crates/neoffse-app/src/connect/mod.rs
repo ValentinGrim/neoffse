@@ -10,6 +10,7 @@ pub mod editor;
 pub mod guard;
 pub mod history;
 pub mod restore;
+mod restore_run;
 pub mod review;
 pub mod save;
 
