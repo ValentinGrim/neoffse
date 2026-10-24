@@ -22,6 +22,23 @@ impl Ui {
         self.press(SharedString::from(key));
     }
 
+    /// Presses the `modifiers`, then types `text`, then releases the
+    /// modifiers in reverse order, as a keyboard sends a chord.
+    pub(crate) fn chord(&self, modifiers: &[Key], text: &str) {
+        let window = self.window.window();
+        for modifier in modifiers {
+            window.dispatch_event(WindowEvent::KeyPressed {
+                text: SharedString::from(*modifier),
+            });
+        }
+        self.press(text);
+        for modifier in modifiers.iter().rev() {
+            window.dispatch_event(WindowEvent::KeyReleased {
+                text: SharedString::from(*modifier),
+            });
+        }
+    }
+
     /// A left click at `x`, `y` in logical pixels.
     pub(crate) fn click_at(&self, x: f32, y: f32) {
         let position = LogicalPosition::new(x, y);

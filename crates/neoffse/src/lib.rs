@@ -14,6 +14,9 @@
 //!   reopening the bytes held in memory, and saves ([`Session::save`]): a
 //!   running-game check, a newer-on-disk check, the format's encoder, a
 //!   backup and the verified atomic write of [`io`].
+//! - [`changes`]: the net difference between two views. [`Session::changes`]
+//!   lists what differs from the clean state, field by field, for a review
+//!   before the save.
 //! - [`Registry::backups`] and [`Registry::restore`]: the registry also lists
 //!   the backups of a game and restores one, with no session and no format:
 //!   the main case is a file that no longer opens.
@@ -27,12 +30,14 @@ pub use neoffse_data as data;
 pub use neoffse_format_pr as pr;
 pub use neoffse_io as io;
 
+pub mod changes;
 mod error;
 mod executables;
 mod registry;
 mod restore;
 mod session;
 
+pub use changes::{Change, ChangeKind};
 pub use error::Error;
 pub use registry::{Claim, Found, Registry, Scan};
 pub use session::{Running, Saved, Session};

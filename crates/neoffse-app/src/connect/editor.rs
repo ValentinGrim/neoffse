@@ -12,7 +12,8 @@
 
 use slint::{ComponentHandle, Model, ModelRc, VecModel, Weak};
 
-use crate::editor::{EditorViewModel, Input, growth_notice, levels_gained, problem_notice};
+use super::history::sync_history;
+use crate::editor::{EditorViewModel, History, Input, growth_notice, levels_gained, problem_notice};
 use crate::theme::sync_theme;
 use crate::{App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, Overview, PickerEntry, SectionData};
 
@@ -89,6 +90,12 @@ pub fn refresh_editor(window: &MainWindow, app: &App) {
 /// notice wins over that info notice.
 fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel) -> Option<EditNotice>) {
     if let Some(window) = weak.upgrade() {
+        // The worker holds the session lock during a save, and the refresh
+        // below would wait for it: refuse here, with no refresh.
+        if app.editor.is_saving() {
+            set_notice(&window.global::<EditorBridge>(), Some(problem_notice(EditProblem::NotEditable, "")), false);
+            return;
+        }
         let before = window.global::<EditorBridge>().get_overview();
         let notice = action(&app.editor);
         let notice = notice.or_else(|| {
@@ -105,16 +112,21 @@ fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel)
 
 /// The notice of the action wins over a failure of the rebuild: a stale edit
 /// after Back says "not editable", not "internal".
-fn refresh_with(window: &MainWindow, app: &App, notice: Option<EditNotice>) {
+pub(super) fn refresh_with(window: &MainWindow, app: &App, notice: Option<EditNotice>) {
     let bridge = window.global::<EditorBridge>();
     let failure = match app.editor.data() {
         Ok(data) => {
             apply(&bridge, data);
             bridge.set_overview(app.editor.overview());
+            // `history` locks the session, which a running save holds.
+            if !app.editor.is_saving() {
+                sync_history(&bridge, app.editor.history());
+            }
             None
         }
         Err(notice) => {
             bridge.set_overview(Overview::default());
+            sync_history(&bridge, History::default());
             Some(notice)
         }
     };

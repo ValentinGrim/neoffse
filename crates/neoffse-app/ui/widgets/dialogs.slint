@@ -1,17 +1,18 @@
 import { Shell } from "../theme/shell.slint";
 import { ShellText, ShellTitle } from "shell-text.slint";
 
-// A dialog drawn over the whole window: a dimmed background that swallows
-// clicks, and a centred flat card with a title, a message and a row of
-// buttons. The caller puts the buttons in as children, so a dialog can carry
-// two or three without a change here.
+// A card drawn over the whole window: a dimmed background that swallows
+// clicks, and a centred flat card with a title and an accent rule. What
+// follows the rule arrives as children, stacked in a column, so a dialog
+// brings its own body and buttons.
 //
 // Escape calls `cancelled`. Enter confirms nothing: the caller gives the focus
 // to its cancel button when the dialog appears (`init => { self.focus(); }`),
 // so Enter lands on Cancel.
-export component ModalDialog inherits Rectangle {
+export component ModalCard inherits Rectangle {
     in property <string> title;
-    in property <string> message;
+    // The card is as wide as this, or as the window allows.
+    in property <length> card-width: 440px;
     callback cancelled();
 
     width: 100%;
@@ -44,8 +45,8 @@ export component ModalDialog inherits Rectangle {
         }
 
         Rectangle {
-            width: min(root.width - 32px, 440px);
-            // The card is as high as its content: title, rule, the wrapped message, the buttons.
+            width: min(root.width - 32px, root.card-width);
+            // The card is as high as its content: title, rule, the body.
             height: min(root.height - 32px, column.preferred-height);
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -75,17 +76,25 @@ export component ModalDialog inherits Rectangle {
                         background: Shell.look.accent;
                     }
                 }
-                ShellText {
-                    text: root.message;
-                    wrap: word-wrap;
-                }
-                HorizontalLayout {
-                    padding-top: Shell.look.spacing;
-                    alignment: end;
-                    spacing: Shell.look.spacing;
-                    @children
-                }
+                @children
             }
         }
+    }
+}
+
+// A confirmation: a title, a wrapped message and a row of buttons. The
+// caller puts the buttons in as children, so a dialog can carry two or three.
+export component ModalDialog inherits ModalCard {
+    in property <string> message;
+
+    ShellText {
+        text: root.message;
+        wrap: word-wrap;
+    }
+    HorizontalLayout {
+        padding-top: Shell.look.spacing;
+        alignment: end;
+        spacing: Shell.look.spacing;
+        @children
     }
 }

@@ -26,13 +26,16 @@ mod generated {
 
 pub use connect::editor::{connect_editor, refresh_editor};
 pub use connect::guard::{connect_close, connect_expert};
+pub use connect::history::connect_history;
+pub use connect::review::connect_review;
+pub use connect::save::connect_save;
 pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
 pub use generated::{
     AboutDialog, CharacterCard, EditNotice, EditProblem, EditorBridge, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow, FolderOrigin, FolderRow,
-    Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, SectionData, Shell, SlotKind, SlotRow, SummaryRow,
-    Theme, ThemeId,
+    Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, ReviewKind, ReviewRow, SectionData, Shell, SlotKind,
+    SlotRow, SummaryRow, Theme, ThemeId,
 };
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
@@ -40,6 +43,7 @@ use std::sync::Arc;
 pub use theme::{sync_theme, theme_for};
 
 use neoffse::Registry;
+use neoffse::io::dirs::DataDir;
 use neoffse::io::discovery::Environment;
 use slint::{CloseRequestResponse, ComponentHandle};
 
@@ -65,12 +69,20 @@ pub fn run() -> Result<(), slint::PlatformError> {
         Arc::new(NativePicker),
         Arc::new(EventLoopDispatcher),
     );
+    // The only place that names the platform data folder. A missing one leaves
+    // the data folder unset, and every save then ends as a failure.
+    if let Ok(data) = DataDir::platform() {
+        app.state.set_data_dir(data);
+    }
     let main_window = MainWindow::new()?;
     let about = new_about_dialog()?;
     connect_about(&main_window, &about);
     connect_quit(&main_window);
     connect_home(&main_window, &app);
     connect_editor(&main_window, &app);
+    connect_history(&main_window, &app);
+    connect_review(&main_window, &app);
+    connect_save(&main_window, &app);
     connect_expert(&main_window, &app);
     connect_close(&main_window, &about, &app);
     main_window.run()

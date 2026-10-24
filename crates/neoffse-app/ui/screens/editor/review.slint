@@ -1,0 +1,129 @@
+import { ScrollView } from "std-widgets.slint";
+import { ReviewKind, ReviewRow } from "../../types/editor.slint";
+import { EditorBridge } from "bridge.slint";
+import { ThemedButton } from "../../widgets/controls.slint";
+import { ModalCard } from "../../widgets/dialogs.slint";
+import { ShellText } from "../../widgets/shell-text.slint";
+import { Shell } from "../../theme/shell.slint";
+
+// One line of the review list. A heading names the entity; a field line shows
+// the label with the value before and after; an added or removed line says so.
+component ReviewLine inherits HorizontalLayout {
+    in property <ReviewRow> item;
+
+    spacing: Shell.look.spacing;
+
+    if root.item.kind == ReviewKind.heading: HorizontalLayout {
+        padding-top: 4px;
+
+        ShellText {
+            text: root.item.entity;
+            font-family: Shell.look.font-family-strong;
+            font-weight: Shell.look.font-weight-strong;
+            overflow: elide;
+        }
+    }
+    if root.item.kind == ReviewKind.field: HorizontalLayout {
+        spacing: Shell.look.spacing;
+        padding-left: Shell.look.padding;
+
+        ShellText {
+            text: root.item.label;
+            color: Shell.look.muted;
+            overflow: elide;
+            min-width: 0px;
+            preferred-width: 0px;
+            horizontal-stretch: 3;
+        }
+        ShellText {
+            text: root.item.before;
+            color: Shell.look.muted;
+            overflow: elide;
+            min-width: 0px;
+            horizontal-alignment: right;
+            preferred-width: 0px;
+            horizontal-stretch: 2;
+        }
+        // ASCII: Cornelia Sans has no wide arrow glyph.
+        ShellText {
+            text: "->";
+            color: Shell.look.accent;
+        }
+        ShellText {
+            text: root.item.after;
+            overflow: elide;
+            min-width: 0px;
+            preferred-width: 0px;
+            horizontal-stretch: 2;
+        }
+    }
+    if root.item.kind == ReviewKind.added: HorizontalLayout {
+        padding-left: Shell.look.padding;
+
+        ShellText {
+            text: @tr("Added");
+            color: Shell.look.accent;
+            overflow: elide;
+        }
+    }
+    if root.item.kind == ReviewKind.removed: HorizontalLayout {
+        padding-left: Shell.look.padding;
+
+        ShellText {
+            text: @tr("Removed");
+            color: Shell.look.warning;
+            overflow: elide;
+        }
+    }
+}
+
+// The review of the net changes, over the page. Cancel takes the focus, so
+// Enter cancels; Save is the only way on.
+export component ReviewDialog inherits ModalCard {
+    callback saved();
+
+    title: @tr("Review changes");
+    card-width: 560px;
+
+    if EditorBridge.review-rows.length == 0: ShellText {
+        text: @tr("The changes cancel each other out. Saving rewrites the file with the same content.");
+        wrap: word-wrap;
+    }
+    if EditorBridge.review-rows.length > 0: ScrollView {
+        height: min(root.height * 0.5, 320px, list.preferred-height);
+
+        list := VerticalLayout {
+            padding-right: 16px;
+            spacing: 4px;
+
+            for entry in EditorBridge.review-rows: ReviewLine {
+                item: entry;
+            }
+        }
+    }
+    ShellText {
+        text: @tr("Steam may ask you to keep the local files at the next launch.");
+        color: Shell.look.muted;
+        font-size: Shell.look.font-small;
+        wrap: word-wrap;
+    }
+    HorizontalLayout {
+        padding-top: Shell.look.spacing;
+        alignment: end;
+        spacing: Shell.look.spacing;
+
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { root.cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Save");
+            primary: true;
+            clicked => { root.saved(); }
+        }
+    }
+}

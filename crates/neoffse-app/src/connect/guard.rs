@@ -61,17 +61,11 @@ pub fn connect_expert(window: &MainWindow, app: &App) {
         let (weak, app) = (weak.clone(), app.clone());
         move || {
             let Some(window) = weak.upgrade() else { return };
-            let why = app.editor.confirm_discard();
-            window.global::<EditorBridge>().set_discard_dialog_open(false);
-            sync_expert(&window, &app);
-            match why {
-                Some(Leave::Back) => {
-                    window.set_editor_open(false);
-                    refresh_home(&window, &app);
-                }
-                // The session is gone, so the close handler takes the clean path.
-                Some(_) => window.window().dispatch_event(slint::platform::WindowEvent::CloseRequested),
-                None => {}
+            if let Some(why) = app.editor.confirm_discard() {
+                finish_leave(&window, &app, why);
+            } else {
+                window.global::<EditorBridge>().set_discard_dialog_open(false);
+                sync_expert(&window, &app);
             }
         }
     });
@@ -86,16 +80,39 @@ pub fn connect_expert(window: &MainWindow, app: &App) {
     });
 }
 
+/// Completes a leave once the session is gone: closes the discard dialog,
+/// then goes Home (Back) or closes the window (Close).
+///
+/// The Discard button and a save that ends a pending leave both end here,
+/// after `confirm_discard` closed the session.
+pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
+    window.global::<EditorBridge>().set_discard_dialog_open(false);
+    sync_expert(window, app);
+    match why {
+        Leave::Back => {
+            window.set_editor_open(false);
+            refresh_home(window, app);
+        }
+        // The session is gone, so the close handler takes the clean path.
+        _ => window.window().dispatch_event(slint::platform::WindowEvent::CloseRequested),
+    }
+}
+
 /// Replaces the main window's close handler: a dirty session asks first.
 ///
 /// Call it after [`connect_about`](crate::connect_about):
 /// `Window::on_close_requested` keeps one handler, and this one hides the
 /// About dialog itself when the close goes through. A clean session or none
 /// at all closes at once. A dirty one keeps the window shown and opens the
-/// discard dialog.
+/// discard dialog. While a save or a reload runs (`working`), the window stays
+/// shown with no dialog: the worker holds the session lock, which the leave
+/// request would wait on.
 pub fn connect_close(window: &MainWindow, about: &AboutDialog, app: &App) {
     let (weak, about, app) = (window.as_weak(), about.as_weak(), app.clone());
     window.window().on_close_requested(move || {
+        if weak.upgrade().is_some_and(|window| window.global::<EditorBridge>().get_working()) {
+            return CloseRequestResponse::KeepWindowShown;
+        }
         let left = app.editor.leave(Leave::Close) == LeaveAnswer::Left;
         let window = weak.upgrade();
         if left {

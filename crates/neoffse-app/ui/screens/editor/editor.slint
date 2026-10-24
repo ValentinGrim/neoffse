@@ -7,6 +7,7 @@ import { Icons } from "../../theme/icons.slint";
 import { PartyCards } from "../../games/pr/cards.slint";
 import { CommandList, StatusPanel } from "../../games/pr/menu.slint";
 import { NoticeBar } from "notice-bar.slint";
+import { PendingBar } from "pending-bar.slint";
 import { SummaryLine } from "../../widgets/text.slint";
 import { CharacterEditPage, CharacterPage, InventoryPage } from "pages.slint";
 import { Look } from "../../theme/look.slint";
@@ -52,6 +53,31 @@ export component EditorPage inherits FocusScope {
             return accept;
         }
         return reject;
+    }
+
+    // Control is Command on macOS. A focused `ThemedEdit` sees the key first
+    // and keeps these chords: Ctrl+Z always, and the redo chord of the platform
+    // (Ctrl+Y on Windows, Ctrl+Shift+Z elsewhere). It ignores every other
+    // Control chord, so the other redo chord and Ctrl+S reach the page.
+    KeyBinding {
+        keys: @keys(Control + Z);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.undo-requested(); }
+    }
+    KeyBinding {
+        keys: @keys(Control + Y);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.redo-requested(); }
+    }
+    KeyBinding {
+        keys: @keys(Control + Shift + Z);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.redo-requested(); }
+    }
+    KeyBinding {
+        keys: @keys(Control + S);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.review-requested(); }
     }
 
     // Moves to a command's top page. The control that was clicked may vanish
@@ -140,6 +166,26 @@ export component EditorPage inherits FocusScope {
                     pages: EditorBridge.data.magic.pages;
                     read-only: EditorBridge.data.magic.read-only;
                 }
+            }
+        }
+        // A button may vanish with the bar, so the page takes the focus first.
+        if EditorBridge.pending-count > 0: PendingBar {
+            count: EditorBridge.pending-count;
+            can-undo: EditorBridge.can-undo;
+            can-redo: EditorBridge.can-redo;
+            enabled: !EditorBridge.blocked;
+            working: EditorBridge.working;
+            undo => {
+                root.focus();
+                EditorBridge.undo-requested();
+            }
+            redo => {
+                root.focus();
+                EditorBridge.redo-requested();
+            }
+            review => {
+                root.focus();
+                EditorBridge.review-requested();
             }
         }
     }

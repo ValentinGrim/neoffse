@@ -58,7 +58,24 @@ export global NoticeText {
             }
             return @tr("Stats raised for {} levels with a random draw, like the game. Undo to cancel.", notice.value);
         }
+        if notice.problem == EditProblem.saved {
+            if notice.value == "" {
+                return @tr("Saved.");
+            }
+            return @tr("Saved. Backup kept: {}", notice.value);
+        }
+        if notice.problem == EditProblem.save-failed {
+            return @tr("Saving failed. Your changes are still open.");
+        }
+        if notice.problem == EditProblem.reload-failed {
+            return @tr("The save could not be reloaded. Your changes are still open.");
+        }
         return @tr("An internal error stopped the edit.");
+    }
+
+    // Notices that report progress and not a refusal draw the info look.
+    pure public function is-info(notice: EditNotice) -> bool {
+        return notice.problem == EditProblem.saved || notice.problem == EditProblem.stats-raised;
     }
 }
 
