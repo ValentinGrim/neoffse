@@ -14,6 +14,7 @@ use super::leave::Leave;
 use super::notice::problem_notice;
 use super::overview::overview;
 use super::pick::picker_entries;
+use crate::assets::{AssetProvider, default_provider};
 use crate::state::AppState;
 use crate::{EditNotice, EditProblem, EditorData, Overview, PickerEntry, SummaryRow};
 
@@ -46,6 +47,8 @@ pub(super) struct Shared {
     /// session lock for that time.
     pub(super) saving: AtomicBool,
     pub(super) probe: Mutex<Probe>,
+    /// Where the party cards ask for portraits.
+    assets: Mutex<Arc<dyn AssetProvider>>,
 }
 
 /// The editor page: reads the open session, applies edits, keeps the expert
@@ -90,6 +93,7 @@ impl EditorViewModel {
                 pending: Mutex::new(None),
                 saving: AtomicBool::new(false),
                 probe: Mutex::new(Arc::new(process::running)),
+                assets: Mutex::new(default_provider()),
             }),
         }
     }
@@ -151,11 +155,21 @@ impl EditorViewModel {
         let Some(session) = self.shared.state.session() else {
             return Overview::default();
         };
+        // Clone the provider out of its lock: no lock is held while the
+        // models build.
+        let assets = Arc::clone(&self.shared.assets.lock().unwrap_or_else(PoisonError::into_inner));
         let mut session = lock_session(&session);
         let game = session.game();
         session
             .view()
-            .map_or_else(|_| Overview::default(), |view| overview(&view, game, self.shared.language))
+            .map_or_else(|_| Overview::default(), |view| overview(&view, game, self.shared.language, &*assets))
+    }
+
+    /// Replaces the provider the party cards ask for portraits. The default
+    /// is [`default_provider`]. Clones of the view model share the
+    /// replacement; the caller refreshes the page to show it.
+    pub fn set_assets(&self, assets: Arc<dyn AssetProvider>) {
+        *self.shared.assets.lock().unwrap_or_else(PoisonError::into_inner) = assets;
     }
 
     /// The picker entries of field `key`'s tables that match `query`. Empty

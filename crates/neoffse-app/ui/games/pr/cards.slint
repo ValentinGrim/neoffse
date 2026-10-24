@@ -2,9 +2,10 @@ import { ScrollView } from "std-widgets.slint";
 import { CharacterCard, EntityPage, Overview } from "../../types/editor.slint";
 import { LookText, PortraitFrame, PressRow, RuleLine } from "../../widgets/frames.slint";
 
-// One character: a portrait frame with the initial, the job over the name,
-// HP, the eight charges in two rows of four, the level, and the experience or
-// the next level. A click, Enter or Space opens the character's page.
+// One character: a portrait frame with the sprite (the initial when there is
+// none), the job over the name, HP, the eight charges in two rows of four, the
+// level, and the experience or the next level. A click, Enter or Space opens
+// the character's page.
 component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
     in property <bool> last;
@@ -30,6 +31,7 @@ component CharacterRow inherits PressRow {
             PortraitFrame {
                 look: root.look;
                 initial: root.card.initial;
+                portrait: root.card.portrait;
                 x: 0px;
                 y: (parent.height - self.height) / 2;
                 width: root.side;

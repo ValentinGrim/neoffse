@@ -3,7 +3,8 @@ import { FrameStyle, Look } from "../theme/look.slint";
 import { Theme } from "../theme/theme.slint";
 
 // The pieces the editor menu is drawn with. Every one reads a `Look`, the
-// open game's by default, and draws with primitives only: no image.
+// open game's by default, and draws with primitives only. The portrait frame
+// is the one exception: it shows the image it is given.
 
 // A panel: a bevelled frame in the PR look, one thin rule in a flat look. The
 // children sit inside a padded column.
@@ -24,22 +25,37 @@ export component Frame inherits Rectangle {
     }
 }
 
-// A square holding the initial of a character. It carries no image.
+// A square holding the sprite of a character, or its initial when it has no
+// sprite.
 export component PortraitFrame inherits Rectangle {
     in property <Look> look: Theme.look;
     in property <string> initial;
+    // The sprite of the character. An empty image (width 0) shows the initial.
+    in property <image> portrait;
+    private property <bool> has-portrait: root.portrait.width > 0;
 
     background: root.look.portrait-fill;
-    border-width: 1px;
-    border-color: root.look.field-border;
 
-    Text {
+    if !root.has-portrait: Text {
         text: root.initial;
         color: root.look.muted;
         font-family: root.look.font-family;
         font-size: root.look.font-title;
         horizontal-alignment: center;
         vertical-alignment: center;
+    }
+    if root.has-portrait: sprite := Image {
+        width: 100%;
+        height: 100%;
+        source: root.portrait;
+        image-fit: contain;
+        image-rendering: pixelated;
+        accessible-role: none;
+    }
+    // Drawn last: the border stays visible, the sprite keeps the whole square.
+    Rectangle {
+        border-width: 1px;
+        border-color: root.look.field-border;
     }
 }
 

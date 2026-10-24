@@ -72,6 +72,9 @@ export struct CharacterCard {
     name: string,
     // First letter of `name`, upper case; "" for an empty name.
     initial: string,
+    // The sprite of the character; an empty image (width 0) when no provider
+    // has one. The frame then draws `initial`.
+    portrait: image,
     // The job name in the game-data language; "" when the tables lack it.
     job: string,
     level: string,

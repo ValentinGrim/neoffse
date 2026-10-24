@@ -12,7 +12,7 @@ use neoffse::data::{Language, tables_for};
 use neoffse::pr::ff1::names;
 use neoffse_app::editor::{Input, overview};
 use neoffse_app::state::AppState;
-use neoffse_app::{CharacterCard, EditorViewModel};
+use neoffse_app::{CharacterCard, EditorViewModel, OriginalSprites};
 
 const NAMES: [&str; 4] = ["Aria", "Bram", "Cleo", "Zoé"];
 
@@ -105,10 +105,10 @@ fn the_initial_is_the_first_letter() {
     assert_eq!(renamed.initial, "Z");
 
     let unnamed = Entity::new(character(7), "Character 7", Vec::new());
-    let built = overview(&party_of(unnamed), Game::Ff1Pr, Language::En);
+    let built = overview(&party_of(unnamed), Game::Ff1Pr, Language::En, &OriginalSprites);
     assert_eq!(items(&built.cards)[0].initial, "C");
     let empty = Entity::new(character(8), "", Vec::new());
-    let built = overview(&party_of(empty), Game::Ff1Pr, Language::En);
+    let built = overview(&party_of(empty), Game::Ff1Pr, Language::En, &OriginalSprites);
     assert_eq!(items(&built.cards)[0].initial, "");
 }
 
@@ -147,7 +147,7 @@ fn a_game_without_a_builder_gets_an_empty_overview() {
     let site = editing_site();
     let ed = editing(&site);
     let view = ed.with_session(|session| session.view().unwrap());
-    let built = overview(&view, Game::Ff2Pr, Language::En);
+    let built = overview(&view, Game::Ff2Pr, Language::En, &OriginalSprites);
     assert!(!built.present);
     assert_eq!(items(&built.cards).len(), 0);
     assert_eq!(built.gil, "");
@@ -164,7 +164,7 @@ fn missing_fields_give_empty_strings() {
         Section::new(Capability::Party, vec![Entity::new(character(1), "Hero", vec![only_name])]),
         Section::new(Capability::Inventory, vec![Entity::new(FieldId::new("elsewhere"), "Elsewhere", Vec::new())]),
     ]);
-    let built = overview(&view, Game::Ff1Pr, Language::En);
+    let built = overview(&view, Game::Ff1Pr, Language::En, &OriginalSprites);
     let card = &items(&built.cards)[0];
     assert_eq!(items(&built.cards).len(), 1);
     assert_eq!((card.hp.as_str(), card.level.as_str(), card.exp.as_str(), card.job.as_str()), ("", "", "", ""));
@@ -182,7 +182,7 @@ fn a_wrong_kind_value_gives_an_empty_string() {
         Value::Text("many".to_owned()),
     );
     let level = int_field(&id, names::LEVEL, "Level", Value::Int(5));
-    let built = overview(&party_of(Entity::new(id, "Hero", vec![hp, level])), Game::Ff1Pr, Language::En);
+    let built = overview(&party_of(Entity::new(id, "Hero", vec![hp, level])), Game::Ff1Pr, Language::En, &OriginalSprites);
     let card = &items(&built.cards)[0];
     assert_eq!(card.hp, "");
     assert_eq!(card.level, "5");

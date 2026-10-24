@@ -1,7 +1,9 @@
 //! The party overview: one card per character and the gil.
 //!
 //! This is the one module of the app that names Pixel Remaster fields. The
-//! rest of the view model reads metadata and stays blind to the game. A card
+//! rest of the view model reads metadata and stays blind to the game. The job
+//! id to image map lives in [`crate::assets`]: this module reaches it through
+//! the [`AssetProvider`] trait only. A card
 //! reads the name, job, level, HP, experience and the eight spell charges of
 //! a character (`docs/formats/pixel-remaster.md#characters`) through the
 //! constants of `neoffse::pr::ff1::names`, never through a label or a
@@ -14,24 +16,27 @@ use slint::{Model, SharedString};
 
 use super::field_row::model_of;
 use super::pick::entry_name;
+use crate::assets::AssetProvider;
 use crate::{CharacterCard, Overview};
 
 /// The party overview of `view`: one card per Party entity in section order,
 /// and the gil.
 ///
 /// `present` is false for a game without a card builder (today every game
-/// but FF I), and no card is built. A value the view lacks, or holds as
-/// another kind, gives an empty string for that entry. `hp_max` and
-/// `next_exp` come from the view fields `names::MAX_HP` and
+/// but FF I), and no card is built and `assets` is never asked. A card holds
+/// the portrait `assets` gives for the job id of its character, and the empty
+/// image when the job is missing, not a number, outside `u32` or unknown to
+/// the provider. A value the view lacks, or holds as another kind, gives an
+/// empty string for that entry. `hp_max` and `next_exp` come from the view fields `names::MAX_HP` and
 /// `names::NEXT_LEVEL`; `next_exp` is empty at level 99, where no next row
 /// exists.
 ///
 /// The result holds names and numbers from the save: never log it. Builds
-/// Slint models: UI thread only.
+/// Slint models and images: UI thread only.
 #[must_use]
-pub fn overview(view: &SaveView, game: Game, language: Language) -> Overview {
+pub fn overview(view: &SaveView, game: Game, language: Language, assets: &dyn AssetProvider) -> Overview {
     match game {
-        Game::Ff1Pr => ff1_overview(view, game, language),
+        Game::Ff1Pr => ff1_overview(view, game, language, assets),
         _ => Overview::default(),
     }
 }
@@ -60,7 +65,7 @@ pub fn levels_gained(before: &Overview, after: &Overview) -> u32 {
         .fold(0, u32::saturating_add)
 }
 
-fn ff1_overview(view: &SaveView, game: Game, language: Language) -> Overview {
+fn ff1_overview(view: &SaveView, game: Game, language: Language, assets: &dyn AssetProvider) -> Overview {
     let cards: Vec<CharacterCard> = view
         .section(Capability::Party)
         .map(|section| {
@@ -68,7 +73,7 @@ fn ff1_overview(view: &SaveView, game: Game, language: Language) -> Overview {
                 .entities
                 .iter()
                 .enumerate()
-                .map(|(index, entity)| card(entity, index, game, language))
+                .map(|(index, entity)| card(entity, index, game, language, assets))
                 .collect()
         })
         .unwrap_or_default();
@@ -80,16 +85,19 @@ fn ff1_overview(view: &SaveView, game: Game, language: Language) -> Overview {
 }
 
 /// The card of the entity at `index` among the Party entities. In FF I every
-/// Party entity is a page, so `index` is the page index.
-fn card(entity: &Entity, index: usize, game: Game, language: Language) -> CharacterCard {
+/// Party entity is a page, so `index` is the page index. The portrait follows
+/// the job id of the entity, never `index` or the name.
+fn card(entity: &Entity, index: usize, game: Game, language: Language, assets: &dyn AssetProvider) -> CharacterCard {
     let field = |name: &'static str| find(entity, &entity.id.clone().with_name(name));
     let charges: Vec<SharedString> = (1..=names::SPELL_LEVELS)
         .map(|level| number(find(entity, &entity.id.clone().with_name(names::CHARGES).with_id(level))).into())
         .collect();
+    let portrait = job_id(field(names::JOB)).and_then(|id| assets.portrait(game, id)).unwrap_or_default();
     CharacterCard {
         page: i32::try_from(index).unwrap_or(i32::MAX),
         name: entity.label.as_str().into(),
         initial: initial(&entity.label).into(),
+        portrait,
         job: job(field(names::JOB), game, language).into(),
         level: number(field(names::LEVEL)).into(),
         hp: number(field(names::HP)).into(),
@@ -121,6 +129,15 @@ fn job(field: Option<&FieldView>, game: Game, language: Language) -> String {
     tables_for(game)
         .and_then(|tables| entry_name(tables, &field.meta.tables, language, id))
         .unwrap_or_default()
+}
+
+/// The job id of the job field, `None` for a missing field, a value of
+/// another kind or an id outside `u32`.
+fn job_id(field: Option<&FieldView>) -> Option<u32> {
+    match field?.value {
+        Value::Int(id) => u32::try_from(id).ok(),
+        _ => None,
+    }
 }
 
 /// The first letter of `label`, upper case. `""` for an empty label.
