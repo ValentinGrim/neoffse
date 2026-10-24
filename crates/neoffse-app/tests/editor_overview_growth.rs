@@ -11,7 +11,7 @@ use neoffse::core::{Capability, Entity, FieldId, FieldMeta, FieldView, Game, Sav
 use neoffse::data::Language;
 use neoffse::pr::ff1::names;
 use neoffse_app::editor::{Input, overview};
-use neoffse_app::{CharacterCard, FieldKind};
+use neoffse_app::{CharacterCard, FieldKind, OriginalSprites};
 
 const NAMES: [&str; 4] = ["Aria", "Bram", "Cleo", "Zoé"];
 
@@ -135,7 +135,12 @@ fn level_99_empties_next_exp() {
 fn missing_and_wrong_kind_computed_fields_give_empty_strings() {
     let id = FieldId::new(names::CHARACTER).with_id(1);
     let party_of = |fields: Vec<FieldView>| SaveView::new(vec![Section::new(Capability::Party, vec![Entity::new(id.clone(), "Hero", fields)])]);
-    let card_of = |view: &SaveView| items(&overview(view, Game::Ff1Pr, Language::En).cards).into_iter().next().unwrap();
+    let card_of = |view: &SaveView| {
+        items(&overview(view, Game::Ff1Pr, Language::En, &OriginalSprites).cards)
+            .into_iter()
+            .next()
+            .unwrap()
+    };
 
     let bare = card_of(&party_of(Vec::new()));
     assert_eq!((bare.hp_max.as_str(), bare.next_exp.as_str()), ("", ""));

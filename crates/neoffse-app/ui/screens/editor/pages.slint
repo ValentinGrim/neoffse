@@ -24,9 +24,10 @@ export component FieldList inherits ScrollView {
     }
 }
 
-// One Party character: a portrait frame, the name and the job over the
-// fields. Back returns to the cards. The portrait and the job come from the
-// character's card, so a game with no cards shows the name alone.
+// One Party character: a 32 px portrait frame with the sprite at 1x (the
+// initial when there is none), the name and the job over the fields. Back
+// returns to the cards. The sprite and the job come from the character's card,
+// so a game with no cards shows the name alone.
 export component CharacterEditPage inherits VerticalLayout {
     in property <Look> look: Theme.look;
     in property <EntityPage> page;
@@ -43,8 +44,10 @@ export component CharacterEditPage inherits VerticalLayout {
         if root.has-card: PortraitFrame {
             look: root.look;
             initial: EditorBridge.overview.cards[root.index].initial;
-            width: 48px;
-            height: 48px;
+            portrait: EditorBridge.overview.cards[root.index].portrait;
+            // The sprite is 32 px: this size shows it at 1x, with no scaling.
+            width: 32px;
+            height: 32px;
         }
         VerticalLayout {
             horizontal-stretch: 1;
