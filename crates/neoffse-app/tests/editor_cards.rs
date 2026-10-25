@@ -90,6 +90,26 @@ fn cards_with_notice_and_bar(height: f32) -> Ui {
     ui
 }
 
+/// The window height that shows two cards and a half of height `card`.
+/// `ui` must be `tall` high, with the notice and the bar shown: the chrome
+/// (header, margins, notice, bar) is what `tall` leaves over the panel.
+fn short_height(ui: &Ui, tall: f32, card: f32) -> f32 {
+    let panel = ElementHandle::find_by_element_type_name(&ui.window, "PartyCards")
+        .next()
+        .expect("the party cards panel");
+    let chrome = tall - panel.size().height;
+    chrome + 2.5 * card
+}
+
+/// A tall window, then the same one cut to show two cards and a half.
+fn short_cards() -> Ui {
+    let ui = cards_with_notice_and_bar(1200.0);
+    let card = visible_cards(&ui)[0].bounds.h;
+    let short = short_height(&ui, 1200.0, card);
+    resize(&ui, 1280.0, short);
+    ui
+}
+
 /// Checks the geometry of what is in view and records the checked cards and
 /// adjacent pairs.
 fn check(cards: &[Card], seen: &mut Vec<String>, pairs: &mut Vec<(String, String)>) {
@@ -116,7 +136,7 @@ fn check(cards: &[Card], seen: &mut Vec<String>, pairs: &mut Vec<(String, String
 
 #[test]
 fn no_two_cards_overlap_and_each_holds_its_rows() {
-    let ui = cards_with_notice_and_bar(800.0);
+    let ui = short_cards();
     let (mut seen, mut pairs) = (Vec::new(), Vec::new());
     check(&visible_cards(&ui), &mut seen, &mut pairs);
     // Tab walks the focus down the cards and scrolls the panel with it.
@@ -146,7 +166,7 @@ fn a_card_keeps_its_height_when_the_panel_is_short() {
     let pitch = tall[1].bounds.y - tall[0].bounds.y;
     assert!((pitch - tall[0].bounds.h).abs() < SLACK, "the cards touch, nothing is squeezed");
 
-    resize(&ui, 1280.0, 560.0);
+    resize(&ui, 1280.0, short_height(&ui, 1200.0, tall[0].bounds.h));
     let short = visible_cards(&ui);
     assert!(short.len() < 4, "a short panel clips the last cards");
     for card in &short {
@@ -156,7 +176,7 @@ fn a_card_keeps_its_height_when_the_panel_is_short() {
 
 #[test]
 fn tabbing_to_the_last_card_scrolls_it_into_view() {
-    let ui = cards_with_notice_and_bar(800.0);
+    let ui = short_cards();
     assert!(!visible_cards(&ui).iter().any(|card| card.name == "Zoé"), "the last card starts out of view");
 
     let mut reached = None;

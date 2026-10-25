@@ -52,6 +52,13 @@ impl Ui {
         });
     }
 
+    /// A left click on the centre of `element`: its absolute position plus
+    /// half of its size.
+    pub(crate) fn click_element(&self, element: &ElementHandle) {
+        let (position, size) = (element.absolute_position(), element.size());
+        self.click_at(position.x + size.width / 2.0, position.y + size.height / 2.0);
+    }
+
     /// Puts the editor on `command` and `character` through the bridge.
     pub(crate) fn navigate(&self, command: EditorCommand, character: i32) {
         self.bridge().set_command(command);
