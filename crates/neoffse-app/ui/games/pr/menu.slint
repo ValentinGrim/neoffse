@@ -8,7 +8,7 @@ component CommandRow inherits PressRow {
     in property <string> text;
 
     name: root.text;
-    height: 34px;
+    height: root.look.row-height;
 
     if root.current: Pointer {
         look: root.look;

@@ -6,77 +6,11 @@
 
 mod common;
 
-use common::{Ui, editing_site, open_editor};
-use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use common::{Card, SLACK, Ui, editing_site, open_editor, resize, visible_cards};
+use i_slint_backend_testing::ElementHandle;
 use slint::platform::Key;
-use slint::{ComponentHandle, LogicalSize};
 
 const NAMES: [&str; 4] = ["Aria", "Bram", "Cleo", "Zoé"];
-const SLACK: f32 = 0.5;
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Rect {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-}
-
-impl Rect {
-    fn of(element: &ElementHandle) -> Self {
-        let (position, size) = (element.absolute_position(), element.size());
-        Self {
-            x: position.x,
-            y: position.y,
-            w: size.width,
-            h: size.height,
-        }
-    }
-
-    fn bottom(&self) -> f32 {
-        self.y + self.h
-    }
-
-    fn holds(&self, inner: &Self) -> bool {
-        inner.x >= self.x - SLACK && inner.y >= self.y - SLACK && inner.x + inner.w <= self.x + self.w + SLACK && inner.bottom() <= self.bottom() + SLACK
-    }
-}
-
-/// A card the testing backend can see: its bounds and every text inside it.
-/// A card clipped away by the scroll panel is absent.
-struct Card {
-    name: String,
-    bounds: Rect,
-    texts: Vec<Rect>,
-}
-
-fn resize(ui: &Ui, width: f32, height: f32) {
-    ui.window.window().set_size(LogicalSize::new(width, height));
-}
-
-/// The cards in view, top to bottom.
-fn visible_cards(ui: &Ui) -> Vec<Card> {
-    ElementHandle::find_by_element_type_name(&ui.window, "CharacterRow")
-        .map(|row| {
-            let button = row
-                .query_descendants()
-                .match_accessible_role(AccessibleRole::Button)
-                .find_first()
-                .expect("a focus scope");
-            let texts = row
-                .query_descendants()
-                .match_accessible_role(AccessibleRole::Text)
-                .find_all()
-                .iter()
-                .map(Rect::of)
-                .collect();
-            Card {
-                name: button.accessible_label().expect("a name").to_string(),
-                bounds: Rect::of(&row),
-                texts,
-            }
-        })
-        .collect()
-}
 
 /// The editor on the cards, with the level-up notice and the bar shown.
 fn cards_with_notice_and_bar(height: f32) -> Ui {
@@ -115,11 +49,11 @@ fn short_cards() -> Ui {
 fn check(cards: &[Card], seen: &mut Vec<String>, pairs: &mut Vec<(String, String)>) {
     for card in cards {
         assert!(card.bounds.h > 0.0, "{} has a height", card.name);
-        for (index, text) in card.texts.iter().enumerate() {
+        for (index, (_, text)) in card.texts.iter().enumerate() {
             assert!(card.bounds.holds(text), "text {index} of {} lies inside its card", card.name);
         }
         // A card cut by the panel edge lists fewer texts: only whole cards count.
-        if card.texts.len() >= 10 {
+        if card.whole() {
             seen.push(card.name.clone());
         }
     }
