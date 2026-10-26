@@ -11,7 +11,7 @@ use std::fs;
 
 use common::{Paged, Ui, editing_site, listing, restore_page, slot_bytes, slot_file};
 use neoffse::core::Game;
-use neoffse_app::{BackupReason, RestoreProblem};
+use neoffse_app::RestoreProblem;
 use slint::ComponentHandle;
 
 #[test]
@@ -47,6 +47,7 @@ fn a_failed_restore_shows_the_failure_notice() {
 #[cfg(unix)]
 #[test]
 fn an_incomplete_restore_shows_its_notice_refreshes_the_list_and_scans() {
+    use neoffse_app::BackupReason;
     use std::os::unix::fs::PermissionsExt;
 
     let (_site, p) = restore_page();
