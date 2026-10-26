@@ -110,6 +110,7 @@ fn reopen(window: &MainWindow, app: &App, restored: RestoreNotice) {
         } else {
             done_app.editor.back();
             window.set_editor_open(false);
+            done_app.home_size.restore(&window);
             sync_expert(&window, &done_app);
             finish_restore(&window, &done_app, notice(RestoreProblem::ReopenFailed, ""));
         }
