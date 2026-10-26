@@ -2,7 +2,7 @@ import { ScrollView } from "std-widgets.slint";
 import { EntityPage, FieldRow, ItemList, ItemRow, SectionData } from "../../types/editor.slint";
 import { EditorBridge } from "bridge.slint";
 import { ThemedButton } from "../../widgets/controls.slint";
-import { FieldEditor, FieldLine, LockMark } from "fields.slint";
+import { FieldEditor, FieldLabel, FieldLine, LockMark } from "fields.slint";
 import { PickerField } from "../../widgets/picker.slint";
 import { LookText, PortraitFrame, RuleLine } from "../../widgets/frames.slint";
 import { Icons } from "../../theme/icons.slint";
@@ -129,13 +129,8 @@ component ItemLine inherits HorizontalLayout {
 
     spacing: root.look.padding;
 
-    LookText {
+    FieldLabel {
         look: root.look;
-        min-width: 96px;
-        preferred-width: 240px;
-        max-width: 240px;
-        overflow: elide;
-        color: root.look.label;
         text: root.item.label;
     }
     for field in root.item.fields: FieldEditor {
