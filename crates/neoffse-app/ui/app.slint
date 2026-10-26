@@ -98,9 +98,10 @@ export component MainWindow inherits Window {
     preferred-width: 800px;
     preferred-height: 600px;
     background: Theme.look.window-fill;
-    // The PR menu lays out at the in-game text size and needs room. Home keeps no minimum of its own.
-    min-width: Theme.id == ThemeId.pr ? 1280px : 0px;
-    min-height: Theme.id == ThemeId.pr ? 800px : 0px;
+    // The PR menu at its dense text size fits the 800 by 600 size Home opens at, so the
+    // editor does not grow the window. Home keeps no minimum of its own.
+    min-width: Theme.id == ThemeId.pr ? 800px : 0px;
+    min-height: Theme.id == ThemeId.pr ? 600px : 0px;
 
     // The std scroll bars and the `ComboBox` stay legible on navy.
     init => { Palette.color-scheme = ColorScheme.dark; }

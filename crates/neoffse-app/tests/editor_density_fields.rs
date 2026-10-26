@@ -140,6 +140,9 @@ fn the_items_rows_fit_at_800() {
     let all_rows: Vec<_> = lists(&data).iter().flat_map(rows).collect();
     assert!(all_rows.iter().any(|row| row.locked), "the fixture holds a locked row");
 
+    // A Remove button squeezed by its row elides its text: its width at 800 then
+    // falls short of its width at 1280, where nothing squeezes.
+    let mut remove_widths: Vec<Vec<f32>> = Vec::new();
     for (width, height) in [SMALL, LARGE] {
         resize(&ui, width, height);
         let page = the_rect(&ui, "InventoryPage");
@@ -147,8 +150,13 @@ fn the_items_rows_fit_at_800() {
         assert!(!lines.is_empty());
         let mut whole = 0;
         let mut removes = 0;
+        let mut widths = Vec::new();
+        let mut box_edges = Vec::new();
+        let mut remove_edges = Vec::new();
         for line in &lines {
             let rect = Rect::of(line);
+            let first_box = line.query_descendants().match_accessible_role(AccessibleRole::TextInput).find_first();
+            box_edges.extend(first_box.map(|input| Rect::of(&input).x));
             assert!(
                 rect.x >= page.x - SLACK && rect.right() <= page.right() + SLACK,
                 "{width}x{height}: a row ({rect:?}) leaves the page ({page:?}) horizontally"
@@ -157,6 +165,8 @@ fn the_items_rows_fit_at_800() {
                 if button.accessible_label().is_some_and(|label| label.starts_with("Remove ")) {
                     removes += 1;
                     let button = Rect::of(&button);
+                    widths.push(button.w);
+                    remove_edges.push(button.right());
                     assert!(
                         rect.holds(&button) && button.right() <= page.right() + SLACK,
                         "{width}x{height}: a Remove button ({button:?}) leaves its row ({rect:?})"
@@ -166,9 +176,26 @@ fn the_items_rows_fit_at_800() {
             whole += usize::from(page.holds(&rect));
         }
         assert!(removes > 0, "{width}x{height}: some row offers Remove");
+        // Locked rows and open rows share one column of boxes and one right edge.
+        for edge in &box_edges {
+            assert!((edge - box_edges[0]).abs() <= SLACK, "{width}x{height}: the box columns differ ({box_edges:?})");
+        }
+        for edge in &remove_edges {
+            assert!(
+                (edge - remove_edges[0]).abs() <= SLACK,
+                "{width}x{height}: the Remove buttons end at different x ({remove_edges:?})"
+            );
+        }
+        remove_widths.push(widths);
         if width > 1000.0 {
             assert!(whole >= 12, "{width}x{height}: {whole} rows fit");
         }
+    }
+    for (small, large) in remove_widths[0].iter().zip(&remove_widths[1]) {
+        assert!(
+            (small - large).abs() <= SLACK,
+            "a Remove button is {small} px wide at 800 and {large} px at 1280: its text elides"
+        );
     }
 }
 

@@ -89,8 +89,8 @@ export component EditorPage inherits FocusScope {
     }
 
     VerticalLayout {
-        padding: 12px;
-        spacing: 8px;
+        padding: root.look.padding;
+        spacing: root.look.spacing;
 
         HorizontalLayout {
             spacing: root.look.spacing;
@@ -124,10 +124,13 @@ export component EditorPage inherits FocusScope {
             vertical-stretch: 1;
             spacing: root.look.spacing * 1.5;
 
+            // Its children stretch by default, which grows the column to its
+            // maximum and hides the preferred width; no stretch lets the width decide.
             VerticalLayout {
-                min-width: 190px;
-                max-width: 300px;
-                preferred-width: min(300px, max(190px, root.width * 0.3));
+                horizontal-stretch: 0;
+                min-width: root.look.font-body * 10;
+                max-width: root.look.font-body * 15;
+                preferred-width: min(root.look.font-body * 15, max(root.look.font-body * 10, root.width * 0.2));
                 spacing: root.look.spacing;
 
                 CommandList {
