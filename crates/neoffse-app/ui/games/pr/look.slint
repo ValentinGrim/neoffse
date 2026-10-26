@@ -9,10 +9,11 @@ export global PrLook {
         font-family-strong: Fonts.pixel,
         font-weight-strong: 400,
         // Cornelia Sans stays crisp at multiples of 12 px only (its pixel is 1/12 em).
-        // Small text is 12 px for the charge rows and hints a 24 px line would crowd out.
-        font-body: 24px,
+        // 12 px is the game's own pixel size and reads as large as Home's 14 px Barlow;
+        // 24 px is the next crisp step, used for titles.
+        font-body: 12px,
         font-small: 12px,
-        font-title: 36px,
+        font-title: 24px,
         text: #ffffff,
         label: #59d7ee,
         selected: #f2e24a,
@@ -35,5 +36,6 @@ export global PrLook {
         frame-radius: 0px,
         padding: 12px,
         spacing: 8px,
+        row-height: 30px,
     };
 }

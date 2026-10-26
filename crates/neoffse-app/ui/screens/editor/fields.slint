@@ -112,8 +112,10 @@ export component FieldEditor inherits HorizontalLayout {
     }
     if root.field.kind == FieldKind.number: CommitEdit {
         look: root.look;
-        preferred-width: 180px;
-        max-width: 180px;
+        preferred-width: root.look.font-body * 7.5;
+        max-width: root.look.font-body * 7.5;
+        // Seven digits stay readable however narrow the page gets.
+        min-width: root.look.font-body * 6;
         source: root.field.text;
         label: root.label;
         enabled: root.field.editable && !EditorBridge.blocked;
@@ -145,8 +147,8 @@ export component FieldEditor inherits HorizontalLayout {
     }
     if root.field.kind == FieldKind.choice: CommitEdit {
         look: root.look;
-        preferred-width: 180px;
-        max-width: 180px;
+        preferred-width: root.look.font-body * 7.5;
+        max-width: root.look.font-body * 7.5;
         source: root.field.text;
         label: root.label;
         enabled: root.field.editable && !EditorBridge.blocked;
@@ -155,8 +157,8 @@ export component FieldEditor inherits HorizontalLayout {
     }
     if root.field.kind == FieldKind.picker: PickerField {
         look: root.look;
-        preferred-width: 264px;
-        max-width: 264px;
+        preferred-width: root.look.font-body * 12;
+        max-width: root.look.font-body * 12;
         entries: EditorBridge.picker-entries;
         enabled: root.field.editable && !EditorBridge.blocked;
         icon: Icons.expand-more;
@@ -188,6 +190,16 @@ export component FieldEditor inherits HorizontalLayout {
     }
 }
 
+// The label column of a field row and of an item row: it holds the same count
+// of characters at any body size, and elides past its width.
+export component FieldLabel inherits LookText {
+    min-width: root.look.font-body * 5;
+    preferred-width: root.look.font-body * 10;
+    max-width: root.look.font-body * 10;
+    overflow: elide;
+    color: root.look.label;
+}
+
 // A field with its label on the left.
 export component FieldLine inherits HorizontalLayout {
     in property <Look> look: Theme.look;
@@ -195,13 +207,8 @@ export component FieldLine inherits HorizontalLayout {
 
     spacing: root.look.padding;
 
-    LookText {
+    FieldLabel {
         look: root.look;
-        min-width: 96px;
-        preferred-width: 240px;
-        max-width: 240px;
-        overflow: elide;
-        color: root.look.label;
         text: root.field.label;
     }
     FieldEditor {

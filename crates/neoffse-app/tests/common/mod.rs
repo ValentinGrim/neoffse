@@ -7,6 +7,7 @@
 mod backups;
 mod bridge;
 mod editor;
+mod geometry;
 mod keys;
 mod manual;
 mod open;
@@ -29,6 +30,7 @@ pub(crate) use bridge::open_editor;
 pub(crate) use editor::{
     Editing, FakeLocks, Part, all_fields, count_of, editing, editing_site, field, fields, item_label, list, lists, page, pages, row_of, rows, section,
 };
+pub(crate) use geometry::{Card, Rect, SLACK, resize, visible_cards};
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};

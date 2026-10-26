@@ -20,7 +20,7 @@ component PickerBody inherits FocusScope {
 
     private property <string> query;
     private property <int> highlight;
-    private property <length> row-height: root.look.font-body * 1.5;
+    private property <length> row-height: root.look.row-height;
 
     focus-on-click: false;
     focus-on-tab-navigation: false;
@@ -166,8 +166,8 @@ export component PickerField inherits Rectangle {
         // The popup lines up with the right edge of the button: the pickers sit in the right column.
         x: root.width - self.width;
         y: root.height;
-        width: 360px;
-        height: 396px;
+        width: root.look.font-body * 20;
+        height: root.look.row-height * 12;
         close-policy: close-on-click-outside;
         forward-focus: body;
 

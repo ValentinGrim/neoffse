@@ -114,3 +114,32 @@ fn the_pr_font_sizes_sit_on_the_pixel_grid() {
     }
     assert!(look.font_body >= look.font_small && look.font_title > look.font_body);
 }
+
+#[test]
+fn the_pr_text_is_as_dense_as_home() {
+    let site = editing_site();
+    let ui = open_editor(&site);
+    let pr = ui.window.global::<Theme>().get_look();
+    assert_eq!((pr.font_body, pr.font_small, pr.font_title, pr.row_height), (12.0, 12.0, 24.0, 30.0));
+    // The Shell numbers pin that Home does not move.
+    let shell = ui.window.global::<Shell>().get_look();
+    assert_eq!(
+        (shell.font_body, shell.font_small, shell.font_title, shell.row_height),
+        (14.0, 12.0, 18.0, 30.0)
+    );
+}
+
+#[test]
+fn the_pr_body_is_no_larger_than_twice_home_body() {
+    let site = editing_site();
+    let ui = open_editor(&site);
+    let pr = ui.window.global::<Theme>().get_look();
+    let shell = ui.window.global::<Shell>().get_look();
+    // A ceiling, not a pin: a return to 24 px text fails it.
+    assert!(
+        pr.font_body <= 2.0 * shell.font_body,
+        "PR body {} against Home body {}",
+        pr.font_body,
+        shell.font_body
+    );
+}

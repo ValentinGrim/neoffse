@@ -13,6 +13,7 @@ pub mod restore;
 mod restore_run;
 pub mod review;
 pub mod save;
+mod window_size;
 
 use std::fmt;
 use std::sync::Arc;
@@ -24,6 +25,7 @@ use slint::{ComponentHandle, ModelRc, VecModel, Weak};
 
 use self::editor::refresh_editor;
 use self::guard::sync_expert;
+use self::window_size::HomeSize;
 use crate::dispatch::Dispatcher;
 use crate::editor::{EditorViewModel, Leave, LeaveAnswer};
 use crate::home::{HomeViewModel, OpenOutcome, OpenViewModel};
@@ -50,6 +52,8 @@ pub struct App {
     pub state: Arc<AppState>,
     /// Where workers run and where their results return.
     pub dispatcher: Arc<dyn Dispatcher>,
+    /// The Home window size, kept while the editor is open.
+    home_size: HomeSize,
 }
 
 impl fmt::Debug for App {
@@ -76,6 +80,7 @@ impl App {
             restore: RestoreViewModel::new(registry, Arc::clone(&state)),
             state,
             dispatcher,
+            home_size: HomeSize::default(),
         }
     }
 }
@@ -153,6 +158,7 @@ fn go_home(window: &MainWindow, app: &App) {
     }
     if app.editor.leave(Leave::Back) == LeaveAnswer::Left {
         window.set_editor_open(false);
+        app.home_size.restore(window);
         sync_expert(window, app);
         refresh_home(window, app);
     } else {
@@ -214,6 +220,8 @@ fn show_outcome(window: &MainWindow, app: &App, outcome: OpenOutcome) {
     match outcome {
         OpenOutcome::Opened => {
             if let Some(summary) = app.editor.summary() {
+                // Before the editor shows: its window minimum may grow the window.
+                app.home_size.remember(window);
                 reset_navigation(&window.global::<EditorBridge>());
                 refresh_editor(window, app);
                 window.set_editor_summary(summary);

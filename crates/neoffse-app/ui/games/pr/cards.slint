@@ -10,15 +10,15 @@ component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
     in property <bool> last;
 
-    // A fixed portrait: the card's height comes from its rows, never the
-    // other way round.
-    private property <length> side: 96px;
+    // A fixed portrait, twice the 32 px sprite so its pixels stay whole: the
+    // card's height comes from its rows, never the other way round.
+    private property <length> side: 64px;
     // The label column of the stats: wide enough for "HP", "MP" and "Lv".
-    private property <length> label-width: 60px;
+    private property <length> label-width: root.look.font-body * 2.5;
 
     name: root.card.name;
-    // The card keeps the height of its rows (the portrait is 96 px, the four
-    // text rows are taller), whatever room the panel has.
+    // The card keeps the height of its rows (the portrait is twice the sprite
+    // and the four text rows decide the height), whatever room the panel has.
     min-height: body.min-height;
     preferred-height: body.preferred-height;
 
@@ -39,9 +39,9 @@ component CharacterRow inherits PressRow {
             }
         }
         VerticalLayout {
-            min-width: 120px;
-            preferred-width: 190px;
-            max-width: 190px;
+            min-width: root.look.font-body * 5;
+            preferred-width: root.look.font-body * 8;
+            max-width: root.look.font-body * 8;
             alignment: center;
 
             LookText {
@@ -138,8 +138,8 @@ component PlainRow inherits PressRow {
     in property <string> text;
 
     name: root.text;
-    min-height: 34px;
-    preferred-height: 34px;
+    min-height: root.look.row-height;
+    preferred-height: root.look.row-height;
 
     LookText {
         look: root.look;

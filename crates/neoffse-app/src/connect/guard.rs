@@ -96,6 +96,7 @@ pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
     match why {
         Leave::Back => {
             window.set_editor_open(false);
+            app.home_size.restore(window);
             refresh_home(window, app);
         }
         // Started above; the session stays open for the restore.

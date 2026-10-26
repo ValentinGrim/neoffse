@@ -6,77 +6,11 @@
 
 mod common;
 
-use common::{Ui, editing_site, open_editor};
-use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use common::{Card, SLACK, Ui, editing_site, open_editor, resize, visible_cards};
+use i_slint_backend_testing::ElementHandle;
 use slint::platform::Key;
-use slint::{ComponentHandle, LogicalSize};
 
 const NAMES: [&str; 4] = ["Aria", "Bram", "Cleo", "Zoé"];
-const SLACK: f32 = 0.5;
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Rect {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-}
-
-impl Rect {
-    fn of(element: &ElementHandle) -> Self {
-        let (position, size) = (element.absolute_position(), element.size());
-        Self {
-            x: position.x,
-            y: position.y,
-            w: size.width,
-            h: size.height,
-        }
-    }
-
-    fn bottom(&self) -> f32 {
-        self.y + self.h
-    }
-
-    fn holds(&self, inner: &Self) -> bool {
-        inner.x >= self.x - SLACK && inner.y >= self.y - SLACK && inner.x + inner.w <= self.x + self.w + SLACK && inner.bottom() <= self.bottom() + SLACK
-    }
-}
-
-/// A card the testing backend can see: its bounds and every text inside it.
-/// A card clipped away by the scroll panel is absent.
-struct Card {
-    name: String,
-    bounds: Rect,
-    texts: Vec<Rect>,
-}
-
-fn resize(ui: &Ui, width: f32, height: f32) {
-    ui.window.window().set_size(LogicalSize::new(width, height));
-}
-
-/// The cards in view, top to bottom.
-fn visible_cards(ui: &Ui) -> Vec<Card> {
-    ElementHandle::find_by_element_type_name(&ui.window, "CharacterRow")
-        .map(|row| {
-            let button = row
-                .query_descendants()
-                .match_accessible_role(AccessibleRole::Button)
-                .find_first()
-                .expect("a focus scope");
-            let texts = row
-                .query_descendants()
-                .match_accessible_role(AccessibleRole::Text)
-                .find_all()
-                .iter()
-                .map(Rect::of)
-                .collect();
-            Card {
-                name: button.accessible_label().expect("a name").to_string(),
-                bounds: Rect::of(&row),
-                texts,
-            }
-        })
-        .collect()
-}
 
 /// The editor on the cards, with the level-up notice and the bar shown.
 fn cards_with_notice_and_bar(height: f32) -> Ui {
@@ -90,16 +24,36 @@ fn cards_with_notice_and_bar(height: f32) -> Ui {
     ui
 }
 
+/// The window height that shows two cards and a half of height `card`.
+/// `ui` must be `tall` high, with the notice and the bar shown: the chrome
+/// (header, margins, notice, bar) is what `tall` leaves over the panel.
+fn short_height(ui: &Ui, tall: f32, card: f32) -> f32 {
+    let panel = ElementHandle::find_by_element_type_name(&ui.window, "PartyCards")
+        .next()
+        .expect("the party cards panel");
+    let chrome = tall - panel.size().height;
+    chrome + 2.5 * card
+}
+
+/// A tall window, then the same one cut to show two cards and a half.
+fn short_cards() -> Ui {
+    let ui = cards_with_notice_and_bar(1200.0);
+    let card = visible_cards(&ui)[0].bounds.h;
+    let short = short_height(&ui, 1200.0, card);
+    resize(&ui, 1280.0, short);
+    ui
+}
+
 /// Checks the geometry of what is in view and records the checked cards and
 /// adjacent pairs.
 fn check(cards: &[Card], seen: &mut Vec<String>, pairs: &mut Vec<(String, String)>) {
     for card in cards {
         assert!(card.bounds.h > 0.0, "{} has a height", card.name);
-        for (index, text) in card.texts.iter().enumerate() {
+        for (index, (_, text)) in card.texts.iter().enumerate() {
             assert!(card.bounds.holds(text), "text {index} of {} lies inside its card", card.name);
         }
         // A card cut by the panel edge lists fewer texts: only whole cards count.
-        if card.texts.len() >= 10 {
+        if card.whole() {
             seen.push(card.name.clone());
         }
     }
@@ -116,7 +70,7 @@ fn check(cards: &[Card], seen: &mut Vec<String>, pairs: &mut Vec<(String, String
 
 #[test]
 fn no_two_cards_overlap_and_each_holds_its_rows() {
-    let ui = cards_with_notice_and_bar(800.0);
+    let ui = short_cards();
     let (mut seen, mut pairs) = (Vec::new(), Vec::new());
     check(&visible_cards(&ui), &mut seen, &mut pairs);
     // Tab walks the focus down the cards and scrolls the panel with it.
@@ -146,7 +100,7 @@ fn a_card_keeps_its_height_when_the_panel_is_short() {
     let pitch = tall[1].bounds.y - tall[0].bounds.y;
     assert!((pitch - tall[0].bounds.h).abs() < SLACK, "the cards touch, nothing is squeezed");
 
-    resize(&ui, 1280.0, 560.0);
+    resize(&ui, 1280.0, short_height(&ui, 1200.0, tall[0].bounds.h));
     let short = visible_cards(&ui);
     assert!(short.len() < 4, "a short panel clips the last cards");
     for card in &short {
@@ -156,7 +110,7 @@ fn a_card_keeps_its_height_when_the_panel_is_short() {
 
 #[test]
 fn tabbing_to_the_last_card_scrolls_it_into_view() {
-    let ui = cards_with_notice_and_bar(800.0);
+    let ui = short_cards();
     assert!(!visible_cards(&ui).iter().any(|card| card.name == "Zoé"), "the last card starts out of view");
 
     let mut reached = None;

@@ -237,7 +237,7 @@ fn the_cards_draw_one_sprite_each() {
     assert_eq!(found.len(), 4);
     for element in &found {
         let extent = element.size();
-        assert_eq!((extent.width, extent.height), (96.0, 96.0));
+        assert_eq!((extent.width, extent.height), (64.0, 64.0));
     }
     // A sprite replaces the initial: the second to fourth letters are not drawn.
     let texts = texts(&ui);
