@@ -9,8 +9,8 @@ use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 /// The six FF I classes that have a sprite, as file stems, with the number of
 /// opaque pixels each image holds.
 const CLASSES: [(&str, usize); 6] = [
-    ("warrior", 684),
-    ("thief", 580),
+    ("warrior", 672),
+    ("thief", 505),
     ("monk", 591),
     ("red-mage", 595),
     ("white-mage", 694),
