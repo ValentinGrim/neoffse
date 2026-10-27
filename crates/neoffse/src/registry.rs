@@ -110,6 +110,8 @@ impl Registry {
     /// first in `Game::ALL`.
     #[must_use]
     pub fn detect(&self, probe: &FileProbe<'_>, folder_game: Option<Game>) -> Option<Claim> {
+        // Guards a format whose `detect` claims by content. The FF I format already
+        // refuses any name outside its slot table, so no test can reach this line today.
         if is_temp_name(probe.name) {
             return None;
         }

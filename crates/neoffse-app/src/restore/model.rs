@@ -18,12 +18,9 @@ use neoffse::io::backup::Backup;
 use super::rows::backup_rows;
 use super::target::{replaces_open_file, target_of};
 use crate::home::title_of;
+use crate::probe::ProbeSlot;
 use crate::state::AppState;
 use crate::{BackupRow, RestoreNotice, RestoreProblem};
-
-/// The process scan a restore runs under `Running::Refuse`: the executable
-/// names of the game in, the names found running out.
-pub(super) type Probe = Arc<dyn Fn(&[&'static str]) -> Vec<&'static str> + Send + Sync>;
 
 /// What the last listing found.
 #[derive(Default)]
@@ -41,7 +38,7 @@ pub(super) struct Shared {
     pub(super) selected: Mutex<Option<usize>>,
     /// Set from the call of `restore` to its `done`.
     pub(super) busy: AtomicBool,
-    pub(super) probe: Mutex<Probe>,
+    pub(super) probe: ProbeSlot,
 }
 
 /// The Restore page over one game's backups.
@@ -80,7 +77,7 @@ impl RestoreViewModel {
                 listed: Mutex::new(Listed::default()),
                 selected: Mutex::new(None),
                 busy: AtomicBool::new(false),
-                probe: Mutex::new(Arc::new(neoffse::io::process::running)),
+                probe: ProbeSlot::new(),
             }),
         }
     }
@@ -97,8 +94,8 @@ impl RestoreViewModel {
     /// selection.
     ///
     /// Answers `Some(listing-failed)` when the state has no data folder or the
-    /// folder cannot be listed; the list is then empty. The call reads at most
-    /// 21 small manifests, so it runs on the calling thread.
+    /// folder cannot be listed; the list is then empty. It reads one small
+    /// manifest per backup folder of the game, so it runs on the calling thread.
     #[must_use]
     pub fn show(&self, game: Game) -> Option<RestoreNotice> {
         let listing = self.shared.state.data_dir().and_then(|data| self.shared.registry.backups(&data, game).ok());
@@ -194,7 +191,7 @@ impl RestoreViewModel {
     /// default is `neoffse::io::process::running`. For tests that must not
     /// depend on the machine's processes.
     pub fn set_process_probe(&self, probe: impl Fn(&[&'static str]) -> Vec<&'static str> + Send + Sync + 'static) {
-        *lock(&self.shared.probe) = Arc::new(probe);
+        self.shared.probe.set(probe);
     }
 
     /// Forgets the list and the selection.

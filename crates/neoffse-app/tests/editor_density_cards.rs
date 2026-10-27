@@ -15,7 +15,7 @@ use i_slint_backend_testing::ElementHandle;
 use neoffse_app::{ProviderChain, Theme, refresh_editor};
 use slint::ComponentHandle;
 
-/// The window sizes of the sheet.
+/// The two window sizes the editor must fit: the 800 x 600 minimum and 1280 x 800.
 const SIZES: [(f32, f32); 2] = [(800.0, 600.0), (1280.0, 800.0)];
 
 /// A window size, with the bar idle or with the level-up notice and a pending change.

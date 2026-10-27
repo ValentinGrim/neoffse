@@ -12,7 +12,7 @@ use neoffse_io::{files, process};
 
 use super::Session;
 use crate::error::Error;
-use crate::executables::executables_of;
+use crate::executables::refuse_if_running;
 
 /// Whether [`Session::save`] stops when the game's process is found.
 ///
@@ -98,15 +98,7 @@ impl Session {
         if !self.is_dirty() {
             return Ok(Saved { backup: None });
         }
-        if running == Running::Refuse {
-            let executables = executables_of(self.game.id());
-            if !executables.is_empty() {
-                let found = probe(&executables);
-                if !found.is_empty() {
-                    return Err(Error::GameRunning { executables: found });
-                }
-            }
-        }
+        refuse_if_running(self.game.id(), running, probe)?;
         self.refuse_if_changed()?;
 
         let encoded = self.document.encode().map_err(|source| Error::Format { source })?;

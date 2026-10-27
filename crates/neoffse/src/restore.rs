@@ -9,7 +9,7 @@ use neoffse_io::dirs::DataDir;
 use neoffse_io::process;
 
 use crate::error::Error;
-use crate::executables::executables_of;
+use crate::executables::refuse_if_running;
 use crate::registry::Registry;
 use crate::session::Running;
 
@@ -88,15 +88,7 @@ impl Registry {
         P: Fn(&[&'static str]) -> Vec<&'static str>,
     {
         let game = backup.manifest.game.as_str();
-        if running == Running::Refuse {
-            let executables = executables_of(game);
-            if !executables.is_empty() {
-                let found = probe(&executables);
-                if !found.is_empty() {
-                    return Err(Error::GameRunning { executables: found });
-                }
-            }
-        }
+        refuse_if_running(game, running, probe)?;
         backup::restore_with(ops, data, game, backup, target_dir, now).map_err(|source| Error::Io { source })
     }
 }

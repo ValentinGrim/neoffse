@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use neoffse::Session;
 use neoffse::core::{FieldId, RowId, TableKind};
 use neoffse::data::Language;
-use neoffse::io::process;
 
 use super::layout::{FieldSlot, Layout, Locks, build};
 use super::leave::Leave;
@@ -15,6 +14,7 @@ use super::notice::problem_notice;
 use super::overview::overview;
 use super::pick::picker_entries;
 use crate::assets::{AssetProvider, default_provider};
+use crate::probe::ProbeSlot;
 use crate::state::AppState;
 use crate::{EditNotice, EditProblem, EditorData, Overview, PickerEntry, SummaryRow};
 
@@ -32,10 +32,6 @@ impl Locks for SessionLocks<'_> {
     }
 }
 
-/// The process scan a save runs under `Running::Refuse`: the executable names
-/// of the game in, the names found running out.
-pub(super) type Probe = Arc<dyn Fn(&[&'static str]) -> Vec<&'static str> + Send + Sync>;
-
 pub(super) struct Shared {
     pub(super) state: Arc<AppState>,
     pub(super) language: Language,
@@ -46,7 +42,7 @@ pub(super) struct Shared {
     /// Set from the call of `save` to its `done`: the worker holds the
     /// session lock for that time.
     pub(super) saving: AtomicBool,
-    pub(super) probe: Mutex<Probe>,
+    pub(super) probe: ProbeSlot,
     /// Where the party cards ask for portraits.
     assets: Mutex<Arc<dyn AssetProvider>>,
 }
@@ -92,7 +88,7 @@ impl EditorViewModel {
                 expert: AtomicBool::new(false),
                 pending: Mutex::new(None),
                 saving: AtomicBool::new(false),
-                probe: Mutex::new(Arc::new(process::running)),
+                probe: ProbeSlot::new(),
                 assets: Mutex::new(default_provider()),
             }),
         }

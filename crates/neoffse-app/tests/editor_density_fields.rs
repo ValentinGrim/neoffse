@@ -122,15 +122,37 @@ fn no_two_rows_overlap_on_the_character_page() {
     }
 }
 
+/// The `FieldLine` rows that lie whole inside the `FieldList`.
+fn rows_shown(ui: &Ui) -> usize {
+    let list = the_rect(ui, "FieldList");
+    rects(ui, "FieldLine").iter().filter(|line| list.holds(line)).count()
+}
+
+/// The character page holds this many whole rows, idle with the bar shown.
+/// The floors are 15 and 10 against 16 and 10 measured. The 800 x 600 floor
+/// equals the measured count, so losing one row fails the test on purpose;
+/// 1280 x 800 keeps one row of slack.
 #[test]
 fn more_fields_fit_on_the_character_page() {
     let ui = page_ui(EditorCommand::Party, 0, LARGE);
     for ((width, height), at_least) in [(LARGE, 15), (SMALL, 10)] {
         resize(&ui, width, height);
-        let list = the_rect(&ui, "FieldList");
-        let shown = rects(&ui, "FieldLine").iter().filter(|line| list.holds(line)).count();
+        let shown = rows_shown(&ui);
         assert!(shown >= at_least, "{width}x{height}: {shown} rows fit, {at_least} expected");
     }
+}
+
+/// The notice strip and a pending change take room from the list. Eight rows
+/// is the count measured at 800 x 600 in that state, so losing a row fails
+/// the test on purpose.
+#[test]
+fn the_notice_and_a_pending_change_keep_eight_rows_at_800() {
+    let ui = page_ui(EditorCommand::Party, 0, SMALL);
+    ui.commit(ui.level().key, "34");
+    assert!(ui.bridge().get_has_notice());
+    assert_eq!(ui.pending(), 1);
+    let shown = rows_shown(&ui);
+    assert!(shown >= 8, "800x600 with the notice and a pending change: {shown} rows fit, 8 expected");
 }
 
 #[test]

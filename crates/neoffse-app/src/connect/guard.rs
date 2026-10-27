@@ -146,7 +146,7 @@ pub fn connect_close(window: &MainWindow, about: &AboutDialog, app: &App) {
 /// process, alive after the main window closes.
 fn hide_about(about: &Weak<AboutDialog>) {
     if let Some(dialog) = about.upgrade() {
-        // The app has no logger yet; M4 routes show and hide errors through `tracing`.
+        // A failed show or hide leaves nothing to recover, and the app has no logger.
         let _ = dialog.hide();
     }
 }

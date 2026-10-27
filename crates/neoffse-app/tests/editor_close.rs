@@ -29,6 +29,10 @@ fn request_close(ui: &Ui) {
     ui.window.window().dispatch_event(WindowEvent::CloseRequested);
 }
 
+fn request_quit(ui: &Ui) {
+    ui.window.invoke_quit_requested();
+}
+
 #[test]
 fn a_clean_close_hides_the_window_and_the_about_dialog() {
     let site = editing_site();
@@ -104,5 +108,65 @@ fn a_close_during_the_back_dialog_replaces_its_reason() {
     assert!(ui.bridge().get_discard_dialog_open());
     ui.bridge().invoke_discard_confirmed();
     assert!(!ui.window.window().is_visible(), "the reason is Close, not Back");
+    assert!(!about.window().is_visible());
+}
+
+#[test]
+fn quit_with_unsaved_edits_asks_first() {
+    let site = editing_site();
+    let (ui, about) = shown(&site);
+    ui.commit(ui.gil().key, "500");
+    request_quit(&ui);
+
+    assert!(ui.window.window().is_visible());
+    assert!(about.window().is_visible(), "About stays while the window stays");
+    assert!(ui.bridge().get_discard_dialog_open());
+    assert!(ui.session_open());
+
+    ui.bridge().invoke_discard_confirmed();
+    assert!(!ui.window.window().is_visible());
+    assert!(!about.window().is_visible());
+    assert!(!ui.bridge().get_discard_dialog_open());
+    assert!(!ui.session_open());
+}
+
+#[test]
+fn quit_while_a_save_runs_changes_nothing() {
+    let site = editing_site();
+    let (ui, about) = shown(&site);
+    ui.commit(ui.gil().key, "500");
+    ui.bridge().set_working(true);
+    request_quit(&ui);
+
+    assert!(ui.window.window().is_visible());
+    assert!(about.window().is_visible());
+    assert!(!ui.bridge().get_discard_dialog_open(), "the veto is silent");
+    assert!(ui.session_open());
+    assert_eq!(ui.pending(), 1);
+
+    ui.bridge().set_working(false);
+    request_quit(&ui);
+    assert!(ui.bridge().get_discard_dialog_open(), "the dirty session asks once the worker ends");
+}
+
+#[test]
+fn a_clean_quit_hides_the_window_and_the_about_dialog() {
+    let site = editing_site();
+    let (ui, about) = shown(&site);
+    request_quit(&ui);
+
+    assert!(!ui.window.window().is_visible());
+    assert!(!about.window().is_visible());
+}
+
+#[test]
+fn quit_on_home_needs_no_question() {
+    let site = editing_site();
+    let (ui, about) = Ui::with_about(&site);
+    ui.window.show().unwrap();
+    ui.window.invoke_about_requested();
+    request_quit(&ui);
+
+    assert!(!ui.window.window().is_visible());
     assert!(!about.window().is_visible());
 }
