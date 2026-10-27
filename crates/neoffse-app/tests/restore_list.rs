@@ -5,6 +5,7 @@
 mod common;
 
 use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use common::{Restoring, T0, make_backup, registry};
@@ -49,13 +50,21 @@ fn no_data_folder_is_a_listing_failure() {
     assert_eq!(vm.game(), Some(Game::Ff1Pr));
 }
 
+/// A data folder whose game backup folder is a file: the folder exists, so
+/// listing it fails.
+fn data_with_a_file_for_the_game_folder(root: &Path) -> DataDir {
+    let data = DataDir::at(root);
+    let game_dir = data.game_backups_dir("ff1-pr").unwrap();
+    fs::create_dir_all(game_dir.parent().unwrap()).unwrap();
+    fs::write(&game_dir, b"not a folder").unwrap();
+    data
+}
+
 #[test]
-fn a_data_folder_that_is_a_file_is_a_listing_failure() {
+fn a_game_backup_folder_that_is_a_file_is_a_listing_failure() {
     let dir = tempfile::tempdir().unwrap();
-    let file = dir.path().join("data");
-    fs::write(&file, b"not a folder").unwrap();
     let state = Arc::new(AppState::new());
-    state.set_data_dir(DataDir::at(&file));
+    state.set_data_dir(data_with_a_file_for_the_game_folder(dir.path()));
     let vm = RestoreViewModel::new(registry(), state);
     assert_eq!(vm.show(Game::Ff1Pr).unwrap().problem, RestoreProblem::ListingFailed);
     assert_eq!(vm.rows().len(), 0);
@@ -67,10 +76,8 @@ fn a_listing_failure_empties_a_list_that_was_shown() {
     r.backup_now("before-save", 0);
     assert!(r.vm.show(Game::Ff1Pr).is_none());
     assert_eq!(r.vm.rows().len(), 1);
-    let file = tempfile::tempdir().unwrap();
-    let path = file.path().join("data");
-    fs::write(&path, b"x").unwrap();
-    r.flow.state.set_data_dir(DataDir::at(&path));
+    let broken = tempfile::tempdir().unwrap();
+    r.flow.state.set_data_dir(data_with_a_file_for_the_game_folder(broken.path()));
     assert!(r.vm.show(Game::Ff1Pr).is_some());
     assert_eq!(r.vm.rows().len(), 0);
 }
