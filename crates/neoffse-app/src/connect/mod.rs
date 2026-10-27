@@ -192,6 +192,7 @@ pub fn refresh_home(window: &MainWindow, app: &App) {
     window.set_scanning(app.home.is_scanning());
     window.set_scan_failed(app.home.scan_failed());
     window.set_busy(app.open.is_busy());
+    // A Slint int is an i32; the count saturates.
     window.set_skipped_count(i32::try_from(app.home.skipped_count()).unwrap_or(i32::MAX));
     window.set_owned_only(app.home.owned_only());
 }

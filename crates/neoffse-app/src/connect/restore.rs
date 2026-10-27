@@ -151,6 +151,7 @@ pub(crate) fn sync_restore(window: &MainWindow, app: &App, notice: Option<Restor
     let bridge = window.global::<RestoreBridge>();
     bridge.set_game_title(app.restore.title().into());
     bridge.set_rows(ModelRc::new(VecModel::from(app.restore.rows())));
+    // A Slint int is an i32; the count saturates.
     bridge.set_unreadable_count(i32::try_from(app.restore.unreadable_count()).unwrap_or(i32::MAX));
     bridge.set_has_notice(notice.is_some());
     if let Some(notice) = notice {

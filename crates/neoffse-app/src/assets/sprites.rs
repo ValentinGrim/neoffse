@@ -97,6 +97,8 @@ pub struct OriginalSprites;
 impl AssetProvider for OriginalSprites {
     fn portrait(&self, game: Game, job: u32) -> Option<slint::Image> {
         let class = class_of(game, job)?;
+        // The PNGs are compiled in and `a_portrait_is_32_px` decodes each one: a failure is a build defect,
+        // and the card falls back to its initial.
         slint::Image::load_from_data(class.png(), Some("png")).ok()
     }
 }

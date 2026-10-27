@@ -154,6 +154,7 @@ fn replace_file(files: &SaveFiles, name: &str, bytes: Vec<u8>) -> Result<SaveFil
     let mut bytes = Some(bytes);
     for (present, original) in files.iter() {
         let content = if present == name {
+            // SaveFiles::push refuses a duplicate name, so this branch runs once and take() is Some.
             bytes.take().unwrap_or_default()
         } else {
             original.to_vec()

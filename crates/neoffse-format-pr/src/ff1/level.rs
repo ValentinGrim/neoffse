@@ -67,6 +67,7 @@ impl Ff1Model {
     /// edits of the levels gained.
     pub(super) fn exp_plan(&mut self, id: u32, exp: i64, rolls: &mut dyn Rolls) -> Result<Plan, EditError> {
         let mut plan = vec![Edit::set(character_field(id, names::EXP), Value::Int(exp))];
+        // plan_set held exp to 0..=i32::MAX (the storage bound), so the conversion cannot fail.
         let reached = level_for(self.tables, u32::try_from(exp).unwrap_or(u32::MAX));
         if let Some(reached) = reached {
             self.push_if_changed(&mut plan, character_field(id, names::LEVEL), i64::from(reached))?;

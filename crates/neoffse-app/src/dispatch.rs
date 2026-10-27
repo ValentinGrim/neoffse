@@ -22,7 +22,8 @@ pub struct EventLoopDispatcher;
 
 impl Dispatcher for EventLoopDispatcher {
     fn spawn(&self, job: Job) {
-        // A failed thread start (OS resource exhaustion) loses the job: a known gap.
+        // A failed thread start (OS resource exhaustion) drops the job and its reply: a save or restore
+        // then stays marked working and the window close stays vetoed.
         let _ = std::thread::Builder::new().name("neoffse-worker".into()).spawn(job);
     }
 

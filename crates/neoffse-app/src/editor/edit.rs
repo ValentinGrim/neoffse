@@ -56,6 +56,7 @@ impl EditorViewModel {
         let (Some(collection), Ok(key)) = (collection, u32::try_from(entry_id)) else {
             return Some(not_editable());
         };
+        // The label only names the row in a notice; the session checks the id.
         let label = self
             .layout()
             .tables
