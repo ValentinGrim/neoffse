@@ -11,10 +11,9 @@ mod common;
 use std::fs;
 use std::sync::Arc;
 
-use common::{Flow, ID_1, Outcomes, Part, Site, all_fields, fields, items, lists, pages, rows, section, steam_folder};
+use common::{Flow, Outcomes, Part, PrivateSlot, all_fields, fields, items, lists, pages, private_slot_copies, rows, section};
 use neoffse::core::{Key, RowId};
 use neoffse::data::Language;
-use neoffse::pr::slots::SLOT_FILES;
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{EditorData, EditorViewModel, FieldKind};
 
@@ -35,7 +34,7 @@ fn shape(data: &EditorData) -> Vec<usize> {
     out
 }
 
-fn check(slot: u32, data: &EditorData, editor: &EditorViewModel) {
+fn check(slot: usize, data: &EditorData, editor: &EditorViewModel) {
     assert!(
         data.party.present && data.inventory.present && data.magic.present,
         "slot {slot}: a section is absent"
@@ -73,27 +72,16 @@ fn check(slot: u32, data: &EditorData, editor: &EditorViewModel) {
 
 #[test]
 fn every_private_slot_builds_the_editor_data() {
-    let Some(paths) = neoffse_testkit::private_saves("ff1") else { return };
-    let mut opened = 0;
-    for path in &paths {
-        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-            continue;
-        };
-        if !SLOT_FILES.iter().any(|file| file.name == name) {
-            continue;
-        }
-        let site = Site::new();
-        let copy = steam_folder(&site, 0, ID_1).join(name);
-        fs::copy(path, &copy).unwrap();
-        let bytes = fs::read(&copy).unwrap();
+    let Some(slots) = private_slot_copies() else { return };
+    for (position, PrivateSlot { name, site, copy }) in slots.iter().enumerate() {
+        let index = position + 1;
+        let bytes = fs::read(copy).unwrap();
 
-        let flow = Flow::new(&site, None);
+        let flow = Flow::new(site, None);
         let outcomes = Outcomes::new();
         flow.click(name, &outcomes);
         flow.manual.run_all();
-        let index = opened + 1;
         assert_eq!(outcomes.outcomes(), vec![OpenOutcome::Opened], "private slot {index} did not open");
-        opened += 1;
 
         let data = flow.editor.data().unwrap_or_else(|_| panic!("private slot {index}: data failed"));
         check(index, &data, &flow.editor);
@@ -137,9 +125,6 @@ fn every_private_slot_builds_the_editor_data() {
         assert_eq!(shape(&french_data), default_shape, "private slot {index}: the shape changes with the language");
 
         assert!(!flow.editor.is_dirty(), "private slot {index} is dirty");
-        assert_eq!(fs::read(&copy).unwrap(), bytes, "private slot {index}: the copy changed");
-    }
-    if opened == 0 {
-        neoffse_testkit::skip("no FF I slot file in the private saves");
+        assert_eq!(fs::read(copy).unwrap(), bytes, "private slot {index}: the copy changed");
     }
 }

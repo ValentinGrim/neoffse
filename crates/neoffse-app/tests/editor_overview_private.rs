@@ -9,8 +9,7 @@ mod common;
 
 use std::fs;
 
-use common::{Flow, ID_1, Outcomes, Part, Site, field, fields, items, pages, steam_folder};
-use neoffse::pr::slots::SLOT_FILES;
+use common::{Flow, Outcomes, Part, PrivateSlot, field, fields, items, pages, private_slot_copies};
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{EntityPage, FieldRow};
 
@@ -25,24 +24,15 @@ fn on_page(page: &EntityPage, label: &str) -> FieldRow {
 
 #[test]
 fn every_private_slot_builds_its_cards() {
-    let Some(paths) = neoffse_testkit::private_saves("ff1") else { return };
-    let mut opened = 0;
-    for path in &paths {
-        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-            continue;
-        };
-        if !SLOT_FILES.iter().any(|file| file.name == name) {
-            continue;
-        }
-        let site = Site::new();
-        let copy = steam_folder(&site, 0, ID_1).join(name);
-        fs::copy(path, &copy).unwrap();
+    let Some(slots) = private_slot_copies() else { return };
+    for (position, PrivateSlot { name, site, copy }) in slots.iter().enumerate() {
+        let opened = position + 1;
+        let bytes = fs::read(copy).unwrap();
 
-        let flow = Flow::new(&site, None);
+        let flow = Flow::new(site, None);
         let outcomes = Outcomes::new();
         flow.click(name, &outcomes);
         flow.manual.run_all();
-        opened += 1;
         assert_eq!(outcomes.outcomes(), vec![OpenOutcome::Opened], "private slot {opened} did not open");
 
         let data = flow.editor.data().unwrap_or_else(|_| panic!("private slot {opened}: data failed"));
@@ -83,8 +73,6 @@ fn every_private_slot_builds_its_cards() {
         let gil = field(&data, Part::Inventory, "Gil", "Gil").text;
         assert_eq!(built.gil, gil, "private slot {opened}: gil");
         assert!(!flow.editor.is_dirty(), "private slot {opened} is dirty");
-    }
-    if opened == 0 {
-        neoffse_testkit::skip("no FF I slot file in the private saves");
+        assert_eq!(fs::read(copy).unwrap(), bytes, "private slot {opened}: the copy changed");
     }
 }

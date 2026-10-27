@@ -1,17 +1,19 @@
 //! Helpers for the open flow: a recording picker, an outcome log, the
 //! view models over one synthetic machine.
 
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, ThreadId};
 
 use neoffse::data::Language;
+use neoffse::pr::slots::SLOT_FILES;
 use neoffse_app::EditorViewModel;
 use neoffse_app::FilePicker;
 use neoffse_app::home::{HomeViewModel, OpenOutcome, OpenViewModel, SlotTarget};
 use neoffse_app::state::AppState;
 
-use super::{Manual, Site, registry, scanned};
+use super::{ID_1, Manual, Site, registry, scanned, steam_folder};
 
 /// A picker that returns a fixed answer and records who asked.
 pub(crate) struct FixedPicker {
@@ -105,4 +107,40 @@ impl Flow {
     pub(crate) fn click(&self, name: &str, outcomes: &Outcomes) {
         self.open.open_slot(self.target(name), &self.manual.dispatcher(), outcomes.recorder());
     }
+}
+
+/// A private FF I slot file copied into the FF I Steam folder of a synthetic
+/// machine. The site deletes the copy on drop.
+pub(crate) struct PrivateSlot {
+    pub(crate) name: String,
+    pub(crate) site: Site,
+    pub(crate) copy: PathBuf,
+}
+
+/// One [`PrivateSlot`] per FF I slot file of the private saves. Returns
+/// `None` after reporting why when the saves hold no slot file, so the test
+/// returns early and says so.
+pub(crate) fn private_slot_copies() -> Option<Vec<PrivateSlot>> {
+    let paths = neoffse_testkit::private_saves("ff1")?;
+    let slots: Vec<PrivateSlot> = paths
+        .iter()
+        .filter_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            SLOT_FILES.iter().any(|file| file.name == name).then(|| {
+                let site = Site::new();
+                let copy = steam_folder(&site, 0, ID_1).join(name);
+                fs::copy(path, &copy).unwrap();
+                PrivateSlot {
+                    name: name.to_owned(),
+                    site,
+                    copy,
+                }
+            })
+        })
+        .collect();
+    if slots.is_empty() {
+        neoffse_testkit::skip("no FF I slot file in the private saves");
+        return None;
+    }
+    Some(slots)
 }

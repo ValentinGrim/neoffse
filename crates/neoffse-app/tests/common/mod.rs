@@ -36,7 +36,7 @@ pub(crate) use geometry::{
     BAND, Card, Rect, SLACK, assert_size, bands_of, cards_ui, first_element, first_rect, font_body, logical, rects, resize, row_height, texts_of, visible_cards,
 };
 pub(crate) use manual::Manual;
-pub(crate) use open::{FixedPicker, Flow, Outcomes};
+pub(crate) use open::{FixedPicker, Flow, Outcomes, PrivateSlot, private_slot_copies};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
 pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe};
 pub(crate) use saving::{Saving, saving};
