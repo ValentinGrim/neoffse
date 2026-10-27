@@ -18,47 +18,45 @@ use slint::ComponentHandle;
 /// The window sizes of the sheet.
 const SIZES: [(f32, f32); 2] = [(800.0, 600.0), (1280.0, 800.0)];
 
-/// A window size, with or without the notice and the bar.
+/// A window size, with the bar idle or with the level-up notice and a pending change.
 #[derive(Debug, Clone, Copy)]
 struct State {
     width: f32,
     height: f32,
-    bar: bool,
+    notice: bool,
 }
 
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}x{}{}",
-            self.width,
-            self.height,
-            if self.bar { " with the notice and the bar" } else { "" }
-        )
+        write!(f, "{}x{}{}", self.width, self.height, if self.notice { " with the notice" } else { "" })
     }
 }
 
-/// Runs `check` on the editor's cards at each size, first clean, then with
-/// the level-up notice and the pending bar shown. One window serves all four
-/// states: the testing backend installs its platform once per thread.
+/// Runs `check` on the editor's cards at each size, first with the pending
+/// bar idle, then with the level-up notice and one pending change. The bar
+/// shows in both. One window serves all four states: the testing backend
+/// installs its platform once per thread.
 fn in_each_state(mut check: impl FnMut(&Ui, State)) {
     let site = editing_site();
     let ui = open_editor(&site);
-    for bar in [false, true] {
-        if bar {
+    for notice in [false, true] {
+        if notice {
             ui.commit(ui.level().key, "34");
             assert!(ui.bridge().get_has_notice());
             assert_eq!(ui.bridge().get_pending_count(), 1);
+        } else {
+            assert!(ElementHandle::find_by_element_type_name(&ui.window, "PendingBar").next().is_some());
+            assert_eq!(ui.bridge().get_pending_count(), 0);
         }
         for (width, height) in SIZES {
             resize(&ui, width, height);
             assert!(ui.on_cards());
-            check(&ui, State { width, height, bar });
+            check(&ui, State { width, height, notice });
         }
     }
 }
 
-/// The editor on the cards at `width` by `height`, clean.
+/// The editor on the cards at `width` by `height`, nothing pending.
 fn cards_ui(width: f32, height: f32) -> Ui {
     let site = editing_site();
     let ui = open_editor(&site);
@@ -131,7 +129,7 @@ fn the_level_row_keeps_a_gap() {
 fn four_cards_fit_when_the_window_allows() {
     in_each_state(|ui, state| {
         let whole = whole_cards(ui).len();
-        if state.width < 1000.0 && state.bar {
+        if state.width < 1000.0 && state.notice {
             assert!(whole >= 3, "{state} shows {whole} whole cards");
         } else {
             assert_eq!(whole, 4, "{state}");
