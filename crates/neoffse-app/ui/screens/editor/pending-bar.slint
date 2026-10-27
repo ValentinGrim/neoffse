@@ -4,8 +4,9 @@ import { Look } from "../../theme/look.slint";
 import { Theme } from "../../theme/theme.slint";
 
 // The bar at the bottom of the editor: how many edits wait to be saved, and
-// the buttons that undo, redo and open the review. The page shows it only
-// while the count is above zero.
+// the buttons that undo, redo and open the review. The page shows it at all
+// times: at zero it says so and Review & save waits. Its height does not
+// depend on the count, so the page does not jump when the first edit lands.
 export component PendingBar inherits Rectangle {
     in property <Look> look: Theme.look;
     in property <int> count;
@@ -28,7 +29,7 @@ export component PendingBar inherits Rectangle {
         LookText {
             look: root.look;
             horizontal-stretch: 1;
-            text: root.working ? @tr("Working...") : root.count == 1 ? @tr("1 unsaved change") : @tr("{} unsaved changes", root.count);
+            text: root.working ? @tr("Working...") : root.count == 0 ? @tr("No unsaved changes") : root.count == 1 ? @tr("1 unsaved change") : @tr("{} unsaved changes", root.count);
             overflow: elide;
         }
         ThemedButton {
@@ -47,7 +48,7 @@ export component PendingBar inherits Rectangle {
             look: root.look;
             text: @tr("Review & save");
             primary: true;
-            enabled: root.enabled;
+            enabled: root.enabled && root.count > 0;
             clicked => { root.review(); }
         }
     }

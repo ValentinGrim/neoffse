@@ -171,8 +171,8 @@ export component EditorPage inherits FocusScope {
                 }
             }
         }
-        // A button may vanish with the bar, so the page takes the focus first.
-        if EditorBridge.pending-count > 0: PendingBar {
+        // A button may disable itself (the last Undo does), so the page takes the focus first.
+        PendingBar {
             count: EditorBridge.pending-count;
             can-undo: EditorBridge.can-undo;
             can-redo: EditorBridge.can-redo;

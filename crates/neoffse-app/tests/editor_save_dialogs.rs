@@ -158,7 +158,7 @@ fn reload_replaces_the_session_with_the_disk() {
 
     assert_eq!(ui.pending(), 0);
     assert_eq!(ui.gil().text, "777");
-    assert!(!ui.has_element("Review & save", Button));
+    assert_eq!(ui.element("Review & save", Button).accessible_enabled(), Some(false));
     assert!(ui.window.get_editor_open());
     assert_eq!(ui.bridge().get_command(), EditorCommand::Party);
     assert_eq!(ui.bridge().get_character(), 0);
