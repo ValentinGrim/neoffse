@@ -8,6 +8,8 @@ mod common;
 
 use common::{Card, SLACK, Ui, editing_site, open_editor, resize, visible_cards};
 use i_slint_backend_testing::ElementHandle;
+use neoffse_app::Theme;
+use slint::ComponentHandle;
 use slint::platform::Key;
 
 const NAMES: [&str; 4] = ["Aria", "Bram", "Cleo", "Zoé"];
@@ -26,12 +28,19 @@ fn cards_with_notice_and_bar(height: f32) -> Ui {
 
 /// The window height that shows two cards and a half of height `card`.
 /// `ui` must be `tall` high, with the notice and the bar shown: the chrome
-/// (header, margins, notice, bar) is what `tall` leaves over the panel.
+/// (header, margins, notice, bar) is what `tall` leaves over the scroll area.
+/// The panel fits its cards, so the scroll area of a full-height panel runs
+/// from the panel's top to the status panel's bottom, less the panel padding.
 fn short_height(ui: &Ui, tall: f32, card: f32) -> f32 {
     let panel = ElementHandle::find_by_element_type_name(&ui.window, "PartyCards")
         .next()
         .expect("the party cards panel");
-    let chrome = tall - panel.size().height;
+    let status = ElementHandle::find_by_element_type_name(&ui.window, "StatusPanel")
+        .next()
+        .expect("the status panel");
+    let padding = ui.window.global::<Theme>().get_look().padding;
+    let scroll_area = status.absolute_position().y + status.size().height - panel.absolute_position().y - 2.0 * padding;
+    let chrome = tall - scroll_area;
     chrome + 2.5 * card
 }
 

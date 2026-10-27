@@ -37,6 +37,8 @@ export component EditorPage inherits FocusScope {
     private property <int> pages: EditorBridge.data.party.pages.length;
     // The Party command shows a character page.
     private property <bool> on-character: EditorBridge.command == EditorCommand.party && EditorBridge.character >= 0 && EditorBridge.character < root.pages;
+    // The Party command shows its cards, not a character page.
+    private property <bool> on-cards: EditorBridge.command == EditorCommand.party && EditorBridge.data.party.present && !root.on-character;
 
     focus-on-tab-navigation: false;
 
@@ -146,28 +148,37 @@ export component EditorPage inherits FocusScope {
                     gil: EditorBridge.overview.gil;
                 }
             }
-            Frame {
+            // On the cards the panel keeps the height of its cards, like the
+            // game's menu window, and the room left stays empty. Another page
+            // fills the column.
+            VerticalLayout {
                 horizontal-stretch: 1;
+                alignment: root.on-cards ? LayoutAlignment.start : LayoutAlignment.stretch;
 
-                if EditorBridge.command == EditorCommand.party && !EditorBridge.data.party.present: NoSection { }
-                if EditorBridge.command == EditorCommand.party && EditorBridge.data.party.present && !root.on-character: PartyCards {
+                if root.on-cards: PartyCards {
+                    vertical-stretch: 0;
                     overview: EditorBridge.overview;
                     pages: EditorBridge.data.party.pages;
                     enabled: !EditorBridge.blocked;
                     activated(page) => { root.go-to(EditorCommand.party, page); }
                 }
-                if root.on-character && EditorBridge.data.party.present: CharacterEditPage {
-                    page: EditorBridge.data.party.pages[EditorBridge.character];
-                    index: EditorBridge.character;
-                }
-                if EditorBridge.command == EditorCommand.items && !EditorBridge.data.inventory.present: NoSection { }
-                if EditorBridge.command == EditorCommand.items && EditorBridge.data.inventory.present: InventoryPage {
-                    section: EditorBridge.data.inventory;
-                }
-                if EditorBridge.command == EditorCommand.magic && !EditorBridge.data.magic.present: NoSection { }
-                if EditorBridge.command == EditorCommand.magic && EditorBridge.data.magic.present: CharacterPage {
-                    pages: EditorBridge.data.magic.pages;
-                    read-only: EditorBridge.data.magic.read-only;
+                if !root.on-cards: Frame {
+                    vertical-stretch: 1;
+
+                    if EditorBridge.command == EditorCommand.party && !EditorBridge.data.party.present: NoSection { }
+                    if root.on-character && EditorBridge.data.party.present: CharacterEditPage {
+                        page: EditorBridge.data.party.pages[EditorBridge.character];
+                        index: EditorBridge.character;
+                    }
+                    if EditorBridge.command == EditorCommand.items && !EditorBridge.data.inventory.present: NoSection { }
+                    if EditorBridge.command == EditorCommand.items && EditorBridge.data.inventory.present: InventoryPage {
+                        section: EditorBridge.data.inventory;
+                    }
+                    if EditorBridge.command == EditorCommand.magic && !EditorBridge.data.magic.present: NoSection { }
+                    if EditorBridge.command == EditorCommand.magic && EditorBridge.data.magic.present: CharacterPage {
+                        pages: EditorBridge.data.magic.pages;
+                        read-only: EditorBridge.data.magic.read-only;
+                    }
                 }
             }
         }
