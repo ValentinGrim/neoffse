@@ -7,16 +7,15 @@ mod common;
 
 use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, ThreadId};
 
-use common::{Editing, ID_1, Part, Site, editing, editing_site, field, slot_file, steam_folder};
+use common::{Editing, ID_1, Part, Site, editing, editing_site, field, scripted_probe, slot_file, steam_folder};
 use neoffse::Running;
 use neoffse::core::{Capability, FieldId, Game, Value};
 use neoffse::data::Language;
 use neoffse::io::dirs::DataDir;
-use neoffse::pr::games::GAMES;
 use neoffse::{Registry, Session};
 use neoffse_app::editor::{Input, SaveOutcome, stamp_of};
 use tempfile::TempDir;
@@ -173,11 +172,8 @@ fn a_running_game_is_refused_and_nothing_is_written() {
     let site = editing_site();
     let saving = saving(&site);
     let calls = Arc::new(AtomicUsize::new(0));
-    let counter = Arc::clone(&calls);
-    saving.ed.editor().set_process_probe(move |_| {
-        counter.fetch_add(1, Ordering::SeqCst);
-        vec![GAMES[0].executable]
-    });
+    let runs = Arc::new(AtomicBool::new(true));
+    saving.ed.editor().set_process_probe(scripted_probe(Arc::clone(&calls), runs));
     let before = fs::read(&saving.file).unwrap();
     saving.edit_gil("500");
 
@@ -200,11 +196,8 @@ fn allow_never_probes() {
     let site = editing_site();
     let saving = saving(&site);
     let calls = Arc::new(AtomicUsize::new(0));
-    let counter = Arc::clone(&calls);
-    saving.ed.editor().set_process_probe(move |_| {
-        counter.fetch_add(1, Ordering::SeqCst);
-        Vec::new()
-    });
+    let runs = Arc::new(AtomicBool::new(false));
+    saving.ed.editor().set_process_probe(scripted_probe(Arc::clone(&calls), runs));
     saving.edit_gil("500");
     saving.save(Running::Allow);
     saving.ed.flow.manual.run_all();

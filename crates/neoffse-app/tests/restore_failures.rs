@@ -9,9 +9,8 @@ mod common;
 
 use std::fs;
 
-use common::{Paged, Ui, editing_site, listing, restore_page, slot_bytes, slot_file};
+use common::{Paged, Ui, break_data_dir, editing_site, listing, restore_page, slot_bytes, slot_file};
 use neoffse::core::Game;
-use neoffse::io::dirs::DataDir;
 use neoffse_app::RestoreProblem;
 use slint::ComponentHandle;
 
@@ -106,21 +105,14 @@ fn a_panicking_probe_is_an_incomplete_restore() {
     assert_eq!(p.file(), slot_bytes(2));
 }
 
-/// Points the state's data folder at a plain file. The worker keeps the data
-/// folder it captured at `start`, so the restore runs as before and only the
-/// relisting afterwards fails.
-fn break_data_dir(p: &Paged) {
-    let not_a_folder = p.data.path().join("not-a-folder");
-    fs::write(&not_a_folder, b"x").unwrap();
-    p.ui.app.state.set_data_dir(DataDir::at(&not_a_folder));
-}
-
 #[test]
 fn an_incomplete_restore_keeps_its_notice_when_the_list_cannot_be_read() {
     let (_site, p) = restore_page();
     p.ui.app.restore.set_process_probe(|_| panic!("scripted probe failure"));
     p.start();
-    break_data_dir(&p);
+    // The worker keeps the data folder it captured at `start`: the restore
+    // runs as before and only the relisting afterwards fails.
+    break_data_dir(&p.ui.app.state, p.data.path());
     p.ui.manual.run_all();
 
     assert_eq!(p.bridge().get_notice().problem, RestoreProblem::Incomplete);
@@ -133,7 +125,7 @@ fn an_incomplete_restore_keeps_its_notice_when_the_list_cannot_be_read() {
 fn a_restored_outcome_still_shows_listing_failed_when_the_list_cannot_be_read() {
     let (_site, p) = restore_page();
     p.start();
-    break_data_dir(&p);
+    break_data_dir(&p.ui.app.state, p.data.path());
     p.ui.manual.run_all();
 
     assert_eq!(p.file(), slot_bytes(1), "the restore itself ran");

@@ -38,9 +38,7 @@ fn assert_size(ui: &Ui, expected: (f32, f32), what: &str) {
 fn asked(site: &Site) -> Ui {
     let ui = Ui::scanned(site, None);
     resize(&ui, 900.0, 650.0);
-    ui.window.invoke_slot_clicked(ui.first_slots()[0].key);
-    ui.manual.run_all();
-    assert!(ui.window.get_editor_open(), "the save opens");
+    ui.open_first_slot();
     ui.make_dirty();
     resize(&ui, 1100.0, 700.0);
     ui.window.invoke_back_requested();

@@ -1,11 +1,11 @@
 //! A window over the first synthetic slot, wired for saves: a temporary data
-//! folder and a process probe that counts its calls. Nothing here names the
+//! folder and process probes that count their calls. Nothing here names the
 //! platform data folder or the real process list.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse::core::{Capability, Edit, FieldId, Game, Value};
@@ -15,6 +15,7 @@ use neoffse::io::dirs::DataDir;
 use neoffse::pr::games::GAMES;
 use neoffse::{Registry, Running, Session};
 use neoffse_app::AboutDialog;
+use neoffse_app::state::AppState;
 use slint::ComponentHandle;
 use tempfile::TempDir;
 
@@ -36,56 +37,66 @@ pub(crate) struct Rig {
     pub(crate) probes: Arc<AtomicUsize>,
 }
 
-/// The editor open on slot 1, a temporary data folder set, a probe that
-/// answers `machine`.
+/// A process probe that counts its calls in `counter` and finds the FF I
+/// executable while `runs` is set.
+pub(crate) fn scripted_probe(counter: Arc<AtomicUsize>, runs: Arc<AtomicBool>) -> impl Fn(&[&'static str]) -> Vec<&'static str> + Send + Sync + 'static {
+    move |_| {
+        counter.fetch_add(1, Ordering::SeqCst);
+        if runs.load(Ordering::SeqCst) { vec![GAMES[0].executable] } else { Vec::new() }
+    }
+}
+
+/// Sets the save probe and the restore probe of `ui` to answer `machine`.
+/// Both count into the returned counter.
+fn scripted_probes(ui: &Ui, machine: Machine) -> Arc<AtomicUsize> {
+    let probes = Arc::new(AtomicUsize::new(0));
+    let runs = Arc::new(AtomicBool::new(machine == Machine::GameRuns));
+    ui.app.editor.set_process_probe(scripted_probe(Arc::clone(&probes), Arc::clone(&runs)));
+    ui.app.restore.set_process_probe(scripted_probe(Arc::clone(&probes), runs));
+    probes
+}
+
+/// Points the data folder of `state` at a plain file inside `folder`: no
+/// backup, listing or save can use it.
+pub(crate) fn break_data_dir(state: &AppState, folder: &Path) {
+    let not_a_folder = folder.join("not-a-folder");
+    fs::write(&not_a_folder, b"x").unwrap();
+    state.set_data_dir(DataDir::at(&not_a_folder));
+}
+
+/// The editor open on slot 1, a temporary data folder set, probes that
+/// answer `machine`.
 pub(crate) fn rig(site: &Site, machine: Machine) -> Rig {
     let ui = open_editor(site);
     let data = tempfile::tempdir().unwrap();
     ui.app.state.set_data_dir(DataDir::at(data.path()));
-    let probes = Arc::new(AtomicUsize::new(0));
-    // One counter for the save probe and the restore probe.
-    let (save_counter, restore_counter) = (Arc::clone(&probes), Arc::clone(&probes));
-    let scripted = move |counter: &AtomicUsize| {
-        counter.fetch_add(1, Ordering::SeqCst);
-        if machine == Machine::GameRuns {
-            vec![GAMES[0].executable]
-        } else {
-            Vec::new()
-        }
-    };
-    ui.app.editor.set_process_probe(move |_| scripted(&save_counter));
-    ui.app.restore.set_process_probe(move |_| scripted(&restore_counter));
+    let probes = scripted_probes(&ui, machine);
     let file = steam_folder(site, 0, ID_1).join(slot_file(1));
     Rig { ui, data, file, probes }
 }
 
 /// A shown window with About connected and the close handler installed, the
-/// first slot open on a temporary data folder and a quiet restore probe.
-pub(crate) fn closeable_rig(site: &Site) -> (Rig, AboutDialog) {
+/// first slot open on a temporary data folder and probes that answer
+/// `machine`.
+pub(crate) fn closeable_rig(site: &Site, machine: Machine) -> (Rig, AboutDialog) {
     let (ui, about) = Ui::with_about(site);
-    let key = ui.first_slots()[0].key;
-    ui.window.invoke_slot_clicked(key);
-    ui.manual.run_all();
-    assert!(ui.window.get_editor_open());
+    ui.open_first_slot();
     ui.window.show().unwrap();
     let data = tempfile::tempdir().unwrap();
     ui.app.state.set_data_dir(DataDir::at(data.path()));
-    ui.app.restore.set_process_probe(|_| Vec::new());
+    let probes = scripted_probes(&ui, machine);
     let file = steam_folder(site, 0, ID_1).join(slot_file(1));
-    (
-        Rig {
-            ui,
-            data,
-            file,
-            probes: Arc::default(),
-        },
-        about,
-    )
+    (Rig { ui, data, file, probes }, about)
 }
 
 impl Rig {
     pub(crate) fn data_dir(&self) -> DataDir {
         DataDir::at(self.data.path())
+    }
+
+    /// Points the data folder at a plain file.
+    pub(crate) fn break_data_dir(&self) {
+        break_data_dir(&self.ui.app.state, self.data.path());
     }
 
     /// Opens the Restore page of the open game from the File menu.

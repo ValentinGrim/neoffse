@@ -11,10 +11,7 @@ use super::{Part, Site, Ui, field, fields, page};
 /// A window whose first slot is open on the editor page.
 pub(crate) fn open_editor(site: &Site) -> Ui {
     let ui = Ui::scanned(site, None);
-    let key = ui.first_slots()[0].key;
-    ui.window.invoke_slot_clicked(key);
-    ui.manual.run_all();
-    assert!(ui.window.get_editor_open(), "the save opens");
+    ui.open_first_slot();
     ui
 }
 

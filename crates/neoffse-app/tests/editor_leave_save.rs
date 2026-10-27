@@ -8,17 +8,11 @@
 
 mod common;
 
-use std::fs;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use common::{ID_1, Machine, Rig, Ui, editing_site, rig, slot_file, steam_folder};
+use common::{Machine, Rig, closeable_rig, editing_site, rig};
 use i_slint_backend_testing::AccessibleRole::Button;
-use neoffse::io::dirs::DataDir;
-use neoffse::pr::games::GAMES;
-use neoffse_app::{AboutDialog, EditProblem};
+use neoffse_app::EditProblem;
 use slint::ComponentHandle;
-use slint::platform::{Key, WindowEvent};
+use slint::platform::Key;
 
 fn quiet(site: &common::Site) -> Rig {
     rig(site, Machine::Quiet)
@@ -30,35 +24,6 @@ fn back_asked(rig: &Rig) {
     rig.ui.window.invoke_back_requested();
     assert!(rig.ui.bridge().get_discard_dialog_open());
     assert!(rig.ui.app.editor.leave_pending());
-}
-
-/// A shown window with About connected and the close handler installed, the
-/// first slot open on a temporary data folder and a scripted probe.
-fn closeable(site: &common::Site, machine: Machine) -> (Rig, AboutDialog) {
-    let (ui, about) = Ui::with_about(site);
-    let key = ui.first_slots()[0].key;
-    ui.window.invoke_slot_clicked(key);
-    ui.manual.run_all();
-    assert!(ui.window.get_editor_open());
-    ui.window.show().unwrap();
-    let data = tempfile::tempdir().unwrap();
-    ui.app.state.set_data_dir(DataDir::at(data.path()));
-    let probes = Arc::new(AtomicUsize::new(0));
-    let counter = Arc::clone(&probes);
-    ui.app.editor.set_process_probe(move |_| {
-        counter.fetch_add(1, Ordering::SeqCst);
-        if machine == Machine::GameRuns {
-            vec![GAMES[0].executable]
-        } else {
-            Vec::new()
-        }
-    });
-    let file = steam_folder(site, 0, ID_1).join(slot_file(1));
-    (Rig { ui, data, file, probes }, about)
-}
-
-fn request_close(ui: &Ui) {
-    ui.window.window().dispatch_event(WindowEvent::CloseRequested);
 }
 
 /// The discard dialog to the review, then the review's Save button, run to the end.
@@ -124,10 +89,10 @@ fn back_then_review_then_save_leaves_for_home() {
 #[test]
 fn close_then_review_then_save_hides_the_window() {
     let site = editing_site();
-    let (rig, _about) = closeable(&site, Machine::Quiet);
+    let (rig, _about) = closeable_rig(&site, Machine::Quiet);
     let ui = &rig.ui;
     ui.make_dirty();
-    request_close(ui);
+    ui.request_close();
     assert!(ui.bridge().get_discard_dialog_open());
     assert!(ui.window.window().is_visible());
 
@@ -177,9 +142,7 @@ fn a_failed_save_keeps_the_user_in_the_editor() {
     let site = editing_site();
     let rig = quiet(&site);
     let ui = &rig.ui;
-    let not_a_folder = rig.data.path().join("plain-file");
-    fs::write(&not_a_folder, b"x").unwrap();
-    ui.app.state.set_data_dir(DataDir::at(&not_a_folder));
+    rig.break_data_dir();
     let before = rig.bytes();
     back_asked(&rig);
 
@@ -279,13 +242,13 @@ fn discard_and_cancel_still_work() {
 #[test]
 fn close_is_vetoed_while_a_save_runs() {
     let site = editing_site();
-    let (rig, _about) = closeable(&site, Machine::Quiet);
+    let (rig, _about) = closeable_rig(&site, Machine::Quiet);
     let ui = &rig.ui;
     ui.make_dirty();
     ui.bridge().invoke_save_requested();
     assert!(ui.bridge().get_working());
 
-    request_close(ui);
+    ui.request_close();
 
     assert!(ui.window.window().is_visible());
     assert!(!ui.bridge().get_discard_dialog_open());

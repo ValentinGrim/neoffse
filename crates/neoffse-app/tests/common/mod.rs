@@ -34,7 +34,7 @@ pub(crate) use geometry::{Card, Rect, SLACK, resize, visible_cards};
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
-pub(crate) use rig::{Machine, Rig, closeable_rig, rig};
+pub(crate) use rig::{Machine, Rig, break_data_dir, closeable_rig, rig, scripted_probe};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
 pub(crate) use window::Ui;

@@ -15,7 +15,6 @@ use common::{Machine, Rig, Site, closeable_rig, editing_site, make_backup, rig, 
 use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse_app::{EditorCommand, RestoreProblem};
 use slint::ComponentHandle;
-use slint::platform::WindowEvent;
 
 /// The editor open on slot 1, a backup of the file as it is, then another
 /// program saves gil 777 into it. The open session is stale but clean.
@@ -268,13 +267,13 @@ fn a_reopen_that_fails_closes_the_editor() {
 #[test]
 fn a_close_request_replaces_the_pending_restore() {
     let site = editing_site();
-    let (rig, _about) = closeable_rig(&site);
+    let (rig, _about) = closeable_rig(&site, Machine::Quiet);
     let ui = &rig.ui;
     let before = rig.bytes();
     rig.backup_now("before-save");
     asked(&rig);
 
-    ui.window.window().dispatch_event(WindowEvent::CloseRequested);
+    ui.request_close();
     assert!(ui.bridge().get_discard_dialog_open());
     assert!(ui.window.window().is_visible());
 

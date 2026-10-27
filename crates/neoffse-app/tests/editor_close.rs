@@ -9,24 +9,16 @@ mod common;
 use common::{Ui, editing_site};
 use neoffse_app::AboutDialog;
 use slint::ComponentHandle;
-use slint::platform::WindowEvent;
 
 /// A window with About connected, the first slot open, both windows shown.
 fn shown(site: &common::Site) -> (Ui, AboutDialog) {
     let (ui, about) = Ui::with_about(site);
-    let key = ui.first_slots()[0].key;
-    ui.window.invoke_slot_clicked(key);
-    ui.manual.run_all();
-    assert!(ui.window.get_editor_open());
+    ui.open_first_slot();
     ui.window.show().unwrap();
     ui.window.invoke_about_requested();
     assert!(ui.window.window().is_visible());
     assert!(about.window().is_visible());
     (ui, about)
-}
-
-fn request_close(ui: &Ui) {
-    ui.window.window().dispatch_event(WindowEvent::CloseRequested);
 }
 
 fn request_quit(ui: &Ui) {
@@ -37,7 +29,7 @@ fn request_quit(ui: &Ui) {
 fn a_clean_close_hides_the_window_and_the_about_dialog() {
     let site = editing_site();
     let (ui, about) = shown(&site);
-    request_close(&ui);
+    ui.request_close();
     assert!(!ui.window.window().is_visible());
     assert!(!about.window().is_visible());
 }
@@ -47,7 +39,7 @@ fn a_dirty_close_is_vetoed() {
     let site = editing_site();
     let (ui, about) = shown(&site);
     ui.commit(ui.gil().key, "500");
-    request_close(&ui);
+    ui.request_close();
 
     assert!(ui.window.window().is_visible());
     assert!(about.window().is_visible(), "About stays while the window stays");
@@ -60,12 +52,12 @@ fn cancel_keeps_the_window() {
     let site = editing_site();
     let (ui, _about) = shown(&site);
     ui.commit(ui.gil().key, "500");
-    request_close(&ui);
+    ui.request_close();
     ui.bridge().invoke_discard_cancelled();
 
     assert!(ui.window.window().is_visible());
     assert!(!ui.bridge().get_discard_dialog_open());
-    request_close(&ui);
+    ui.request_close();
     assert!(ui.window.window().is_visible(), "a new close request vetoes again");
     assert!(ui.bridge().get_discard_dialog_open());
 }
@@ -75,7 +67,7 @@ fn discard_closes_the_window_and_the_session() {
     let site = editing_site();
     let (ui, about) = shown(&site);
     ui.commit(ui.gil().key, "500");
-    request_close(&ui);
+    ui.request_close();
     ui.bridge().invoke_discard_confirmed();
 
     assert!(!ui.window.window().is_visible());
@@ -90,7 +82,7 @@ fn closing_on_home_needs_no_question() {
     let (ui, about) = Ui::with_about(&site);
     ui.window.show().unwrap();
     ui.window.invoke_about_requested();
-    request_close(&ui);
+    ui.request_close();
 
     assert!(!ui.window.window().is_visible());
     assert!(!about.window().is_visible());
@@ -102,7 +94,7 @@ fn a_close_during_the_back_dialog_replaces_its_reason() {
     let (ui, about) = shown(&site);
     ui.commit(ui.gil().key, "500");
     ui.window.invoke_back_requested();
-    request_close(&ui);
+    ui.request_close();
 
     assert!(ui.window.window().is_visible());
     assert!(ui.bridge().get_discard_dialog_open());
