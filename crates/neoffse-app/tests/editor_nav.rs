@@ -122,7 +122,7 @@ fn home_from_a_character_page_asks_about_unsaved_edits() {
     assert_eq!(ui.bridge().get_character(), 2, "the page stays until the user decides");
 }
 
-/// The part D sequence: dirty leave, cancel, leave again, confirm.
+/// The leave sequence: dirty leave, cancel, leave again, confirm.
 fn leave_flow(leave: impl Fn(&Ui)) {
     let site = editing_site();
     let ui = open_editor(&site);
