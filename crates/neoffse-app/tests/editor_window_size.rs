@@ -10,23 +10,9 @@
 
 mod common;
 
-use common::{ID_1, Site, Ui, editing_site, resize, slot_file, steam_slot};
+use common::{ID_1, Site, Ui, assert_size, editing_site, logical, resize, slot_file, steam_slot};
 use neoffse::core::Game;
 use slint::ComponentHandle;
-
-/// The window size in logical pixels.
-fn logical(ui: &Ui) -> (f32, f32) {
-    let size = ui.window.window().size().to_logical(ui.window.window().scale_factor());
-    (size.width, size.height)
-}
-
-fn assert_size(ui: &Ui, expected: (f32, f32), what: &str) {
-    let (width, height) = logical(ui);
-    assert!(
-        (width - expected.0).abs() < 0.5 && (height - expected.1).abs() < 0.5,
-        "{what}: {width}x{height}, expected {expected:?}"
-    );
-}
 
 /// Home at `home`, then the first slot open on the editor.
 fn open_at(site: &Site, home: (f32, f32)) -> Ui {

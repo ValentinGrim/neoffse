@@ -32,7 +32,9 @@ pub(crate) use editor::{
     Editing, FakeLocks, Part, all_fields, count_of, editing, editing_site, field, fields, item_label, list, lists, page, pages, review_row, row_of, rows,
     section, spare_weapon,
 };
-pub(crate) use geometry::{Card, Rect, SLACK, resize, visible_cards};
+pub(crate) use geometry::{
+    BAND, Card, Rect, SLACK, assert_size, bands_of, cards_ui, first_element, first_rect, font_body, logical, rects, resize, row_height, texts_of, visible_cards,
+};
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};

@@ -8,19 +8,10 @@
 
 mod common;
 
-use common::{Rect, SLACK, Ui, editing_site, open_editor, resize};
+use common::{Rect, SLACK, Ui, bands_of, editing_site, open_editor, resize};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use neoffse_app::{EditorCommand, Theme};
 use slint::ComponentHandle;
-
-const BAND: &str = "ControlFrame::band";
-
-/// The bands under `element`, widest first.
-fn bands_of(element: &ElementHandle) -> Vec<Rect> {
-    let mut bands: Vec<Rect> = element.query_descendants().match_id(BAND).find_all().iter().map(Rect::of).collect();
-    bands.sort_by(|a, b| b.w.total_cmp(&a.w));
-    bands
-}
 
 /// The smallest element of `type_name` that holds `inside`.
 fn holder(ui: &Ui, type_name: &str, inside: &Rect) -> ElementHandle {

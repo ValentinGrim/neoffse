@@ -14,24 +14,9 @@ mod common;
 
 use std::fs;
 
-use common::{Machine, Rig, Site, Ui, editing_site, resize, rig};
+use common::{Machine, Rig, Site, Ui, assert_size, editing_site, logical, resize, rig};
 use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse_app::RestoreProblem;
-use slint::ComponentHandle;
-
-/// The window size in logical pixels.
-fn logical(ui: &Ui) -> (f32, f32) {
-    let size = ui.window.window().size().to_logical(ui.window.window().scale_factor());
-    (size.width, size.height)
-}
-
-fn assert_size(ui: &Ui, expected: (f32, f32), what: &str) {
-    let (width, height) = logical(ui);
-    assert!(
-        (width - expected.0).abs() < 0.5 && (height - expected.1).abs() < 0.5,
-        "{what}: {width}x{height}, expected {expected:?}"
-    );
-}
 
 /// Home at 900 by 650, the first slot open and dirty, the window resized to
 /// 1100 by 700, Back pressed: the discard dialog asks.

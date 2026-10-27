@@ -10,7 +10,7 @@ mod common;
 use std::fmt;
 use std::sync::Arc;
 
-use common::{Card, Rect, SLACK, Ui, editing_site, open_editor, resize, visible_cards};
+use common::{Card, Rect, SLACK, Ui, cards_ui, editing_site, open_editor, resize, visible_cards};
 use i_slint_backend_testing::ElementHandle;
 use neoffse_app::{ProviderChain, Theme, refresh_editor};
 use slint::ComponentHandle;
@@ -52,15 +52,6 @@ fn in_each_state(mut check: impl FnMut(&Ui, State)) {
             check(&ui, State { width, height, notice });
         }
     }
-}
-
-/// The editor on the cards at `width` by `height`, nothing pending.
-fn cards_ui(width: f32, height: f32) -> Ui {
-    let site = editing_site();
-    let ui = open_editor(&site);
-    resize(&ui, width, height);
-    assert!(ui.on_cards());
-    ui
 }
 
 fn panel(ui: &Ui) -> Rect {

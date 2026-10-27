@@ -7,7 +7,7 @@
 
 mod common;
 
-use common::{Rect, SLACK, Ui, editing_site, open_editor, resize};
+use common::{Rect, SLACK, Ui, editing_site, first_rect, open_editor, resize};
 use i_slint_backend_testing::AccessibleRole::{Button, Text};
 use i_slint_backend_testing::ElementHandle;
 use neoffse_app::EditProblem;
@@ -19,14 +19,6 @@ fn review_enabled(ui: &Ui) -> bool {
 
 fn enabled(ui: &Ui, label: &str) -> bool {
     ui.element(label, Button).accessible_enabled() == Some(true)
-}
-
-fn the_rect(ui: &Ui, type_name: &str) -> Rect {
-    Rect::of(
-        &ElementHandle::find_by_element_type_name(&ui.window, type_name)
-            .next()
-            .expect("an element of that type"),
-    )
 }
 
 fn button_rect(ui: &Ui, label: &str) -> Rect {
@@ -233,11 +225,14 @@ fn the_bar_keeps_its_place_when_the_first_edit_lands() {
     let site = editing_site();
     let ui = open_editor(&site);
     resize(&ui, 1280.0, 800.0);
-    let (bar, cards) = (the_rect(&ui, "PendingBar"), the_rect(&ui, "PartyCards"));
+    let (bar, cards) = (first_rect(&ui, "PendingBar"), first_rect(&ui, "PartyCards"));
 
     ui.make_dirty();
 
-    for (what, before, after) in [("the bar", bar, the_rect(&ui, "PendingBar")), ("the cards", cards, the_rect(&ui, "PartyCards"))] {
+    for (what, before, after) in [
+        ("the bar", bar, first_rect(&ui, "PendingBar")),
+        ("the cards", cards, first_rect(&ui, "PartyCards")),
+    ] {
         let moved = [before.x - after.x, before.y - after.y, before.w - after.w, before.h - after.h];
         assert!(moved.iter().all(|delta| delta.abs() <= SLACK), "{what} moved: {before:?} then {after:?}");
     }
@@ -254,7 +249,7 @@ fn the_idle_bar_fits_at_800() {
         w: 800.0,
         h: 600.0,
     };
-    let bar = the_rect(&ui, "PendingBar");
+    let bar = first_rect(&ui, "PendingBar");
     let labels = ["Undo", "Redo", "Review & save"];
     let buttons: Vec<Rect> = labels.into_iter().map(|label| button_rect(&ui, label)).collect();
     for (label, button) in labels.into_iter().zip(&buttons) {

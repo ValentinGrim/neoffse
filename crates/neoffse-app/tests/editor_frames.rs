@@ -7,19 +7,10 @@
 
 mod common;
 
-use common::{Rect, SLACK, Ui, editing_site, open_editor, resize};
+use common::{Rect, SLACK, Ui, bands_of, editing_site, first_element, open_editor, resize};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use neoffse_app::{EditorCommand, FrameStyle, Theme};
 use slint::ComponentHandle;
-
-const BAND: &str = "ControlFrame::band";
-
-/// The bands under `element`, widest first.
-fn bands_of(element: &ElementHandle) -> Vec<Rect> {
-    let mut bands: Vec<Rect> = element.query_descendants().match_id(BAND).find_all().iter().map(Rect::of).collect();
-    bands.sort_by(|a, b| b.w.total_cmp(&a.w));
-    bands
-}
 
 /// The bands of the first frame under `element`: the panel's own six, not
 /// those of a control inside it.
@@ -30,12 +21,6 @@ fn own_bands(element: &ElementHandle) -> Vec<Rect> {
         .find_first()
         .expect("a panel draws a frame");
     bands_of(&frame)
-}
-
-fn first_of(ui: &Ui, type_name: &str) -> ElementHandle {
-    ElementHandle::find_by_element_type_name(&ui.window, type_name)
-        .next()
-        .unwrap_or_else(|| panic!("no element of type {type_name}"))
 }
 
 fn all_of(ui: &Ui, type_name: &str) -> Vec<ElementHandle> {
@@ -78,7 +63,7 @@ fn assert_six_apart(what: &str, panel: &Rect, bands: &[Rect]) {
 #[test]
 fn a_panel_draws_six_bands_one_pixel_apart() {
     let ui = on_party_cards();
-    let list = first_of(&ui, "CommandList");
+    let list = first_element(&ui, "CommandList");
     assert_six_apart("the command list", &Rect::of(&list), &bands_of(&list));
 }
 
@@ -90,7 +75,7 @@ fn the_bands_follow_the_frame_width() {
     assert!((look.frame_radius - 6.0).abs() < f32::EPSILON);
     assert_eq!(look.frame_style, FrameStyle::Bevel);
 
-    let bands = bands_of(&first_of(&ui, "CommandList"));
+    let bands = bands_of(&first_element(&ui, "CommandList"));
     for pair in bands.windows(2) {
         let step = (pair[0].w - pair[1].w) / 2.0;
         assert!((step - look.frame_width).abs() <= SLACK, "a step of {step} px between two bands");
@@ -105,7 +90,7 @@ fn every_panel_is_banded() {
     for panel in &panels {
         assert_six_apart("a panel", &Rect::of(panel), &own_bands(panel));
     }
-    let status = first_of(&ui, "StatusPanel");
+    let status = first_element(&ui, "StatusPanel");
     assert_six_apart("the status panel", &Rect::of(&status), &own_bands(&status));
 }
 
@@ -212,7 +197,7 @@ fn a_shell_dialog_inside_the_pr_editor_stays_flat() {
     assert!(bands_of(&button).is_empty(), "the dialog button draws a band");
     assert_six_apart(
         "the command list",
-        &Rect::of(&first_of(&ui, "CommandList")),
-        &bands_of(&first_of(&ui, "CommandList")),
+        &Rect::of(&first_element(&ui, "CommandList")),
+        &bands_of(&first_element(&ui, "CommandList")),
     );
 }

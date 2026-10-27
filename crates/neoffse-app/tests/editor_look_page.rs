@@ -9,36 +9,12 @@ mod common;
 
 use std::sync::Arc;
 
-use common::{Rect, SLACK, Ui, editing_site, open_editor, resize};
-use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use common::{Rect, SLACK, Ui, cards_ui, first_element, first_rect, rects, texts_of};
+use i_slint_backend_testing::ElementHandle;
 use neoffse_app::{EditorCommand, ProviderChain, refresh_editor};
 use slint::Model;
 
 const SPRITE: &str = "PortraitFrame::sprite";
-
-/// The editor on the cards at `width` by `height`.
-fn cards_ui(width: f32, height: f32) -> Ui {
-    let site = editing_site();
-    let ui = open_editor(&site);
-    resize(&ui, width, height);
-    ui
-}
-
-fn rects(ui: &Ui, type_name: &str) -> Vec<Rect> {
-    ElementHandle::find_by_element_type_name(&ui.window, type_name)
-        .map(|element| Rect::of(&element))
-        .collect()
-}
-
-fn the_rect(ui: &Ui, type_name: &str) -> Rect {
-    *rects(ui, type_name).first().unwrap_or_else(|| panic!("no element of type {type_name}"))
-}
-
-fn the_element(ui: &Ui, type_name: &str) -> ElementHandle {
-    ElementHandle::find_by_element_type_name(&ui.window, type_name)
-        .next()
-        .unwrap_or_else(|| panic!("no element of type {type_name}"))
-}
 
 fn sprite_sizes(ui: &Ui) -> Vec<Rect> {
     ElementHandle::find_by_element_id(&ui.window, SPRITE)
@@ -47,14 +23,8 @@ fn sprite_sizes(ui: &Ui) -> Vec<Rect> {
 }
 
 /// The texts of `element` with their labels, top to bottom.
-fn texts_of(element: &ElementHandle) -> Vec<(String, Rect)> {
-    let mut found: Vec<(String, Rect)> = element
-        .query_descendants()
-        .match_accessible_role(AccessibleRole::Text)
-        .find_all()
-        .iter()
-        .map(|text| (text.accessible_label().map(|label| label.to_string()).unwrap_or_default(), Rect::of(text)))
-        .collect();
+fn texts_by_height(element: &ElementHandle) -> Vec<(String, Rect)> {
+    let mut found = texts_of(element);
     found.sort_by(|a, b| a.1.y.total_cmp(&b.1.y));
     found
 }
@@ -80,11 +50,11 @@ fn the_header_frame_is_as_large_as_a_card_frame() {
 fn the_header_text_sits_beside_the_frame() {
     let ui = cards_ui(1280.0, 800.0);
     ui.navigate(EditorCommand::Party, 0);
-    let frame = the_rect(&ui, "PortraitFrame");
+    let frame = first_rect(&ui, "PortraitFrame");
     let job = ui.app.editor.overview().cards.row_data(0).expect("a card").job.to_string();
     assert!(!job.is_empty(), "the first character has a job");
-    let page = the_element(&ui, "CharacterEditPage");
-    let texts = texts_of(&page);
+    let page = first_element(&ui, "CharacterEditPage");
+    let texts = texts_by_height(&page);
     for label in ["Aria", job.as_str()] {
         let (_, text) = texts
             .iter()
@@ -107,8 +77,8 @@ fn the_header_text_sits_beside_the_frame() {
 fn the_first_field_starts_below_the_header() {
     let ui = cards_ui(1280.0, 800.0);
     ui.navigate(EditorCommand::Party, 0);
-    let frame = the_rect(&ui, "PortraitFrame");
-    let page = the_rect(&ui, "CharacterEditPage");
+    let frame = first_rect(&ui, "PortraitFrame");
+    let page = first_rect(&ui, "CharacterEditPage");
     let mut rules: Vec<Rect> = rects(&ui, "RuleLine").into_iter().filter(|rule| page.holds(rule)).collect();
     rules.sort_by(|a, b| a.y.total_cmp(&b.y));
     let rule = *rules.first().expect("a rule on the page");
@@ -141,14 +111,14 @@ fn the_character_page_holds_at_800() {
         w: 800.0,
         h: 600.0,
     };
-    let page = the_rect(&ui, "CharacterEditPage");
+    let page = first_rect(&ui, "CharacterEditPage");
     assert!(window.holds(&page), "the page ({page:?}) leaves the window");
-    let list = the_rect(&ui, "FieldList");
+    let list = first_rect(&ui, "FieldList");
     let shown = rects(&ui, "FieldLine").iter().filter(|line| list.holds(line)).count();
     assert!(shown >= 6, "{shown} rows fit whole in the list");
 
-    let frame = the_rect(&ui, "PortraitFrame");
-    let bar = the_rect(&ui, "PendingBar");
+    let frame = first_rect(&ui, "PortraitFrame");
+    let bar = first_rect(&ui, "PendingBar");
     assert!(
         bar.y >= frame.bottom() - SLACK,
         "the bar at {} starts above the frame ending at {}",
@@ -171,9 +141,12 @@ fn a_character_without_a_portrait_keeps_the_68_px_frame() {
     ui.navigate(EditorCommand::Party, 0);
 
     assert!(sprite_sizes(&ui).is_empty(), "no sprite is drawn");
-    let frame = the_rect(&ui, "PortraitFrame");
+    let frame = first_rect(&ui, "PortraitFrame");
     assert!((frame.w - 68.0).abs() <= SLACK && (frame.h - 68.0).abs() <= SLACK, "the frame is {frame:?}");
-    let frame_element = the_element(&ui, "PortraitFrame");
-    let initial = texts_of(&frame_element).into_iter().find(|(text, _)| text == "A").expect("the initial A");
+    let frame_element = first_element(&ui, "PortraitFrame");
+    let initial = texts_by_height(&frame_element)
+        .into_iter()
+        .find(|(text, _)| text == "A")
+        .expect("the initial A");
     assert!(frame.holds(&initial.1), "the initial ({:?}) leaves the frame ({frame:?})", initial.1);
 }
