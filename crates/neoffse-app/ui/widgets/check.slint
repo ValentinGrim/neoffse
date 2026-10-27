@@ -1,0 +1,95 @@
+import { ControlRadius, FocusRing } from "control-frame.slint";
+import { Icon, Icons } from "../theme/icons.slint";
+import { Look } from "../theme/look.slint";
+import { Theme } from "../theme/theme.slint";
+
+// A box with a tick and an optional text. Space or Enter, or a click, toggles it.
+export component ThemedCheck inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in-out property <bool> checked;
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback toggled();
+    out property <bool> has-focus: scope.has-focus;
+
+    forward-focus: scope;
+
+    function toggle() {
+        root.checked = !root.checked;
+        root.toggled();
+    }
+
+    private property <length> box: root.look.font-body * 1.25;
+
+    min-width: row.min-width;
+    min-height: row.min-height;
+    preferred-width: row.preferred-width;
+    preferred-height: row.preferred-height;
+
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        enabled: root.enabled;
+        focus-on-click: false;
+        accessible-role: checkbox;
+        accessible-checkable: true;
+        accessible-checked: root.checked;
+        accessible-label: root.text;
+        accessible-enabled: root.enabled;
+        accessible-action-default => { root.toggle(); }
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                if !event.repeat {
+                    root.toggle();
+                }
+                return accept;
+            }
+            return reject;
+        }
+    }
+    row := HorizontalLayout {
+        spacing: root.look.spacing;
+        alignment: start;
+
+        Rectangle {
+            width: root.box;
+            height: root.box;
+            y: (parent.height - self.height) / 2;
+            background: root.look.field-fill;
+            border-width: 1px;
+            border-color: root.enabled ? root.look.field-border : root.look.muted;
+            border-radius: ControlRadius.of(root.look);
+
+            if root.checked: Icon {
+                source: Icons.check;
+                tint: root.enabled ? root.look.accent : root.look.muted;
+                width: parent.width - 2px;
+                height: parent.height - 2px;
+                x: 1px;
+                y: 1px;
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: root.enabled ? root.look.text : root.look.muted;
+            font-family: root.look.font-family;
+            font-size: root.look.font-body;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+    FocusRing {
+        look: root.look;
+        radius: ControlRadius.of(root.look);
+        shown: scope.has-focus;
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.toggle(); }
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                scope.focus();
+            }
+        }
+    }
+}

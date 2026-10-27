@@ -2,7 +2,10 @@ import { Fonts } from "../../theme/fonts.slint";
 import { FrameStyle, Look } from "../../theme/look.slint";
 
 // The Pixel Remaster menu: blue gradient windows, light bevelled borders,
-// white text, cyan labels. All six Pixel Remaster games share it.
+// white text, cyan labels. A panel is drawn as the game's banded window frame
+// (six bands of one pixel). All six Pixel Remaster games share it. The colours
+// follow the game's menu; the six `band` colours are measured on the game's
+// window frame, outside in.
 export global PrLook {
     out property <Look> look: {
         font-family: Fonts.pixel,
@@ -15,25 +18,36 @@ export global PrLook {
         font-small: 12px,
         font-title: 24px,
         text: #ffffff,
-        label: #59d7ee,
+        label: #43deff,
         selected: #f2e24a,
-        muted: #9aa4d6,
+        muted: #a3a7f6,
         warning: #ffb347,
-        accent: #59d7ee,
+        accent: #43deff,
         window-fill: #05072a,
-        panel-fill: @linear-gradient(180deg, #5557e3 0%, #0b0b78 100%),
-        field-fill: #0c0c60,
-        portrait-fill: #07075a,
+        panel-fill: @linear-gradient(180deg, #4647d6 0%, #030574 100%),
+        field-fill: #050670,
+        portrait-fill: transparent,
         hover-fill: #ffffff1f,
         selected-fill: #ffffff26,
         frame-style: FrameStyle.bevel,
-        frame-outer: #dfe6f2,
-        frame-inner: #6d7bb0,
-        rule: #c9d3ea,
-        field-border: #9fb0e0,
+        frame-inner: #a3a7f6,
+        rule: #cacbd4,
+        field-border: #e8eaff,
         focus: #f2e24a,
-        frame-width: 2px,
-        frame-radius: 0px,
+        // One band is one game pixel.
+        frame-width: 1px,
+        // The rounded corner of a panel. A frame rounds with at most about 3.4
+        // times its inset before the square fill shows past the bands (6 px
+        // panels against an inset of 6 px hold). A control rounds with
+        // `min(frame-radius, its inset)`.
+        frame-radius: 6px,
+        band-1: #03050e,
+        band-2: #adc1c1,
+        band-3: #f6ffff,
+        band-4: #778b8b,
+        band-5: #2e4242,
+        band-6: #1d2867,
+        rule-shadow: #121437,
         padding: 12px,
         spacing: 8px,
         row-height: 30px,

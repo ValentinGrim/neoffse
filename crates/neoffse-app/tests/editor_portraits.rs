@@ -261,7 +261,7 @@ fn a_card_without_a_portrait_draws_no_sprite() {
 }
 
 #[test]
-fn the_character_page_draws_one_32_px_sprite() {
+fn the_character_page_draws_one_64_px_sprite() {
     let site = editing_site();
     let ui = sized_ui(&site);
     ui.navigate(EditorCommand::Party, 0);
@@ -269,5 +269,5 @@ fn the_character_page_draws_one_32_px_sprite() {
     let sizes: Vec<(f32, f32)> = sprites(&ui).iter().map(|element| (element.size().width, element.size().height)).collect();
     // The cards are not instantiated under the page: the one sprite is the
     // page's.
-    assert_eq!(sizes, vec![(32.0, 32.0)]);
+    assert_eq!(sizes, vec![(64.0, 64.0)]);
 }

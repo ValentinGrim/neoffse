@@ -1,6 +1,6 @@
 import { ScrollView } from "std-widgets.slint";
 import { CharacterCard, EntityPage, Overview } from "../../types/editor.slint";
-import { LookText, PortraitFrame, PressRow, RuleLine } from "../../widgets/frames.slint";
+import { Frame, LookText, PortraitFrame, PressRow, RuleLine } from "../../widgets/frames.slint";
 
 // One character: a portrait frame with the sprite (the initial when there is
 // none), the job over the name, HP, the eight charges in two rows of four, the
@@ -10,9 +10,11 @@ component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
     in property <bool> last;
 
-    // A fixed portrait, twice the 32 px sprite so its pixels stay whole: the
+    // A fixed sprite, twice the 32 px source so its pixels stay whole: the
     // card's height comes from its rows, never the other way round.
     private property <length> side: 64px;
+    // The portrait frame: the sprite and the two lines around it.
+    private property <length> frame: root.side + 2 * portrait-frame.inset;
     // The label column of the stats: wide enough for "HP", "MP" and "Lv".
     private property <length> label-width: root.look.font-body * 2.5;
 
@@ -27,15 +29,15 @@ component CharacterRow inherits PressRow {
         spacing: root.look.padding;
 
         Rectangle {
-            width: root.side;
-            PortraitFrame {
+            width: root.frame;
+            portrait-frame := PortraitFrame {
                 look: root.look;
                 initial: root.card.initial;
                 portrait: root.card.portrait;
                 x: 0px;
                 y: (parent.height - self.height) / 2;
-                width: root.side;
-                height: root.side;
+                width: root.frame;
+                height: root.frame;
             }
         }
         VerticalLayout {
@@ -151,20 +153,31 @@ component PlainRow inherits PressRow {
     }
 }
 
-// The party: each card keeps the natural height of its rows and the column
-// scrolls when the cards outgrow the panel. A game with no cards lists the
-// characters as plain rows.
+// The party panel: each card keeps the natural height of its rows and the
+// column scrolls when the cards outgrow the panel. A game with no cards lists
+// the characters as plain rows.
+//
+// The panel asks for the height of its rows plus its own padding, so inside a
+// column that aligns to the start it stops under the last card, with the same
+// margin as above the first one. The layout shrinks it to the room there is,
+// and the rows scroll.
 //
 // The layout cannot loop: a card's height comes from its rows only, the
-// column's height is the sum of the cards, and the viewport height is the
-// column's. Nothing reads the panel's height to size a card. The panel's
-// height is read only to scroll a focused card into view.
-export component PartyCards inherits Rectangle {
+// column's height is the sum of the cards, and the panel's height is the
+// column's plus its padding. Nothing reads the panel's height to size a card.
+// The scroll view's height is read only to scroll a focused card into view.
+export component PartyCards inherits Frame {
     in property <Overview> overview;
     in property <[EntityPage]> pages;
     in property <bool> enabled: true;
+    // The height of every row together, from the column's preferred height.
+    // The scroll view's own `content-height` would not do: it never falls
+    // under the view's height, so it would read back the panel's height.
+    out property <length> content-height: column.preferred-height;
     // The index into the party pages.
     callback activated(int);
+
+    preferred-height: root.content-height + 2 * root.look.padding;
 
     // Brings the row at `top` with `height` into view. `content-y` is zero
     // or negative.
@@ -177,10 +190,7 @@ export component PartyCards inherits Rectangle {
     }
 
     scroll := ScrollView {
-        width: 100%;
-        height: 100%;
-
-        VerticalLayout {
+        column := VerticalLayout {
             padding-right: 20px;
             alignment: start;
 

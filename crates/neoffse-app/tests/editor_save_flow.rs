@@ -25,8 +25,8 @@ fn quiet(site: &common::Site) -> Rig {
     rig(site, Machine::Quiet)
 }
 
-fn bar_shown(ui: &Ui) -> bool {
-    ui.has_element("Review & save", Button)
+fn review_enabled(ui: &Ui) -> bool {
+    ui.element("Review & save", Button).accessible_enabled() == Some(true)
 }
 
 /// Runs the queued save to its end.
@@ -56,7 +56,7 @@ fn save_writes_backs_up_and_reports() {
     assert_eq!(Some(notice.value.to_string()), stamp_of(&rig.newest_created()));
     assert!(ui.bridge().get_has_notice());
     assert_eq!(ui.bridge().get_pending_count(), 0);
-    assert!(!bar_shown(ui));
+    assert!(!review_enabled(ui));
     assert_ne!(rig.bytes(), before);
     assert_eq!(rig.gil_on_disk(), 500);
     assert_eq!(rig.backups(), 1);
@@ -136,7 +136,7 @@ fn an_undo_after_the_save_brings_the_bar_back() {
     ui.chord(&[Key::Control], "z");
     assert_eq!(ui.gil().text, "123456");
     assert_eq!(ui.pending(), 1);
-    assert!(bar_shown(ui));
+    assert!(review_enabled(ui));
     assert_eq!(ui.element("Redo", Button).accessible_enabled(), Some(true));
 
     ui.chord(&[Key::Control], "y");
@@ -166,7 +166,7 @@ fn a_failed_save_keeps_the_edit() {
 
     assert_eq!(ui.bridge().get_notice().problem, EditProblem::SaveFailed);
     assert_eq!(ui.pending(), 1);
-    assert!(bar_shown(ui));
+    assert!(review_enabled(ui));
     assert_eq!(rig.bytes(), before);
     assert!(!ui.bridge().get_working());
     assert!(!ui.bridge().get_game_running_open());
@@ -210,13 +210,13 @@ fn the_saved_notice_and_the_bar_are_separate() {
     let ui = &rig.ui;
     ui.commit(ui.level().key, "34");
     assert_eq!(ui.bridge().get_notice().problem, EditProblem::StatsRaised);
-    assert!(bar_shown(ui), "the level-up notice and the bar hold together");
+    assert!(review_enabled(ui), "the level-up notice and the bar hold together");
 
     ui.bridge().invoke_save_requested();
     finish(&rig);
 
     assert_eq!(ui.bridge().get_notice().problem, EditProblem::Saved);
-    assert!(!bar_shown(ui));
+    assert!(!review_enabled(ui));
     ui.bridge().invoke_notice_dismissed();
     assert!(!ui.bridge().get_has_notice());
 }

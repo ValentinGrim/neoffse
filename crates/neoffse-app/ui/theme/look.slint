@@ -23,13 +23,22 @@ export struct Look {
     hover-fill: brush,
     selected-fill: brush,
     frame-style: FrameStyle,
-    frame-outer: color,
     frame-inner: color,
     rule: color,
     field-border: color,
     focus: color,
     frame-width: length,
     frame-radius: length,
+    // The bands of the game's window frame, outside in, each `frame-width` wide.
+    // Only the bevel style draws them; the flat style ignores them.
+    band-1: color,
+    band-2: color,
+    band-3: color,
+    band-4: color,
+    band-5: color,
+    band-6: color,
+    // The dark line under `rule` in the bevel style.
+    rule-shadow: color,
     padding: length,
     spacing: length,
     // The height of a list row, and the reference height of a text field or a button.
