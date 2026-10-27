@@ -4,7 +4,6 @@
 use neoffse::Session;
 use neoffse::core::EditError;
 
-use super::edit::settle;
 use super::model::{EditorViewModel, lock_session, not_editable};
 use super::notice::problem_notice;
 use super::review::review_rows;
@@ -80,14 +79,6 @@ impl EditorViewModel {
     }
 
     fn replay(&self, step: impl FnOnce(&mut Session) -> Result<bool, EditError>) -> Option<EditNotice> {
-        if self.is_saving() {
-            return Some(not_editable());
-        }
-        let Some(session) = self.shared.state.session() else {
-            return Some(not_editable());
-        };
-        let mut session = lock_session(&session);
-        let error = step(&mut session).err()?;
-        Some(settle(&mut session, &error, ""))
+        self.on_session("", step)
     }
 }
