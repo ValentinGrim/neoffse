@@ -14,21 +14,13 @@ use neoffse::core::Game;
 use neoffse_app::state::AppState;
 use neoffse_app::{RestoreOutcome, RestoreViewModel};
 
-/// A backup of slot 1 as `slot_bytes(1)`, then the folder holds `slot_bytes(2)`.
-fn differing() -> Restoring {
-    let r = Restoring::new();
-    r.backup_now("before-save", 0);
-    fs::write(r.file(), slot_bytes(2)).unwrap();
-    r
-}
-
 fn probe_count(r: &Restoring) -> usize {
     r.probes.load(Ordering::SeqCst)
 }
 
 #[test]
 fn a_missing_folder_changes_nothing() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     fs::remove_dir_all(&r.folder).unwrap();
     assert_eq!(r.restore(Running::Refuse), RestoreOutcome::FolderMissing);
@@ -39,7 +31,7 @@ fn a_missing_folder_changes_nothing() {
 
 #[test]
 fn a_relative_source_dir_is_a_missing_folder() {
-    let r = differing();
+    let r = Restoring::differing();
     let backup = r.backups(Game::Ff1Pr).remove(0);
     rewrite_manifest(&backup, "sourceDir", "saves/ff1");
     r.pick(0);
@@ -53,7 +45,7 @@ fn a_relative_source_dir_is_a_missing_folder() {
 
 #[test]
 fn a_running_game_is_refused() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     r.game_runs(true);
     assert_eq!(r.restore(Running::Refuse), RestoreOutcome::GameRunning);
@@ -68,7 +60,7 @@ fn a_running_game_is_refused() {
 
 #[test]
 fn allow_never_probes() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     r.game_runs(true);
     assert!(matches!(r.restore(Running::Allow), RestoreOutcome::Restored { .. }));
@@ -77,7 +69,7 @@ fn allow_never_probes() {
 
 #[test]
 fn an_error_before_the_first_write_is_a_failure() {
-    let r = differing();
+    let r = Restoring::differing();
     let backup = r.backups(Game::Ff1Pr).remove(0);
     fs::remove_file(backup.dir.join(slot_file(1))).unwrap();
     r.pick(0);
@@ -89,7 +81,7 @@ fn an_error_before_the_first_write_is_a_failure() {
 
 #[test]
 fn no_selection_fails_at_once() {
-    let r = differing();
+    let r = Restoring::differing();
     assert!(r.vm.show(Game::Ff1Pr).is_none());
     let ended = Ended::default();
     r.vm.restore(Running::Refuse, &r.flow.manual.dispatcher(), ended.recorder());
@@ -116,7 +108,7 @@ fn no_data_folder_fails_at_once() {
 
 #[test]
 fn a_second_restore_is_busy() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     let (first, second) = (Ended::default(), Ended::default());
     let dispatcher = r.flow.manual.dispatcher();
@@ -132,7 +124,7 @@ fn a_second_restore_is_busy() {
 
 #[test]
 fn a_panicking_probe_is_incomplete() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     r.vm.set_process_probe(|_| panic!("scripted probe failure"));
     assert_eq!(r.restore(Running::Refuse), RestoreOutcome::Incomplete);
@@ -148,7 +140,7 @@ fn a_panicking_probe_is_incomplete() {
 fn a_write_failure_after_the_safety_backup_is_incomplete() {
     use std::os::unix::fs::PermissionsExt;
 
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     fs::set_permissions(&r.folder, fs::Permissions::from_mode(0o555)).unwrap();
     let probe = r.folder.join("probe");

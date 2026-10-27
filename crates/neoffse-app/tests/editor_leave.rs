@@ -6,21 +6,13 @@ mod common;
 
 use std::sync::Arc;
 
-use common::{Editing, Part, editing, editing_site, field, open_editor};
-use neoffse_app::editor::{Input, Leave, LeaveAnswer};
-
-fn gil_key(ed: &Editing) -> i32 {
-    field(&ed.data(), Part::Inventory, "Gil", "Gil").key
-}
+use common::{Editing, editing, editing_site, open_editor};
+use neoffse_app::editor::{Leave, LeaveAnswer};
 
 /// Makes the session dirty with one gil edit.
 fn dirty(ed: &Editing) {
-    assert!(ed.editor().commit(gil_key(ed), Input::Text("500".to_owned())).is_none());
+    ed.set_gil("500");
     assert!(ed.editor().is_dirty());
-}
-
-fn gil_text(ed: &Editing) -> String {
-    field(&ed.data(), Part::Inventory, "Gil", "Gil").text.to_string()
 }
 
 #[test]
@@ -70,7 +62,7 @@ fn cancel_keeps_the_session_and_the_edits() {
 
     assert!(!ed.editor().leave_pending());
     assert!(ed.flow.state.is_open());
-    assert_eq!(gil_text(&ed), "500");
+    assert_eq!(ed.gil(), "500");
 }
 
 #[test]
@@ -94,7 +86,7 @@ fn confirm_without_a_request_does_nothing() {
     dirty(&ed);
     assert_eq!(ed.editor().confirm_discard(), None);
     assert!(ed.flow.state.is_open());
-    assert_eq!(gil_text(&ed), "500");
+    assert_eq!(ed.gil(), "500");
 }
 
 #[test]

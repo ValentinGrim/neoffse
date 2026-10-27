@@ -7,7 +7,7 @@ mod common;
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use common::{Editing, Part, editing, editing_site, field};
+use common::{Part, editing, editing_site, field, review_row};
 use neoffse_app::dispatch::Dispatcher;
 use neoffse_app::editor::{History, Input};
 use neoffse_app::{EditProblem, ReviewKind, ReviewRow};
@@ -16,27 +16,8 @@ fn text(value: &str) -> Input {
     Input::Text(value.to_owned())
 }
 
-fn gil_text(ed: &Editing) -> String {
-    field(&ed.data(), Part::Inventory, "Gil", "Gil").text.to_string()
-}
-
-fn set_gil(ed: &Editing, value: &str) {
-    let key = field(&ed.data(), Part::Inventory, "Gil", "Gil").key;
-    assert!(ed.editor().commit(key, text(value)).is_none());
-}
-
-fn row(kind: ReviewKind, entity: &str, label: &str, before: &str, after: &str) -> ReviewRow {
-    ReviewRow {
-        kind,
-        entity: entity.into(),
-        label: label.into(),
-        before: before.into(),
-        after: after.into(),
-    }
-}
-
 fn heading(entity: &str) -> ReviewRow {
-    row(ReviewKind::Heading, entity, "", "", "")
+    review_row(ReviewKind::Heading, entity, "", "", "")
 }
 
 fn find<'a>(rows: &'a [ReviewRow], label: &str) -> &'a ReviewRow {
@@ -59,7 +40,7 @@ fn a_clean_save_has_no_history() {
 fn a_commit_makes_one_entry() {
     let site = editing_site();
     let ed = editing(&site);
-    set_gil(&ed, "500");
+    ed.set_gil("500");
     let history = ed.editor().history();
     assert_eq!(history.pending, 1);
     assert!(history.can_undo);
@@ -78,8 +59,8 @@ fn a_commit_makes_one_entry() {
 fn pending_is_the_distance_to_the_clean_point() {
     let site = editing_site();
     let ed = editing(&site);
-    set_gil(&ed, "500");
-    set_gil(&ed, "600");
+    ed.set_gil("500");
+    ed.set_gil("600");
     assert_eq!(ed.editor().history().pending, 2);
     assert!(ed.editor().undo().is_none());
     assert_eq!(ed.editor().history().pending, 1);
@@ -98,10 +79,10 @@ fn undo_and_redo_report_nothing_when_empty() {
 fn undo_restores_the_data() {
     let site = editing_site();
     let ed = editing(&site);
-    set_gil(&ed, "500");
-    assert_eq!(gil_text(&ed), "500");
+    ed.set_gil("500");
+    assert_eq!(ed.gil(), "500");
     assert!(ed.editor().undo().is_none());
-    assert_eq!(gil_text(&ed), "123456");
+    assert_eq!(ed.gil(), "123456");
 }
 
 #[test]
@@ -109,21 +90,21 @@ fn undo_and_redo_work_in_expert_mode() {
     let site = editing_site();
     let ed = editing(&site);
     ed.editor().set_expert(true);
-    set_gil(&ed, "500");
+    ed.set_gil("500");
     assert!(ed.editor().undo().is_none());
-    assert_eq!(gil_text(&ed), "123456");
+    assert_eq!(ed.gil(), "123456");
     assert!(ed.editor().redo().is_none());
-    assert_eq!(gil_text(&ed), "500");
+    assert_eq!(ed.gil(), "500");
 }
 
 #[test]
 fn review_lists_the_net_difference() {
     let site = editing_site();
     let ed = editing(&site);
-    set_gil(&ed, "500");
+    ed.set_gil("500");
     assert_eq!(
         ed.editor().review().unwrap(),
-        [heading("Gil"), row(ReviewKind::Field, "Gil", "Gil", "123456", "500")]
+        [heading("Gil"), review_row(ReviewKind::Field, "Gil", "Gil", "123456", "500")]
     );
 }
 
@@ -131,8 +112,8 @@ fn review_lists_the_net_difference() {
 fn a_value_set_back_reviews_as_empty() {
     let site = editing_site();
     let ed = editing(&site);
-    set_gil(&ed, "500");
-    set_gil(&ed, "123456");
+    ed.set_gil("500");
+    ed.set_gil("123456");
     assert_eq!(ed.editor().history().pending, 2);
     assert_eq!(ed.editor().review().unwrap().len(), 0);
 }
@@ -191,7 +172,7 @@ fn edits_are_refused_while_a_save_runs() {
     let data = tempfile::tempdir().unwrap();
     ed.flow.state.set_data_dir(neoffse::io::dirs::DataDir::at(data.path()));
     ed.editor().set_process_probe(|_| Vec::new());
-    set_gil(&ed, "500");
+    ed.set_gil("500");
     let key = field(&ed.data(), Part::Inventory, "Gil", "Gil").key;
 
     let outcomes = Arc::new(Mutex::new(Vec::new()));

@@ -146,7 +146,7 @@ fn the_close_request_is_vetoed_while_a_restore_runs() {
     p.start();
     assert!(p.bridge().get_working());
 
-    p.ui.window.window().dispatch_event(slint::platform::WindowEvent::CloseRequested);
+    p.ui.request_close();
 
     assert!(p.ui.window.window().is_visible());
     assert!(!p.ui.bridge().get_discard_dialog_open());

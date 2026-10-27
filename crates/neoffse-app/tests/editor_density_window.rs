@@ -92,9 +92,7 @@ fn the_command_rows_are_one_row_high() {
 fn nothing_leaves_the_window() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.bridge().get_pending_count(), 1);
+    ui.make_notice();
     for (command, character, page) in [
         (EditorCommand::Party, -1, "PartyCards"),
         (EditorCommand::Items, -1, "InventoryPage"),

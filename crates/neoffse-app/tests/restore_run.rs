@@ -13,17 +13,9 @@ use neoffse::core::Game;
 use neoffse_app::RestoreOutcome;
 use neoffse_app::editor::stamp_of;
 
-/// A backup of slot 1 as `slot_bytes(1)`, then the folder holds `slot_bytes(2)`.
-fn differing() -> Restoring {
-    let r = Restoring::new();
-    r.backup_now("before-save", 0);
-    fs::write(r.file(), slot_bytes(2)).unwrap();
-    r
-}
-
 #[test]
 fn a_restore_writes_the_backup_over_the_file() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     let ended = Ended::default();
     r.vm.restore(Running::Refuse, &r.flow.manual.dispatcher(), ended.recorder());
@@ -55,7 +47,7 @@ fn a_restore_writes_the_backup_over_the_file() {
 
 #[test]
 fn undoing_a_restore_restores_the_safety_backup() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     assert!(matches!(r.restore(Running::Refuse), RestoreOutcome::Restored { .. }));
     assert_eq!(r.bytes(), slot_bytes(1));
@@ -67,7 +59,7 @@ fn undoing_a_restore_restores_the_safety_backup() {
 
 #[test]
 fn a_restore_into_a_folder_without_the_file_makes_no_safety_backup() {
-    let r = differing();
+    let r = Restoring::differing();
     fs::remove_file(r.file()).unwrap();
     r.pick(0);
     assert_eq!(
@@ -127,7 +119,7 @@ fn an_unsupported_game_restores() {
 
 #[test]
 fn the_selection_clears_after_a_restore_and_stays_after_a_refusal() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     r.game_runs(true);
     assert_eq!(r.restore(Running::Refuse), RestoreOutcome::GameRunning);
@@ -172,7 +164,7 @@ fn the_same_name_in_another_folder_does_not_replace_the_open_file() {
 
 #[test]
 fn no_open_session_never_replaces_it() {
-    let r = differing();
+    let r = Restoring::differing();
     r.pick(0);
     assert!(!r.vm.replaces_open_save());
 }

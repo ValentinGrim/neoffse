@@ -76,6 +76,21 @@ impl Ui {
         assert_eq!(self.pending(), 1);
     }
 
+    /// Commits level 34 to the first character: the level-up notice shows and
+    /// one change stays pending.
+    pub(crate) fn make_notice(&self) {
+        self.commit(self.level().key, "34");
+        assert!(self.bridge().get_has_notice());
+        assert_eq!(self.bridge().get_pending_count(), 1);
+    }
+
+    /// Makes the session dirty, then presses Back: the discard dialog asks.
+    pub(crate) fn ask_discard(&self) {
+        self.make_dirty();
+        self.window.invoke_back_requested();
+        assert!(self.bridge().get_discard_dialog_open());
+    }
+
     /// The element with `role` whose accessible label is `label`.
     pub(crate) fn element(&self, label: &str, role: AccessibleRole) -> ElementHandle {
         ElementHandle::find_by_accessible_label(&self.window, label)

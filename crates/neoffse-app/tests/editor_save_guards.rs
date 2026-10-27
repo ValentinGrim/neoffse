@@ -7,56 +7,13 @@
 mod common;
 
 use std::fs;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use common::{Editing, ID_1, Part, Site, editing, editing_site, field, slot_bytes, slot_file, steam_folder};
+use common::{ID_1, Part, editing, editing_site, field, saving, slot_bytes, slot_file, steam_folder};
 use neoffse::Running;
-use neoffse::io::dirs::DataDir;
 use neoffse_app::editor::{Input, SaveOutcome};
-use tempfile::TempDir;
 
 type Log = Arc<Mutex<Vec<SaveOutcome>>>;
-
-struct Saving {
-    ed: Editing,
-    data: TempDir,
-    file: PathBuf,
-    log: Log,
-}
-
-/// An open slot, a temporary data folder and a probe that finds no game.
-fn saving(site: &Site) -> Saving {
-    let ed = editing(site);
-    let data = tempfile::tempdir().unwrap();
-    ed.flow.state.set_data_dir(DataDir::at(data.path()));
-    ed.editor().set_process_probe(|_| Vec::new());
-    let file = steam_folder(site, 0, ID_1).join(slot_file(1));
-    Saving {
-        ed,
-        data,
-        file,
-        log: Log::default(),
-    }
-}
-
-impl Saving {
-    fn edit_gil(&self, value: &str) {
-        let key = field(&self.ed.data(), Part::Inventory, "Gil", "Gil").key;
-        assert!(self.ed.editor().commit(key, Input::Text(value.to_owned())).is_none());
-    }
-
-    fn save(&self, running: Running) {
-        let log = Arc::clone(&self.log);
-        self.ed.editor().save(running, &self.ed.flow.manual.dispatcher(), move |outcome| {
-            log.lock().unwrap_or_else(PoisonError::into_inner).push(outcome);
-        });
-    }
-
-    fn outcomes(&self) -> Vec<SaveOutcome> {
-        self.log.lock().unwrap_or_else(PoisonError::into_inner).clone()
-    }
-}
 
 #[test]
 fn a_file_changed_on_disk_is_refused() {
@@ -79,9 +36,7 @@ fn a_file_changed_on_disk_is_refused() {
 fn a_failed_write_is_a_failed_outcome() {
     let site = editing_site();
     let saving = saving(&site);
-    let not_a_folder = saving.data.path().join("plain-file");
-    fs::write(&not_a_folder, b"x").unwrap();
-    saving.ed.flow.state.set_data_dir(DataDir::at(&not_a_folder));
+    saving.break_data_dir();
     let before = fs::read(&saving.file).unwrap();
     saving.edit_gil("500");
 

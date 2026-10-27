@@ -74,9 +74,7 @@ fn the_status_panel_ends_with_the_cards_at_800_by_600() {
 fn a_small_window_scrolls_the_cards_and_both_bottoms_line_up() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.bridge().get_pending_count(), 1);
+    ui.make_notice();
     resize(&ui, 800.0, 600.0);
     assert!(ui.on_cards());
     let (panel, status) = bottoms(&ui);

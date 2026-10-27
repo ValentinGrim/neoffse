@@ -174,9 +174,7 @@ fn a_refused_edit_adds_no_entry() {
 fn a_dialog_greys_the_bar() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.make_dirty();
-    ui.window.invoke_back_requested();
-    assert!(ui.bridge().get_discard_dialog_open());
+    ui.ask_discard();
 
     for label in ["Undo", "Redo", "Review & save"] {
         assert_eq!(ui.element(label, Button).accessible_enabled(), Some(false), "{label}");

@@ -6,10 +6,10 @@
 
 mod common;
 
-use common::{Part, Ui, count_of, editing_site, field, item_label, list, lists, open_editor, pages, row_of, rows};
+use common::{Part, Ui, count_of, editing_site, field, list, lists, open_editor, pages, row_of, rows, spare_weapon};
 use neoffse::core::{Game, TableKind};
 use neoffse::data::tables_for;
-use neoffse_app::{EditProblem, EditorBridge, EditorData, ItemList};
+use neoffse_app::{EditProblem, EditorBridge, ItemList};
 use slint::{ComponentHandle, Model};
 
 #[test]
@@ -76,20 +76,6 @@ fn bad_text_shows_not_a_number() {
     assert_eq!(notice.problem, EditProblem::NotANumber);
     assert_eq!(notice.label, "Gil");
     assert_eq!(ui.pending(), 0);
-}
-
-/// A non-placeholder weapon id the inventory does not hold.
-fn spare_weapon(data: &EditorData) -> u32 {
-    let tables = tables_for(Game::Ff1Pr).unwrap();
-    let labels: Vec<String> = rows(&list(data, "Items")).iter().map(|row| row.label.to_string()).collect();
-    tables
-        .table(TableKind::Weapon)
-        .unwrap()
-        .iter()
-        .filter(|entry| !entry.placeholder)
-        .map(|entry| entry.id)
-        .find(|id| !labels.contains(&item_label(*id, "Item")))
-        .expect("a weapon the fixture does not hold")
 }
 
 #[test]

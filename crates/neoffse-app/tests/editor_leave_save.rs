@@ -20,9 +20,7 @@ fn quiet(site: &common::Site) -> Rig {
 
 /// A dirty save with the discard dialog open from the Back button.
 fn back_asked(rig: &Rig) {
-    rig.ui.make_dirty();
-    rig.ui.window.invoke_back_requested();
-    assert!(rig.ui.bridge().get_discard_dialog_open());
+    rig.ui.ask_discard();
     assert!(rig.ui.app.editor.leave_pending());
 }
 

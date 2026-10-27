@@ -19,9 +19,7 @@ fn cards_with_notice_and_bar(height: f32) -> Ui {
     let site = editing_site();
     let ui = open_editor(&site);
     resize(&ui, 1280.0, height);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.bridge().get_pending_count(), 1);
+    ui.make_notice();
     assert!(ui.on_cards());
     ui
 }

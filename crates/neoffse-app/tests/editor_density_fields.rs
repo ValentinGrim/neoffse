@@ -148,9 +148,7 @@ fn more_fields_fit_on_the_character_page() {
 #[test]
 fn the_notice_and_a_pending_change_keep_eight_rows_at_800() {
     let ui = page_ui(EditorCommand::Party, 0, SMALL);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.pending(), 1);
+    ui.make_notice();
     let shown = rows_shown(&ui);
     assert!(shown >= 8, "800x600 with the notice and a pending change: {shown} rows fit, 8 expected");
 }

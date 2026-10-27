@@ -80,6 +80,14 @@ impl Restoring {
         }
     }
 
+    /// A backup of slot 1 as `slot_bytes(1)`, then the folder holds `slot_bytes(2)`.
+    pub(crate) fn differing() -> Self {
+        let r = Self::new();
+        r.backup_now("before-save", 0);
+        fs::write(r.file(), slot_bytes(2)).unwrap();
+        r
+    }
+
     /// The probe finds the FF I executable from now on.
     pub(crate) fn game_runs(&self, runs: bool) {
         self.game_runs.store(runs, Ordering::SeqCst);

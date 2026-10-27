@@ -41,9 +41,7 @@ fn in_each_state(mut check: impl FnMut(&Ui, State)) {
     let ui = open_editor(&site);
     for notice in [false, true] {
         if notice {
-            ui.commit(ui.level().key, "34");
-            assert!(ui.bridge().get_has_notice());
-            assert_eq!(ui.bridge().get_pending_count(), 1);
+            ui.make_notice();
         } else {
             assert!(ElementHandle::find_by_element_type_name(&ui.window, "PendingBar").next().is_some());
             assert_eq!(ui.bridge().get_pending_count(), 0);

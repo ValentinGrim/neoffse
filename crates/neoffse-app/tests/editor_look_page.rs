@@ -133,9 +133,7 @@ fn the_first_field_starts_below_the_header() {
 fn the_character_page_holds_at_800() {
     let ui = cards_ui(800.0, 600.0);
     ui.navigate(EditorCommand::Party, 0);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.bridge().get_pending_count(), 1);
+    ui.make_notice();
 
     let window = Rect {
         x: 0.0,

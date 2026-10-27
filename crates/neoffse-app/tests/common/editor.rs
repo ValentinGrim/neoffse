@@ -4,11 +4,11 @@
 use std::sync::{Arc, Mutex, PoisonError};
 
 use neoffse::Session;
-use neoffse::core::{FieldId, Game, RowId};
+use neoffse::core::{FieldId, Game, RowId, TableKind};
 use neoffse::data::{Language, tables_for};
-use neoffse_app::editor::Locks;
+use neoffse_app::editor::{Input, Locks};
 use neoffse_app::home::OpenOutcome;
-use neoffse_app::{EditorData, EditorViewModel, EntityPage, FieldRow, ItemList, ItemRow, SectionData};
+use neoffse_app::{EditorData, EditorViewModel, EntityPage, FieldRow, ItemList, ItemRow, ReviewKind, ReviewRow, SectionData};
 
 use super::{Flow, ID_1, Outcomes, Site, items, slot_bytes, slot_file, steam_slot};
 
@@ -70,6 +70,17 @@ impl Editing {
 
     pub(crate) fn data(&self) -> EditorData {
         self.editor().data().expect("data")
+    }
+
+    /// The text of the gil field.
+    pub(crate) fn gil(&self) -> String {
+        field(&self.data(), Part::Inventory, "Gil", "Gil").text.to_string()
+    }
+
+    /// Commits `value` to the gil field and asserts the commit raised no notice.
+    pub(crate) fn set_gil(&self, value: &str) {
+        let key = field(&self.data(), Part::Inventory, "Gil", "Gil").key;
+        assert!(self.editor().commit(key, Input::Text(value.to_owned())).is_none());
     }
 }
 
@@ -161,6 +172,31 @@ pub(crate) fn row_of(data: &EditorData, title: &str, id: u32) -> ItemRow {
 /// The count field of an item row.
 pub(crate) fn count_of(row: &ItemRow) -> FieldRow {
     items(&row.fields).into_iter().next().expect("a count field")
+}
+
+/// A non-placeholder weapon id the inventory of `data` does not hold.
+pub(crate) fn spare_weapon(data: &EditorData) -> u32 {
+    let tables = tables_for(Game::Ff1Pr).unwrap();
+    let labels: Vec<String> = rows(&list(data, "Items")).iter().map(|row| row.label.to_string()).collect();
+    tables
+        .table(TableKind::Weapon)
+        .unwrap()
+        .iter()
+        .filter(|entry| !entry.placeholder)
+        .map(|entry| entry.id)
+        .find(|id| !labels.contains(&item_label(*id, "Item")))
+        .expect("a weapon the fixture does not hold")
+}
+
+/// A review row of `kind` for `entity`, `label` and the two texts.
+pub(crate) fn review_row(kind: ReviewKind, entity: &str, label: &str, before: &str, after: &str) -> ReviewRow {
+    ReviewRow {
+        kind,
+        entity: entity.into(),
+        label: label.into(),
+        before: before.into(),
+        after: after.into(),
+    }
 }
 
 /// A lock source that answers one fixed value and records its questions.

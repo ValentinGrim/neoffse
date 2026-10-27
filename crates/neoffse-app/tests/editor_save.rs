@@ -6,91 +6,13 @@
 mod common;
 
 use std::fs;
-use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
-use std::thread::{self, ThreadId};
+use std::thread;
 
-use common::{Editing, ID_1, Part, Site, editing, editing_site, field, scripted_probe, slot_file, steam_folder};
+use common::{editing_site, newest_created, saving, scripted_probe};
 use neoffse::Running;
-use neoffse::core::{Capability, FieldId, Game, Value};
-use neoffse::data::Language;
-use neoffse::io::dirs::DataDir;
-use neoffse::{Registry, Session};
-use neoffse_app::editor::{Input, SaveOutcome, stamp_of};
-use tempfile::TempDir;
-
-type Log = Arc<Mutex<Vec<(SaveOutcome, ThreadId)>>>;
-
-/// An open slot with a temporary data folder and a probe that finds no game.
-struct Saving {
-    ed: Editing,
-    data: TempDir,
-    file: PathBuf,
-    log: Log,
-}
-
-fn saving(site: &Site) -> Saving {
-    let ed = editing(site);
-    let data = tempfile::tempdir().unwrap();
-    ed.flow.state.set_data_dir(DataDir::at(data.path()));
-    ed.editor().set_process_probe(|_| Vec::new());
-    let file = steam_folder(site, 0, ID_1).join(slot_file(1));
-    Saving {
-        ed,
-        data,
-        file,
-        log: Log::default(),
-    }
-}
-
-impl Saving {
-    fn edit_gil(&self, value: &str) {
-        let key = field(&self.ed.data(), Part::Inventory, "Gil", "Gil").key;
-        assert!(self.ed.editor().commit(key, Input::Text(value.to_owned())).is_none());
-    }
-
-    fn save(&self, running: Running) {
-        let log = Arc::clone(&self.log);
-        self.ed.editor().save(running, &self.ed.flow.manual.dispatcher(), move |outcome| {
-            log.lock().unwrap_or_else(PoisonError::into_inner).push((outcome, thread::current().id()));
-        });
-    }
-
-    fn outcomes(&self) -> Vec<SaveOutcome> {
-        self.log
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .iter()
-            .map(|(outcome, _)| outcome.clone())
-            .collect()
-    }
-
-    fn backups(&self) -> usize {
-        let data = DataDir::at(self.data.path());
-        Registry::new(Language::En)
-            .backups(&data, Game::Ff1Pr)
-            .map_or(0, |listing| listing.backups.len())
-    }
-
-    fn gil_on_disk(&self) -> i64 {
-        let mut session: Session = Registry::new(Language::En)
-            .open(self.file.parent().unwrap(), self.file.file_name().unwrap().to_str().unwrap(), Some(Game::Ff1Pr))
-            .unwrap();
-        let view = session.view().unwrap();
-        let entity = view
-            .section(Capability::Inventory)
-            .unwrap()
-            .entities
-            .iter()
-            .find(|entity| entity.id == FieldId::new("gil"))
-            .unwrap();
-        match entity.fields[0].value {
-            Value::Int(gil) => gil,
-            ref other => panic!("the gil is not an integer: {other:?}"),
-        }
-    }
-}
+use neoffse_app::editor::{SaveOutcome, stamp_of};
 
 #[test]
 fn a_save_backs_up_writes_and_reports_a_stamp() {
@@ -103,11 +25,7 @@ fn a_save_backs_up_writes_and_reports_a_stamp() {
     assert!(saving.ed.editor().is_saving());
     saving.ed.flow.manual.run_all();
 
-    let newest = {
-        let data = DataDir::at(saving.data.path());
-        Registry::new(Language::En).backups(&data, Game::Ff1Pr).unwrap().backups.remove(0)
-    };
-    let stamp = stamp_of(&newest.manifest.created);
+    let stamp = stamp_of(&newest_created(saving.data.path()));
     assert!(stamp.is_some());
     assert_eq!(saving.outcomes(), [SaveOutcome::Saved { stamp }]);
     assert_ne!(fs::read(&saving.file).unwrap(), before);
@@ -130,9 +48,7 @@ fn the_work_runs_off_the_calling_thread() {
     assert_ne!(jobs[0], thread::current().id());
     assert_eq!(saving.outcomes().len(), 0, "done waits for the UI thread");
     saving.ed.flow.manual.run_posts();
-    let log = saving.log.lock().unwrap_or_else(PoisonError::into_inner);
-    assert_eq!(log.len(), 1);
-    assert_eq!(log[0].1, thread::current().id());
+    assert_eq!(saving.threads(), [thread::current().id()]);
 }
 
 #[test]

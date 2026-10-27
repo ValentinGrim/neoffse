@@ -40,9 +40,7 @@ fn back_on_the_top_level_leaves_a_clean_save() {
 fn back_on_the_top_level_asks_about_unsaved_edits() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.make_dirty();
-    ui.window.invoke_back_requested();
-    assert!(ui.bridge().get_discard_dialog_open());
+    ui.ask_discard();
     assert!(ui.window.get_editor_open());
     assert!(ui.session_open());
 }
@@ -182,9 +180,7 @@ fn escape_on_items_returns_to_the_cards() {
 fn escape_with_a_dialog_open_cancels_the_dialog_not_the_page() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.make_dirty();
-    ui.window.invoke_back_requested();
-    assert!(ui.bridge().get_discard_dialog_open());
+    ui.ask_discard();
 
     ui.key(Key::Escape);
 

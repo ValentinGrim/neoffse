@@ -64,6 +64,42 @@ pub(crate) fn break_data_dir(state: &AppState, folder: &Path) {
     state.set_data_dir(DataDir::at(&not_a_folder));
 }
 
+/// The `created` text of the newest FF I backup under the data folder `data`.
+pub(crate) fn newest_created(data: &Path) -> String {
+    let mut listing = Registry::new(Language::En).backups(&DataDir::at(data), Game::Ff1Pr).unwrap();
+    listing.backups.remove(0).manifest.created
+}
+
+/// How many FF I backups the data folder `data` holds.
+pub(crate) fn backup_count(data: &Path) -> usize {
+    Registry::new(Language::En)
+        .backups(&DataDir::at(data), Game::Ff1Pr)
+        .map_or(0, |listing| listing.backups.len())
+}
+
+fn session_in(file: &Path) -> Session {
+    Registry::new(Language::En)
+        .open(file.parent().unwrap(), file.file_name().unwrap().to_str().unwrap(), Some(Game::Ff1Pr))
+        .unwrap()
+}
+
+/// The gil the save file `file` holds.
+pub(crate) fn gil_in(file: &Path) -> i64 {
+    let view = session_in(file).view().unwrap();
+    let entity = view
+        .section(Capability::Inventory)
+        .unwrap()
+        .entities
+        .iter()
+        .find(|e| e.id == FieldId::new("gil"))
+        .unwrap()
+        .clone();
+    match entity.fields[0].value {
+        Value::Int(gil) => gil,
+        ref other => panic!("the gil is not an integer: {other:?}"),
+    }
+}
+
 /// The editor open on slot 1, a temporary data folder set, probes that
 /// answer `machine`.
 pub(crate) fn rig(site: &Site, machine: Machine) -> Rig {
@@ -123,14 +159,11 @@ impl Rig {
 
     /// The `created` text of the newest backup.
     pub(crate) fn newest_created(&self) -> String {
-        let mut listing = Registry::new(Language::En).backups(&self.data_dir(), Game::Ff1Pr).unwrap();
-        listing.backups.remove(0).manifest.created
+        newest_created(self.data.path())
     }
 
     pub(crate) fn backups(&self) -> usize {
-        Registry::new(Language::En)
-            .backups(&self.data_dir(), Game::Ff1Pr)
-            .map_or(0, |listing| listing.backups.len())
+        backup_count(self.data.path())
     }
 
     pub(crate) fn bytes(&self) -> Vec<u8> {
@@ -139,7 +172,7 @@ impl Rig {
 
     /// Another program saves gil `value` into the file: a second session.
     pub(crate) fn change_on_disk(&self, value: i64) {
-        let mut other = self.session_on_disk();
+        let mut other = session_in(&self.file);
         other.edit(&Edit::set(FieldId::new("gil"), Value::Int(value))).unwrap();
         let elsewhere = tempfile::tempdir().unwrap();
         other.save(&DataDir::at(elsewhere.path()), Running::Allow).unwrap();
@@ -147,24 +180,6 @@ impl Rig {
 
     /// The gil the file holds.
     pub(crate) fn gil_on_disk(&self) -> i64 {
-        let view = self.session_on_disk().view().unwrap();
-        let entity = view
-            .section(Capability::Inventory)
-            .unwrap()
-            .entities
-            .iter()
-            .find(|e| e.id == FieldId::new("gil"))
-            .unwrap()
-            .clone();
-        match entity.fields[0].value {
-            Value::Int(gil) => gil,
-            ref other => panic!("the gil is not an integer: {other:?}"),
-        }
-    }
-
-    fn session_on_disk(&self) -> Session {
-        Registry::new(Language::En)
-            .open(self.file.parent().unwrap(), self.file.file_name().unwrap().to_str().unwrap(), Some(Game::Ff1Pr))
-            .unwrap()
+        gil_in(&self.file)
     }
 }

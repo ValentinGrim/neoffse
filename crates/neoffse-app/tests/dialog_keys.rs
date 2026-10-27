@@ -25,10 +25,7 @@ fn key(ui: &Ui, key: Key) {
 fn discard_dialog() -> (Ui, common::Site) {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.commit(ui.gil().key, "500");
-    assert_eq!(ui.pending(), 1);
-    ui.window.invoke_back_requested();
-    assert!(ui.bridge().get_discard_dialog_open());
+    ui.ask_discard();
     (ui, site)
 }
 
