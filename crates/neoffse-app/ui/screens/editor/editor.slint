@@ -122,8 +122,11 @@ export component EditorPage inherits FocusScope {
             }
         }
         if EditorBridge.has-notice: NoticeBar { }
+        // On the cards the row asks for its preferred height, which the cards
+        // panel decides (the left column holds less), and the filler under it
+        // takes the room left. Another page stretches the row.
         HorizontalLayout {
-            vertical-stretch: 1;
+            vertical-stretch: root.on-cards ? 0 : 1;
             spacing: root.look.spacing * 1.5;
 
             // Its children stretch by default, which grows the column to its
@@ -181,6 +184,11 @@ export component EditorPage inherits FocusScope {
                     }
                 }
             }
+        }
+        // Present on the cards only: a layout puts its spacing around an item
+        // even at zero height, and the other pages keep their room.
+        if root.on-cards: Rectangle {
+            vertical-stretch: 1;
         }
         // A button may disable itself (the last Undo does), so the page takes the focus first.
         PendingBar {

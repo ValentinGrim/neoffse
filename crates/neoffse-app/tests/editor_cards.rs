@@ -29,17 +29,18 @@ fn cards_with_notice_and_bar(height: f32) -> Ui {
 /// The window height that shows two cards and a half of height `card`.
 /// `ui` must be `tall` high, with the notice and the bar shown: the chrome
 /// (header, margins, notice, bar) is what `tall` leaves over the scroll area.
-/// The panel fits its cards, so the scroll area of a full-height panel runs
-/// from the panel's top to the status panel's bottom, less the panel padding.
+/// The panel fits its cards, so its own bottom says nothing about the room.
+/// A stretched row would end one spacing above the bar: the scroll area runs
+/// from the panel's top to there, less the panel padding.
 fn short_height(ui: &Ui, tall: f32, card: f32) -> f32 {
     let panel = ElementHandle::find_by_element_type_name(&ui.window, "PartyCards")
         .next()
         .expect("the party cards panel");
-    let status = ElementHandle::find_by_element_type_name(&ui.window, "StatusPanel")
+    let bar = ElementHandle::find_by_element_type_name(&ui.window, "PendingBar")
         .next()
-        .expect("the status panel");
-    let padding = ui.window.global::<Theme>().get_look().padding;
-    let scroll_area = status.absolute_position().y + status.size().height - panel.absolute_position().y - 2.0 * padding;
+        .expect("the pending bar");
+    let look = ui.window.global::<Theme>().get_look();
+    let scroll_area = bar.absolute_position().y - look.spacing - panel.absolute_position().y - 2.0 * look.padding;
     let chrome = tall - scroll_area;
     chrome + 2.5 * card
 }

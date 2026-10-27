@@ -1,7 +1,7 @@
 //! The Party panel fits its cards like the game's menu window: the margin
 //! under the last card equals the margin above the first, the panel stops
-//! there, and a window too small for every card scrolls them. Every other
-//! page keeps the full-height panel. Geometry comes from the accessibility
+//! there, the status panel ends level with it, and a window too small for
+//! every card scrolls them. Every other page keeps the full-height row. Geometry comes from the accessibility
 //! tree of Slint's testing backend; no window shows.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
@@ -50,20 +50,28 @@ fn the_margin_under_the_last_card_equals_the_margin_above_the_first() {
     assert!((top - bottom).abs() <= SLACK, "{top} px above the first card, {bottom} px under the last");
 }
 
-#[test]
-fn the_panel_is_shorter_than_the_left_column() {
-    let ui = cards_ui(1280.0, 800.0);
-    let (panel, status) = (page_panel(&ui), status_panel(&ui));
-    assert!(
-        panel.bottom() < status.bottom() - 10.0,
-        "the panel ends at {}, the status panel at {}",
-        panel.bottom(),
-        status.bottom()
-    );
+/// The cards panel, the status panel and the editor window's content height.
+fn bottoms(ui: &Ui) -> (f32, f32) {
+    (page_panel(ui).bottom(), status_panel(ui).bottom())
 }
 
 #[test]
-fn a_small_window_scrolls_the_cards_in_a_full_height_panel() {
+fn the_panel_is_shorter_than_the_window_and_the_status_panel_ends_with_it() {
+    let ui = cards_ui(1280.0, 800.0);
+    let (panel, status) = bottoms(&ui);
+    assert!((panel - status).abs() <= SLACK, "the panel ends at {panel}, the status panel at {status}");
+    assert!(panel < 800.0 - 100.0, "the row stops under the cards ({panel} of 800 px)");
+}
+
+#[test]
+fn the_status_panel_ends_with_the_cards_at_800_by_600() {
+    let ui = cards_ui(800.0, 600.0);
+    let (panel, status) = bottoms(&ui);
+    assert!((panel - status).abs() <= SLACK, "the panel ends at {panel}, the status panel at {status}");
+}
+
+#[test]
+fn a_small_window_scrolls_the_cards_and_both_bottoms_line_up() {
     let site = editing_site();
     let ui = open_editor(&site);
     ui.commit(ui.level().key, "34");
@@ -71,8 +79,8 @@ fn a_small_window_scrolls_the_cards_in_a_full_height_panel() {
     assert_eq!(ui.bridge().get_pending_count(), 1);
     resize(&ui, 800.0, 600.0);
     assert!(ui.on_cards());
-    let (panel, status) = (page_panel(&ui), status_panel(&ui));
-    assert!((panel.bottom() - status.bottom()).abs() <= SLACK, "the panel takes the room it has");
+    let (panel, status) = bottoms(&ui);
+    assert!((panel - status).abs() <= SLACK, "the panel ends at {panel}, the status panel at {status}");
     let cards = visible_cards(&ui);
     let whole = cards.iter().filter(|card| card.whole()).count();
     assert!(whole >= 3, "{whole} whole cards show");
@@ -81,11 +89,17 @@ fn a_small_window_scrolls_the_cards_in_a_full_height_panel() {
 }
 
 #[test]
-fn the_other_pages_keep_the_full_height_panel() {
+fn the_other_pages_keep_the_full_height_row() {
     let ui = cards_ui(1280.0, 800.0);
+    let on_cards = status_panel(&ui).bottom();
     for (command, character) in [(EditorCommand::Party, 0), (EditorCommand::Items, -1), (EditorCommand::Magic, -1)] {
         ui.navigate(command, character);
         let (panel, status) = (page_panel(&ui), status_panel(&ui));
+        assert!(
+            status.bottom() > on_cards + 10.0,
+            "{command:?} {character}: the row stretches ({} against {on_cards})",
+            status.bottom()
+        );
         assert!(
             (panel.bottom() - status.bottom()).abs() <= SLACK,
             "{command:?} {character}: the panel ends at {}, the status panel at {}",
