@@ -2,7 +2,8 @@ import { Fonts } from "../../theme/fonts.slint";
 import { FrameStyle, Look } from "../../theme/look.slint";
 
 // The Pixel Remaster menu: blue gradient windows, light bevelled borders,
-// white text, cyan labels. All six Pixel Remaster games share it. The colours
+// white text, cyan labels. A panel is drawn as the game's banded window frame
+// (six bands of one pixel). All six Pixel Remaster games share it. The colours
 // follow the game's menu; the six `band` colours are measured on the game's
 // window frame, outside in.
 export global PrLook {
@@ -34,8 +35,13 @@ export global PrLook {
         rule: #cacbd4,
         field-border: #e8eaff,
         focus: #f2e24a,
-        frame-width: 2px,
-        frame-radius: 0px,
+        // One band is one game pixel.
+        frame-width: 1px,
+        // The rounded corner of a panel. A frame rounds with at most about 3.4
+        // times its inset before the square fill shows past the bands (6 px
+        // panels against an inset of 6 px hold). A control rounds with
+        // `min(frame-radius, its inset)`.
+        frame-radius: 6px,
         band-1: #03050e,
         band-2: #adc1c1,
         band-3: #f6ffff,

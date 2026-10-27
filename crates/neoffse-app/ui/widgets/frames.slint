@@ -16,7 +16,7 @@ export component Frame inherits Rectangle {
     ControlFrame {
         look: root.look;
         fill: root.look.panel-fill;
-        line: root.look.frame-style == FrameStyle.bevel ? root.look.frame-outer : root.look.rule;
+        line: root.look.rule;
     }
     VerticalLayout {
         padding: root.look.padding;
@@ -52,10 +52,18 @@ export component PortraitFrame inherits Rectangle {
         image-rendering: pixelated;
         accessible-role: none;
     }
-    // Drawn last: the border stays visible, the sprite keeps the whole square.
-    Rectangle {
+    // Drawn last: the lines stay visible, the sprite keeps the whole square.
+    edge := Rectangle {
         border-width: 1px;
         border-color: root.look.field-border;
+    }
+    inner-edge := Rectangle {
+        x: 1px;
+        y: 1px;
+        width: root.width - 2px;
+        height: root.height - 2px;
+        border-width: 1px;
+        border-color: root.look.frame-inner;
     }
 }
 
@@ -69,12 +77,25 @@ export component Pointer inherits Path {
     height: 14px;
 }
 
-// A line one pixel high between two blocks.
+// A divider between two blocks: one pixel in a flat look, the game's light
+// line over a dark one in the bevel look.
 export component RuleLine inherits Rectangle {
     in property <Look> look: Theme.look;
+    private property <bool> banded: root.look.frame-style == FrameStyle.bevel;
 
-    height: 1px;
-    background: root.look.rule;
+    height: root.banded ? 2 * root.look.frame-width : 1px;
+    background: root.banded ? transparent : root.look.rule;
+
+    if root.banded: Rectangle {
+        y: 0px;
+        height: root.look.frame-width;
+        background: root.look.rule;
+    }
+    if root.banded: Rectangle {
+        y: root.look.frame-width;
+        height: root.look.frame-width;
+        background: root.look.rule-shadow;
+    }
 }
 
 // Body text in a look: its font, its text colour, centred on the line. A
@@ -122,6 +143,7 @@ export component PressRow inherits Rectangle {
         }
     }
     Rectangle {
+        border-radius: root.look.frame-style == FrameStyle.bevel ? root.look.frame-radius : 0px;
         background: root.current ? root.look.selected-fill : area.has-hover && root.enabled ? root.look.hover-fill : transparent;
     }
     @children

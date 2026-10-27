@@ -1,23 +1,48 @@
 import { FrameStyle, Look } from "../theme/look.slint";
 
-// The frame of a control: a flat 1px line, or a bevel with an inner line.
+// The frame of a control or a panel. A flat look draws one `frame-width` line
+// in `line`. The bevel look draws the game's window frame: bands of
+// `frame-width` each, outside in, over a fill that sits inside the last band.
 export component ControlFrame inherits Rectangle {
     in property <Look> look;
     in property <brush> fill;
+    // Flat look: the colour of the one-band border.
     in property <color> line;
+    // Bevel look: a control (three bands) instead of a panel (six).
+    in property <bool> compact;
+    // Bevel look, compact: the second band takes the accent colour.
+    in property <bool> emphasis;
 
-    background: root.fill;
-    border-width: root.look.frame-width;
+    private property <bool> banded: root.look.frame-style == FrameStyle.bevel;
+    // The three-band list of a control lives here only.
+    private property <[color]> bands: root.compact
+        ? [root.look.band-1, root.emphasis ? root.look.accent : root.look.band-3, root.look.band-6]
+        : [root.look.band-1, root.look.band-2, root.look.band-3, root.look.band-4, root.look.band-5, root.look.band-6];
+    private property <length> inset: root.bands.length * root.look.frame-width;
+
+    background: root.banded ? transparent : root.fill;
+    border-width: root.banded ? 0px : root.look.frame-width;
     border-color: root.line;
     border-radius: root.look.frame-radius;
 
-    if root.look.frame-style == FrameStyle.bevel: Rectangle {
-        x: root.look.frame-width;
-        y: root.look.frame-width;
-        width: root.width - 2 * root.look.frame-width;
-        height: root.height - 2 * root.look.frame-width;
-        border-width: 1px;
-        border-color: root.look.frame-inner;
+    // The fill sits inside the last band.
+    if root.banded: Rectangle {
+        x: root.inset;
+        y: root.inset;
+        width: root.width - 2 * root.inset;
+        height: root.height - 2 * root.inset;
+        background: root.fill;
+    }
+    // The bands have no background: the corner outside the outer radius shows
+    // what lies behind the frame.
+    for tone[index] in root.banded ? root.bands : []: band := Rectangle {
+        x: index * root.look.frame-width;
+        y: index * root.look.frame-width;
+        width: root.width - 2 * index * root.look.frame-width;
+        height: root.height - 2 * index * root.look.frame-width;
+        border-width: root.look.frame-width;
+        border-color: tone;
+        border-radius: max(root.look.frame-radius - index * root.look.frame-width, 0px);
     }
 }
 
