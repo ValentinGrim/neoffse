@@ -14,6 +14,7 @@ pub mod editor;
 pub mod home;
 pub mod language;
 pub mod picker;
+mod probe;
 pub mod restore;
 pub mod state;
 pub mod theme;

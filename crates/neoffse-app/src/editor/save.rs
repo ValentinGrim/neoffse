@@ -6,8 +6,8 @@
 //! picks the data folder, the process probe and the thread, and turns the
 //! result into a [`SaveOutcome`].
 
+use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, PoisonError};
 
 use neoffse::io::atomic::RealFileOps;
 use neoffse::io::backup::Moment;
@@ -83,7 +83,7 @@ impl EditorViewModel {
             done(SaveOutcome::Busy);
             return;
         }
-        let probe = Arc::clone(&self.shared.probe.lock().unwrap_or_else(PoisonError::into_inner));
+        let probe = self.shared.probe.get();
         let shared = Arc::clone(&self.shared);
         let work = move || {
             let mut session = lock_session(&session);
@@ -99,6 +99,6 @@ impl EditorViewModel {
     /// default is `neoffse::io::process::running`. For tests that must not
     /// depend on the machine's processes.
     pub fn set_process_probe(&self, probe: impl Fn(&[&'static str]) -> Vec<&'static str> + Send + Sync + 'static) {
-        *self.shared.probe.lock().unwrap_or_else(PoisonError::into_inner) = Arc::new(probe);
+        self.shared.probe.set(probe);
     }
 }

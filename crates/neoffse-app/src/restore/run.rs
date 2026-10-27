@@ -103,7 +103,7 @@ impl RestoreViewModel {
             done(RestoreOutcome::Busy);
             return;
         }
-        let probe = Arc::clone(&self.shared.probe.lock().unwrap_or_else(PoisonError::into_inner));
+        let probe = self.shared.probe.get();
         let registry = Arc::clone(&self.shared.registry);
         let work = move || {
             if !target.is_dir() {
