@@ -146,7 +146,7 @@ fn a_card_is_as_high_as_its_rows() {
     let cards = visible_cards(&ui);
     assert_eq!(cards.len(), 4);
     for card in &cards {
-        let frame = card.sprite.expect("a sprite").h;
+        let frame = card.frame.expect("a portrait frame").h;
         let line = card.text("HP").h;
         let expected = (frame + 2.0 * padding).max(4.0 * line + 2.0 * padding);
         assert!(
@@ -176,7 +176,7 @@ fn a_card_without_a_portrait_keeps_its_height() {
         assert!(without.sprite.is_none(), "{} draws no sprite", without.name);
         for frame in [with.frame, without.frame] {
             let frame = frame.expect("a portrait frame");
-            assert_eq!((frame.w, frame.h), (64.0, 64.0), "{} keeps the 64 px frame", with.name);
+            assert_eq!((frame.w, frame.h), (68.0, 68.0), "{} keeps the 68 px frame", with.name);
         }
     }
 }

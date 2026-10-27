@@ -138,6 +138,14 @@ fn the_portrait_frame_draws_two_lines() {
         assert!((edge.w - outer.w).abs() <= SLACK && (edge.h - outer.h).abs() <= SLACK);
         assert!((inner.x - edge.x - 1.0).abs() <= SLACK && (inner.y - edge.y - 1.0).abs() <= SLACK);
         assert!((inner.w - (outer.w - 2.0)).abs() <= SLACK && (inner.h - (outer.h - 2.0)).abs() <= SLACK);
+        assert!((outer.w - 68.0).abs() <= SLACK && (outer.h - 68.0).abs() <= SLACK, "the frame is {outer:?}");
+        if let Some(sprite) = frame.query_descendants().match_id("PortraitFrame::sprite").find_first() {
+            let sprite = Rect::of(&sprite);
+            assert!(
+                (sprite.x - outer.x - 2.0).abs() <= SLACK && (sprite.y - outer.y - 2.0).abs() <= SLACK,
+                "the sprite is at {sprite:?}"
+            );
+        }
     }
     let sprites = ElementHandle::find_by_element_type_name(&ui.window, "PortraitFrame")
         .filter_map(|frame| frame.query_descendants().match_id("PortraitFrame::sprite").find_first())
@@ -145,6 +153,32 @@ fn the_portrait_frame_draws_two_lines() {
         .collect::<Vec<_>>();
     assert!(!sprites.is_empty(), "the fixture's jobs have sprites");
     assert!(sprites.iter().all(|&size| size == (64.0, 64.0)), "sprites: {sprites:?}");
+}
+
+#[test]
+fn the_lines_of_the_portrait_frame_never_cover_the_sprite() {
+    let ui = on_party_cards();
+    let mut checked = 0;
+    for frame in &all_of(&ui, "PortraitFrame") {
+        let Some(sprite) = frame.query_descendants().match_id("PortraitFrame::sprite").find_first() else {
+            continue;
+        };
+        let inner = frame
+            .query_descendants()
+            .match_id("PortraitFrame::inner-edge")
+            .find_first()
+            .expect("an inner edge");
+        let (inner, sprite) = (Rect::of(&inner), Rect::of(&sprite));
+        let free = Rect {
+            x: inner.x + 1.0,
+            y: inner.y + 1.0,
+            w: inner.w - 2.0,
+            h: inner.h - 2.0,
+        };
+        assert!(free.holds(&sprite), "the sprite {sprite:?} reaches the line of {inner:?}");
+        checked += 1;
+    }
+    assert!(checked > 0, "the fixture's jobs have sprites");
 }
 
 #[test]

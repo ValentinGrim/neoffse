@@ -10,9 +10,11 @@ component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
     in property <bool> last;
 
-    // A fixed portrait, twice the 32 px sprite so its pixels stay whole: the
+    // A fixed sprite, twice the 32 px source so its pixels stay whole: the
     // card's height comes from its rows, never the other way round.
     private property <length> side: 64px;
+    // The portrait frame: the sprite and the two lines around it.
+    private property <length> frame: root.side + 2 * portrait-frame.inset;
     // The label column of the stats: wide enough for "HP", "MP" and "Lv".
     private property <length> label-width: root.look.font-body * 2.5;
 
@@ -27,15 +29,15 @@ component CharacterRow inherits PressRow {
         spacing: root.look.padding;
 
         Rectangle {
-            width: root.side;
-            PortraitFrame {
+            width: root.frame;
+            portrait-frame := PortraitFrame {
                 look: root.look;
                 initial: root.card.initial;
                 portrait: root.card.portrait;
                 x: 0px;
                 y: (parent.height - self.height) / 2;
-                width: root.side;
-                height: root.side;
+                width: root.frame;
+                height: root.frame;
             }
         }
         VerticalLayout {

@@ -26,17 +26,25 @@ export component Frame inherits Rectangle {
 }
 
 // A square holding the sprite of a character, or its initial when it has no
-// sprite.
+// sprite. The two lines of the frame sit outside the sprite: a caller sizes
+// the frame as the sprite side plus `2 * inset`, so the sprite shows whole.
 export component PortraitFrame inherits Rectangle {
     in property <Look> look: Theme.look;
     in property <string> initial;
     // The sprite of the character. An empty image (width 0) shows the initial.
     in property <image> portrait;
+    // The width of the two lines, on each side. The sprite and the initial
+    // lie inside it.
+    out property <length> inset: 2px;
     private property <bool> has-portrait: root.portrait.width > 0;
 
     background: root.look.portrait-fill;
 
     if !root.has-portrait: Text {
+        x: root.inset;
+        y: root.inset;
+        width: root.width - 2 * root.inset;
+        height: root.height - 2 * root.inset;
         text: root.initial;
         color: root.look.muted;
         font-family: root.look.font-family;
@@ -45,14 +53,16 @@ export component PortraitFrame inherits Rectangle {
         vertical-alignment: center;
     }
     if root.has-portrait: sprite := Image {
-        width: 100%;
-        height: 100%;
+        x: root.inset;
+        y: root.inset;
+        width: root.width - 2 * root.inset;
+        height: root.height - 2 * root.inset;
         source: root.portrait;
         image-fit: contain;
         image-rendering: pixelated;
         accessible-role: none;
     }
-    // Drawn last: the lines stay visible, the sprite keeps the whole square.
+    // The lines frame the sprite and never cover it.
     edge := Rectangle {
         border-width: 1px;
         border-color: root.look.field-border;

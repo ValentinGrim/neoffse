@@ -1,4 +1,4 @@
-//! The character page header: a 64 px portrait frame like the cards', the
+//! The character page header: a 68 px portrait frame around the 64 px sprite, like the cards', the
 //! name over the job beside it, the fields below, and a list that still
 //! shows its rows at 800 by 600. Geometry comes from the accessibility tree
 //! of Slint's testing backend; no window shows.
@@ -166,7 +166,7 @@ fn the_character_page_holds_at_800() {
 }
 
 #[test]
-fn a_character_without_a_portrait_keeps_the_64_px_frame() {
+fn a_character_without_a_portrait_keeps_the_68_px_frame() {
     let ui = cards_ui(1280.0, 800.0);
     ui.app.editor.set_assets(Arc::new(ProviderChain::new(Vec::new())));
     refresh_editor(&ui.window, &ui.app);
@@ -174,7 +174,7 @@ fn a_character_without_a_portrait_keeps_the_64_px_frame() {
 
     assert!(sprite_sizes(&ui).is_empty(), "no sprite is drawn");
     let frame = the_rect(&ui, "PortraitFrame");
-    assert!((frame.w - 64.0).abs() <= SLACK && (frame.h - 64.0).abs() <= SLACK, "the frame is {frame:?}");
+    assert!((frame.w - 68.0).abs() <= SLACK && (frame.h - 68.0).abs() <= SLACK, "the frame is {frame:?}");
     let frame_element = the_element(&ui, "PortraitFrame");
     let initial = texts_of(&frame_element).into_iter().find(|(text, _)| text == "A").expect("the initial A");
     assert!(frame.holds(&initial.1), "the initial ({:?}) leaves the frame ({frame:?})", initial.1);
