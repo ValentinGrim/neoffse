@@ -7,7 +7,7 @@ use std::sync::Arc;
 use neoffse::data::Language;
 use neoffse_app::{
     AboutDialog, App, FilePicker, GameRow, MainWindow, RestoreBridge, SlotRow, connect_about, connect_close, connect_editor, connect_expert, connect_history,
-    connect_home, connect_restore, connect_review, connect_save, new_about_dialog,
+    connect_home, connect_quit, connect_restore, connect_review, connect_save, new_about_dialog,
 };
 
 use slint::ComponentHandle;
@@ -46,12 +46,13 @@ impl Ui {
         Self { window, app, manual, picker }
     }
 
-    /// Like `new`, with the About dialog connected and the close handler
-    /// installed after it, as `run` does.
+    /// Like `new`, with About and Quit connected and the close handler
+    /// installed after them, as `run` does.
     pub(crate) fn with_about(site: &Site) -> (Self, AboutDialog) {
         let ui = Self::new(site, None);
         let about = new_about_dialog().unwrap();
         connect_about(&ui.window, &about);
+        connect_quit(&ui.window);
         connect_close(&ui.window, &about, &ui.app);
         ui.manual.run_all();
         (ui, about)

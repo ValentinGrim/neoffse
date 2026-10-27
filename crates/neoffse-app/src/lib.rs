@@ -50,6 +50,7 @@ pub use theme::{sync_theme, theme_for};
 use neoffse::Registry;
 use neoffse::io::dirs::DataDir;
 use neoffse::io::discovery::Environment;
+use slint::platform::WindowEvent;
 use slint::{CloseRequestResponse, ComponentHandle};
 
 /// The attribution the About dialog shows for the PR font.
@@ -119,7 +120,7 @@ pub fn new_about_dialog() -> Result<AboutDialog, slint::PlatformError> {
 pub fn connect_about(main_window: &MainWindow, about: &AboutDialog) {
     let dialog = about.clone_strong();
     main_window.on_about_requested(move || {
-        // The app has no logger yet; M4 routes show and hide errors through `tracing`.
+        // A failed show or hide leaves nothing to recover, and the app has no logger.
         let _ = dialog.show();
     });
 
@@ -142,9 +143,18 @@ pub fn connect_about(main_window: &MainWindow, about: &AboutDialog) {
     });
 }
 
-/// Ends the event loop when the user picks File > Quit.
+/// Sends the close request of the window's close button when the user picks
+/// File > Quit, so the handler [`connect_close`] installs decides: a dirty
+/// session gets the discard question, a running save, reload or restore vetoes,
+/// and a clean session closes and hides About.
+///
+/// The window looks the handler up when the request fires, so the order of
+/// `connect_quit` and `connect_close` does not matter.
 pub fn connect_quit(main_window: &MainWindow) {
-    main_window.on_quit_requested(|| {
-        let _ = slint::quit_event_loop();
+    let weak = main_window.as_weak();
+    main_window.on_quit_requested(move || {
+        if let Some(window) = weak.upgrade() {
+            window.window().dispatch_event(WindowEvent::CloseRequested);
+        }
     });
 }
