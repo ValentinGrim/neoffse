@@ -11,6 +11,7 @@ use common::{ID_1, ID_2, Site, all_rows, documents_slot, environment, items, reg
 use neoffse::core::Game;
 use neoffse::pr::games::GAMES;
 use neoffse_app::home::{HomeData, HomeViewModel, scan_home};
+use neoffse_app::restore::same_folder;
 use neoffse_app::{FolderOrigin, GameRow, SlotKind, SlotRow};
 use slint::Model;
 
@@ -234,8 +235,11 @@ fn keys_are_unique_and_resolve_to_targets() {
         assert_eq!(target.name, slot_file(u32::try_from(slot.summary.number).unwrap()));
         assert_eq!(target.supported, slot.openable);
         assert!(target.dir.join(&target.name).is_file(), "the target names a file of its folder");
-        assert!(folders.contains(&target.dir));
-        assert_eq!(target.game == Game::Ff2Pr, target.dir == third);
+        assert!(
+            folders.iter().any(|folder| same_folder(folder, &target.dir)),
+            "the target folder is one of the scanned folders"
+        );
+        assert_eq!(target.game == Game::Ff2Pr, same_folder(&target.dir, &third));
     }
     assert!(home.slot_target(-1).is_none());
     assert!(home.slot_target(4).is_none());
