@@ -1,9 +1,8 @@
 # Third-party notices
 
-NeoFFSE ports code from MIT-licensed projects by KiameV and Meyti, and
-documents save-format rules it learned from KiameV's editor. The cipher's
-code goes back to public-domain reference code by Bram Cohen. The MIT
-notices travel with the ported work, as the MIT license requires.
+NeoFFSE ports code from MIT-licensed projects by KiameV and Meyti, and documents save-format rules it learned from KiameV's editor.  
+The cipher's code goes back to public-domain reference code by Bram Cohen.  
+The MIT notices travel with the ported work, as the MIT license requires.
 
 | File | Project | What NeoFFSE ports | NeoFFSE code derived from it |
 |---|---|---|---|
@@ -13,17 +12,16 @@ notices travel with the ported work, as the MIT license requires.
 
 ## Provenance of the cipher
 
-The Rijndael-256 code of `neoffse-format-pr` is a hand port of KiameV's
-ffpr-save-cypher (Go). That library is based on Meyti's py3rijndael
-(Python), whose README credits a gist by jeetsukumaran. The gist ports Bram
-Cohen's Java reference code of April 2001 and describes it as public
-domain. NeoFFSE computes its S-box and tables at compile time and expands
-the key schedule at run time, where the Go library embeds both.
+The Rijndael-256 code of `neoffse-format-pr` is a hand port of KiameV's ffpr-save-cypher (Go).  
+That library is based on Meyti's py3rijndael (Python), whose README credits a gist by jeetsukumaran.  
+The gist ports Bram Cohen's Java reference code of April 2001 and describes it as public domain.  
+NeoFFSE computes its S-box and tables at compile time and expands the key schedule at run time.
 
 ## ID tables
 
 The script `tools/pr-tables/` generates them from the master data and message files of the user's own game install.
-Square Enix owns that data, so the tables hold facts: IDs, names, kinds and caps.  
+Square Enix owns that data, so the tables hold facts:  
+IDs, names, kinds and caps.  
 The repository holds no graphic or audio asset, no dialogue and no extracted file.
 
 ## Fonts
@@ -38,8 +36,7 @@ Fonts are not code and are not ported.
 
 ## Icons
 
-The app draws its icons from one set. The files travel unmodified with the
-licence text. Icons are not code and are not ported.
+The app draws its icons from one set. The files travel unmodified with the licence text.
 
 | Files | Project and author | Source | License | Notice file | Status |
 |---|---|---|---|---|---|
@@ -47,7 +44,7 @@ licence text. Icons are not code and are not ported.
 
 ## Portraits
 
-The editor shows one sprite per Final Fantasy I class. The sprites are original drawings, and no graphic from a game served as a model.
+The editor shows one sprite per Final Fantasy I class. The sprites are original drawings.
 
 | Files | Project and author | Source | License | Notice file | Status |
 |---|---|---|---|---|---|
