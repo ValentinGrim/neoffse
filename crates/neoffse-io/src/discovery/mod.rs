@@ -92,6 +92,8 @@ fn variable(name: &str) -> Option<PathBuf> {
 /// What produced a save folder.
 ///
 /// A later version may add variants, so a `match` needs a wildcard arm.
+///
+/// `Debug` prints Steam and Documents folders, personal paths: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Origin {
@@ -110,6 +112,8 @@ pub enum Origin {
 }
 
 /// One save folder found on disk.
+///
+/// `Debug` prints a personal path and a `SteamID64`: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SaveFolder {

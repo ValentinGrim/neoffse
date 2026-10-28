@@ -29,6 +29,9 @@ pub enum Running {
 }
 
 /// What a save did.
+///
+/// `Debug` prints the backup folder and the source folder, two personal
+/// paths: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Saved {
@@ -44,7 +47,10 @@ impl Session {
     /// The steps run in this order, and the first failure stops the save:
     ///
     /// 1. A clean session saves nothing and returns `Saved { backup: None }`.
-    ///    No process scan, no read, no backup, no write.
+    ///    No process scan, no read, no backup, no write. A session is clean
+    ///    when no edit separates it from the clean point
+    ///    ([`Session::is_dirty`]): edits that cancel out or change nothing
+    ///    make it dirty, and the save then backs up and writes the file.
     /// 2. With [`Running::Refuse`], the process scan for the game's
     ///    executable.
     /// 3. A re-read of every file the session read: bytes that differ from
@@ -61,8 +67,12 @@ impl Session {
     /// The save writes the files it read and no other: a file the encoder
     /// returns under another name is not written. A format with several files
     /// writes them one by one, so a failure after the first rename leaves the
-    /// earlier files written. The backup holds the files as they were. The
-    /// Pixel Remaster formats have one file.
+    /// earlier files written. The backup holds the files as they were. After
+    /// such a failure the session holds the bytes from before the save,
+    /// so the next save stops with [`Error::ChangedOnDisk`] on a file the
+    /// failed save wrote: the caller must open the save again with
+    /// [`Registry::open`](crate::Registry::open). The Pixel Remaster formats
+    /// have one file.
     ///
     /// # Errors
     ///

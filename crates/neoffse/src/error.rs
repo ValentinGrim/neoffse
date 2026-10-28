@@ -16,7 +16,7 @@ pub enum Error {
         /// The io error, with the path it concerns.
         source: IoError,
     },
-    /// The format refused the files, or the name is not a plain file name.
+    /// The format refused the files.
     #[error("the save files do not open")]
     Format {
         /// The format's error.

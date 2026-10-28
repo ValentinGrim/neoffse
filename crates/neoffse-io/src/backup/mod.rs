@@ -66,6 +66,8 @@ use manifest::MANIFEST_FILE;
 const MAX_SUFFIX: u32 = 99;
 
 /// What to back up.
+///
+/// `Debug` prints `source_dir`, a path under the user's home: never log it.
 #[derive(Debug, Clone, Copy)]
 pub struct Request<'a> {
     /// The game id, checked by [`DataDir::game_backups_dir`].

@@ -36,6 +36,8 @@ pub struct Claim {
 }
 
 /// A file of a scanned folder that a format claims.
+///
+/// `Debug` prints the file name, a personal value: never log it raw.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Found {

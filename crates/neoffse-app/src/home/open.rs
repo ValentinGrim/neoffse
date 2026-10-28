@@ -116,6 +116,10 @@ impl OpenViewModel {
     /// dialog gives `Cancelled`; a running open gives `Failed(Busy)` at once
     /// and the picker is not asked.
     ///
+    /// A file name that holds `:` cannot open on Linux, where the name is
+    /// valid: the io layer refuses it as not plain, and the open ends as
+    /// `Failed(Unreadable)`.
+    ///
     /// `done` runs once on the UI thread. The busy flag is clear by then.
     pub fn open_file(&self, dispatcher: &Arc<dyn Dispatcher>, done: impl FnOnce(OpenOutcome) + Send + 'static) {
         if !self.begin() {

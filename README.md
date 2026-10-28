@@ -79,7 +79,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 `cargo run -p neoffse-app` opens the app.
 Close the game first: a save made while the game runs can be lost or overwritten.
 Home lists your saves; open a slot, edit, then press "Review & save" (Ctrl+S) and confirm.
-Before each write the app copies the file to `$XDG_DATA_HOME/neoffse/backups/<game>/` (`~/.local/share/neoffse` by default) on Linux or `%APPDATA%\neoffse\data\backups\<game>\` on Windows, and keeps the 20 newest per game.
+Before a save or a restore replaces a file, the app copies it to `$XDG_DATA_HOME/neoffse/backups/<game>/` (`~/.local/share/neoffse` by default) on Linux or `%APPDATA%\neoffse\data\backups\<game>\` on Windows.
+It keeps the 20 newest readable backups per game, and a restore never deletes the backup it reads, so a game can hold 21.
 Steam may ask you to keep the local files at the next launch.
 
 `cargo test --workspace` needs no game file.

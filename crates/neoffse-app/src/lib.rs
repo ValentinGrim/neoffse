@@ -37,10 +37,39 @@ pub use connect::save::connect_save;
 pub use connect::{App, connect_home, refresh_home};
 pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async};
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
+/// `Debug` prints a save file name: never log it.
+pub use generated::BackupRow;
+/// `Debug` prints save content: never log it.
+pub use generated::CharacterCard;
+/// `Debug` prints a field label and the value the user typed: never log it.
+pub use generated::EditNotice;
+/// `Debug` prints save content: never log it.
+pub use generated::EditorData;
+/// `Debug` prints save content: never log it.
+pub use generated::EntityPage;
+/// `Debug` prints save content: never log it.
+pub use generated::FieldRow;
+/// `Debug` prints save content: never log it.
+pub use generated::FolderRow;
+/// `Debug` prints save content: never log it.
+pub use generated::GameRow;
+/// `Debug` prints save content: never log it.
+pub use generated::ItemList;
+/// `Debug` prints save content: never log it.
+pub use generated::ItemRow;
+/// `Debug` prints save content: never log it.
+pub use generated::Overview;
+/// `Debug` prints save content: never log it.
+pub use generated::ReviewRow;
+/// `Debug` prints save content: never log it.
+pub use generated::SectionData;
+/// `Debug` prints save content: never log it.
+pub use generated::SlotRow;
+/// `Debug` prints save content: never log it.
+pub use generated::SummaryRow;
 pub use generated::{
-    AboutDialog, BackupReason, BackupRow, CharacterCard, EditNotice, EditProblem, EditorBridge, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow,
-    FolderOrigin, FolderRow, FontCredit, Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, RestoreBridge,
-    RestoreNotice, RestoreProblem, ReviewKind, ReviewRow, SectionData, Shell, SlotKind, SlotRow, SummaryRow, Theme, ThemeId,
+    AboutDialog, BackupReason, EditProblem, EditorBridge, EditorCommand, FieldKind, FolderOrigin, FontCredit, Fonts, FrameStyle, Look, MainWindow, OpenProblem,
+    PickerEntry, RestoreBridge, RestoreNotice, RestoreProblem, ReviewKind, Shell, SlotKind, Theme, ThemeId,
 };
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};

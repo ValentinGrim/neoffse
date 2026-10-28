@@ -13,6 +13,9 @@ use crate::dirs::DataDir;
 use crate::error::{IoError, Operation};
 
 /// What a finished restore did.
+///
+/// `Debug` prints the safety backup's folders, personal paths, and the names
+/// of the created files: never log it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Restored {
