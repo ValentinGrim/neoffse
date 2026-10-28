@@ -1,5 +1,5 @@
 //! Wires the review dialog: the list of net changes the user checks before
-//! a save (`docs/architecture.md#save-safety`, step 2).
+//! a save (`docs/architecture.md#save-safety`, step 1).
 //!
 //! The callbacks hold a `slint::Weak<MainWindow>` and a clone of [`App`],
 //! never a strong window handle. Opening the review reads the session on the

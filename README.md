@@ -9,20 +9,32 @@ NeoFFSE might read a console save once you have extracted and decrypted it with 
 ## Status
 
 Pre-alpha.
-The app does not open or edit saves yet.  
-At the library level, you can read and edit a Final Fantasy I Pixel Remaster slot through the traits of `neoffse-core`.  
+The app opens, edits and saves Final Fantasy I Pixel Remaster slots.  
+Home lists the saves that Steam discovery finds for the six Pixel Remaster games, and "Open a file..." takes any file.
+Only FF I has a format so far, and the other five games read "Not supported yet".  
+The editor has three pages.
+Party shows one card per character and opens a page with the name, job, level, experience, HP, stats, spell charges and equipment.
+Items lists gil, items and key items.
+Magic lists the spell slots and stays read only.  
+A Level or Experience edit sets the other field too.
+A higher level also adds the stats the game gives for each level gained, with random rolls like the game's.  
+Undo, redo and a review of the net changes come before every save.
+A save checks for a running game and for a file that changed on disk, backs the file up, writes a temporary file, reads it back and renames it.
+The Restore page lists the backups of a game and restores one.
+View > Expert mode switches to raw edits behind a warning.  
+A few in-game checks of the level and experience rules are still open ([Open questions](docs/formats/pixel-remaster.md#open-questions)).  
+`neoffse` re-exports the crates below and adds a `Registry` that scans and opens saves, a `Session` with the edit history and the save pipeline, the list of changes for a review, and the backup listing and restore.
 `Ff1Format` in `neoffse-format-pr` opens a slot file and refuses a file of another game or a file that is no slot.
 Its document lists the party, the items, the key items and the gil, edits them, and encodes the file back.
 The tests show that an edit followed by encode and decode changes the intended values and nothing else.  
 A document offers two ways to edit.
 `apply_game` edits the way the game does: equipping an item also updates the inventory and the slot count, and a value above the game's cap is refused.
 `apply` with `CapPolicy::StorageOnly` writes any value the save can hold, for an expert mode.  
-`neoffse-data` embeds the FF I tables: items, equipment, abilities, jobs, commands, monsters and the game's caps, with English and French names.  
+`neoffse-data` embeds the FF I tables: items, equipment, abilities, jobs, commands, monsters, the game's caps and the level-up growth tables, with English and French names.  
 `neoffse-format-pr` decodes and encodes the Pixel Remaster save files of the six games and edits their JSON text by path, without rewriting the values it does not touch.
 Only FF I has a domain mapping so far.  
 `neoffse-io` finds the Steam save folders of the games it is given, replaces a file only after a check passes on the written copy, keeps timestamped backups with a restore, and scans for a running game.  
 The game scan is best effort: a process the system hides stays invisible, so an empty result proves nothing.  
-The `neoffse` facade holds no code yet.  
 The first target is Final Fantasy I to VI Pixel Remaster on Steam PC (Windows and Linux, Proton included).  
 See [`docs/roadmap.md`](docs/roadmap.md) for the milestones.
 
@@ -39,15 +51,15 @@ document gives the reason behind each one.
 
 ## Workspace
 
-|        Crate        |                                    Role                                     |
-|:-------------------:|:---------------------------------------------------------------------------:|
-| `neoffse`           | public facade of the library, the crate other projects depend on (M4)       |
-| `neoffse-core`      | domain model and format traits: games, field paths, edits, field metadata   |
-| `neoffse-data`      | FF I ID tables and caps, embedded from `data/pr/ff1/*.toml`                 |
-| `neoffse-io`        | save discovery, backups, restore, verified atomic writes, game check        |
-| `neoffse-format-pr` | FF I to VI Pixel Remaster: codec, lossless document, game list; FF I format |
-| `neoffse-app`       | Slint desktop app                                                           |
-| `neoffse-testkit`   | locates fixtures and private saves for tests                                |
+|        Crate        |                                             Role                                             |
+|:-------------------:|:--------------------------------------------------------------------------------------------:|
+| `neoffse`           | public facade, the crate other projects depend on: registry, session, save pipeline, restore |
+| `neoffse-core`      | domain model and format traits: games, field paths, edits, field metadata                    |
+| `neoffse-data`      | FF I ID tables, caps and growth tables, embedded from `data/pr/ff1/*.toml`                   |
+| `neoffse-io`        | save discovery, backups, restore, verified atomic writes, game check                         |
+| `neoffse-format-pr` | FF I to VI Pixel Remaster: codec, lossless document, game list; FF I format                  |
+| `neoffse-app`       | Slint desktop app                                                                            |
+| `neoffse-testkit`   | locates fixtures and private saves for tests                                                 |
 
 Every crate sets `publish = false` until a crates.io release is decided.
 
@@ -64,7 +76,11 @@ cargo fmt --all --check
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
 
-`cargo run -p neoffse-app` opens the app window.
+`cargo run -p neoffse-app` opens the app.
+Close the game first: a save made while the game runs can be lost or overwritten.
+Home lists your saves; open a slot, edit, then press "Review & save" (Ctrl+S) and confirm.
+Before each write the app copies the file to `$XDG_DATA_HOME/neoffse/backups/<game>/` (`~/.local/share/neoffse` by default) on Linux or `%APPDATA%\neoffse\data\backups\<game>\` on Windows, and keeps the 20 newest per game.
+Steam may ask you to keep the local files at the next launch.
 
 `cargo test --workspace` needs no game file.
 Tests on real saves read the folder named by `NEOFFSE_SAVES` (default `fixtures/private/`) and pass without running when it holds nothing, as [Test policy](docs/architecture.md#test-policy) explains.
@@ -87,7 +103,7 @@ cd tools/pr-tables
 python3 -m prtables --game ff1 --install "<library>/steamapps/common/FINAL FANTASY PR"
 ```
 
-The tool only reads your install, and it writes the six TOML files under `data/pr/ff1/` when their content changes.  
+The tool only reads your install, and it writes the seven TOML files under `data/pr/ff1/` when their content changes.  
 It refuses an output folder that lies inside a source folder, and a source folder that lies inside the output folder.  
 The tables hold facts the editor needs: IDs, names, kinds and the game's caps.  
 They hold no dialogue, no graphic, no audio and no extracted file.

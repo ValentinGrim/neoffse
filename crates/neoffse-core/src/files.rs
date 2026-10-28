@@ -70,7 +70,7 @@ pub enum Confidence {
 /// The registry keeps the claim with the highest [`confidence`](Detection::confidence).
 /// The six Pixel Remaster formats earn the same claim on the same file name
 /// (`docs/formats/pixel-remaster.md#slot-files`: the names repeat in all six
-/// games), and the facade (M4) breaks that tie with the game of the save
+/// games), and the facade breaks that tie with the game of the save
 /// folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]

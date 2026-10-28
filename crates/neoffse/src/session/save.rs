@@ -83,9 +83,10 @@ impl Session {
     }
 
     /// The steps of [`Session::save`] with a chosen [`FileOps`], process probe
-    /// and instant. The app calls `save`; `save_with` exists for
-    /// failure-injection tests. `probe` receives the executable names of the
-    /// session's game and returns those it found running.
+    /// and instant. `neoffse-app` calls it with the real file operations and
+    /// its own replaceable probe, and failure-injection tests pass a
+    /// `FileOps` that fails one step. `probe` receives the executable names
+    /// of the session's game and returns those it found running.
     ///
     /// # Errors
     ///
