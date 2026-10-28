@@ -4,7 +4,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use neoffse::Session;
 use neoffse::core::{Edit, FieldId, Game, SaveFiles, Value};
@@ -51,27 +51,56 @@ pub(crate) fn open_session() -> (TempDir, neoffse::Session) {
     (dir, session)
 }
 
-/// Each FF I slot file of the private saves, copied under its own name into
-/// its own temporary folder. The folders delete the copies on drop. Returns
-/// `None` after reporting why when the saves hold no slot file, so the test
-/// returns early and says so.
-pub(crate) fn private_slot_copies() -> Option<Vec<(String, TempDir)>> {
+/// The value of `result`, or a panic with `what` alone. The `Err` is dropped
+/// because its text can quote a path or a value of a private save.
+#[track_caller]
+pub(crate) fn must<T, E>(result: Result<T, E>, what: &str) -> T {
+    result.unwrap_or_else(|_| panic!("{what}"))
+}
+
+/// The value of `option`, or a panic with `what`.
+#[track_caller]
+pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
+    match option {
+        Some(value) => value,
+        None => panic!("{what}"),
+    }
+}
+
+/// The name and path of each FF I slot file of the private saves, in name
+/// order. Returns `None` after reporting why when the saves hold no slot
+/// file (a folder with only `desktop.ini`, say), so the test returns early
+/// and says so. The paths are the originals: a test that writes uses
+/// [`private_slot_copies`].
+pub(crate) fn private_slot_paths() -> Option<Vec<(String, PathBuf)>> {
     let paths = neoffse_testkit::private_saves("ff1")?;
-    let copies: Vec<(String, TempDir)> = paths
-        .iter()
+    let slots: Vec<(String, PathBuf)> = paths
+        .into_iter()
         .filter_map(|path| {
-            let name = path.file_name()?.to_str()?;
-            SLOT_FILES.iter().any(|file| file.name == name).then(|| {
-                let dir = tempfile::tempdir().unwrap();
-                fs::copy(path, dir.path().join(name)).unwrap();
-                (name.to_owned(), dir)
-            })
+            let name = path.file_name()?.to_str()?.to_owned();
+            SLOT_FILES.iter().any(|file| file.name == name).then_some((name, path))
         })
         .collect();
-    if copies.is_empty() {
+    if slots.is_empty() {
         neoffse_testkit::skip("no FF I slot file in the private saves");
         return None;
     }
+    Some(slots)
+}
+
+/// Each FF I slot file of the private saves, copied under its own name into
+/// its own temporary folder. The folders delete the copies on drop. Returns
+/// `None` after reporting why when the saves hold no slot file.
+pub(crate) fn private_slot_copies() -> Option<Vec<(String, TempDir)>> {
+    let slots = private_slot_paths()?;
+    let copies = slots
+        .into_iter()
+        .map(|(name, path)| {
+            let dir = tempfile::tempdir().unwrap();
+            must(fs::copy(&path, dir.path().join(&name)), "copy a private slot file");
+            (name, dir)
+        })
+        .collect();
     Some(copies)
 }
 
@@ -105,7 +134,7 @@ pub(crate) fn set(field: &FieldId, value: i64) -> Edit {
 }
 
 pub(crate) fn gil_value(session: &mut Session) -> i64 {
-    let view = session.view().unwrap();
+    let view = must(session.view(), "read the view");
     let (_, field) = view.find(&gil()).expect("gil is in the view");
     let Value::Int(gil) = field.value else { panic!("gil is an integer") };
     gil
@@ -118,9 +147,10 @@ pub(crate) fn gil_value(session: &mut Session) -> i64 {
 pub(crate) fn assert_gil_only_change(before: &SaveFiles, gil_after: i64, dir: &Path, name: &str) {
     let registry = neoffse::Registry::new(neoffse::data::Language::En);
     let format = registry.format(Game::Ff1Pr).expect("FF I has a format");
-    let mut document = format.open(before).unwrap();
-    document.apply_game(&set(&gil(), gil_after)).unwrap();
+    let mut document = must(format.open(before), "open the saved document");
+    must(document.apply_game(&set(&gil(), gil_after)), "apply the gil edit");
     let mut written = SaveFiles::new();
-    written.push(name, fs::read(dir.join(name)).unwrap()).unwrap();
-    document.verify(&written).unwrap();
+    let saved = must(fs::read(dir.join(name)), "read the saved file");
+    must(written.push(name, saved), "collect the saved file");
+    must(document.verify(&written), "verify the saved file against the document");
 }

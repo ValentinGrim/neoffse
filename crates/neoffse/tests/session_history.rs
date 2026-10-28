@@ -162,6 +162,32 @@ fn a_failed_edit_keeps_the_redo_stack() {
 }
 
 #[test]
+fn a_failed_expert_edit_keeps_the_redo_stack() {
+    let (_dir, mut session) = open_session();
+    let base = gil_value(&mut session);
+    session.edit(&set(&gil(), base + 1)).unwrap();
+    session.undo().unwrap();
+    let unknown = set(&FieldId::new("nonsense"), 1);
+    assert!(matches!(session.edit_expert(&unknown), Err(EditError::UnknownField { .. })));
+    assert!(session.can_redo());
+    assert!(session.redo().unwrap());
+    assert_eq!(gil_value(&mut session), base + 1);
+}
+
+#[test]
+fn undo_restores_a_value_above_the_game_cap() {
+    let (_dir, mut session) = open_session();
+    let above = 5_000_000;
+    session.edit_expert(&set(&gil(), above)).unwrap();
+    assert!(matches!(session.edit(&set(&gil(), above)), Err(EditError::AboveCap { .. })));
+    session.edit(&set(&gil(), 1_000)).unwrap();
+    assert_eq!(gil_value(&mut session), 1_000);
+
+    assert!(session.undo().unwrap());
+    assert_eq!(gil_value(&mut session), above);
+}
+
+#[test]
 fn expert_mode_accepts_a_level_above_the_cap_and_undoes_it() {
     let (_dir, mut session) = open_session();
     let before = value(&mut session, &level());
