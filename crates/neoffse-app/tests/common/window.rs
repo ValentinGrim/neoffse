@@ -1,5 +1,6 @@
 //! A `MainWindow` wired to the view models over one synthetic machine, with
-//! the manual dispatcher. The window never shows.
+//! the manual dispatcher. Nothing shows until a test calls `show()`, and the
+//! testing backend has no screen.
 
 use std::path::PathBuf;
 use std::sync::Arc;

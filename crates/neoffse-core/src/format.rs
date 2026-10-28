@@ -2,8 +2,8 @@
 //! files, [`SaveDocument`] edits, encodes and verifies them.
 //!
 //! The registry, the edit history, the expert-mode setting and the save
-//! pipeline that joins `encode`, the atomic write and `verify` will live in
-//! the facade crate (M4, `docs/architecture.md#save-safety`).
+//! pipeline that joins `encode`, the atomic write and `verify` live in the
+//! facade crate (`docs/architecture.md#save-safety`).
 
 use crate::edit::{ChangeSet, Edit, GameChange};
 use crate::error::{EditError, FormatError};
@@ -24,8 +24,8 @@ pub trait SaveFormat: Send + Sync {
     /// The function is pure: it reads the probe and nothing else. It never
     /// claims a leftover of the atomic write of `neoffse-io`, whose
     /// temporary files are called `.neoffse-<random>.tmp`. The registry of the
-    /// facade (M4) is to skip such names before it calls `detect`; a format
-    /// with fixed file names matches the name first.
+    /// facade skips such names before it calls `detect`; a format with fixed
+    /// file names matches the name first.
     fn detect(&self, probe: &FileProbe<'_>) -> Option<Detection>;
 
     /// Reads the files of one save into a document.
@@ -89,7 +89,7 @@ pub trait SaveDocument: Send {
     /// `NotACollection`, `PositionOutOfRange` and `Format` itself.
     ///
     /// `CapPolicy::Enforce` checks the storage bounds and the game cap,
-    /// `CapPolicy::StorageOnly` the storage bounds. The facade (M4) passes
+    /// `CapPolicy::StorageOnly` the storage bounds. The facade passes
     /// `Enforce` for a new edit unless the user turned expert mode on, and
     /// `StorageOnly` for an inverse, a rollback and a redo. A document
     /// therefore applies an inverse whatever value it restores, including one
@@ -173,10 +173,10 @@ pub trait SaveDocument: Send {
     /// The decode starts from the bytes alone, never from a cache, and the
     /// comparison covers the whole in-memory document, including data the
     /// view omits, fields no widget covers and the order of collections.
-    /// `Ok` means the same document. The facade (M4) calls it from the hook of
+    /// `Ok` means the same document. The facade calls it from the hook of
     /// `neoffse_io::atomic::write`, with the temporary file's bytes read back
     /// from disk under the save file's logical name
-    /// (`docs/architecture.md#save-safety`, steps 5 and 6). Changes nothing
+    /// (`docs/architecture.md#save-safety`, steps 6 and 7). Changes nothing
     /// in the document.
     ///
     /// # Errors

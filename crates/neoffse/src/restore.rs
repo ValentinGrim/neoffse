@@ -64,9 +64,10 @@ impl Registry {
     }
 
     /// The steps of [`Registry::restore`] with a chosen [`FileOps`], process
-    /// probe and instant. The app calls `restore`; `restore_with` exists for
-    /// failure-injection tests. `probe` receives the executable names of the
-    /// backup's game and returns those it found running.
+    /// probe and instant. `neoffse-app` calls it with the real file
+    /// operations and its own replaceable probe, and failure-injection tests
+    /// pass a `FileOps` that fails one step. `probe` receives the executable
+    /// names of the backup's game and returns those it found running.
     ///
     /// # Errors
     ///

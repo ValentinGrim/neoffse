@@ -130,7 +130,9 @@ A candidate counts as a root only when it holds a `steamapps` folder [C, steamlo
 Three of the native candidates point at one folder [M].
 Canonicalize each root and drop duplicates, or every save folder appears three times.
 The Go editor and steamlocate both drop duplicates after they resolve links [C].
-On Windows the root comes from the registry value `InstallPath` under `HKLM\SOFTWARE\Wow6432Node\Valve\Steam`, then under `HKLM\SOFTWARE\Valve\Steam` [C, steamlocate]; save discovery does not need it.
+On Windows, steamlocate takes the root from the registry value `InstallPath` under `HKLM\SOFTWARE\Wow6432Node\Valve\Steam`, then under `HKLM\SOFTWARE\Valve\Steam` [C, steamlocate].
+NeoFFSE reads no registry: install discovery takes `%ProgramFiles(x86)%\Steam` and counts it when it holds a `steamapps` folder [I].
+Save discovery needs no root.
 
 **Libraries.**
 Read `<root>/steamapps/libraryfolders.vdf`.
@@ -317,7 +319,8 @@ The inflater stops at the final block and ignores every byte after it, zero or n
 - `decode` returns the BOM flag and the trailer, and `encode` writes back the BOM and the trailer of the container it receives.
   `Container::game()` holds the BOM and the CRLF the game writes.
   A container decoded from an editor file holds the BOM and no CRLF, and `encode` keeps it that way.
-  The save pipeline of the `neoffse` facade (M4) chooses which container it passes.
+  The FF I document keeps the container it decoded and encodes with it, so a save writes back the BOM and the trailer of the file it read.
+  `Container::game()` serves a caller that builds a file from nothing.
 
 ### Base64
 
@@ -768,6 +771,12 @@ Every type-2 row has `system_id` 0, a sell price of 0 and both function groups a
 Every type-1 row has a menu or battle function group other than 0.
 The labels "item" and "key item" come from the name-key prefixes and the icons, not from game code [I].
 
+**Growth file.**
+`data/pr/ff1/growth.toml` holds the growth tables of [Maximum HP and experience tables](#maximum-hp-and-experience-tables) in a compact shape.
+Each `[[character_status]]` entry holds `id`, `hp` and `vitality`, and `[exp_table]` holds `total_exp` as one list in level order from level 1.
+Each `[[intermediate_growth_curve]]` entry holds `job_id` and `growth_curve_group_id`.
+Each `[[growth_curve]]` entry covers one growth group: `group_id`, `first_lv` and one list per column of `growth_curve.csv`, in level order from `first_lv`.
+
 ### Maximum HP and experience tables
 
 The game computes the maximum HP and the experience to the next level from three master files.
@@ -941,7 +950,7 @@ The game states six caps and several stat caps in `game_constant_int.csv` (96 ro
 | strength, vitality, agility, intelligence, spirit, luck | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` | 99 each |
 | attack, defense, ability attack, ability defense, accuracy, evasion | `MAX_ATTACK`, `MAX_DEFENSE`, `MAX_ABILITY_ATTACK`, `MAX_ABILITY_DEFENSE`, `MAX_ACCURACY_RATE`, `MAX_EVASION_RATE` | 255 each |
 
-Nine more `MAX_` rows have no known save field [I]: `MAX_ACCURACY_RATE_PERCENTAGE`, `MAX_EVASION_RATE_PERCENTAGE`, `MAX_ABILITY_EVASION_RATE` (open: [question 29](#open-questions)), `MAX_ABILITY_EVASION_RATE_PERCENTAGE`, `MAX_CRITICAL_RATE`, `MAX_CRITICAL_RATE_PERCENTAGE`, `MAX_ATTACK_SPEED`, `MAX_HIT_VALUE` and `MAX_GETAWAY_PROBABILITY_RATE`.
+Nine more `MAX_` rows have no known save field [I]: `MAX_ACCURACY_RATE_PERCENTAGE`, `MAX_EVASION_RATE_PERCENTAGE`, `MAX_ABILITY_EVASION_RATE` (open: [question 28](#open-questions)), `MAX_ABILITY_EVASION_RATE_PERCENTAGE`, `MAX_CRITICAL_RATE`, `MAX_CRITICAL_RATE_PERCENTAGE`, `MAX_ATTACK_SPEED`, `MAX_HIT_VALUE` and `MAX_GETAWAY_PROBABILITY_RATE`.
 
 `MAX_ITEM` is one row with no list name [D].
 NeoFFSE reads it as the cap of the normal inventory and not of the key items, which hold `count` 1 ([Inventory](#inventory)) [I].
@@ -1156,6 +1165,7 @@ Several `addtional…` names hold a gain on top of a base the file does not stor
   The measured values are 6 to 9 for spirit and 7 to 12 for magic.
 - `addtionalAbilityEvasionRate` holds the growth of the magic defence, and `addtionalAccuracyRate` the growth of the accuracy [M, D, B].
   Both follow the table sums exactly ([Level-up in FF I](#level-up-in-ff-i)).
+  NeoFFSE edits them as the fields `magic_evasion_gain` and `accuracy_gain`, held by the storage bounds alone because no cap is known for them [I].
 - `currentMP` and `addtionalMaxMp` hold 0 in all 8 states.
   FF I stores spell charges per spell level in `currentMpCountList` and `addtionalMaxMpCountList` (keys 1 to 8, values 0 to 9) [M].
   `addtionalMaxMpCountList` is a gain too: for the two spellcasters, level 1 shows `currentMpCountList` 9 against `addtionalMaxMpCountList` 7, and every other level shows equal values [M].
@@ -1178,6 +1188,10 @@ One step:
 
 1. `addtionalMaxHp` gains `STA / 4 + 1` (integer division).
    `STA` is `character_status.vitality` plus `addtionalVitality`, taken before this step's own stat gains.
+   NeoFFSE takes `character_status.vitality` as the base [I]; the exact HP gain of one character supports it [M, D].
+   The game reads `STA` through `ConfirmedVitality`, which caps its result on read [B], and the cap is likely `MAX_VITALITY`, 99 [I].
+   NeoFFSE applies no cap.
+   The two differ once the sum passes 99, and the measured characters stay below it at 40 to 42 [M].
    The step adds 20 to 24 more when `hp_value1` is 1 or a 1-in-8 roll succeeds.
 2. Each of `addtionalPower`, `addtionalVitality`, `addtionalAgility`, `addtionalIntelligence`, `addtionalSpirit`, `addtionalMagic` and `addtionalLuck`, in that order, gains the value of its column, or 1 on a 1-in-8 roll when the column holds 0.
 3. `addtionalAccuracyRate` gains `accuracy_rate` and `addtionalAbilityEvasionRate` gains `magic_evasion_rate`, with no roll.
@@ -1232,8 +1246,15 @@ The game interface keeps `addtionalLevel` and `currentExp` consistent the way th
 An Experience edit sets `addtionalLevel` to the level the new experience reaches: the highest L with `total_exp(L) <= currentExp`, at most 99.
 A Level edit sets `currentExp` to `total_exp` of the new level, the first experience point of that level.
 The game interface accepts Level 1 to 99.
-Expert mode (raw edits) keeps 0 to 99 and links nothing.
+Expert mode (raw edits) keeps 0 to 99, links nothing and moves no stat.
 A save already out of band stays as it is until the next Level or Experience edit.
+
+A Level or Experience edit that raises the level also plays one growth step per level gained, from the stored level plus 1 to the new level [I].
+The steps use the character's current job and draw their random parts from the editor's own generator, so two edits of the same save can give different stats, as two battles do.
+The edit writes the raw sums, one `Set` per field whose final value differs, under `StorageOnly`: a stat can pass its cap of 99, as the game stores it [B].
+The fields a step moves are `max_hp_gain`, the seven stats, `accuracy_gain`, `magic_evasion_gain` and the eight `charges_max_gain` values.
+A lower or equal level moves no stat.
+A job without a growth row, or a `characterStatusId` without a base row, refuses the whole edit and changes nothing.
 
 ### Equipment slots
 
@@ -1650,18 +1671,15 @@ Each point needs a real save or an in-game test.
       Expected: `addtionalLevel` up by 3 or more, `addtionalAccuracyRate` up by 3 times the group's `accuracy_rate` or more, and each stat field up by at least the flagged levels.
     - Lowered level: set `currentExp` below `total_exp(addtionalLevel)`, win a battle, and save.
       Expected: `addtionalLevel` drops to the experience level and every stat field stays.
-25. Does `character_status.vitality` supply the base vitality of the HP rule?
-    The code that fills the base was not read; the exact HP gain of one character supports the reading [M].
-    A new-game save at levels 1 and 2 would settle it.
-26. Which `game_constant_int.csv` keys cap the level, the experience and the experience setter?
+25. Which `game_constant_int.csv` keys cap the level, the experience and the experience setter?
     The game binary reads them through a string key that was not resolved; `MAX_LV` and `MAX_EXP` are the likely keys [I].
     The `GROWTH_CURVE_HP_RATE` row (8) is not read on the FF I path: the 1-in-8 roll is a literal in the code [B].
-27. Which characters does a battle level?
+26. Which characters does a battle level?
     The game runs the level-up for the characters in its experience list (`BattleUtility.IsGetExp`).
     The filter was not read; living, non-petrified members are the likely rule [I].
-28. Can a battle bonus still be active when a level-up runs?
+27. Can a battle bonus still be active when a level-up runs?
     The vitality the HP rule uses also adds a temporary vitality and two bonus entries.
     FF I equipment adds no vitality [D], and the code does not show whether a battle effect lasts until the level-up.
-29. Does `MAX_ABILITY_EVASION_RATE` cap `addtionalAbilityEvasionRate`?
+28. Does `MAX_ABILITY_EVASION_RATE` cap `addtionalAbilityEvasionRate`?
     The field holds the growth of the magic defence ([Characters](#characters)), and the bound sits among the `MAX_` rows with no known save field ([Bounds in the master data](#bounds-in-the-master-data)).
     The code that reads the bound would settle it, or a save whose sum of base and gain passes the bound.

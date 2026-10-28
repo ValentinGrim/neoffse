@@ -3,7 +3,7 @@
 //! The app shows it before a save: the pending changes bar counts the
 //! edits, and the review lists what differs from the clean state
 //! (`docs/architecture.md#ui-architecture`). The user reviews this summary
-//! before the write (`docs/architecture.md#save-safety`, step 2).
+//! before the write (`docs/architecture.md#save-safety`, step 1).
 //!
 //! [`diff`] is pure and format-agnostic: it reads two [`SaveView`]s and
 //! names no game and no field. A value set and then set back gives no

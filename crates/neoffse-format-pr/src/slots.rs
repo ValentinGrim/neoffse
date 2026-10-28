@@ -3,7 +3,7 @@
 //!
 //! The six games share these names, so nothing here carries a game. A
 //! name is the only proof of a slot: the head of a file is base64 text that
-//! names no game, and the facade (M4) breaks the tie between the six formats
+//! names no game, and the facade breaks the tie between the six formats
 //! with the game of the save folder.
 
 use neoffse_core::{Confidence, Detection, FileProbe, PROBE_HEAD_LEN, SaveSlot};
@@ -92,9 +92,9 @@ pub fn slot_for_name(name: &str) -> Option<SaveSlot> {
 /// container and [`Confidence::Possible`] otherwise. It never gives
 /// [`Confidence::Certain`]: at most 256 bytes of base64 text name no game,
 /// and proving a slot would take a partial inflate. The six Pixel Remaster
-/// formats return the same claim for the same file, and the facade (M4)
-/// breaks the tie with the game of the save folder. [`Detection::slot`] comes from
-/// the name.
+/// formats return the same claim for the same file, and the facade
+/// breaks the tie with the game of the save folder. [`Detection::slot`] comes
+/// from the name.
 ///
 /// The head looks like a container when, after an optional BOM, it holds
 /// a non-empty run of base64 characters (`A-Z a-z 0-9 + / =`) up to the
