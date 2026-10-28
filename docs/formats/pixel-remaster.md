@@ -989,6 +989,7 @@ The magic stat (`addtionalMagic`), `addtionalMaxHp`, `addtionalMaxMpCountList` a
 **Storage bound.**
 Neither the master data nor the saves state a bound for the integer fields NeoFFSE edits, apart from the caps above.
 NeoFFSE stores a value from 0 to 2 147 483 647 (`i32::MAX`) in such a field, and from 1 in the `count` of an item row and in a row key (`contentId`, character `id`) [I].
+The Level is the exception: its storage bound is `MAX_LV`, so both edit interfaces refuse a Level above 99 ([Characters](#characters)) [I].
 The `count` of an equipment slot starts at 0: no measured slot holds 0 [M, 4 slots], and the game interface sets that count only by copying the inventory count [I].
 The Go editor clamps its number fields to i32 ([Known pitfalls](#known-pitfalls), 10), and every counter measured in FF I fits.
 No test shows that the game reads the whole range.
@@ -1246,8 +1247,10 @@ The game interface keeps `addtionalLevel` and `currentExp` consistent the way th
 An Experience edit sets `addtionalLevel` to the level the new experience reaches: the highest L with `total_exp(L) <= currentExp`, at most 99.
 A Level edit sets `currentExp` to `total_exp` of the new level, the first experience point of that level.
 The game interface accepts Level 1 to 99.
-Expert mode (raw edits) keeps 0 to 99, links nothing and moves no stat.
-A save already out of band stays as it is until the next Level or Experience edit.
+Expert mode (raw edits) keeps Level 0 to 99, links nothing and moves no stat: the storage bound of the Level is `MAX_LV`, not the general bound ([Bounds in the master data](#bounds-in-the-master-data)).
+The app clamps typed text above 99 to 99 before it sends the edit.
+A save whose stored Level is above 99 refuses the next game Level edit, the next game Experience edit and the next raw Level edit with `OutOfRange` naming the stored value, because the inverse of the edit would restore a Level outside the storage bound.
+The save stays as it is, and every other field stays editable, raw Experience included.
 
 A Level or Experience edit that raises the level also plays one growth step per level gained, from the stored level plus 1 to the new level [I].
 The steps use the character's current job and draw their random parts from the editor's own generator, so two edits of the same save can give different stats, as two battles do.
@@ -1570,7 +1573,7 @@ A writer changes the keys the user edited and nothing else, re-encodes the conta
 3. Re-serialize only the string documents that hold an edit, and their parent strings up to the slot.
    Leave every other string byte for byte as read.
 4. Serialize in the game's style: compact, raw UTF-8, floats with a decimal point, original key order and spellings.
-   Go's encoder escapes `<`, `>` and `&` as `<`, `>` and `&` [M]; the game wrote no `\u` escape in the measured files.
+   Go's encoder escapes `<`, `>` and `&` as `\u003c`, `\u003e` and `\u0026` [M]; the game wrote no `\u` escape in the measured files.
 5. Set `id` to the slot number of the target file ([Slot files](#slot-files)) when you write a slot's data under another slot's name [M, two editor files].
 6. Leave the slot index as read when you write into a slot with no file: the load menu lists a slot file whose flag is `false` ([Other files in the folder](#other-files-in-the-folder)) [G, FF I and FF II].
 7. Fill both ability IDs ([Abilities](#abilities)) and keep the FF I lists consistent.
@@ -1591,7 +1594,7 @@ A writer changes the keys the user edited and nothing else, re-encodes the conta
 5. An AES library cannot decrypt the files: the block is 256 bits ([Cipher](#cipher)).
 6. The library's `Encrypt` pads in place and can write into the caller's buffer [C, `codec.go`].
 7. Struct-based re-serialization drops unknown keys: `minimapEnable` reset on each save, and five FF III and FF V keys with no struct field vanish ([Keys that differ per game](#keys-that-differ-per-game)) [M for presence, C, `6ef3bc7`].
-8. Re-serialization turns `58.0` into `58` and `&` into `&` [M, Go encoder].
+8. Re-serialization turns `58.0` into `58` and `&` into `\u0026` [M, Go encoder].
 9. An f64-only JSON parser rounds `timeStampTicks` (above 2^53) [M].
 10. Values exceed i32 (u32 flags in `dataStorage`, i64 ticks), while the Go editor's number fields clamp to i32 [M, C `6ef3bc7`].
 11. Map "Misc" fields (`mapId`, `pointIn`, `transportationId`, `carryingHoverShip`) reverted on save [C, `6ef3bc7`].

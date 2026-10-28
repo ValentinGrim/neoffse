@@ -21,10 +21,11 @@ pub use save::{Running, Saved};
 /// [`Registry::open`](crate::Registry::open) builds a session. The session
 /// owns the document: every change goes through [`Session::edit`] or
 /// [`Session::edit_expert`], so the history sees it. Undo and redo replay
-/// the recorded changes. The dirty state counts the distance to a clean
-/// point, the state of the files as read. [`Session::discard`] reopens the
-/// document from the bytes read, held in memory, and touches no file.
-/// [`Session::changes`] lists what differs from that clean point.
+/// the recorded changes. The dirty state counts the edits since a clean
+/// point, the state of the files as last read or saved, and compares no
+/// value ([`Session::is_dirty`]). [`Session::discard`] reopens the
+/// document from the bytes of the clean point, held in memory, and touches
+/// no file. [`Session::changes`] lists what differs from that clean point.
 ///
 /// `Session` is `Send` and not `Sync`: a caller that shares it across
 /// threads wraps it in a lock.
@@ -249,13 +250,20 @@ impl Session {
         !self.redo.is_empty()
     }
 
-    /// Whether the document differs from the clean point.
+    /// Whether an edit sits between the clean point and the document.
+    ///
+    /// The test compares no value: a value set and set back, or an edit that
+    /// changes nothing, leaves the session dirty, and [`Session::save`] then
+    /// backs up and writes the file again. Undoing back to the clean point
+    /// makes the session clean.
     #[must_use]
     pub fn is_dirty(&self) -> bool {
         self.pending_count() != 0
     }
 
-    /// The number of changes between the clean point and the document.
+    /// The number of edits between the clean point and the document: those
+    /// recorded since the files were last read or saved, each undo or redo
+    /// moving the count by one. Edits that cancel out count too.
     #[must_use]
     pub fn pending_count(&self) -> usize {
         self.extra + self.undo.len().abs_diff(self.base)

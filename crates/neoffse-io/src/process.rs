@@ -39,6 +39,9 @@ impl Key {
 }
 
 /// What the scan keeps of one process. Built by [`snapshot`], or by hand in a test.
+///
+/// `Debug` prints `argv0`, which can hold a path under the user's home: never
+/// log it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcessInfo {
     /// The process name as the system reports it (cut to 15 bytes on Linux).

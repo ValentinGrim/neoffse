@@ -14,6 +14,9 @@ use crate::error::{IoError, Operation};
 pub const MAX_BACKUPS: usize = 20;
 
 /// The backups of one game and the folders that could not be read.
+///
+/// `Debug` prints backup folders, source folders and the paths of unreadable
+/// folders, all personal paths: never log it.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct Listing {

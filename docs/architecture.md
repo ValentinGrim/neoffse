@@ -18,7 +18,8 @@ NeoFFSE edits the saves of Final Fantasy I to XVI, XI and XIV excepted, and star
 - The project code is `MIT OR Apache-2.0`.
 
 - Slint comes under the Slint Royalty-free Desktop, Mobile and Web Applications License 2.0.
-  That license requires the `AboutSlint` widget in the app's About dialog, and the user reaches that dialog from the top-level menu.
+  That license requires one of two attributions: the `AboutSlint` widget in an About dialog that the top-level menu reaches, or the Slint badge on a public web page.
+  The app takes the first route: Help > About NeoFFSE opens the dialog.
 
 - The ID tables come from the game's own master data.  
   `tools/pr-tables/` reads the master data and message files of the user's install ([Game master data](formats/pixel-remaster.md#game-master-data))
@@ -130,7 +131,7 @@ The `neoffse` facade joins them. The workspace edges are:
 - `neoffse-format-pr` depends on `neoffse-core` and `neoffse-data`.
 - `neoffse` depends on `neoffse-core`, `neoffse-data`, `neoffse-io` and `neoffse-format-pr`.
 - `neoffse-app` depends on `neoffse`.
-- `neoffse-io` has `neoffse-format-pr` as a dev-dependency, for the ignored `real_discovery` test only.
+- `neoffse-io` has `neoffse-format-pr` as a dev-dependency, for the tests that read the game table (`games::GAMES`) and, in the ignored `real_discovery` test, the codec.
   It must not become a standard dependency: the I/O crate would then know a format.
 
 A format crate never imports another format crate.
@@ -162,7 +163,8 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
 
 - **`neoffse-io`** touches the user's files and knows no save format.
   It finds save folders, keeps backups, replaces a file through the verified write of [Save safety](#save-safety) and scans for a running game.
-  Every file operation goes through the `FileOps` trait, one method per step, so a test makes any single step fail.
+  Every step of a write, a backup copy and a restore goes through the `FileOps` trait, one method per step, so a test makes any single step fail.
+  Reads, folder listings and discovery call the operating system without it.
   A format crate publishes where its saves sit as plain data (`PrGame` rows in `games::GAMES`), and the caller turns the rows into the descriptors discovery takes.
   Discovery never writes.
   It returns every folder it finds and lists the places it could not read.
@@ -183,7 +185,7 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
 - **`neoffse`** re-exports the crates above so a caller depends on one crate.
   It also holds the glue the dependency rule keeps out of the lower crates.
   `Registry` asks each format to detect a file, scans a folder and opens a file into a `Session`.
-  `Session` keeps the edit history, undo and redo and the expert-mode switch, lists the net `changes` for a review, and runs the save pipeline that joins a format's encoder and decoder to the verified write of `neoffse-io`.
+  `Session` keeps the edit history with undo and redo, edits through the default interface (`edit`) or the expert one (`edit_expert`), lists the net `changes` for a review, and runs the save pipeline that joins a format's encoder and decoder to the verified write of `neoffse-io`.
   The registry also lists the backups of a game and restores one with no session and no format, since the main case is a file that no longer opens.
 
 - **`neoffse-app`** is the Slint desktop app.
@@ -201,6 +203,7 @@ Both traits live in `neoffse_core::format`; the document trait is dyn-compatible
 
 ```rust
 pub trait SaveFormat: Send + Sync {
+    fn game(&self) -> Game;
     fn detect(&self, probe: &FileProbe<'_>) -> Option<Detection>;
     fn open(&self, files: &SaveFiles) -> Result<Box<dyn SaveDocument>, FormatError>;
 }
@@ -220,7 +223,7 @@ pub trait SaveDocument: Send {
   A save that spans several files fits the same type.
 - **Detection.** `detect` is pure: it reads a `FileProbe` (name, size, head of the file) and returns a `Detection`, or `None`.
   `Confidence` runs `Possible` (the name fits), `Likely` (the name and a cheap content check fit), `Certain` (the first bytes prove it), so the registry picks the best claim.
-  The six PR formats claim the same file names, so the facade breaks the tie with the game of the save folder.
+  The PR formats claim the same file names (only FF I ships today), so the facade breaks the tie with the game of the save folder.
   A format never claims the leftover `.neoffse-*.tmp` file of an atomic write.
 - **Open.** `open` copies what it needs, so the document keeps no borrow.
   It refuses a file that does not fit its game with a `FormatError::Decode`, never a panic.
@@ -256,13 +259,14 @@ Every `apply` returns the inverse edit, and redo applies the original edit again
 
 ### Technology stack
 
-The workspace pins every dependency in its `Cargo.toml` files, and this table gives the reason for each choice.
-A crate tagged with a milestone enters the workspace with that milestone.
+Each dependency's version requirement sits in a `Cargo.toml`, and the committed `Cargo.lock` fixes the resolved versions.
+This table gives the reason for each choice.
+`binrw` is not in the workspace yet.
 
 | Need | Crate | Why |
 |---|---|---|
 | UI | `slint`, `slint-build` | `.slint` markup, translations through `@tr` (FR and EN) |
-| UI tests | `i-slint-backend-testing` | headless tests with no window and no event loop |
+| UI tests | `i-slint-backend-testing` | the Slint layer runs on a testing backend that opens no window on the desktop |
 | File dialogs | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
 | System language | `sys-locale` | reads the locale that picks the English or French names of the game data |
 | Level-up draws | `rand` | the random rolls of an FF I level-up step, behind the `Rolls` trait |
@@ -303,15 +307,19 @@ A library crate returns errors and does not panic on anything read from a file.
 - **A refused edit changes nothing.** The error names the field and the reason, and the document stays as it was, except after `EditError::RollbackFailed`.
   `OutOfRange` carries the range the edit broke, and `AboveCap` carries the game cap, which the UI reads to offer expert mode.
 - **Errors hold personal paths.** The `Display` and `Debug` output of the `neoffse-io` errors and of its discovery, backup and environment types name paths under the user's home.
-  `Debug` of `SaveFolder` also holds a SteamID64, `ProcessInfo` the first command-line argument of a process, and `Manifest` the source folder.
+  `Debug` of `SaveFolder` also holds a SteamID64, `ProcessInfo` the first command-line argument of a process, `Manifest` and `Request` the source folder, and `Backup`, `Listing` and `Restored` the backup folders.
   An error from `LibraryListInvalid` can quote a line of `libraryfolders.vdf`.
   No function of the crate logs or prints them, and a caller must not print them raw: log the variant and the `Operation`, or a count of skipped places.
 - **Facade errors and session values.** `Error::GameRunning` names the executables found running.
   `Error::ChangedOnDisk` carries the file name, which appears in `Debug` only.
   `Session::dir` and `Session::name` return the folder and the file name of the open save: personal values a caller must not log.
+- **Facade results.** `Debug` of `Saved` prints the backup folder and the source folder, and `Debug` of `Scan` and `Found` prints file names.
+  A caller must not log them.
+- **App rows.** The Slint structs that `neoffse-app` re-exports at its crate root and that carry names, values or paths (`GameRow`, `FolderRow`, `SlotRow`, `SummaryRow`, `FieldRow`, `ReviewRow`, `CharacterCard`, `BackupRow`, `EditNotice` and the structs that group them) print them in `Debug`.
+  The re-export of each carries the rustdoc line.
 - **Save content in `Debug` output.** The types that hold a slot's content (`SaveSummary`, `SaveView`, `Value`, `Edit`, `Document`, `Ff1Model` and their parts) print character names, field values or the JSON text.
   A caller must not log them.
-  The rustdoc of each such type says "`Debug` prints save content: never log it."
+  The rustdoc of each such type says that `Debug` prints save content and that a caller must not log it.
   `SaveFiles` prints file names and byte counts only, and `FormatError` and `OpenError` hold file names, counts and document paths, never a path on disk.
 
 ## Test policy
@@ -357,11 +365,12 @@ A library crate returns errors and does not panic on anything read from a file.
   On Linux, run `cargo test -p neoffse-io --test real_discovery -- --ignored --nocapture`.
   For Windows, build the executable on Linux with `cargo test -p neoffse-io --test real_discovery --target x86_64-pc-windows-gnu --no-run` (this needs `mingw-w64` and the `x86_64-pc-windows-gnu` Rust target), copy `target/x86_64-pc-windows-gnu/debug/deps/real_discovery-<hash>.exe` to the Windows machine and run it there with `--ignored --nocapture`.
 - **Test profile.** The root `Cargo.toml` sets `opt-level = 2` in `[profile.test]`, because the cipher and the property tests are CPU bound.
+  It keeps line tables only, and none for dependencies, because full debug info made each `neoffse-app` test binary about 500 MB.
 - **UI.** View models carry the UI logic and run in plain Rust tests.
   The Slint layer runs on Slint's testing backend, which has no screen: its tests call `init_no_event_loop` and create no event loop, so no test opens a window on the developer's desktop.
   `event_loop.rs` is the exception: its one test calls `init_integration_test_with_system_time` to check that `EventLoopDispatcher` posts a task to the event loop.
   Only a few tests call `show()` on the backend (`editor_close.rs`, `restore_failures.rs`, `about_dialog.rs` and the `closeable_rig` helper).
-  `build.rs` sets `SLINT_EMIT_DEBUG_INFO` outside release builds, so a test reads the role and label of an element through `ElementHandle`, and the geometry tests read bounds from the accessibility tree.
+  `build.rs` compiles `ui/app.slint` with debug info outside release builds and sets `SLINT_EMIT_DEBUG_INFO` for the `slint!` macro, so a test reads the role and label of an element through `ElementHandle`, and the geometry tests read bounds from the accessibility tree.
 - **CI.** `.github/workflows/ci.yml` runs on each push to `develop` and to a milestone branch (`v*.*.*`), and on each pull request into `develop`.
   The `checks` job runs on Linux and Windows: format, a `Cargo.lock` check, `scripts/clippy.sh` and `cargo test --workspace --locked`.
   On Linux it also tests `neoffse-format-pr` alone (feature unification can hide a missing feature) and builds the docs with warnings denied, so a broken intra-doc link fails the build.
@@ -395,18 +404,26 @@ The app has a Home screen, an editor, a Restore page and an About dialog.
   No validation, no bounds, no save knowledge.
 - **View models.** One Rust view model per screen turns domain types into Slint structs and `VecModel`s, and user actions into `Edit`s, and it runs without a window.
   A Slint callback becomes an `Edit` that the view model sends through the facade, and the view model then refreshes from the document.
-  It picks each widget from `FieldMeta` (see [Principles](#principles), rule 3): a read-only field is a label, a flag a switch, a string a text box, an integer that references an ID table a searchable dropdown and an integer with named values a dropdown.
-  Any other integer is a text box that sends one edit on Enter or on focus loss, and Rust clamps the typed number to the storage bounds.
+  It picks each widget from `FieldMeta` (see [Principles](#principles), rule 3): a read-only field is a label, a flag a check box, a string a text box, an integer that references an ID table a searchable drop-down, an integer with named values a drop-down plus a text box for the raw value, and any other integer a text box.
+  The text box beside the drop-down is the only way to enter a value with no name.
+  A text box sends one edit on Enter or on focus loss, and Rust clamps the typed number to the storage bounds, so text above the Level's bound of 99 becomes 99.
+  Each control shows the document's value: after a click or a commit, accepted or refused, a check box, a drop-down or a text box shows it again.
 - **Default and expert mode.** In the default mode the view model sends a new edit through `apply_game`, keeps the returned `GameChange` for undo and redo, and greys a control that `field_locked` or `row_locked` reports.
   In expert mode, which View > Expert mode switches on behind a warning, it sends the edit through `apply` with `CapPolicy::StorageOnly`.
   An `AboveCap` error from the default mode is the cue to offer the switch ([Edit interfaces](#edit-interfaces)).
 - **Threads.** The Steam scan, the save and the restore run on a worker thread, which returns its result to the UI through `slint::invoke_from_event_loop`.
+- **Closing.** A close request, from the window button or File > Quit, does nothing while a dialog other than the discard dialog is open or while a save, reload or restore runs.
+  The discard dialog is the exception: it answers the close, and its buttons do nothing while a worker runs.
+  With unsaved edits and no such dialog, a close request opens the discard dialog, and a clean session closes.
 - **Looks.** Every Pixel Remaster game shares one look: the colours of the game's menu, Cornelia Sans, and a banded frame drawn with Slint primitives, with rounded corners of 6 px on panels.
   A class sprite shows at twice its size in a portrait frame.
   Home, the Restore page, the dialogs and the About dialog use the app shell, a flat navy look in Barlow.
 - **Screens.**
   - *Home*: each Pixel Remaster game with the saves that discovery finds (slot, party, play time, place), a filter that shows the owned games only, a Backups button per game, a Refresh button and an "Open a file..." button for any file.
     A game without a format reads "Not supported yet".
+    A slot file the scan cannot read stays in the list as a row that reads "This save cannot be read", and a click tries to open it again and reports the cause.
+    A save folder that discovery found and the app could not list reads "The save folder could not be read".
+    The warning "Some places could not be searched (n)" counts only the places discovery could not search.
   - *Editor*: laid out like the game's menu, with the command list (Party, Items, Magic) and a status panel (play time and gil) on the left and the current page on the right.
     Party shows one card per character, and a card opens the character's page with its fields.
     Items lists gil, the items and the key items.
@@ -431,7 +448,7 @@ The providers, in order of preference:
 
 1. **Local extraction.** The app extracts portraits from the user's own game installation into the user cache directory (`~/.cache/neoffse/assets/<game>/` on Linux), and NeoFFSE never commits or redistributes them.
    The provider will sit behind the `local-assets` cargo feature of `neoffse-app`, off by default, so public builds leave it out.
-   It needs the install folder, which `neoffse-io` discovery does not locate (`NEOFFSE_GAME_DIR` will override the lookup), and the Unity asset bundles of the PR games need research before any code.
+   It needs the install folder, which `neoffse-io` discovery returns as `Install::path`, and the Unity asset bundles of the PR games need research before any code.
    No milestone schedules it.
 2. **Bundled free art.** Files in `assets/` with a known author and a free license, attributed per file in [`licenses/README.md`](../licenses/README.md).
    The two fonts and the icon set are such files.
@@ -444,7 +461,8 @@ With local extraction in place, a user who owns the game sees real portraits on 
 
 A save reaches disk through one pipeline, `Session::save` in the `neoffse` facade, and any failure before the final rename leaves the original file as it was.
 `neoffse-io` provides the backup, write, rename and process steps, and the facade joins them to the format's encoder and decoder.
-A session with no edit writes nothing: no process scan, no read, no backup.
+A session with no edit since its clean point writes nothing: no process scan, no read, no backup.
+The session counts edits and compares no value, so edits that cancel out, or an edit that sets the value a field already holds, count: the save then backs up and writes the file again.
 
 1. The user reviews the change summary and confirms.
    The summary lists the net difference from the clean state, and a value set and then set back is no change.
@@ -465,6 +483,7 @@ A session with no edit writes nothing: no process scan, no read, no backup.
 
 A format with several files runs steps 6 to 8 once per file, so each file gets its own verified write.
 A failure after the first rename leaves the earlier files written, and the backup holds every file as it was.
+The session holds the bytes from before the save, so its next save stops with `Error::ChangedOnDisk` on a file already written: the caller opens the save again first.
 The PR formats keep one file per save.
 
 After a successful save the written bytes become the clean point of the session.
@@ -504,6 +523,8 @@ The `backup` module documents the naming and the manifest.
 - A restore that fails while it writes returns `IoError::RestoreFailed`.
   The files already written keep the backup's version, and no rollback runs, because it would write to the disk that refused the last write.
   The error carries the safety backup as the way back.
+  When the first write fails, no file changed: the app reports a failure, and the safety backup stays on disk.
+  A stop after at least one write is incomplete: some files hold the backup's version, and the app says so.
 - `restore` writes into any existing folder it receives and does not compare it with the `sourceDir` of the manifest, which a library move or a reinstall can make stale.
   The app restores into the absolute `sourceDir` of the manifest and checks with `is_dir` first.
   A relative or missing folder stops the restore before any read or write.

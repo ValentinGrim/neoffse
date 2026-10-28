@@ -192,6 +192,8 @@ fn days_in_month(year: i64, month: i64) -> i64 {
 ///
 /// The text is JSON with two-space indentation, the keys in field order and
 /// one final newline.
+///
+/// `Debug` prints `source_dir`, a path under the user's home: never log it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
