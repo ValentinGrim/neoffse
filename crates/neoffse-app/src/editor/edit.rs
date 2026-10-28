@@ -10,15 +10,17 @@ use super::notice::{notice_of, problem_notice};
 use super::pick::entry_name;
 use crate::{EditNotice, EditProblem};
 
-/// The notice for a failed edit or replay. A failed rollback reloads the
-/// save from its last clean state; when that fails too, the problem becomes
-/// `Internal`.
-pub(super) fn settle(session: &mut Session, error: &EditError, label: &str) -> EditNotice {
+/// The notice for a failed edit or replay, and whether the session is lost.
+/// A failed rollback reloads the save from its last clean state; when that
+/// fails too, the document state is unknown: the problem becomes `Internal`
+/// and the flag is `true`.
+pub(super) fn settle(session: &mut Session, error: &EditError, label: &str) -> (EditNotice, bool) {
     let mut notice = notice_of(error, label);
-    if matches!(error, EditError::RollbackFailed { .. }) && session.discard().is_err() {
+    let lost = matches!(error, EditError::RollbackFailed { .. }) && session.discard().is_err();
+    if lost {
         notice.problem = EditProblem::Internal;
     }
-    notice
+    (notice, lost)
 }
 
 impl EditorViewModel {
@@ -27,8 +29,9 @@ impl EditorViewModel {
     /// `None`: the edit went through, or the value equals the shown one and
     /// nothing was sent. `Some`: the notice to show. A key outside the table
     /// of the last [`data`](Self::data) call, or a call with no save open,
-    /// gives a `not-editable` notice, as does a running save. The caller
-    /// refreshes with `data`.
+    /// gives a `not-editable` notice, as does a running save. A session lost
+    /// to a failed rollback and a failed reload closes and answers
+    /// `internal`. The caller refreshes with `data`.
     #[must_use]
     #[allow(
         clippy::needless_pass_by_value,

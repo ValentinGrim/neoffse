@@ -46,7 +46,8 @@ impl EditorViewModel {
     /// runs under `StorageOnly`. The caller refreshes with `data`.
     ///
     /// A call with no save open, or while a save runs, gives a
-    /// `not-editable` notice.
+    /// `not-editable` notice. A session lost to a failed rollback and a
+    /// failed reload closes and answers `internal`.
     #[must_use]
     pub fn undo(&self) -> Option<EditNotice> {
         self.replay(Session::undo)

@@ -33,6 +33,7 @@ pub(crate) use scan::slot_kind_of;
 #[derive(Debug, Clone)]
 pub struct HomeData {
     games: Vec<GameData>,
+    /// The places discovery could not read.
     skipped: usize,
 }
 
@@ -48,6 +49,8 @@ struct GameData {
 struct FolderData {
     origin: FolderOrigin,
     dir: PathBuf,
+    /// `false` when the folder could not be listed.
+    listed: bool,
     slots: Vec<SlotData>,
 }
 
@@ -58,6 +61,7 @@ struct SlotData {
     kind: SlotKind,
     number: i32,
     summary: Option<SummaryData>,
+    /// No summary: the file could not be read, or its content did not open.
     unreadable: bool,
     openable: bool,
 }
@@ -222,8 +226,10 @@ impl HomeViewModel {
         rows::game_rows(&state.data, state.owned_only)
     }
 
-    /// The places discovery or the folder scans could not read, plus the file
-    /// names that are not UTF-8.
+    /// The places discovery could not read: a Steam library list that does
+    /// not parse, a root or manifest the process cannot read. Such a place
+    /// can hide a whole game. A folder that cannot be listed has its own
+    /// flag on the row.
     #[must_use]
     pub fn skipped_count(&self) -> usize {
         self.lock().data.skipped

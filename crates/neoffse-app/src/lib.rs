@@ -77,7 +77,9 @@ pub fn run() -> Result<(), slint::PlatformError> {
         Arc::new(EventLoopDispatcher),
     );
     // The only place that names the platform data folder. A missing one leaves
-    // the data folder unset, and every save then ends as a failure.
+    // the data folder unset: a save and a restore then both end in the generic
+    // failure notice. A distinct notice waits for the translated catalogue
+    // (`docs/architecture.md#layers-and-milestone-boundaries`).
     if let Ok(data) = DataDir::platform() {
         app.state.set_data_dir(data);
     }

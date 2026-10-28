@@ -8,7 +8,7 @@ mod common;
 
 use common::{Part, Site, Ui, editing_site, field, open_editor};
 use i_slint_backend_testing::AccessibleRole;
-use neoffse_app::{EditProblem, EditorCommand};
+use neoffse_app::{EditProblem, EditorCommand, FieldRow, PickerEntry};
 use slint::platform::Key;
 use slint::{ComponentHandle, Model};
 
@@ -149,6 +149,56 @@ fn the_picker_opens_filters_and_chooses_by_keyboard() {
     assert!(!ui.has_element("Search", AccessibleRole::TextInput), "Escape closes the popup");
     assert_eq!(ui.bridge().get_character(), 0, "and does not step back");
     assert_eq!(ui.pending(), 1);
+}
+
+/// Opens the job picker of the first character and types `query`: the
+/// highlight sits on the first entry. Returns the first entry and the job the
+/// character holds.
+fn job_picker_filtered(ui: &Ui, query: &str) -> (PickerEntry, FieldRow) {
+    let job = field(&ui.bridge_data(), Part::Party, "Aria", "Job");
+    // Name is the first stop, the job picker the second.
+    ui.focus_input("Name");
+    ui.key(Key::Tab);
+    ui.key(Key::Return);
+    ui.type_text(query);
+    let first = ui.bridge().get_picker_entries().row_data(0).expect("a first entry");
+    (first, job)
+}
+
+fn assert_chose(ui: &Ui, entry: &PickerEntry, before: &FieldRow) {
+    assert!(!ui.has_element("Search", AccessibleRole::TextInput), "choosing closes the popup");
+    assert_eq!(ui.pending(), 1);
+    let now = field(&ui.bridge_data(), Part::Party, "Aria", "Job");
+    assert_eq!(now.text, entry.id.to_string());
+    assert_ne!(now.text, before.text);
+}
+
+#[test]
+fn up_arrow_moves_the_highlight_back() {
+    let site = editing_site();
+    let ui = on_character_page(&site);
+    let (first, job) = job_picker_filtered(&ui, "Mage");
+    assert_ne!(job.text, first.id.to_string(), "the first entry is not the current job");
+
+    ui.key(Key::DownArrow);
+    ui.key(Key::UpArrow);
+    ui.key(Key::Return);
+
+    assert_chose(&ui, &first, &job);
+}
+
+#[test]
+fn up_arrow_at_the_top_stays_on_the_first_entry() {
+    let site = editing_site();
+    let ui = on_character_page(&site);
+    let (first, job) = job_picker_filtered(&ui, "Mage");
+    assert_ne!(job.text, first.id.to_string(), "the first entry is not the current job");
+
+    ui.key(Key::UpArrow);
+    ui.key(Key::UpArrow);
+    ui.key(Key::Return);
+
+    assert_chose(&ui, &first, &job);
 }
 
 #[test]

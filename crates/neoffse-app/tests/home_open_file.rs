@@ -8,7 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::thread;
 
-use common::{Flow, ID_1, Outcomes, Site, slot_bytes, slot_file, steam_slot};
+use common::{Flow, ID_1, Outcomes, Site, no_game_bytes, other_game_bytes, slot_bytes, slot_file, steam_slot};
 use neoffse_app::OpenProblem;
 use neoffse_app::home::OpenOutcome;
 
@@ -122,4 +122,24 @@ fn the_dialog_is_not_asked_while_busy() {
 
     flow.manual.run_all();
     assert_eq!(flow.picker.calls().len(), 0);
+}
+
+#[test]
+fn a_slot_of_another_game_gives_unsupported() {
+    let site = Site::new();
+    let path = elsewhere(&site, slot_file(1), &other_game_bytes());
+    let flow = Flow::new(&site, Some(path));
+
+    assert_eq!(pick_once(&flow), vec![failed(OpenProblem::Unsupported)]);
+    assert!(!flow.state.is_open());
+}
+
+#[test]
+fn a_vehicle_count_no_game_has_stays_not_a_save() {
+    let site = Site::new();
+    let path = elsewhere(&site, slot_file(1), &no_game_bytes());
+    let flow = Flow::new(&site, Some(path));
+
+    assert_eq!(pick_once(&flow), vec![failed(OpenProblem::NotASave)]);
+    assert!(!flow.state.is_open());
 }

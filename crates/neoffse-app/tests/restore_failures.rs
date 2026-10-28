@@ -9,7 +9,7 @@ mod common;
 
 use std::fs;
 
-use common::{Paged, Ui, break_data_dir, editing_site, listing, restore_page, slot_bytes, slot_file};
+use common::{Machine, Paged, Ui, break_data_dir, editing_site, listing, restore_page, rig, slot_bytes, slot_file};
 use neoffse::core::Game;
 use neoffse_app::RestoreProblem;
 use slint::ComponentHandle;
@@ -46,14 +46,10 @@ fn a_failed_restore_shows_the_failure_notice() {
 
 #[cfg(unix)]
 #[test]
-fn an_incomplete_restore_shows_its_notice_refreshes_the_list_and_scans() {
-    use neoffse_app::BackupReason;
+fn a_first_write_failure_shows_the_failed_notice() {
     use std::os::unix::fs::PermissionsExt;
 
     let (_site, p) = restore_page();
-    // A second slot that Home has not seen: only a new scan shows it.
-    fs::write(p.folder.join(slot_file(2)), slot_bytes(2)).unwrap();
-    assert_eq!(p.ui.first_slots().len(), 1);
     fs::set_permissions(&p.folder, fs::Permissions::from_mode(0o555)).unwrap();
     let probe = p.folder.join("probe");
     if fs::write(&probe, b"x").is_ok() {
@@ -66,14 +62,9 @@ fn an_incomplete_restore_shows_its_notice_refreshes_the_list_and_scans() {
     p.ui.manual.run_all();
     fs::set_permissions(&p.folder, fs::Permissions::from_mode(0o755)).unwrap();
 
-    assert_eq!(p.bridge().get_notice().problem, RestoreProblem::Incomplete);
+    assert_eq!(p.bridge().get_notice().problem, RestoreProblem::Failed);
     assert!(!p.bridge().get_working());
-    let rows = p.rows();
-    assert_eq!(rows.len(), 2, "the list shows the safety backup");
-    assert_eq!(rows[0].reason, BackupReason::BeforeRestore);
     assert_eq!(p.file(), slot_bytes(2));
-    p.bridge().invoke_back_requested();
-    assert_eq!(p.ui.first_slots().len(), 2, "Home scanned again after the partial restore");
 }
 
 #[test]
@@ -93,16 +84,24 @@ fn no_data_folder_is_a_failed_restore() {
 }
 
 #[test]
-fn a_panicking_probe_is_an_incomplete_restore() {
+fn a_worker_panic_is_reported_as_incomplete() {
     let (_site, p) = restore_page();
+    // A second slot that Home has not seen: only a new scan shows it.
+    fs::write(p.folder.join(slot_file(2)), slot_bytes(2)).unwrap();
+    assert_eq!(p.ui.first_slots().len(), 1);
     p.ui.app.restore.set_process_probe(|_| panic!("scripted probe failure"));
     p.start();
+    // A backup the page has not listed: only a new listing shows it.
+    p.backup("before-save", 5);
     p.ui.manual.run_all();
 
     assert_eq!(p.bridge().get_notice().problem, RestoreProblem::Incomplete);
     assert!(!p.bridge().get_working());
     assert!(!p.ui.app.restore.is_busy());
     assert_eq!(p.file(), slot_bytes(2));
+    assert_eq!(p.rows().len(), 2, "the page listed again");
+    p.bridge().invoke_back_requested();
+    assert_eq!(p.ui.first_slots().len(), 2, "Home scanned again");
 }
 
 #[test]
@@ -119,6 +118,28 @@ fn an_incomplete_restore_keeps_its_notice_when_the_list_cannot_be_read() {
     assert!(p.bridge().get_has_notice());
     assert!(!p.bridge().get_working());
     assert!(p.rows().is_empty(), "the list is empty, as for any failed listing");
+}
+
+#[test]
+fn a_failed_reopen_keeps_its_notice_when_the_list_cannot_be_read() {
+    let site = editing_site();
+    let rig = rig(&site, Machine::Quiet);
+    let valid = rig.bytes();
+    fs::write(&rig.file, vec![0xA5_u8; 64]).unwrap();
+    rig.backup_now("before-save");
+    fs::write(&rig.file, &valid).unwrap();
+    rig.open_page();
+    rig.start_restore();
+    // The worker keeps the data folder it captured: the restore and the
+    // reopen run as before and only the relisting afterwards fails.
+    rig.break_data_dir();
+    rig.ui.manual.run_all();
+
+    assert_eq!(rig.ui.restore_bridge().get_notice().problem, RestoreProblem::ReopenFailed);
+    assert!(rig.ui.restore_bridge().get_has_notice());
+    assert!(!rig.ui.restore_bridge().get_working());
+    assert!(!rig.ui.app.state.is_open());
+    assert!(!rig.ui.window.get_editor_open());
 }
 
 #[test]

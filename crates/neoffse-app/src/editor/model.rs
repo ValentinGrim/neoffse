@@ -217,6 +217,10 @@ impl EditorViewModel {
     /// Runs `step` on the open session, refused with not-editable while a save
     /// runs (the worker holds the session lock) or with no session open. An
     /// error from `step` settles into the notice, `label` naming the row.
+    ///
+    /// When the rollback and the reload both failed, the session is lost: it
+    /// closes through [`back`](Self::back) before the `internal` notice
+    /// returns, and the caller leaves the editor.
     pub(super) fn on_session<T>(&self, label: &str, step: impl FnOnce(&mut Session) -> Result<T, EditError>) -> Option<EditNotice> {
         if self.is_saving() {
             return Some(not_editable());
@@ -226,7 +230,12 @@ impl EditorViewModel {
         };
         let mut session = lock_session(&session);
         let error = step(&mut session).err()?;
-        Some(settle(&mut session, &error, label))
+        let (notice, lost) = settle(&mut session, &error, label);
+        if lost {
+            // The state closes its own handle; this call keeps its `Arc` and the lock until it returns.
+            self.back();
+        }
+        Some(notice)
     }
 
     fn entries(&self, kinds: &[TableKind], query: &str, skip_placeholders: bool) -> Vec<PickerEntry> {

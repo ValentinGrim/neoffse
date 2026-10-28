@@ -277,7 +277,7 @@ fn a_scan_can_run_without_the_view_model() {
 
 #[cfg(unix)]
 #[test]
-fn a_non_utf8_name_counts_as_skipped() {
+fn a_non_utf8_name_hides_no_slot_and_is_not_counted() {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
 
@@ -287,5 +287,5 @@ fn a_non_utf8_name_counts_as_skipped() {
     let home = scanned(&site);
 
     assert_eq!(slots_of(&home.rows()[0]).len(), 1);
-    assert!(home.skipped_count() >= 1);
+    assert_eq!(home.skipped_count(), 0);
 }

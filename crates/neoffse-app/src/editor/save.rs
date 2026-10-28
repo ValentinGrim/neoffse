@@ -49,6 +49,8 @@ fn outcome_of(result: Result<Saved, Error>) -> SaveOutcome {
         },
         Err(Error::GameRunning { .. }) => SaveOutcome::GameRunning,
         Err(Error::ChangedOnDisk { .. }) => SaveOutcome::ChangedOnDisk,
+        // A PR save is one file and every other error stops before its rename, or fails the rename itself:
+        // the file stays as it was (`docs/architecture.md#save-safety`), so one message serves every cause.
         Err(_) => SaveOutcome::Failed,
     }
 }

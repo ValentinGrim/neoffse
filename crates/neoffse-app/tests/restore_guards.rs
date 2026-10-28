@@ -122,6 +122,7 @@ fn a_second_restore_is_busy() {
     assert!(!r.vm.is_busy());
 }
 
+// The code cannot tell how far a panicking worker got, so the outcome says "may be replaced".
 #[test]
 fn a_panicking_probe_is_incomplete() {
     let r = Restoring::differing();
@@ -137,7 +138,7 @@ fn a_panicking_probe_is_incomplete() {
 
 #[cfg(unix)]
 #[test]
-fn a_write_failure_after_the_safety_backup_is_incomplete() {
+fn a_first_write_failure_is_failed_and_leaves_the_safety_backup() {
     use std::os::unix::fs::PermissionsExt;
 
     let r = Restoring::differing();
@@ -152,7 +153,7 @@ fn a_write_failure_after_the_safety_backup_is_incomplete() {
     }
     let outcome = r.restore(Running::Refuse);
     fs::set_permissions(&r.folder, fs::Permissions::from_mode(0o755)).unwrap();
-    assert_eq!(outcome, RestoreOutcome::Incomplete);
+    assert_eq!(outcome, RestoreOutcome::Failed);
     assert_eq!(r.reasons(), ["before-restore", "before-save"]);
     assert_eq!(r.bytes(), slot_bytes(2));
 }

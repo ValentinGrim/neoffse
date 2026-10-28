@@ -14,10 +14,11 @@ pub(super) fn game_rows(data: &HomeData, owned_only: bool) -> Vec<GameRow> {
 
 fn game_row(game: &GameData) -> GameRow {
     let title = title_of(game.game);
-    let no_save = game.supported && game.folders.iter().all(|folder| folder.slots.is_empty());
-    let (slots, folders) = match game.folders.as_slice() {
-        [only] => (slot_rows(&only.slots, &title), Vec::new()),
-        many => (Vec::new(), folder_rows(many, &title)),
+    let no_save = game.supported && game.folders.iter().all(|folder| folder.listed && folder.slots.is_empty());
+    // A single folder shows its slots on the game row, so its flag sits there too.
+    let (slots, folders, unlisted) = match game.folders.as_slice() {
+        [only] => (slot_rows(&only.slots, &title), Vec::new(), !only.listed),
+        many => (Vec::new(), folder_rows(many, &title), false),
     };
     GameRow {
         id: game.game.id().into(),
@@ -26,6 +27,7 @@ fn game_row(game: &GameData) -> GameRow {
         slots: model(slots),
         folders: model(folders),
         no_save,
+        unlisted,
     }
 }
 
@@ -37,6 +39,7 @@ fn folder_rows(folders: &[FolderData], title: &str) -> Vec<FolderRow> {
             origin: folder.origin,
             account: i32::try_from(index + 1).unwrap_or(i32::MAX),
             slots: model(slot_rows(&folder.slots, title)),
+            unlisted: !folder.listed,
         })
         .collect()
 }

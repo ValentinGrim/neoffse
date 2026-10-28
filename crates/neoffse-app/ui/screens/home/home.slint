@@ -137,8 +137,13 @@ component FolderBlock inherits VerticalLayout {
         font-italic: true;
         overflow: elide;
     }
-    if root.folder.slots.length == 0: ShellText {
+    if root.folder.slots.length == 0 && !root.folder.unlisted: ShellText {
         text: @tr("No save found");
+        color: Shell.look.muted;
+        overflow: elide;
+    }
+    if root.folder.unlisted: ShellText {
+        text: @tr("The save folder could not be read");
         color: Shell.look.muted;
         overflow: elide;
     }
@@ -194,6 +199,11 @@ component GameBlock inherits Rectangle {
         }
         if root.game.no-save: ShellText {
             text: @tr("No save found");
+            color: Shell.look.muted;
+            overflow: elide;
+        }
+        if root.game.unlisted: ShellText {
+            text: @tr("The save folder could not be read");
             color: Shell.look.muted;
             overflow: elide;
         }
@@ -275,7 +285,7 @@ export component HomeScreen inherits VerticalLayout {
         color: Shell.look.muted;
     }
     if root.skipped-count > 0: ShellText {
-        text: @tr("Some files or folders could not be read ({})", root.skipped-count);
+        text: @tr("Some places could not be searched ({})", root.skipped-count);
         color: Shell.look.muted;
         font-size: Shell.look.font-small;
         overflow: elide;

@@ -6,6 +6,7 @@ use std::time::Duration;
 use neoffse::Registry;
 use neoffse::core::{Game, SaveSlot, SaveSummary};
 use neoffse::io::discovery::{Environment, Origin, SaveFolder, SteamGame, discover};
+use neoffse::io::error::IoError;
 use neoffse::io::files;
 use neoffse::pr::games::{GAMES, PrGame};
 use neoffse::pr::slots::slot_for_name;
@@ -32,7 +33,7 @@ pub fn scan_home(registry: &Registry, environment: &Environment) -> HomeData {
         .collect();
     let discovery = discover(environment, &steam);
 
-    let mut skipped = discovery.skipped.len();
+    let skipped = discovery.skipped.len();
     let mut next_key = 0_i32;
     let mut games = Vec::with_capacity(table.len());
     for (game, row) in table {
@@ -41,8 +42,9 @@ pub fn scan_home(registry: &Registry, environment: &Environment) -> HomeData {
         let owned = !found.is_empty() || discovery.installs.iter().any(|install| install.game == row.id);
         let mut folders = Vec::with_capacity(found.len());
         for folder in found {
-            let (mut slots, lost) = folder_slots(registry, game, supported, folder);
-            skipped += lost;
+            let listing = folder_slots(registry, game, supported, folder);
+            let listed = listing.is_some();
+            let mut slots = listing.unwrap_or_default();
             slots.sort_by(compare_slots);
             for slot in &mut slots {
                 slot.key = next_key;
@@ -51,6 +53,7 @@ pub fn scan_home(registry: &Registry, environment: &Environment) -> HomeData {
             folders.push(FolderData {
                 origin: origin_of(&folder.origin),
                 dir: folder.path.clone(),
+                listed,
                 slots,
             });
         }
@@ -72,9 +75,9 @@ fn origin_of(origin: &Origin) -> FolderOrigin {
     }
 }
 
-/// The slots of one folder, with the count of places that could not be read.
+/// The slots of one folder, or `None` when the folder could not be listed.
 /// The keys are not set yet.
-fn folder_slots(registry: &Registry, game: Game, supported: bool, folder: &SaveFolder) -> (Vec<SlotData>, usize) {
+fn folder_slots(registry: &Registry, game: Game, supported: bool, folder: &SaveFolder) -> Option<Vec<SlotData>> {
     if supported {
         supported_slots(registry, game, folder)
     } else {
@@ -83,13 +86,14 @@ fn folder_slots(registry: &Registry, game: Game, supported: bool, folder: &SaveF
 }
 
 /// A game with a format: the registry claims the files, and each claimed file
-/// opens once to read its summary.
-fn supported_slots(registry: &Registry, game: Game, folder: &SaveFolder) -> (Vec<SlotData>, usize) {
-    let Ok(scan) = registry.scan(&folder.path, Some(game)) else {
-        return (Vec::new(), 1);
-    };
-    let skipped = scan.unreadable.len() + scan.non_utf8;
-    let slots = scan
+/// opens once to read its summary. A file named like a slot that the scan
+/// could not read stays in the list as an unreadable slot. Any other
+/// unreadable file and any non-UTF-8 name can never be a slot, so they hide
+/// no save and leave no trace. `None` when the folder cannot be listed.
+fn supported_slots(registry: &Registry, game: Game, folder: &SaveFolder) -> Option<Vec<SlotData>> {
+    // The failed listing becomes `FolderData::listed == false`, which the folder shows; the cause stays out of the UI.
+    let scan = registry.scan(&folder.path, Some(game)).ok()?;
+    let mut slots: Vec<SlotData> = scan
         .saves
         .into_iter()
         .map(|found| {
@@ -111,16 +115,36 @@ fn supported_slots(registry: &Registry, game: Game, folder: &SaveFolder) -> (Vec
             }
         })
         .collect();
-    (slots, skipped)
+    slots.extend(scan.unreadable.iter().filter_map(unreadable_slot));
+    Some(slots)
+}
+
+/// The row of a file the scan could not read, when its name is a slot name.
+/// The click opens it again and reports the cause.
+fn unreadable_slot(error: &IoError) -> Option<SlotData> {
+    // The scan builds each entry as an `Io` error on the file's own path; any other shape names no file.
+    let IoError::Io { path, .. } = error else {
+        return None;
+    };
+    let name = path.file_name()?.to_str()?;
+    slot_for_name(name)?;
+    let (kind, number) = slot_kind_of(None, name);
+    Some(SlotData {
+        key: 0,
+        name: name.to_owned(),
+        kind,
+        number,
+        summary: None,
+        unreadable: true,
+        openable: true,
+    })
 }
 
 /// A game with no format: the file name alone tells a slot. The listing reads
-/// no byte of any file.
-fn named_slots(folder: &SaveFolder) -> (Vec<SlotData>, usize) {
-    let Ok(listing) = files::list(&folder.path, 0) else {
-        return (Vec::new(), 1);
-    };
-    let skipped = listing.unreadable.len() + listing.non_utf8;
+/// no byte of any file. `None` when the folder cannot be listed.
+fn named_slots(folder: &SaveFolder) -> Option<Vec<SlotData>> {
+    // The failed listing becomes `FolderData::listed == false`, which the folder shows; the cause stays out of the UI.
+    let listing = files::list(&folder.path, 0).ok()?;
     let slots = listing
         .files
         .into_iter()
@@ -138,7 +162,7 @@ fn named_slots(folder: &SaveFolder) -> (Vec<SlotData>, usize) {
             })
         })
         .collect();
-    (slots, skipped)
+    Some(slots)
 }
 
 /// The single rule for a slot's kind and number, shared by the Home rows and
