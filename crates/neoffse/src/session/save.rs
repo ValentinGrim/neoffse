@@ -121,8 +121,7 @@ impl Session {
         };
         let backup = backup::create_with(ops, data, &request, now).map_err(|source| Error::Io { source })?;
 
-        for name in &names {
-            let Some(bytes) = written.get(name) else { continue };
+        for (name, bytes) in written.iter() {
             let hook = |temp: &Path| -> Result<(), Box<dyn StdError + Send + Sync>> {
                 let on_disk = fs::read(temp)?;
                 let files = replace_file(&encoded, name, on_disk)?;

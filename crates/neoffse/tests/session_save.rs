@@ -9,6 +9,7 @@ use std::fs;
 use common::{assert_gil_only_change, data_dir, gil, gil_value, level, moment, no_process, open_session, set, slot_name};
 use neoffse::io::atomic::RealFileOps;
 use neoffse::io::backup;
+use neoffse::io::error::{IoError, Operation};
 use neoffse::pr::games::GAMES;
 use neoffse::{Error, Registry, Running};
 
@@ -137,7 +138,10 @@ fn a_file_changed_on_disk_refuses_the_save() {
     let (dir, mut session) = open_session();
     let (data_root, data) = data_dir();
     let name = slot_name(2);
-    fs::write(dir.path().join(name), b"written by another program").unwrap();
+    let mut other = fs::read(dir.path().join(name)).unwrap();
+    let middle = other.len() / 2;
+    other[middle] ^= 0x01;
+    fs::write(dir.path().join(name), &other).unwrap();
     let start = gil_value(&mut session);
     session.edit(&set(&gil(), start + 1)).unwrap();
 
@@ -146,7 +150,7 @@ fn a_file_changed_on_disk_refuses_the_save() {
         panic!("expected ChangedOnDisk, got {error:?}")
     };
     assert_eq!(reported, name);
-    assert_eq!(fs::read(dir.path().join(name)).unwrap(), b"written by another program");
+    assert_eq!(fs::read(dir.path().join(name)).unwrap(), other);
     assert_eq!(fs::read_dir(data_root.path()).unwrap().count(), 0);
     assert!(session.is_dirty());
 }
@@ -154,12 +158,26 @@ fn a_file_changed_on_disk_refuses_the_save() {
 #[test]
 fn a_file_deleted_on_disk_is_an_io_error() {
     let (dir, mut session) = open_session();
-    let (_data_root, data) = data_dir();
+    let (data_root, data) = data_dir();
     fs::remove_file(dir.path().join(slot_name(2))).unwrap();
     let start = gil_value(&mut session);
     session.edit(&set(&gil(), start + 1)).unwrap();
     let error = session.save_with(&RealFileOps, no_process, moment(), &data, Running::Allow).unwrap_err();
-    assert!(matches!(error, Error::Io { .. }), "expected Io, got {error:?}");
+    // The re-read of the file the session loaded fails first: a backup copy
+    // would report `Operation::Copy`.
+    assert!(
+        matches!(
+            error,
+            Error::Io {
+                source: IoError::Io {
+                    operation: Operation::Read,
+                    ..
+                }
+            }
+        ),
+        "expected an Io error on read, got {error:?}"
+    );
+    assert_eq!(fs::read_dir(data_root.path()).unwrap().count(), 0);
     assert!(session.is_dirty());
 }
 

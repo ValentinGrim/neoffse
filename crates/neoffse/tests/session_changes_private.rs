@@ -1,17 +1,16 @@
 //! `Session::changes` on the owner's FF I saves (`NEOFFSE_SAVES`, read
 //! only; the test edits in memory and never saves). The test skips when the
-//! folder is absent and prints slot labels and durations, never file names
-//! or values.
+//! folder holds no slot file and prints slot positions and durations, never
+//! file names or values.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
 mod common;
 
 use std::time::Instant;
 
-use common::{gil, gil_value, set};
+use common::{gil, gil_value, must, must_some, private_slot_paths, set};
 use neoffse::core::Game;
 use neoffse::data::Language;
-use neoffse::pr::slots::SLOT_FILES;
 use neoffse::{ChangeKind, Registry};
 
 #[allow(
@@ -24,34 +23,24 @@ fn report(slot: &str, milliseconds: f64) {
 
 #[test]
 fn a_gil_edit_shows_one_change_on_every_private_slot() {
-    let Some(paths) = neoffse_testkit::private_saves("ff1") else { return };
-    let Some(dir) = paths.first().and_then(|path| path.parent()) else { return };
+    let Some(slots) = private_slot_paths() else { return };
+    let dir = must_some(slots.first().and_then(|(_, path)| path.parent()), "a slot file has a folder");
     let registry = Registry::new(Language::En);
 
-    for path in &paths {
-        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-            continue;
-        };
-        if !SLOT_FILES.iter().any(|file| file.name == name) {
-            continue;
-        }
-        let mut session = registry.open(dir, name, Some(Game::Ff1Pr)).unwrap();
-        let slot = format!("{:?}", session.summary().unwrap().slot);
+    for (index, (name, _)) in slots.iter().enumerate() {
+        let mut session = must(registry.open(dir, name, Some(Game::Ff1Pr)), "open a private slot");
         let before = gil_value(&mut session);
         let next = if before > 0 { before - 1 } else { 1 };
-        session.edit(&set(&gil(), next)).unwrap();
+        must(session.edit(&set(&gil(), next)), "edit the gil");
 
         let started = Instant::now();
-        let changes = session.changes(Language::En).unwrap();
-        report(&slot, started.elapsed().as_secs_f64() * 1000.0);
-        assert_eq!(changes.len(), 1, "slot {slot} must show one change");
-        assert!(matches!(changes[0].kind, ChangeKind::Field { .. }), "slot {slot} must show a field change");
+        let changes = must(session.changes(Language::En), "list the changes");
+        report(&index.to_string(), started.elapsed().as_secs_f64() * 1000.0);
+        assert!(changes.len() == 1, "slot {index} must show one change");
+        assert!(matches!(changes[0].kind, ChangeKind::Field { .. }), "slot {index} must show a field change");
 
-        assert!(session.undo().unwrap());
-        assert_eq!(
-            session.changes(Language::En).unwrap(),
-            Vec::<neoffse::Change>::new(),
-            "slot {slot} must show none after the undo"
-        );
+        assert!(must(session.undo(), "undo the gil edit"), "slot {index} must undo");
+        let remaining = must(session.changes(Language::En), "list the changes after the undo");
+        assert!(remaining.is_empty(), "slot {index} must show no change after the undo");
     }
 }

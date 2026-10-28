@@ -269,6 +269,8 @@ impl Session {
     /// [`Error::Format`] when the format refuses the bytes. The session is
     /// unchanged then.
     pub fn discard(&mut self) -> Result<(), Error> {
+        // `original` holds bytes this format opened, or wrote after `verify` accepted them, so a
+        // failure is not expected. If it happens, the caller gets `Error::Format` and the session stays as it was.
         let document = self.format.open(&self.original).map_err(|source| Error::Format { source })?;
         self.document = document;
         self.undo.clear();

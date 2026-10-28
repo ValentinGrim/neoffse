@@ -10,11 +10,13 @@ use std::io;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
-use common::{data_dir, gil, gil_value, moment, no_process, open_session, set, slot_name};
+use common::{data_dir, folder_with, gil, gil_value, moment, no_process, open_session, set, slot_name};
+use neoffse::core::{Edit, Value};
 use neoffse::io::atomic::{FileOps, RealFileOps};
 use neoffse::io::backup;
 use neoffse::io::error::{IoError, Operation};
-use neoffse::{Error, Running, Session};
+use neoffse::pr::container::{self, Container, MAX_PAYLOAD_LEN};
+use neoffse::{Error, Registry, Running, Session};
 use tempfile::TempDir;
 
 #[derive(Debug, Clone, Copy)]
@@ -157,4 +159,37 @@ fn a_session_saves_again_after_a_failed_save() {
     let (_data_root, data) = data_dir();
     outcome.session.save_with(&RealFileOps, no_process, moment(), &data, Running::Allow).unwrap();
     assert!(!outcome.session.is_dirty());
+}
+
+/// The synthetic slot with its `pictureData` string padded until the JSON is
+/// exactly `MAX_PAYLOAD_LEN` bytes: it still opens, and any longer edit
+/// makes the encoder refuse the payload.
+fn slot_at_the_payload_limit() -> Vec<u8> {
+    const PICTURE: &str = "UE5HLWludmVudGVk";
+    let json = String::from_utf8(neoffse_testkit::read_fixture("pr/ff1-slot.json").unwrap()).unwrap();
+    let marker = format!("\"pictureData\":\"{PICTURE}\"");
+    assert!(json.contains(&marker));
+    let pad = MAX_PAYLOAD_LEN - json.len() + PICTURE.len();
+    let padded = json.replace(&marker, &format!("\"pictureData\":\"{}\"", "A".repeat(pad)));
+    assert_eq!(padded.len(), MAX_PAYLOAD_LEN);
+    container::encode(&padded, &Container::game()).unwrap()
+}
+
+#[test]
+fn an_encode_failure_takes_no_backup() {
+    let bytes = slot_at_the_payload_limit();
+    let name = slot_name(2);
+    let dir = folder_with(&[(name, &bytes)]);
+    let (data_root, data) = data_dir();
+    let mut session = Registry::new(neoffse::data::Language::En).open(dir.path(), name, None).unwrap();
+    let start = gil_value(&mut session);
+    let longer = Edit::set(gil(), Value::Int(start * 1000 + 999));
+    session.edit_expert(&longer).unwrap();
+
+    let error = session.save_with(&RealFileOps, no_process, moment(), &data, Running::Allow).unwrap_err();
+
+    assert!(matches!(error, Error::Format { .. }), "expected Format, got {error:?}");
+    assert_eq!(fs::read(dir.path().join(name)).unwrap(), bytes);
+    assert_eq!(fs::read_dir(data_root.path()).unwrap().count(), 0, "an encode failure took a backup");
+    assert!(session.is_dirty());
 }
