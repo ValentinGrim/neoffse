@@ -41,11 +41,12 @@ pub fn problem_notice(problem: EditProblem, label: &str) -> EditNotice {
 }
 
 /// The info notice for `levels` grown levels: `EditProblem::StatsRaised`,
-/// `value` the decimal count, no other number.
+/// `count` the number of levels (saturated at `i32::MAX`, the largest a Slint
+/// `int` holds), no other number.
 #[must_use]
 pub fn growth_notice(levels: u32) -> EditNotice {
     EditNotice {
-        value: levels.to_string().into(),
+        count: i32::try_from(levels).unwrap_or(i32::MAX),
         ..problem_notice(EditProblem::StatsRaised, "")
     }
 }

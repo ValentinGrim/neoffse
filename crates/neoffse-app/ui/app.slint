@@ -24,11 +24,14 @@ export { Fonts }
 export { FrameStyle, Look, Shell, Theme, ThemeId }
 export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types/home.slint";
 
+// The facts of a font credit. The sentence is written in `AboutDialog`.
+export struct FontCredit { family: string, author: string, license: string }
+
 export component AboutDialog inherits Dialog {
     in property <string> app-version;
     in property <string> license;
-    in property <string> font-credit;
-    in property <string> ui-font-credit;
+    in property <FontCredit> font-credit;
+    in property <FontCredit> ui-font-credit;
     callback dismiss();
 
     title: @tr("About NeoFFSE");
@@ -53,11 +56,11 @@ export component AboutDialog inherits Dialog {
             horizontal-alignment: center;
         }
         Text {
-            text: root.font-credit;
+            text: @tr("{} by {}, {}", root.font-credit.family, root.font-credit.author, root.font-credit.license);
             horizontal-alignment: center;
         }
         Text {
-            text: root.ui-font-credit;
+            text: @tr("{} by {}, {}", root.ui-font-credit.family, root.ui-font-credit.author, root.ui-font-credit.license);
             horizontal-alignment: center;
         }
         AboutSlint { }

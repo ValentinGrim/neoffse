@@ -8,7 +8,7 @@ mod common;
 use common::{Part, Site, Ui, editing_site, field, open_editor};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use neoffse_app::editor::{growth_notice, levels_gained};
-use neoffse_app::{CharacterCard, EditProblem, Overview};
+use neoffse_app::{CharacterCard, EditNotice, EditProblem, Overview};
 use slint::{ModelRc, VecModel};
 
 fn overview_of(present: bool, cards: &[(i32, &str)]) -> Overview {
@@ -63,10 +63,16 @@ fn levels_gained_near_the_top_does_not_overflow() {
 fn growth_notice_carries_only_the_count() {
     let notice = growth_notice(3);
     assert_eq!(notice.problem, EditProblem::StatsRaised);
-    assert_eq!(notice.value, "3");
-    for text in [&notice.label, &notice.min, &notice.max, &notice.cap] {
+    assert_eq!(notice.count, 3);
+    for text in [&notice.value, &notice.label, &notice.min, &notice.max, &notice.cap] {
         assert_eq!(text, "");
     }
+}
+
+#[test]
+fn growth_notice_count_saturates() {
+    assert_eq!(growth_notice(u32::MAX).count, i32::MAX);
+    assert_eq!(growth_notice(0).count, 0);
 }
 
 fn text_of(ui: &Ui, label: &str) -> String {
@@ -83,11 +89,12 @@ fn opened(site: &Site) -> Ui {
     open_editor(site)
 }
 
-fn expect_raised(ui: &Ui, count: &str) {
+fn expect_raised(ui: &Ui, count: i32) {
     let bridge = ui.bridge();
     assert!(bridge.get_has_notice());
     assert_eq!(bridge.get_notice().problem, EditProblem::StatsRaised);
-    assert_eq!(bridge.get_notice().value, count);
+    assert_eq!(bridge.get_notice().count, count);
+    assert_eq!(bridge.get_notice().value, "");
     assert!(!bridge.get_offer_expert());
 }
 
@@ -96,7 +103,7 @@ fn a_level_commit_shows_the_info_notice() {
     let site = editing_site();
     let ui = opened(&site);
     commit(&ui, "Level", "34");
-    expect_raised(&ui, "3");
+    expect_raised(&ui, 3);
     assert_eq!(text_of(&ui, "Level"), "34");
     assert_eq!(text_of(&ui, "Accuracy gain"), "155");
     assert_eq!(text_of(&ui, "Magic evasion gain"), "142");
@@ -109,7 +116,7 @@ fn an_experience_commit_that_raises_the_level_shows_it() {
     let site = editing_site();
     let ui = opened(&site);
     commit(&ui, "Experience", "130000");
-    expect_raised(&ui, "3");
+    expect_raised(&ui, 3);
     assert_eq!(text_of(&ui, "Level"), "34");
     assert_eq!(text_of(&ui, "Accuracy gain"), "155");
 }
@@ -119,7 +126,7 @@ fn one_level_reads_as_one() {
     let site = editing_site();
     let ui = opened(&site);
     commit(&ui, "Level", "32");
-    expect_raised(&ui, "1");
+    expect_raised(&ui, 1);
 }
 
 #[test]
@@ -187,5 +194,35 @@ fn the_sentence_is_drawn() {
     assert!(sentence_shown(
         &ui,
         "Stats raised for 1 level with a random draw, like the game. Undo to cancel."
+    ));
+}
+
+/// Shows a hand-built stats-raised notice and reports whether `sentence` is drawn.
+fn shows_for(ui: &Ui, count: i32, value: &str, sentence: &str) -> bool {
+    ui.bridge().set_notice(EditNotice {
+        problem: EditProblem::StatsRaised,
+        count,
+        value: value.into(),
+        ..EditNotice::default()
+    });
+    ui.bridge().set_has_notice(true);
+    sentence_shown(ui, sentence)
+}
+
+#[test]
+fn the_sentence_follows_count_not_value() {
+    let site = editing_site();
+    let ui = opened(&site);
+    assert!(shows_for(
+        &ui,
+        1,
+        "9",
+        "Stats raised for 1 level with a random draw, like the game. Undo to cancel."
+    ));
+    assert!(shows_for(
+        &ui,
+        2,
+        "1",
+        "Stats raised for 2 levels with a random draw, like the game. Undo to cancel."
     ));
 }

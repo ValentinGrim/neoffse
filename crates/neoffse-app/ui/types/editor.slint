@@ -17,7 +17,8 @@ export struct ReviewRow { kind: ReviewKind, entity: string, label: string, befor
 // `name` is "" when the table gives none.
 export struct PickerEntry { id: int, name: string }
 
-// The numbers are decimal strings; "" when the problem has none.
+// The numbers are decimal strings; "" when the problem has none. `count` is
+// the one number sent as an integer.
 export struct EditNotice {
     problem: EditProblem,
     // The field, or the item, the edit named.
@@ -26,6 +27,8 @@ export struct EditNotice {
     min: string,
     max: string,
     cap: string,
+    // The number a plural sentence depends on; 0 when the problem has none.
+    count: int,
 }
 
 export struct FieldRow {
@@ -90,4 +93,11 @@ export struct CharacterCard {
 }
 
 // `present` is false for a game with no card builder. `gil` is "" when absent.
-export struct Overview { present: bool, cards: [CharacterCard], gil: string }
+export struct Overview {
+    present: bool,
+    cards: [CharacterCard],
+    // Entry `p` is the position in `cards` of the card that opens page `p`, -1
+    // when no card does.
+    card-of-page: [int],
+    gil: string,
+}
