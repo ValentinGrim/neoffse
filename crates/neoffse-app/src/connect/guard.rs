@@ -16,7 +16,9 @@ use crate::{AboutDialog, App, EditorBridge, MainWindow, RestoreBridge};
 ///
 /// Expert mode starts off and resets when a save closes. Turning it on goes
 /// through a warning; turning it off does not. The discard dialog answers the
-/// leave request the Back button or [`connect_close`] raised.
+/// leave request the Back button or [`connect_close`] raised. Discard and
+/// Review & save do nothing while a save, a reload or a restore runs; Cancel
+/// stays live.
 pub fn connect_expert(window: &MainWindow, app: &App) {
     let bridge = window.global::<EditorBridge>();
     let weak = window.as_weak();
@@ -61,6 +63,9 @@ pub fn connect_expert(window: &MainWindow, app: &App) {
         let (weak, app) = (weak.clone(), app.clone());
         move || {
             let Some(window) = weak.upgrade() else { return };
+            if worker_runs(&window) {
+                return;
+            }
             if let Some(why) = app.editor.confirm_discard() {
                 finish_leave(&window, &app, why);
             } else {
@@ -78,6 +83,12 @@ pub fn connect_expert(window: &MainWindow, app: &App) {
             }
         }
     });
+}
+
+/// Whether a save, a reload or a restore runs on a worker, which holds the
+/// session lock or replaces the file.
+pub(crate) fn worker_runs(window: &MainWindow) -> bool {
+    window.global::<EditorBridge>().get_working() || window.global::<RestoreBridge>().get_working()
 }
 
 /// Completes a leave: closes the discard dialog, then goes Home (Back),
@@ -112,17 +123,15 @@ pub(crate) fn finish_leave(window: &MainWindow, app: &App, why: Leave) {
 /// `Window::on_close_requested` keeps one handler, and this one hides the
 /// About dialog itself when the close goes through. A clean session or none
 /// at all closes at once. A dirty one keeps the window shown and opens the
-/// discard dialog. While a save, a reload or a restore runs (`working`), the
-/// window stays shown with no dialog: a save worker holds the session lock,
-/// which the leave request would wait on, and a process that exits in the
-/// middle of a restore leaves a partial one.
+/// discard dialog. While a dialog other than the discard dialog is open, or a
+/// save, a reload or a restore runs, the window stays shown with no dialog
+/// and nothing changes: the discard question would stack under that dialog,
+/// its buttons would act on a session a worker holds, and a process that
+/// exits in the middle of a restore leaves a partial one.
 pub fn connect_close(window: &MainWindow, about: &AboutDialog, app: &App) {
     let (weak, about, app) = (window.as_weak(), about.as_weak(), app.clone());
     window.window().on_close_requested(move || {
-        if weak
-            .upgrade()
-            .is_some_and(|window| window.global::<EditorBridge>().get_working() || window.global::<RestoreBridge>().get_working())
-        {
+        if weak.upgrade().is_some_and(|window| window.global::<RestoreBridge>().get_vetoes_close()) {
             return CloseRequestResponse::KeepWindowShown;
         }
         let left = app.editor.leave(Leave::Close) == LeaveAnswer::Left;

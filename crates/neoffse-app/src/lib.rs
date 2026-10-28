@@ -146,8 +146,8 @@ pub fn connect_about(main_window: &MainWindow, about: &AboutDialog) {
 
 /// Sends the close request of the window's close button when the user picks
 /// File > Quit, so the handler [`connect_close`] installs decides: a dirty
-/// session gets the discard question, a running save, reload or restore vetoes,
-/// and a clean session closes and hides About.
+/// session gets the discard question, a dialog over the page or a running save,
+/// reload or restore vetoes, and a clean session closes and hides About.
 ///
 /// The window looks the handler up when the request fires, so the order of
 /// `connect_quit` and `connect_close` does not matter.
