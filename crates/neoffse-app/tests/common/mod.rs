@@ -13,6 +13,7 @@ mod manual;
 mod open;
 mod restoring;
 mod rig;
+mod saving;
 mod site;
 mod slots;
 mod window;
@@ -28,13 +29,17 @@ use slint::{Model, ModelRc};
 pub(crate) use backups::{T0, listing, make_backup, rewrite_manifest};
 pub(crate) use bridge::open_editor;
 pub(crate) use editor::{
-    Editing, FakeLocks, Part, all_fields, count_of, editing, editing_site, field, fields, item_label, list, lists, page, pages, row_of, rows, section,
+    Editing, FakeLocks, Part, all_fields, count_of, editing, editing_site, field, fields, item_label, list, lists, page, pages, review_row, row_of, rows,
+    section, spare_weapon,
 };
-pub(crate) use geometry::{Card, Rect, SLACK, resize, visible_cards};
+pub(crate) use geometry::{
+    BAND, Card, Rect, SLACK, assert_size, bands_of, cards_ui, first_element, first_rect, font_body, logical, rects, resize, row_height, texts_of, visible_cards,
+};
 pub(crate) use manual::Manual;
-pub(crate) use open::{FixedPicker, Flow, Outcomes};
+pub(crate) use open::{FixedPicker, Flow, Outcomes, PrivateSlot, private_slot_copies};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
-pub(crate) use rig::{Machine, Rig, closeable_rig, rig};
+pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe};
+pub(crate) use saving::{Saving, saving};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
 pub(crate) use window::Ui;

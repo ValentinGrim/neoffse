@@ -5,30 +5,20 @@
 
 mod common;
 
-use std::fs;
-
-use common::{assert_gil_only_change, data_dir, gil, gil_value, moment, no_process, set};
+use common::{assert_gil_only_change, data_dir, gil, gil_value, moment, no_process, private_slot_copies, set};
 use neoffse::core::Game;
 use neoffse::data::Language;
 use neoffse::io::atomic::RealFileOps;
-use neoffse::pr::slots::SLOT_FILES;
 use neoffse::{Registry, Running};
 
 #[test]
 fn a_gil_edit_saves_on_every_private_slot_copy() {
-    let Some(paths) = neoffse_testkit::private_saves("ff1") else { return };
+    let Some(copies) = private_slot_copies() else { return };
     let registry = Registry::new(Language::En);
     let (_data_root, data) = data_dir();
 
-    for path in &paths {
-        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-            continue;
-        };
-        if !SLOT_FILES.iter().any(|file| file.name == name) {
-            continue;
-        }
-        let copy = tempfile::tempdir().unwrap();
-        fs::copy(path, copy.path().join(name)).unwrap();
+    for (name, copy) in &copies {
+        let name = name.as_str();
         let mut session = registry.open(copy.path(), name, Some(Game::Ff1Pr)).unwrap();
         let slot = session.summary().unwrap().slot;
         let before = gil_value(&mut session);

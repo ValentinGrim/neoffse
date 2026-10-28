@@ -10,7 +10,7 @@ mod common;
 use std::fmt;
 use std::sync::Arc;
 
-use common::{Card, Rect, SLACK, Ui, editing_site, open_editor, resize, visible_cards};
+use common::{Card, Rect, SLACK, Ui, cards_ui, editing_site, open_editor, resize, visible_cards};
 use i_slint_backend_testing::ElementHandle;
 use neoffse_app::{ProviderChain, Theme, refresh_editor};
 use slint::ComponentHandle;
@@ -41,9 +41,7 @@ fn in_each_state(mut check: impl FnMut(&Ui, State)) {
     let ui = open_editor(&site);
     for notice in [false, true] {
         if notice {
-            ui.commit(ui.level().key, "34");
-            assert!(ui.bridge().get_has_notice());
-            assert_eq!(ui.bridge().get_pending_count(), 1);
+            ui.make_notice();
         } else {
             assert!(ElementHandle::find_by_element_type_name(&ui.window, "PendingBar").next().is_some());
             assert_eq!(ui.bridge().get_pending_count(), 0);
@@ -54,15 +52,6 @@ fn in_each_state(mut check: impl FnMut(&Ui, State)) {
             check(&ui, State { width, height, notice });
         }
     }
-}
-
-/// The editor on the cards at `width` by `height`, nothing pending.
-fn cards_ui(width: f32, height: f32) -> Ui {
-    let site = editing_site();
-    let ui = open_editor(&site);
-    resize(&ui, width, height);
-    assert!(ui.on_cards());
-    ui
 }
 
 fn panel(ui: &Ui) -> Rect {

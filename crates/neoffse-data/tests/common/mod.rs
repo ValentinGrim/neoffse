@@ -2,7 +2,7 @@
 #![allow(dead_code, reason = "each test file uses a different part of these helpers")]
 
 use neoffse_core::Game;
-use neoffse_data::{GameTables, Sources, tables_for};
+use neoffse_data::{DataError, GameTables, Sources, tables_for};
 
 /// The cached tables of FF I.
 pub(crate) fn ff1() -> &'static GameTables {
@@ -229,5 +229,34 @@ pub(crate) fn minimal() -> Sources<'static> {
         monsters: MONSTERS,
         bounds: BOUNDS,
         growth: GROWTH,
+    }
+}
+
+/// `GameTables::parse` over the minimal sources with `growth` replaced.
+pub(crate) fn parse_growth(growth: &str) -> Result<GameTables, DataError> {
+    GameTables::parse(Game::Ff1Pr, &Sources { growth, ..minimal() })
+}
+
+/// The file of the `Toml` error a failed parse raises.
+pub(crate) fn toml_file(result: Result<GameTables, DataError>) -> &'static str {
+    match result.unwrap_err() {
+        DataError::Toml { file, .. } => file,
+        other => panic!("expected a Toml error, got {other}"),
+    }
+}
+
+/// The file and id of the `IdOrder` error a failed parse raises.
+pub(crate) fn id_order(result: Result<GameTables, DataError>) -> (&'static str, u32) {
+    match result.unwrap_err() {
+        DataError::IdOrder { file, id } => (file, id),
+        other => panic!("expected an IdOrder error, got {other}"),
+    }
+}
+
+/// The file, row and rule of the `Rule` error a failed parse raises.
+pub(crate) fn rule(result: Result<GameTables, DataError>) -> (&'static str, String, &'static str) {
+    match result.unwrap_err() {
+        DataError::Rule { file, row, rule } => (file, row, rule),
+        other => panic!("expected a Rule error, got {other}"),
     }
 }

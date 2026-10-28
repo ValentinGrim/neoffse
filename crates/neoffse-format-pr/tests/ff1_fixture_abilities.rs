@@ -5,6 +5,7 @@
 
 mod common;
 
+use common::character_path;
 use common::ff1_ability_rules::ability_violations;
 use common::ff1_save::SlotData;
 use common::json_tree::Tree;
@@ -15,17 +16,7 @@ const CHARACTER: usize = 2;
 /// The path to the document `list` of the character that holds spells
 /// (index 2), then `rest`.
 fn path<'a>(list: &'a str, rest: &[Segment<'a>]) -> Vec<Segment<'a>> {
-    let mut path = vec![
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(CHARACTER),
-        Segment::Doc,
-        Segment::Key(list),
-        Segment::Doc,
-    ];
+    let mut path = character_path(CHARACTER, &[Segment::Doc, Segment::Key(list), Segment::Doc]);
     path.extend_from_slice(rest);
     path
 }

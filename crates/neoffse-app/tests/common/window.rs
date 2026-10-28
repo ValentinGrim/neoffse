@@ -11,6 +11,7 @@ use neoffse_app::{
 };
 
 use slint::ComponentHandle;
+use slint::platform::WindowEvent;
 
 use super::{FixedPicker, Manual, Site, environment, items, registry, slots_of};
 
@@ -77,5 +78,18 @@ impl Ui {
     /// The slots of the first game row.
     pub(crate) fn first_slots(&self) -> Vec<SlotRow> {
         slots_of(&self.rows()[0])
+    }
+
+    /// Clicks the first slot of the first game and runs the open to the end.
+    pub(crate) fn open_first_slot(&self) {
+        let key = self.first_slots()[0].key;
+        self.window.invoke_slot_clicked(key);
+        self.manual.run_all();
+        assert!(self.window.get_editor_open(), "the save opens");
+    }
+
+    /// The window manager's close request, as the close button sends it.
+    pub(crate) fn request_close(&self) {
+        self.window.window().dispatch_event(WindowEvent::CloseRequested);
     }
 }

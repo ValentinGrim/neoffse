@@ -131,9 +131,7 @@ fn the_redo_chord_the_box_ignores_reaches_the_page() {
 fn a_dialog_swallows_the_shortcuts() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.make_dirty();
-    ui.window.invoke_back_requested();
-    assert!(ui.bridge().get_discard_dialog_open());
+    ui.ask_discard();
 
     ui.chord(&[Key::Control], "z");
 

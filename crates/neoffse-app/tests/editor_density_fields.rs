@@ -7,10 +7,9 @@
 
 mod common;
 
-use common::{Part, Rect, SLACK, Ui, editing_site, lists, open_editor, resize, rows, section};
+use common::{Part, Rect, SLACK, Ui, editing_site, first_rect, font_body, lists, open_editor, rects, resize, row_height, rows, section};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use neoffse_app::{EditorCommand, Theme};
-use slint::ComponentHandle;
+use neoffse_app::EditorCommand;
 
 const SMALL: (f32, f32) = (800.0, 600.0);
 const LARGE: (f32, f32) = (1280.0, 800.0);
@@ -22,24 +21,6 @@ fn page_ui(command: EditorCommand, character: i32, window: (f32, f32)) -> Ui {
     ui.navigate(command, character);
     resize(&ui, window.0, window.1);
     ui
-}
-
-fn rects(ui: &Ui, type_name: &str) -> Vec<Rect> {
-    ElementHandle::find_by_element_type_name(&ui.window, type_name)
-        .map(|element| Rect::of(&element))
-        .collect()
-}
-
-fn the_rect(ui: &Ui, type_name: &str) -> Rect {
-    *rects(ui, type_name).first().unwrap_or_else(|| panic!("no element of type {type_name}"))
-}
-
-fn row_height(ui: &Ui) -> f32 {
-    ui.window.global::<Theme>().get_look().row_height
-}
-
-fn font_body(ui: &Ui) -> f32 {
-    ui.window.global::<Theme>().get_look().font_body
 }
 
 /// The width of the box labelled `label`: its `CommitEdit`, which holds the
@@ -101,7 +82,7 @@ fn no_two_rows_overlap_on_the_character_page() {
     let ui = page_ui(EditorCommand::Party, 0, LARGE);
     for (width, height) in [LARGE, SMALL] {
         resize(&ui, width, height);
-        let list = the_rect(&ui, "FieldList");
+        let list = first_rect(&ui, "FieldList");
         let mut lines = rects(&ui, "FieldLine");
         assert!(lines.len() >= 5, "{width}x{height}: {} rows", lines.len());
         lines.sort_by(|a, b| a.y.total_cmp(&b.y));
@@ -124,7 +105,7 @@ fn no_two_rows_overlap_on_the_character_page() {
 
 /// The `FieldLine` rows that lie whole inside the `FieldList`.
 fn rows_shown(ui: &Ui) -> usize {
-    let list = the_rect(ui, "FieldList");
+    let list = first_rect(ui, "FieldList");
     rects(ui, "FieldLine").iter().filter(|line| list.holds(line)).count()
 }
 
@@ -148,9 +129,7 @@ fn more_fields_fit_on_the_character_page() {
 #[test]
 fn the_notice_and_a_pending_change_keep_eight_rows_at_800() {
     let ui = page_ui(EditorCommand::Party, 0, SMALL);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.pending(), 1);
+    ui.make_notice();
     let shown = rows_shown(&ui);
     assert!(shown >= 8, "800x600 with the notice and a pending change: {shown} rows fit, 8 expected");
 }
@@ -167,7 +146,7 @@ fn the_items_rows_fit_at_800() {
     let mut remove_widths: Vec<Vec<f32>> = Vec::new();
     for (width, height) in [SMALL, LARGE] {
         resize(&ui, width, height);
-        let page = the_rect(&ui, "InventoryPage");
+        let page = first_rect(&ui, "InventoryPage");
         let lines: Vec<ElementHandle> = ElementHandle::find_by_element_type_name(&ui.window, "ItemLine").collect();
         assert!(!lines.is_empty());
         let mut whole = 0;
@@ -224,7 +203,7 @@ fn the_items_rows_fit_at_800() {
 #[test]
 fn the_magic_buttons_fit_at_800() {
     let ui = page_ui(EditorCommand::Magic, -1, SMALL);
-    let page = the_rect(&ui, "CharacterPage");
+    let page = first_rect(&ui, "CharacterPage");
     let buttons: Vec<Rect> = ElementHandle::find_by_element_type_name(&ui.window, "CharacterPage")
         .flat_map(|page| page.query_descendants().match_accessible_role(AccessibleRole::Button).find_all())
         .map(|button| Rect::of(&button))

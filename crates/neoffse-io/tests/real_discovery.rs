@@ -7,12 +7,14 @@
 //! kinds only: paths, `SteamID64` values and file names are personal data.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
 use std::fs;
 use std::path::Path;
 
 use neoffse_format_pr::container::decode;
 use neoffse_format_pr::games::GAMES;
-use neoffse_io::discovery::{Environment, Origin, SaveFolder, SteamGame, discover};
+use neoffse_io::discovery::{Environment, Origin, SaveFolder, discover};
 
 /// A real save is a few hundred KiB; a larger file is not one.
 const MAX_FILE_LEN: u64 = 64 * 1024 * 1024;
@@ -84,15 +86,7 @@ fn print_report(reports: &[GameReport], installs: usize, skipped: usize) {
 #[test]
 #[ignore = "reads the real Steam install of this machine"]
 fn discovery_finds_a_decodable_save_for_each_of_the_six_games() {
-    let games: Vec<SteamGame<'_>> = GAMES
-        .iter()
-        .map(|game| SteamGame {
-            id: game.id,
-            app_id: game.app_id,
-            folder: game.folder,
-        })
-        .collect();
-    let found = discover(&Environment::platform(), &games);
+    let found = discover(&Environment::platform(), &common::installs::games());
 
     let reports: Vec<GameReport> = GAMES.iter().map(|game| report_for(game.id, &found.folders)).collect();
     print_report(&reports, found.installs.len(), found.skipped.len());

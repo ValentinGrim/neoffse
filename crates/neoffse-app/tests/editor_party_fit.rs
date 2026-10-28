@@ -8,7 +8,7 @@
 
 mod common;
 
-use common::{Rect, SLACK, Ui, editing_site, open_editor, resize, visible_cards};
+use common::{Rect, SLACK, Ui, cards_ui, editing_site, open_editor, resize, visible_cards};
 use i_slint_backend_testing::ElementHandle;
 use neoffse_app::EditorCommand;
 
@@ -27,15 +27,6 @@ fn status_panel(ui: &Ui) -> Rect {
             .next()
             .expect("the status panel"),
     )
-}
-
-/// The editor on the cards at `width` by `height`.
-fn cards_ui(width: f32, height: f32) -> Ui {
-    let site = editing_site();
-    let ui = open_editor(&site);
-    resize(&ui, width, height);
-    assert!(ui.on_cards());
-    ui
 }
 
 #[test]
@@ -74,9 +65,7 @@ fn the_status_panel_ends_with_the_cards_at_800_by_600() {
 fn a_small_window_scrolls_the_cards_and_both_bottoms_line_up() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.commit(ui.level().key, "34");
-    assert!(ui.bridge().get_has_notice());
-    assert_eq!(ui.bridge().get_pending_count(), 1);
+    ui.make_notice();
     resize(&ui, 800.0, 600.0);
     assert!(ui.on_cards());
     let (panel, status) = bottoms(&ui);

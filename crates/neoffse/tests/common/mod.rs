@@ -51,6 +51,30 @@ pub(crate) fn open_session() -> (TempDir, neoffse::Session) {
     (dir, session)
 }
 
+/// Each FF I slot file of the private saves, copied under its own name into
+/// its own temporary folder. The folders delete the copies on drop. Returns
+/// `None` after reporting why when the saves hold no slot file, so the test
+/// returns early and says so.
+pub(crate) fn private_slot_copies() -> Option<Vec<(String, TempDir)>> {
+    let paths = neoffse_testkit::private_saves("ff1")?;
+    let copies: Vec<(String, TempDir)> = paths
+        .iter()
+        .filter_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            SLOT_FILES.iter().any(|file| file.name == name).then(|| {
+                let dir = tempfile::tempdir().unwrap();
+                fs::copy(path, dir.path().join(name)).unwrap();
+                (name.to_owned(), dir)
+            })
+        })
+        .collect();
+    if copies.is_empty() {
+        neoffse_testkit::skip("no FF I slot file in the private saves");
+        return None;
+    }
+    Some(copies)
+}
+
 /// A probe that finds no running game.
 pub(crate) fn no_process(_executables: &[&'static str]) -> Vec<&'static str> {
     Vec::new()

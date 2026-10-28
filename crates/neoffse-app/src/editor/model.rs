@@ -5,9 +5,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use neoffse::Session;
-use neoffse::core::{FieldId, RowId, TableKind};
+use neoffse::core::{EditError, FieldId, RowId, TableKind};
 use neoffse::data::Language;
 
+use super::edit::settle;
 use super::layout::{FieldSlot, Layout, Locks, build};
 use super::leave::Leave;
 use super::notice::problem_notice;
@@ -73,6 +74,11 @@ pub(super) fn not_editable() -> EditNotice {
 
 pub(super) fn lock_session(session: &Mutex<Session>) -> MutexGuard<'_, Session> {
     session.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// The item at `key`, `None` for a negative key or one past the end.
+pub(super) fn at<T: Clone>(items: &[T], key: i32) -> Option<T> {
+    usize::try_from(key).ok().and_then(|index| items.get(index).cloned())
 }
 
 impl EditorViewModel {
@@ -183,10 +189,7 @@ impl EditorViewModel {
     /// (`docs/formats/pixel-remaster.md#inventory`).
     #[must_use]
     pub fn list_entries(&self, list: i32, query: &str) -> Vec<PickerEntry> {
-        let kinds = usize::try_from(list)
-            .ok()
-            .and_then(|index| self.layout().lists.get(index).map(|meta| meta.key.tables.clone()))
-            .unwrap_or_default();
+        let kinds = at(&self.layout().lists, list).map(|meta| meta.key.tables).unwrap_or_default();
         self.entries(&kinds, query, true)
     }
 
@@ -208,7 +211,22 @@ impl EditorViewModel {
     }
 
     pub(super) fn field_slot(&self, key: i32) -> Option<FieldSlot> {
-        usize::try_from(key).ok().and_then(|index| self.layout().fields.get(index).cloned())
+        at(&self.layout().fields, key)
+    }
+
+    /// Runs `step` on the open session, refused with not-editable while a save
+    /// runs (the worker holds the session lock) or with no session open. An
+    /// error from `step` settles into the notice, `label` naming the row.
+    pub(super) fn on_session<T>(&self, label: &str, step: impl FnOnce(&mut Session) -> Result<T, EditError>) -> Option<EditNotice> {
+        if self.is_saving() {
+            return Some(not_editable());
+        }
+        let Some(session) = self.shared.state.session() else {
+            return Some(not_editable());
+        };
+        let mut session = lock_session(&session);
+        let error = step(&mut session).err()?;
+        Some(settle(&mut session, &error, label))
     }
 
     fn entries(&self, kinds: &[TableKind], query: &str, skip_placeholders: bool) -> Vec<PickerEntry> {

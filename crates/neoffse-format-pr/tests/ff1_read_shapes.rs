@@ -4,28 +4,16 @@
 
 mod common;
 
+use common::character_path;
 use common::ff1_save::{SlotData, character_field};
 use neoffse_core::{EditError, FieldId};
 use neoffse_format_pr::document::{Document, DocumentError, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
-fn characters(index: usize, key: &'static str) -> [Segment<'static>; 8] {
-    [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(index),
-        Segment::Doc,
-        Segment::Key(key),
-    ]
-}
-
 /// The standard slot with the raw JSON `raw` at `key` of the first character.
 fn model_with(key: &'static str, raw: &str) -> Ff1Model {
     let mut document = Document::parse(&SlotData::standard().render()).unwrap();
-    document.set_raw(&characters(0, key), raw).unwrap();
+    document.set_raw(&character_path(0, &[Segment::Doc, Segment::Key(key)]), raw).unwrap();
     Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap())
 }
 

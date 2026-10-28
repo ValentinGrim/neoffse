@@ -13,13 +13,12 @@ use neoffse::Running;
 use neoffse::core::Game;
 use neoffse::io::backup::Backup;
 use neoffse::io::dirs::DataDir;
-use neoffse::pr::games::GAMES;
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{BackupRow, RestoreBridge, RestoreOutcome, RestoreViewModel};
 use slint::{ComponentHandle, Model};
 use tempfile::TempDir;
 
-use super::{Flow, ID_1, Outcomes, Site, T0, Ui, editing_site, items, listing, make_backup, open_editor, slot_bytes, slot_file, steam_folder};
+use super::{Flow, ID_1, Outcomes, Site, T0, Ui, editing_site, items, listing, make_backup, open_editor, scripted_probe, slot_bytes, slot_file, steam_folder};
 
 /// Where `done` ran, and with what.
 #[derive(Clone, Default)]
@@ -68,10 +67,7 @@ impl Restoring {
         let probes = Arc::new(AtomicUsize::new(0));
         let game_runs = Arc::new(AtomicBool::new(false));
         let (counter, runs) = (Arc::clone(&probes), Arc::clone(&game_runs));
-        vm.set_process_probe(move |_| {
-            counter.fetch_add(1, Ordering::SeqCst);
-            if runs.load(Ordering::SeqCst) { vec![GAMES[0].executable] } else { Vec::new() }
-        });
+        vm.set_process_probe(scripted_probe(counter, runs));
         let folder = steam_folder(&site, 0, ID_1);
         Self {
             site,
@@ -82,6 +78,14 @@ impl Restoring {
             probes,
             game_runs,
         }
+    }
+
+    /// A backup of slot 1 as `slot_bytes(1)`, then the folder holds `slot_bytes(2)`.
+    pub(crate) fn differing() -> Self {
+        let r = Self::new();
+        r.backup_now("before-save", 0);
+        fs::write(r.file(), slot_bytes(2)).unwrap();
+        r
     }
 
     /// The probe finds the FF I executable from now on.
@@ -158,9 +162,11 @@ impl Paged {
         Self::over(Ui::scanned(site, None), site)
     }
 
-    /// The editor open on slot 1.
+    /// The editor open on slot 1, a save probe that finds no game.
     pub(crate) fn editing(site: &Site) -> Self {
-        Self::over(open_editor(site), site)
+        let p = Self::over(open_editor(site), site);
+        p.ui.app.editor.set_process_probe(|_| Vec::new());
+        p
     }
 
     /// `ui` over a temporary data folder and a scripted restore probe that
@@ -171,10 +177,7 @@ impl Paged {
         let probes = Arc::new(AtomicUsize::new(0));
         let game_runs = Arc::new(AtomicBool::new(false));
         let (counter, runs) = (Arc::clone(&probes), Arc::clone(&game_runs));
-        ui.app.restore.set_process_probe(move |_| {
-            counter.fetch_add(1, Ordering::SeqCst);
-            if runs.load(Ordering::SeqCst) { vec![GAMES[0].executable] } else { Vec::new() }
-        });
+        ui.app.restore.set_process_probe(scripted_probe(counter, runs));
         Self {
             ui,
             data,

@@ -4,8 +4,8 @@
 
 mod common;
 
-use common::changed_span;
 use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::{changed_span, character_path};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, Shape, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::Segment;
@@ -44,18 +44,7 @@ fn tokens(model: &Ff1Model) -> Vec<String> {
     PARAMETER_KEYS
         .iter()
         .map(|key| {
-            let path = [
-                Segment::Key("userData"),
-                Segment::Doc,
-                Segment::Key("ownedCharacterList"),
-                Segment::Doc,
-                Segment::Key("target"),
-                Segment::Index(0),
-                Segment::Doc,
-                Segment::Key("parameter"),
-                Segment::Doc,
-                Segment::Key(key),
-            ];
+            let path = character_path(0, &[Segment::Doc, Segment::Key("parameter"), Segment::Doc, Segment::Key(key)]);
             document.raw(&path).unwrap().into_owned()
         })
         .collect()

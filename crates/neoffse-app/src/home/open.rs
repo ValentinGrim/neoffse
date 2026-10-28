@@ -192,6 +192,7 @@ fn open_one(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> 
             let row = summary_row_of(&summary, name);
             Worked::Opened(Box::new(session), row)
         }
+        // summary() reads no file: its only error is FormatError::Decode, which problem_of also shows as NotASave.
         Err(_) => Worked::Failed(OpenProblem::NotASave),
     }
 }

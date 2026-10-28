@@ -94,6 +94,7 @@ fn card(entity: &Entity, index: usize, game: Game, language: Language, assets: &
         .collect();
     let portrait = job_id(field(names::JOB)).and_then(|id| assets.portrait(game, id)).unwrap_or_default();
     CharacterCard {
+        // No save holds 2^31 rows: the saturation never meets a real index.
         page: i32::try_from(index).unwrap_or(i32::MAX),
         name: entity.label.as_str().into(),
         initial: initial(&entity.label).into(),

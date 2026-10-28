@@ -47,6 +47,7 @@ pub(super) fn field_row(context: &FieldContext, key: i32, view: &FieldView, lock
         Value::Int(number) => fill_integer(context, meta, *number, &mut row),
         Value::Bool(on) => row.checked = *on,
         Value::Text(text) => row.text = text.as_str().into(),
+        // Value is non_exhaustive: a later variant shows an empty row.
         _ => {}
     }
     row

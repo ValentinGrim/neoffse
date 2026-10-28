@@ -125,13 +125,20 @@ fn finish_without_change(window: &MainWindow, app: &App, problem: RestoreProblem
 
 /// Ends a restore that may have written: `working` goes down, the page lists
 /// the backups again (the new "Before restore" backup is the top row) and
-/// shows `notice`. A list that cannot be read replaces the notice. Home scans
-/// again, after a partial restore as after a full one, so a slot that was
-/// unreadable shows its summary on return.
+/// shows `notice`. A list that cannot be read replaces the notice, except
+/// `Incomplete`: the user must learn the folder may hold a mix of files. The
+/// page lists what it can, an empty list here. Home scans again, after a
+/// partial restore as after a full one, so a slot that was unreadable shows
+/// its summary on return.
 fn finish_restore(window: &MainWindow, app: &App, notice: RestoreNotice) {
     window.global::<RestoreBridge>().set_working(false);
     let listed = app.restore.game().and_then(|game| app.restore.show(game));
-    sync_restore(window, app, Some(listed.unwrap_or(notice)));
+    let shown = if notice.problem == RestoreProblem::Incomplete {
+        notice
+    } else {
+        listed.unwrap_or(notice)
+    };
+    sync_restore(window, app, Some(shown));
     super::start_scan(&window.as_weak(), app);
 }
 

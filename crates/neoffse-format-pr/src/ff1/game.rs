@@ -196,6 +196,7 @@ impl Ff1Model {
             Binding::Character { id, part: Part::Exp } => self.exp_plan(id, number, rolls),
             Binding::Character { part: Part::Slot(_), .. } => match u32::try_from(number) {
                 Ok(content_id) => self.equip_plan(field, content_id).map(Plan::from),
+                // check() above holds the number to 0..=STORAGE_MAX, so this arm never runs; apply checks the value again.
                 Err(_) => Ok(vec![edit.clone()].into()),
             },
             _ => Ok(vec![edit.clone()].into()),

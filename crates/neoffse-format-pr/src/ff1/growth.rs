@@ -122,6 +122,7 @@ impl Ff1Model {
             *slot = self.stored_int(field)?;
         }
         let mut values = old;
+        // from < to <= the last table level here, so both bounds fit a u32.
         let last = u32::try_from(to).unwrap_or(u32::MAX);
         for level in u32::try_from(from.max(1).saturating_add(1)).unwrap_or(u32::MAX)..=last {
             let row = u32::try_from(job).ok().and_then(|job| self.tables.growth_step(job, level));

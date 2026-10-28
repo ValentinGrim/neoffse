@@ -4,10 +4,10 @@
 
 mod common;
 
-use common::embed;
 use common::ff1_save::SlotData;
 use common::json_diff::{Change, Kind, added, assert_changes, diff, layout, layout_chain, removed, reordered, value};
 use common::json_tree::Tree;
+use common::{character_path, embed};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 
 const LEVEL: &str = "userData.ownedCharacterList.target[1].parameter.addtionalLevel";
@@ -52,18 +52,7 @@ fn one_digit_in_a_nested_document_is_one_value_change() {
     let before = standard();
     let after = replaced(&before, "owendGil\\\":123456", "owendGil\\\":123457");
     assert_eq!(diff(&before, &after), [value("userData.owendGil")]);
-    let path = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(1),
-        Segment::Doc,
-        Segment::Key("parameter"),
-        Segment::Doc,
-        Segment::Key("addtionalLevel"),
-    ];
+    let path = character_path(1, &[Segment::Doc, Segment::Key("parameter"), Segment::Doc, Segment::Key("addtionalLevel")]);
     let after = edited(|document| document.set(&path, &Scalar::Int(77)).unwrap());
     assert_eq!(diff(&before, &after), [value(LEVEL)]);
 }
@@ -114,16 +103,7 @@ fn whitespace_is_a_layout_change() {
 
 #[test]
 fn a_reescaped_string_is_a_value_change() {
-    let path = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(3),
-        Segment::Doc,
-        Segment::Key("name"),
-    ];
+    let path = character_path(3, &[Segment::Doc, Segment::Key("name")]);
     let after = edited(|document| document.set_raw(&path, "\"Zo\\u00e9\"").unwrap());
     assert_eq!(diff(&standard(), &after), [value("userData.ownedCharacterList.target[3].name")]);
 }

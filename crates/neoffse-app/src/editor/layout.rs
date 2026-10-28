@@ -94,6 +94,7 @@ pub fn build(view: &SaveView, game: Game, language: Language, expert: bool, lock
 
 /// A running index as a Slint `int`.
 fn key_of(index: usize) -> i32 {
+    // No save holds 2^31 rows: the saturation never meets a real index.
     i32::try_from(index).unwrap_or(i32::MAX)
 }
 

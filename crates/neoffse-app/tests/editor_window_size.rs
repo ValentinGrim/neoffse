@@ -10,36 +10,16 @@
 
 mod common;
 
-use common::{ID_1, Site, Ui, editing_site, resize, slot_file, steam_slot};
+use common::{ID_1, Site, Ui, assert_size, editing_site, logical, resize, slot_file, steam_slot};
 use neoffse::core::Game;
 use slint::ComponentHandle;
-
-/// The window size in logical pixels.
-fn logical(ui: &Ui) -> (f32, f32) {
-    let size = ui.window.window().size().to_logical(ui.window.window().scale_factor());
-    (size.width, size.height)
-}
-
-fn assert_size(ui: &Ui, expected: (f32, f32), what: &str) {
-    let (width, height) = logical(ui);
-    assert!(
-        (width - expected.0).abs() < 0.5 && (height - expected.1).abs() < 0.5,
-        "{what}: {width}x{height}, expected {expected:?}"
-    );
-}
 
 /// Home at `home`, then the first slot open on the editor.
 fn open_at(site: &Site, home: (f32, f32)) -> Ui {
     let ui = Ui::scanned(site, None);
     resize(&ui, home.0, home.1);
-    open_first(&ui);
+    ui.open_first_slot();
     ui
-}
-
-fn open_first(ui: &Ui) {
-    ui.window.invoke_slot_clicked(ui.first_slots()[0].key);
-    ui.manual.run_all();
-    assert!(ui.window.get_editor_open(), "the save opens");
 }
 
 #[test]
@@ -90,7 +70,7 @@ fn a_size_set_on_home_after_back_is_the_next_record() {
     ui.window.invoke_back_requested();
 
     resize(&ui, 1000.0, 640.0);
-    open_first(&ui);
+    ui.open_first_slot();
     resize(&ui, 1200.0, 760.0);
     ui.window.invoke_back_requested();
     assert_size(&ui, (1000.0, 640.0), "the record is replaced, not the first one kept");
@@ -146,7 +126,7 @@ fn the_restore_page_from_home_neither_records_nor_restores() {
     assert_size(&ui, (1100.0, 700.0), "Home keeps the size set on the page");
 
     // The page recorded nothing: an editor opened and closed later restores its own record.
-    open_first(&ui);
+    ui.open_first_slot();
     resize(&ui, 1200.0, 760.0);
     ui.window.invoke_back_requested();
     assert_size(&ui, (1100.0, 700.0), "the record comes from the opening");
@@ -177,7 +157,7 @@ fn a_maximised_window_records_and_restores_nothing() {
     resize(&ui, 900.0, 650.0);
     ui.window.window().set_maximized(true);
     assert!(ui.window.window().is_maximized(), "the testing backend keeps the maximised flag");
-    open_first(&ui);
+    ui.open_first_slot();
     ui.window.window().set_maximized(false);
     resize(&ui, 1100.0, 700.0);
     ui.window.invoke_back_requested();
@@ -195,7 +175,7 @@ fn a_window_maximised_at_the_close_is_left_alone() {
     assert_size(&ui, (1100.0, 700.0), "a maximised close restores nothing");
     ui.window.window().set_maximized(false);
     resize(&ui, 1000.0, 640.0);
-    open_first(&ui);
+    ui.open_first_slot();
     resize(&ui, 1200.0, 760.0);
     ui.window.invoke_back_requested();
     assert_size(&ui, (1000.0, 640.0), "the record was forgotten at the maximised close");

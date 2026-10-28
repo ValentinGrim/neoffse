@@ -7,7 +7,6 @@
 
 mod common;
 
-use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
@@ -15,7 +14,6 @@ use std::time::Duration;
 
 use common::{Machine, Rig, Ui, editing_site, rig};
 use i_slint_backend_testing::AccessibleRole::{Button, Text};
-use neoffse::io::dirs::DataDir;
 use neoffse_app::editor::stamp_of;
 use neoffse_app::{EditProblem, EditorCommand};
 use slint::Model;
@@ -155,9 +153,7 @@ fn a_failed_save_keeps_the_edit() {
     let site = editing_site();
     let rig = quiet(&site);
     let ui = &rig.ui;
-    let not_a_folder = rig.data.path().join("plain-file");
-    fs::write(&not_a_folder, b"x").unwrap();
-    ui.app.state.set_data_dir(DataDir::at(&not_a_folder));
+    rig.break_data_dir();
     let before = rig.bytes();
     ui.make_dirty();
 

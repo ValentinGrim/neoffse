@@ -5,7 +5,7 @@ use neoffse::Session;
 use neoffse::core::{Edit, EditError, RowId};
 
 use super::input::{Input, value_for};
-use super::model::{EditorViewModel, lock_session, not_editable};
+use super::model::{EditorViewModel, at, not_editable};
 use super::notice::{notice_of, problem_notice};
 use super::pick::entry_name;
 use crate::{EditNotice, EditProblem};
@@ -52,10 +52,11 @@ impl EditorViewModel {
     /// initial values.
     #[must_use]
     pub fn add_row(&self, list: i32, entry_id: i32) -> Option<EditNotice> {
-        let collection = usize::try_from(list).ok().and_then(|index| self.layout().lists.get(index).cloned());
+        let collection = at(&self.layout().lists, list);
         let (Some(collection), Ok(key)) = (collection, u32::try_from(entry_id)) else {
             return Some(not_editable());
         };
+        // The label only names the row in a notice; the session checks the id.
         let label = self
             .layout()
             .tables
@@ -67,25 +68,16 @@ impl EditorViewModel {
     /// Removes row `row`.
     #[must_use]
     pub fn remove_row(&self, row: i32) -> Option<EditNotice> {
-        let slot = usize::try_from(row).ok().and_then(|index| self.layout().rows.get(index).cloned());
+        let slot = at(&self.layout().rows, row);
         match slot {
             Some(slot) => self.send(&Edit::remove(slot.row), &slot.label),
             None => Some(not_editable()),
         }
     }
 
-    /// Applies `edit` through the interface the mode picks. Refused while a
-    /// save runs: the worker holds the session lock.
+    /// Applies `edit` through the interface the mode picks.
     fn send(&self, edit: &Edit, label: &str) -> Option<EditNotice> {
-        if self.is_saving() {
-            return Some(not_editable());
-        }
-        let Some(session) = self.shared.state.session() else {
-            return Some(not_editable());
-        };
-        let mut session = lock_session(&session);
-        let result = if self.expert() { session.edit_expert(edit) } else { session.edit(edit) };
-        let error = result.err()?;
-        Some(settle(&mut session, &error, label))
+        let expert = self.expert();
+        self.on_session(label, |session| if expert { session.edit_expert(edit) } else { session.edit(edit) })
     }
 }

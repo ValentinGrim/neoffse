@@ -46,6 +46,7 @@ pub fn backup_rows(backups: &[Backup]) -> Vec<BackupRow> {
     backups
         .iter()
         .enumerate()
+        // Retention keeps 20 backups per game, so the index never nears i32::MAX.
         .map(|(index, backup)| backup_row(i32::try_from(index).unwrap_or(i32::MAX), backup))
         .collect()
 }

@@ -4,9 +4,9 @@
 
 mod common;
 
-use common::{Editing, Part, count_of, editing, editing_site, field, item_label, list, pages, row_of, rows};
-use neoffse::core::{Edit, FieldId, Game, TableKind, Value};
-use neoffse::data::{Language, tables_for};
+use common::{Editing, Part, count_of, editing, editing_site, field, item_label, list, pages, row_of, rows, spare_weapon};
+use neoffse::core::{Edit, FieldId, Value};
+use neoffse::data::Language;
 use neoffse_app::EditProblem;
 use neoffse_app::editor::Input;
 
@@ -22,10 +22,6 @@ fn party_key(ed: &Editing, page: &str, label: &str) -> i32 {
     field(&ed.data(), Part::Party, page, label).key
 }
 
-fn gil_text(ed: &Editing) -> String {
-    field(&ed.data(), Part::Inventory, "Gil", "Gil").text.to_string()
-}
-
 #[test]
 fn a_commit_makes_one_history_entry_and_refreshes() {
     let site = editing_site();
@@ -35,10 +31,10 @@ fn a_commit_makes_one_history_entry_and_refreshes() {
     assert!(ed.editor().commit(key, text("500")).is_none());
     assert_eq!(ed.pending(), 1);
     assert!(ed.editor().is_dirty());
-    assert_eq!(gil_text(&ed), "500");
+    assert_eq!(ed.gil(), "500");
 
     ed.undo();
-    assert_eq!(gil_text(&ed), "123456");
+    assert_eq!(ed.gil(), "123456");
     assert!(!ed.editor().is_dirty());
 }
 
@@ -77,7 +73,7 @@ fn typing_clamps_to_the_storage_bounds() {
     assert_ne!(cap, "");
 
     assert!(ed.editor().commit(key, text("-5")).is_none());
-    assert_eq!(gil_text(&ed), "0");
+    assert_eq!(ed.gil(), "0");
     assert_eq!(ed.pending(), 1);
 
     let notice = ed.editor().commit(key, text("99999999999")).expect("above the cap");
@@ -86,7 +82,7 @@ fn typing_clamps_to_the_storage_bounds() {
     assert_eq!(notice.cap.to_string(), cap);
     assert_eq!(notice.label, "Gil");
     assert_eq!(ed.pending(), 1, "the refused edit left no entry");
-    assert_eq!(gil_text(&ed), "0");
+    assert_eq!(ed.gil(), "0");
 }
 
 #[test]
@@ -161,25 +157,11 @@ fn magic_is_read_only_in_both_modes() {
     }
 }
 
-/// A non-placeholder weapon id the inventory does not hold.
-fn spare_weapon(ed: &Editing) -> u32 {
-    let tables = tables_for(Game::Ff1Pr).unwrap();
-    let labels: Vec<String> = rows(&list(&ed.data(), "Items")).iter().map(|row| row.label.to_string()).collect();
-    tables
-        .table(TableKind::Weapon)
-        .unwrap()
-        .iter()
-        .filter(|entry| !entry.placeholder)
-        .map(|entry| entry.id)
-        .find(|id| !labels.contains(&item_label(*id, "Item")))
-        .expect("a weapon the fixture does not hold")
-}
-
 #[test]
 fn a_picker_commit_equips_in_one_entry() {
     let site = editing_site();
     let ed = editing(&site);
-    let id = spare_weapon(&ed);
+    let id = spare_weapon(&ed.data());
     let before = ed.data();
     let key = field(&before, Part::Party, "Aria", "Right hand").key;
     let rows_before = rows(&list(&before, "Items")).len();
@@ -212,7 +194,7 @@ fn a_picker_commit_equips_in_one_entry() {
 fn the_expert_equip_is_one_raw_set() {
     let site = editing_site();
     let ed = editing(&site);
-    let id = spare_weapon(&ed);
+    let id = spare_weapon(&ed.data());
     let before = ed.data();
     let key = field(&before, Part::Party, "Aria", "Right hand").key;
     let rows_before = rows(&list(&before, "Items")).len();
@@ -261,7 +243,7 @@ fn commit_and_data_see_the_same_session() {
     let ed = editing(&site);
     ed.with_session(|session| session.edit(&Edit::set(FieldId::new("gil"), Value::Int(777))))
         .unwrap();
-    assert_eq!(gil_text(&ed), "777");
+    assert_eq!(ed.gil(), "777");
     assert!(ed.editor().is_dirty());
 }
 
@@ -274,5 +256,5 @@ fn the_language_does_not_change_the_commit() {
     let data = french.data().unwrap();
     let key = field(&data, Part::Inventory, "Gil", "Gil").key;
     assert!(french.commit(key, text("42")).is_none());
-    assert_eq!(gil_text(&ed), "42");
+    assert_eq!(ed.gil(), "42");
 }

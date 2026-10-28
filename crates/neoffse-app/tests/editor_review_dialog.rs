@@ -8,7 +8,7 @@ mod common;
 
 use std::fs;
 
-use common::{ID_1, Ui, editing_site, items, list, open_editor, row_of, slot_file, steam_folder};
+use common::{ID_1, Ui, editing_site, items, list, open_editor, review_row, row_of, slot_file, steam_folder};
 use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse::io::dirs::DataDir;
 use neoffse_app::{EditorCommand, ReviewKind, ReviewRow};
@@ -16,16 +16,6 @@ use slint::platform::Key;
 
 fn rows(ui: &Ui) -> Vec<ReviewRow> {
     items(&ui.bridge().get_review_rows())
-}
-
-fn row(kind: ReviewKind, entity: &str, label: &str, before: &str, after: &str) -> ReviewRow {
-    ReviewRow {
-        kind,
-        entity: entity.into(),
-        label: label.into(),
-        before: before.into(),
-        after: after.into(),
-    }
 }
 
 /// A dirty save (gil "500") with the review opened by Ctrl+S.
@@ -45,8 +35,8 @@ fn ctrl_s_opens_the_review_with_the_net_difference() {
     assert_eq!(
         rows(&ui),
         vec![
-            row(ReviewKind::Heading, "Gil", "", "", ""),
-            row(ReviewKind::Field, "Gil", "Gil", "123456", "500"),
+            review_row(ReviewKind::Heading, "Gil", "", "", ""),
+            review_row(ReviewKind::Field, "Gil", "Gil", "123456", "500"),
         ]
     );
 }
@@ -160,7 +150,7 @@ fn the_review_is_rebuilt_on_each_open() {
     ui.chord(&[Key::Control], "s");
 
     assert!(ui.bridge().get_review_open());
-    assert_eq!(rows(&ui)[1], row(ReviewKind::Field, "Gil", "Gil", "123456", "700"));
+    assert_eq!(rows(&ui)[1], review_row(ReviewKind::Field, "Gil", "Gil", "123456", "700"));
 }
 
 #[test]
@@ -184,7 +174,7 @@ fn a_default_level_edit_reviews_the_deterministic_rows() {
     ui.chord(&[Key::Control], "s");
 
     let shown = rows(&ui);
-    assert_eq!(shown[0], row(ReviewKind::Heading, "Aria", "", "", ""));
+    assert_eq!(shown[0], review_row(ReviewKind::Heading, "Aria", "", "", ""));
     assert_eq!(shown.iter().filter(|row| row.kind == ReviewKind::Heading).count(), 1);
     for (label, before, after) in [
         ("Level", "31", "34"),
@@ -192,7 +182,10 @@ fn a_default_level_edit_reviews_the_deterministic_rows() {
         ("Accuracy gain", "143", "155"),
         ("Magic evasion gain", "133", "142"),
     ] {
-        assert!(shown.contains(&row(ReviewKind::Field, "Aria", label, before, after)), "no row for {label}");
+        assert!(
+            shown.contains(&review_row(ReviewKind::Field, "Aria", label, before, after)),
+            "no row for {label}"
+        );
     }
 }
 
@@ -207,8 +200,8 @@ fn rows_added_and_removed_appear() {
     ui.chord(&[Key::Control], "s");
 
     let shown = rows(&ui);
-    assert!(shown.contains(&row(ReviewKind::Added, "X-Potion", "", "", "")));
-    assert!(shown.contains(&row(ReviewKind::Removed, "Phoenix Down", "", "", "")));
+    assert!(shown.contains(&review_row(ReviewKind::Added, "X-Potion", "", "", "")));
+    assert!(shown.contains(&review_row(ReviewKind::Removed, "Phoenix Down", "", "", "")));
 }
 
 #[test]

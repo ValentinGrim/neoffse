@@ -93,6 +93,7 @@ fn supported_slots(registry: &Registry, game: Game, folder: &SaveFolder) -> (Vec
         .saves
         .into_iter()
         .map(|found| {
+            // Any open or summary error flags the slot unreadable; a click on it opens again and names the cause.
             let summary = registry
                 .open(&folder.path, &found.name, Some(game))
                 .ok()
@@ -149,6 +150,7 @@ pub(crate) fn slot_kind_of(summary: Option<&SaveSummary>, name: &str) -> (SlotKi
 
 fn slot_kind(slot: Option<SaveSlot>) -> (SlotKind, i32) {
     match slot {
+        // slot_for_id gives Numbered 1 to 20 only.
         Some(SaveSlot::Numbered(number)) => (SlotKind::Numbered, i32::try_from(number).unwrap_or(i32::MAX)),
         Some(SaveSlot::Auto) => (SlotKind::AutoSave, 0),
         Some(SaveSlot::Quick) => (SlotKind::QuickSave, 0),
