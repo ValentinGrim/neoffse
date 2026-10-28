@@ -78,6 +78,22 @@ pub(crate) fn segments(steps: &[Step]) -> Vec<Segment<'_>> {
         .collect()
 }
 
+/// The path to the character at `index` of the party, then `rest`. It ends
+/// at the element, a string that holds a document: `rest` starts with
+/// [`Segment::Doc`] to read inside it.
+pub(crate) fn character_path<'a>(index: usize, rest: &[Segment<'a>]) -> Vec<Segment<'a>> {
+    let mut path = vec![
+        Segment::Key("userData"),
+        Segment::Doc,
+        Segment::Key("ownedCharacterList"),
+        Segment::Doc,
+        Segment::Key("target"),
+        Segment::Index(index),
+    ];
+    path.extend_from_slice(rest);
+    path
+}
+
 /// Wraps `doc` in quotes and escapes `\` and `"`, as the game embeds a document
 /// (`docs/formats/pixel-remaster.md#documents-inside-strings`).
 pub(crate) fn embed(doc: &str) -> String {

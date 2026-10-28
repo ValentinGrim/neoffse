@@ -10,9 +10,9 @@ use neoffse_core::{EditError, FieldId, Value};
 use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
-use super::embed;
 use super::ff1_save::SlotData;
 use super::json_tree::Tree;
+use super::{character_path, embed};
 
 const CHARS: &str = "userData.ownedCharacterList.target";
 
@@ -63,20 +63,6 @@ pub(crate) fn slot_mismatches(model: &mut Ff1Model, json: &str) -> Vec<String> {
     found
 }
 
-/// The path of the `abilitySlotDataList` string of the character at `index`.
-fn slot_list_path(index: usize) -> [Segment<'static>; 8] {
-    [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(index),
-        Segment::Doc,
-        Segment::Key("abilitySlotDataList"),
-    ]
-}
-
 /// One element of `abilitySlotDataList.target`: the level and a `slotInfo`
 /// dictionary with `keys` and the raw JSON `values`.
 pub(crate) fn level_element(level: u32, keys: &[u32], values: &[&str]) -> String {
@@ -96,7 +82,8 @@ pub(crate) fn model_with_slots(id: u32, elements: &[String]) -> (Ff1Model, Strin
     let mut document = Document::parse(&SlotData::standard().render()).unwrap();
     let index = usize::try_from(id).unwrap() - 1;
     let list = embed(&format!("{{\"target\":[{}]}}", elements.join(",")));
-    document.set_raw(&slot_list_path(index), &list).unwrap();
+    let path = character_path(index, &[Segment::Doc, Segment::Key("abilitySlotDataList")]);
+    document.set_raw(&path, &list).unwrap();
     let text = document.to_json();
     (Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap()), text)
 }

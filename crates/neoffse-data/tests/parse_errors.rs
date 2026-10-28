@@ -5,26 +5,12 @@ mod common;
 
 use std::error::Error;
 
-use common::minimal;
+use common::{id_order, minimal, toml_file};
 use neoffse_core::Game;
 use neoffse_data::{DataError, GameTables, Sources};
 
 fn parse(sources: &Sources<'_>) -> Result<GameTables, DataError> {
     GameTables::parse(Game::Ff1Pr, sources)
-}
-
-fn toml_file(result: Result<GameTables, DataError>) -> &'static str {
-    match result.unwrap_err() {
-        DataError::Toml { file, .. } => file,
-        other => panic!("expected a Toml error, got {other}"),
-    }
-}
-
-fn id_order(result: Result<GameTables, DataError>) -> (&'static str, u32) {
-    match result.unwrap_err() {
-        DataError::IdOrder { file, id } => (file, id),
-        other => panic!("expected an IdOrder error, got {other}"),
-    }
 }
 
 fn rows(key: &str, ids: &[u32]) -> String {

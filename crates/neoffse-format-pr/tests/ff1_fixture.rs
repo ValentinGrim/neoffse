@@ -6,6 +6,7 @@
 
 mod common;
 
+use common::character_path;
 use common::ff1_rules::assert_game_rules;
 use common::ff1_save::{SlotData, keys, model};
 use neoffse_core::{FieldId, Value};
@@ -69,14 +70,7 @@ fn the_fixture_is_game_style_and_covers_the_cases() {
     assert_eq!(keys(&text), order);
     let user = text_at(&mut document, &[Segment::Key("userData")]);
     assert!(unique(&keys(&user)));
-    let first = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(0),
-    ];
+    let first = character_path(0, &[]);
     assert!(unique(&keys(&text_at(&mut document, &first))));
     let play_time = [Segment::Key("userData"), Segment::Doc, Segment::Key("playTime")];
     let raw = document.raw(&play_time).unwrap().into_owned();

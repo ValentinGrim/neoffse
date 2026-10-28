@@ -5,6 +5,7 @@
 
 mod common;
 
+use common::character_path;
 use common::ff1_save::{SlotData, character_field, model, standard_model};
 use neoffse_core::{Capability, EditError, FormatError, SaveView, Value};
 use neoffse_data::Language;
@@ -113,16 +114,7 @@ fn next_level_is_absent_without_a_next_row() {
 #[test]
 fn a_negative_experience_leaves_next_level_out() {
     let mut document = Document::parse(&SlotData::standard().render()).unwrap();
-    let path = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(0),
-        Segment::Doc,
-        Segment::Key("currentExp"),
-    ];
+    let path = character_path(0, &[Segment::Doc, Segment::Key("currentExp")]);
     document.set(&path, &Scalar::Int(-1)).unwrap();
     let mut model = Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap());
     assert!(matches!(next_level_of(&mut model, 1), Err(EditError::UnknownField { .. })));

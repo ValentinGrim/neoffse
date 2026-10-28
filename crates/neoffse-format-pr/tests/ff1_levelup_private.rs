@@ -6,6 +6,7 @@
 
 mod common;
 
+use common::character_path;
 use common::ff1_real::{RealSlot, must, must_some, slots};
 use common::ff1_save::character_field;
 use common::growth_oracle::{Stored, grow};
@@ -40,16 +41,7 @@ fn characters(slot: &RealSlot, model: &mut Ff1Model) -> Vec<Facts> {
     let rows = must(model.rows(&FieldId::new(names::CHARACTER)), &format!("{}: no character list", slot.label));
     let mut found = Vec::new();
     for (index, id) in rows.into_iter().enumerate() {
-        let path = [
-            Segment::Key("userData"),
-            Segment::Doc,
-            Segment::Key("ownedCharacterList"),
-            Segment::Doc,
-            Segment::Key("target"),
-            Segment::Index(index),
-            Segment::Doc,
-            Segment::Key("characterStatusId"),
-        ];
+        let path = character_path(index, &[Segment::Doc, Segment::Key("characterStatusId")]);
         let Ok(Scalar::Int(status)) = model.read(&path) else {
             panic!("{}: character {id} characterStatusId does not read", slot.label)
         };
