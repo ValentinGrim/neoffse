@@ -24,11 +24,16 @@ pub(crate) struct Saving {
 
 /// An open slot, a temporary data folder and a probe that finds no game.
 pub(crate) fn saving(site: &Site) -> Saving {
-    let ed = editing(site);
+    let file = steam_folder(site, 0, ID_1).join(slot_file(1));
+    saving_over(editing(site), file)
+}
+
+/// The slot already open in `ed`, saved over `file`: a temporary data folder
+/// and a probe that finds no game.
+pub(crate) fn saving_over(ed: Editing, file: PathBuf) -> Saving {
     let data = tempfile::tempdir().unwrap();
     ed.flow.state.set_data_dir(DataDir::at(data.path()));
     ed.editor().set_process_probe(|_| Vec::new());
-    let file = steam_folder(site, 0, ID_1).join(slot_file(1));
     Saving {
         ed,
         data,

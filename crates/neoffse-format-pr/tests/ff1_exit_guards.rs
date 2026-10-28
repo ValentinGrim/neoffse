@@ -93,7 +93,7 @@ fn refused_edits_write_nothing() {
     let subject = subject();
     let refusals: [Refusal; 5] = [
         ("level above the cap", Edit::set(character_field(1, names::LEVEL), Value::Int(100)), |error| {
-            matches!(error, EditError::AboveCap { .. })
+            matches!(error, EditError::OutOfRange { max: 99, .. })
         }),
         ("remove a worn row", Edit::remove(inventory(89)), |error| {
             matches!(error, EditError::ReadOnly { .. })

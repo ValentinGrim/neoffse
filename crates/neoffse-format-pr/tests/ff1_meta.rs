@@ -101,11 +101,21 @@ fn field_meta_matches_the_field_table_row_by_row() {
     for row in table() {
         let meta = model.field_meta(&row.field).unwrap_or_else(|| panic!("{} has no meta", row.field));
         assert_eq!(meta.label, row.label, "{}", row.field);
-        assert_eq!(meta.shape, Shape::Int { min: row.min, max: STORAGE }, "{}", row.field);
+        // The level is bounded by MAX_LV; every other number by the storage maximum.
+        let max = if row.field == character(names::LEVEL) { 99 } else { STORAGE };
+        assert_eq!(meta.shape, Shape::Int { min: row.min, max }, "{}", row.field);
         assert_eq!(meta.cap, row.cap, "{}", row.field);
         assert_eq!(meta.tables, row.tables, "{}", row.field);
         assert!(meta.names.is_empty(), "{}", row.field);
     }
+}
+
+#[test]
+fn the_level_meta_reports_the_game_cap_as_its_maximum() {
+    let model = standard_model();
+    let meta = model.field_meta(&character(names::LEVEL)).unwrap();
+    assert_eq!(meta.shape, Shape::Int { min: 0, max: 99 });
+    assert_eq!(meta.cap, Some(99));
 }
 
 #[test]

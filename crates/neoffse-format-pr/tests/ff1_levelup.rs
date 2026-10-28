@@ -9,7 +9,7 @@ mod common;
 use common::ff1_save::{SlotData, character_field, model, standard_model};
 use common::rolls::Script;
 use neoffse_core::{Edit, FieldId, Value};
-use neoffse_format_pr::ff1::{Ff1Model, names};
+use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
 fn set(field: FieldId, value: i64) -> Edit {
     Edit::set(field, Value::Int(value))
@@ -200,4 +200,22 @@ fn a_source_outside_20_to_24_is_held_to_the_range() {
         raise(&mut model, 1, 32, &mut Script::fixed(false, answer));
         assert_eq!(int(&mut model, &field(1, names::MAX_HP_GAIN)), gain, "bonus {answer}");
     }
+}
+
+/// STA is `character_status.vitality` plus `addtionalVitality`, and the HP step
+/// applies no cap to it (`docs/formats/pixel-remaster.md#level-up-in-ff-i`).
+#[test]
+fn the_hp_step_reads_stamina_past_the_stat_cap() {
+    let mut data = SlotData::standard();
+    data.characters[0].stats[1] = 200;
+    let mut model = model(&data.render());
+    let tables = neoffse_data::tables_for(GAME).unwrap();
+    let base = i64::from(tables.base_vitality(1).unwrap());
+    let sta = base + 200;
+    assert!(sta > 99, "the stamina passes the stat cap");
+    let before = int(&mut model, &field(1, names::MAX_HP_GAIN));
+    raise(&mut model, 1, 32, &mut Script::fixed(false, 20));
+    let strong = tables.growth_step(7, 32).unwrap().strong_hp;
+    let bonus = if strong { 20 } else { 0 };
+    assert_eq!(int(&mut model, &field(1, names::MAX_HP_GAIN)) - before, sta / 4 + 1 + bonus);
 }

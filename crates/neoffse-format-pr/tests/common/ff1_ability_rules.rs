@@ -65,8 +65,14 @@ fn slot_violations(tree: &Tree, base: &str, abilities: &[i64], contents: &[i64])
     let mut found = Vec::new();
     let tables = neoffse_data::tables_for(GAME);
     let mut slotted = Vec::new();
-    for level in 0..tree.array_len(&format!("{base}.abilitySlotDataList.target")).unwrap_or(0) {
-        let info = format!("{base}.abilitySlotDataList.target[{level}].slotInfo");
+    for element in 0..tree.array_len(&format!("{base}.abilitySlotDataList.target")).unwrap_or(0) {
+        let path = format!("{base}.abilitySlotDataList.target[{element}]");
+        // The format finds a spell level by the element's own `level`, not by its position.
+        let Some(level) = tree.int(&format!("{path}.level")).and_then(|level| usize::try_from(level).ok()) else {
+            found.push(format!("{path}.level: unreadable"));
+            continue;
+        };
+        let info = format!("{path}.slotInfo");
         let keys = ints(tree, &format!("{info}.keys"), "");
         let values = tree.array_len(&format!("{info}.values"));
         if keys != Some((1..).take(SLOTS_PER_LEVEL).collect()) || values != Some(SLOTS_PER_LEVEL) {
@@ -90,7 +96,7 @@ fn slot_violations(tree: &Tree, base: &str, abilities: &[i64], contents: &[i64])
                 .map(|info| usize::from(info.level));
             if at.is_none() {
                 found.push(format!("{value}: not in abilityList"));
-            } else if spell_level != Some(level + 1) {
+            } else if spell_level != Some(level) {
                 found.push(format!("{value}: sits at the wrong spell level"));
             }
             slotted.push(ability);

@@ -143,7 +143,7 @@ fn a_failed_edit_changes_nothing() {
 
     let unknown = set(&FieldId::new("nonsense"), 1);
     assert!(matches!(session.edit(&unknown), Err(EditError::UnknownField { .. })));
-    assert!(matches!(session.edit(&set(&level(), 100)), Err(EditError::AboveCap { .. })));
+    assert!(matches!(session.edit(&set(&level(), 100)), Err(EditError::OutOfRange { .. })));
     assert_eq!(session.pending_count(), 1);
     assert!(session.can_undo());
     assert!(!session.can_redo());
@@ -188,17 +188,26 @@ fn undo_restores_a_value_above_the_game_cap() {
 }
 
 #[test]
-fn expert_mode_accepts_a_level_above_the_cap_and_undoes_it() {
+fn expert_mode_refuses_a_level_above_the_cap() {
     let (_dir, mut session) = open_session();
     let before = value(&mut session, &level());
-    assert!(matches!(session.edit(&set(&level(), 100)), Err(EditError::AboveCap { .. })));
-    session.edit_expert(&set(&level(), 100)).unwrap();
-    assert_eq!(value(&mut session, &level()), Value::Int(100));
+    assert!(matches!(session.edit(&set(&level(), 100)), Err(EditError::OutOfRange { .. })));
+    assert!(matches!(session.edit_expert(&set(&level(), 100)), Err(EditError::OutOfRange { .. })));
+    assert_eq!(value(&mut session, &level()), before);
+    assert_eq!(session.pending_count(), 0);
+}
+
+#[test]
+fn expert_mode_accepts_the_cap_level_and_undoes_it() {
+    let (_dir, mut session) = open_session();
+    let before = value(&mut session, &level());
+    session.edit_expert(&set(&level(), 99)).unwrap();
+    assert_eq!(value(&mut session, &level()), Value::Int(99));
     assert_eq!(session.pending_count(), 1);
     assert!(session.undo().unwrap());
     assert_eq!(value(&mut session, &level()), before);
     assert!(session.redo().unwrap());
-    assert_eq!(value(&mut session, &level()), Value::Int(100));
+    assert_eq!(value(&mut session, &level()), Value::Int(99));
 }
 
 #[test]
@@ -207,7 +216,7 @@ fn discard_restores_the_original() {
     let view = session.view().unwrap();
     let base = gil_value(&mut session);
     session.edit(&set(&gil(), base + 1)).unwrap();
-    session.edit_expert(&set(&level(), 100)).unwrap();
+    session.edit_expert(&set(&gil(), 5_000_000)).unwrap();
     session.undo().unwrap();
     session.discard().unwrap();
     assert_eq!(gil_value(&mut session), base);

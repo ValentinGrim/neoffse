@@ -107,13 +107,16 @@ fn caps_show_and_mark() {
     let level = field(&data, Part::Party, "Aria", "Level");
     assert_eq!(level.cap, "99");
     assert!(!level.above_cap);
+    let gil = field(&data, Part::Inventory, "Gil", "Gil");
+    assert_eq!(gil.cap, "999999");
+    assert!(!gil.above_cap);
     assert_eq!(field(&data, Part::Party, "Aria", "Name").cap, "");
 
     ed.editor().set_expert(true);
-    assert!(ed.editor().commit(level.key, Input::Text("100".into())).is_none());
-    let level = field(&ed.data(), Part::Party, "Aria", "Level");
-    assert_eq!(level.text, "100", "the number is not clamped to the cap");
-    assert!(level.above_cap);
+    assert!(ed.editor().commit(gil.key, Input::Text("1000000".into())).is_none());
+    let gil = field(&ed.data(), Part::Inventory, "Gil", "Gil");
+    assert_eq!(gil.text, "1000000", "the number is not clamped to the cap");
+    assert!(gil.above_cap);
 }
 
 #[test]
@@ -177,8 +180,8 @@ fn a_missing_section_is_absent_and_other_capabilities_are_ignored() {
 }
 
 #[test]
-fn a_failing_lock_query_counts_as_locked() {
-    // `Locks` answers a bool: the production impl maps a failed query to `true`.
+fn a_locked_field_is_not_editable_and_an_open_one_is() {
+    // `Locks` answers a bool; a lock source that says `true` locks the field.
     let mut locks = FakeLocks::answering(true);
     let built = build(&party_only(), Game::Ff1Pr, Language::En, false, &mut locks);
     let level = &fields(&pages(&built.data.party)[0])[0];

@@ -55,6 +55,17 @@ fn int(label: impl Into<String>, min: i64, bound: Option<(&GameTables, &str)>) -
     meta
 }
 
+/// The level: 0 to `MAX_LV`. The game's cap is also the storage bound, so
+/// expert mode refuses a level above it
+/// (`docs/formats/pixel-remaster.md#characters`, "Level and Experience in NeoFFSE").
+fn level_meta(tables: &GameTables) -> FieldMeta {
+    let mut meta = int("Level", 0, Some((tables, "MAX_LV")));
+    if let Some(max) = meta.cap {
+        meta.shape = Shape::Int { min: 0, max };
+    }
+    meta
+}
+
 /// A computed field: an integer the editor shows and never sets.
 fn derived_meta(label: &'static str, bound: Option<(&GameTables, &str)>) -> FieldMeta {
     let mut meta = int(label, 0, bound);
@@ -87,7 +98,7 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
                 meta.tables = vec![TableKind::Job];
                 meta
             }
-            Part::Level => int("Level", 0, capped("MAX_LV")),
+            Part::Level => level_meta(tables),
             Part::Exp => int("Experience", 0, capped("MAX_EXP")),
             Part::Hp => int("HP", 0, capped("MAX_HP")),
             Part::MaxHpGain => int("Max HP gain", 0, None),

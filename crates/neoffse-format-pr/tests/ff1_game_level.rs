@@ -71,7 +71,7 @@ fn level_bounds() {
     let zero = model.apply_game(&set(level(1), 0));
     assert!(matches!(zero, Err(EditError::OutOfRange { value: 0, min: 1, max: 99, .. })), "{zero:?}");
     let above = model.apply_game(&set(level(1), 100));
-    assert!(matches!(above, Err(EditError::AboveCap { cap: 99, value: 100, .. })), "{above:?}");
+    assert!(matches!(above, Err(EditError::OutOfRange { value: 100, max: 99, .. })), "{above:?}");
     assert_eq!(model.document().to_json(), before);
 }
 
@@ -155,4 +155,32 @@ fn the_spaced_slot_behaves_the_same() {
     assert_eq!(int(&mut model, &exp(1)), 207_299);
     model.apply_game(&set(exp(1), 150_000)).unwrap();
     assert_eq!(int(&mut model, &level(1)), 36);
+}
+
+/// A stored level above `MAX_LV` is outside the Level storage bound, so every
+/// edit that has to restore it as an inverse (a Level edit, an Experience edit
+/// that reaches a level) is refused. The error names the stored value; an
+/// edit of another field is not affected.
+#[test]
+fn a_stored_level_above_the_cap_refuses_the_level_and_experience_edits() {
+    let mut data = SlotData::standard();
+    data.characters[0].level = "150".to_owned();
+    let mut model = model(&data.render());
+    let before = model.document().to_json();
+    for edit in [set(level(1), 50), set(level(1), 99), set(exp(1), 150_000), set(exp(1), 9_999_999)] {
+        let result = model.apply_game_with(&edit, &mut Script::fixed(false, 20));
+        assert!(
+            matches!(result, Err(EditError::OutOfRange { value: 150, max: 99, .. })),
+            "{}: {result:?}",
+            edit.target()
+        );
+        assert_eq!(model.document().to_json(), before, "{}", edit.target());
+    }
+    for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
+        let result = model.apply(&set(level(1), 99), policy);
+        assert!(matches!(result, Err(EditError::OutOfRange { value: 150, .. })), "{policy:?}");
+    }
+    let gil = Edit::set(FieldId::new(names::GIL), Value::Int(5));
+    model.apply_game_with(&gil, &mut Script::fixed(false, 20)).unwrap();
+    assert_eq!(int(&mut model, &level(1)), 150);
 }

@@ -194,13 +194,13 @@ fn a_row_the_model_cannot_restore_is_refused_on_both_interfaces() {
 #[test]
 fn caps_and_tables_are_always_enforced() {
     let mut model = standard_model();
-    let level = set(character_field(1, names::LEVEL), 100);
-    assert!(matches!(refused(&mut model, &level), EditError::AboveCap { cap: 99, .. }));
+    let gil = set(FieldId::new(names::GIL), 1_000_000);
+    assert!(matches!(refused(&mut model, &gil), EditError::AboveCap { cap: 999_999, .. }));
     let job = set(character_field(1, names::JOB), 13);
     assert!(matches!(refused(&mut model, &job), EditError::UnknownId { id: 13, .. }));
     let equip = set(slot(1, 1), 165);
     assert!(matches!(refused(&mut model, &equip), EditError::UnknownId { id: 165, .. }));
-    for edit in [level, job, equip] {
+    for edit in [gil, job, equip] {
         raw_accepts(&model, &edit, STORAGE_ONLY);
     }
 }
