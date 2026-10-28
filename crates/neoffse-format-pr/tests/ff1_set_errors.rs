@@ -100,14 +100,24 @@ fn storage_bounds_hold_under_both_policies() {
     // Magic has no game cap, so Enforce takes the storage maximum.
     assert!(try_set(&character_field(1, names::MAGIC), STORAGE_MAX, ENFORCE).is_ok());
     assert!(try_set(&power, STORAGE_MAX, STORAGE_ONLY).is_ok());
-    assert!(try_set(&character_field(1, names::LEVEL), STORAGE_MAX, STORAGE_ONLY).is_ok());
+}
+
+#[test]
+fn the_level_storage_bound_is_the_game_cap() {
+    let level = character_field(1, names::LEVEL);
+    for policy in [ENFORCE, STORAGE_ONLY] {
+        assert!(try_set(&level, 99, policy).is_ok());
+        for value in [-1, 100, STORAGE_MAX] {
+            let result = try_set(&level, value, policy);
+            assert!(matches!(result, Err(EditError::OutOfRange { min: 0, max: 99, .. })), "{value}");
+        }
+    }
 }
 
 #[test]
 fn caps_under_enforce_and_storage_only() {
     let cases = [
         (gil(), 999_999),
-        (character_field(1, names::LEVEL), 99),
         (character_field(1, names::EXP), 9_999_999),
         (character_field(1, names::HP), 999),
         (character_field(1, names::POWER), 99),
@@ -133,16 +143,16 @@ fn a_value_past_the_bound_and_the_cap_is_out_of_range() {
 
 #[test]
 fn the_inverse_of_an_above_cap_edit_needs_storage_only() {
-    let level = character_field(1, names::LEVEL);
+    let gil = gil();
     let mut model = standard_model();
-    model.apply(&Edit::set(level.clone(), Value::Int(150)), STORAGE_ONLY).unwrap();
-    let inverse = model.apply(&Edit::set(level.clone(), Value::Int(50)), ENFORCE).unwrap();
-    assert_eq!(inverse, Edit::set(level.clone(), Value::Int(150)));
+    model.apply(&Edit::set(gil.clone(), Value::Int(1_500_000)), STORAGE_ONLY).unwrap();
+    let inverse = model.apply(&Edit::set(gil.clone(), Value::Int(50)), ENFORCE).unwrap();
+    assert_eq!(inverse, Edit::set(gil.clone(), Value::Int(1_500_000)));
     let result = model.apply(&inverse, ENFORCE);
-    assert!(matches!(result, Err(EditError::AboveCap { cap: 99, .. })));
-    assert_eq!(model.get(&level).unwrap(), Value::Int(50));
+    assert!(matches!(result, Err(EditError::AboveCap { cap: 999_999, .. })));
+    assert_eq!(model.get(&gil).unwrap(), Value::Int(50));
     model.apply(&inverse, STORAGE_ONLY).unwrap();
-    assert_eq!(model.get(&level).unwrap(), Value::Int(150));
+    assert_eq!(model.get(&gil).unwrap(), Value::Int(1_500_000));
 }
 
 #[test]

@@ -152,7 +152,7 @@ fn a_redo_does_not_claim_a_new_draw() {
 fn a_refused_edit_adds_no_entry() {
     let site = editing_site();
     let ui = open_editor(&site);
-    ui.commit(ui.level().key, "100");
+    ui.commit(ui.gil().key, "1000000");
 
     assert!(ui.bridge().get_has_notice());
     assert_eq!(ui.bridge().get_notice().problem, EditProblem::AboveCap);

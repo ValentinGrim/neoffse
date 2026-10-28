@@ -153,10 +153,11 @@ fn expert_mode_shows_no_notice_and_grows_nothing() {
 fn an_error_notice_wins() {
     let site = editing_site();
     let ui = opened(&site);
-    commit(&ui, "Level", "100");
+    let gil = ui.gil();
+    ui.commit(gil.key, "1000000");
     assert!(ui.bridge().get_has_notice());
     assert_eq!(ui.bridge().get_notice().problem, EditProblem::AboveCap);
-    assert_eq!(text_of(&ui, "Level"), "31");
+    assert_eq!(ui.gil().text, gil.text);
 }
 
 #[test]

@@ -94,15 +94,16 @@ fn a_refused_commit_shows_the_documents_value_again() {
     let site = editing_site();
     let ui = on_character_page(&site);
 
-    ui.focus_input("Level");
-    ui.replace_text("Level", "100");
+    let before = ui.input_text("Experience");
+    ui.focus_input("Experience");
+    ui.replace_text("Experience", "99999999");
     ui.key(Key::Return);
 
     let notice = ui.bridge().get_notice();
     assert!(ui.bridge().get_has_notice());
     assert_eq!(notice.problem, EditProblem::AboveCap);
-    assert_eq!(notice.label, "Level");
-    assert_eq!(ui.input_text("Level"), "31");
+    assert_eq!(notice.label, "Experience");
+    assert_eq!(ui.input_text("Experience"), before);
     assert_eq!(ui.pending(), 0);
 }
 

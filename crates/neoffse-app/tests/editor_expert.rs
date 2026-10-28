@@ -62,9 +62,9 @@ fn confirming_turns_it_on() {
     assert!(!bridge.get_expert_warning_open());
     assert!(ui.app.editor.expert());
 
-    ui.commit(ui.level().key, "100");
+    ui.commit(ui.gil().key, "1000000");
     assert!(!bridge.get_has_notice());
-    assert_eq!(ui.level().text, "100");
+    assert_eq!(ui.gil().text, "1000000");
 }
 
 #[test]
@@ -102,20 +102,20 @@ fn above_cap_offers_the_switch() {
     let site = editing_site();
     let ui = open_editor(&site);
     let bridge = ui.bridge();
-    let level = ui.level().key;
+    let gil = ui.gil().key;
 
-    ui.commit(level, "100");
+    ui.commit(gil, "1000000");
     assert_eq!(bridge.get_notice().problem, EditProblem::AboveCap);
     assert!(bridge.get_offer_expert());
 
     bridge.invoke_notice_dismissed();
     assert!(!bridge.get_offer_expert(), "dismissing the notice clears the offer");
 
-    ui.commit(ui.gil().key, "abc");
+    ui.commit(ui.level().key, "abc");
     assert!(bridge.get_has_notice());
     assert!(!bridge.get_offer_expert(), "another refusal offers nothing");
 
-    ui.commit(level, "100");
+    ui.commit(gil, "1000000");
     assert!(bridge.get_offer_expert());
     bridge.invoke_expert_toggle_requested();
     bridge.invoke_expert_warning_cancelled();
@@ -126,7 +126,7 @@ fn above_cap_offers_the_switch() {
     assert!(!bridge.get_has_notice(), "the switch clears the notice");
     assert!(!bridge.get_offer_expert());
 
-    ui.commit(level, "100");
+    ui.commit(gil, "1000000");
     assert!(!bridge.get_has_notice(), "in expert mode no notice appears");
     assert!(!bridge.get_offer_expert());
 }

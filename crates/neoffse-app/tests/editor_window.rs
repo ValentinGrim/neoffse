@@ -45,22 +45,22 @@ fn a_refused_commit_shows_a_notice() {
     let site = editing_site();
     let ui = open_editor(&site);
     let bridge = ui.window.global::<EditorBridge>();
-    let before = ui.level();
-    ui.commit(before.key, "100");
+    let before = ui.gil();
+    ui.commit(before.key, "1000000");
 
     assert!(bridge.get_has_notice());
     let notice = bridge.get_notice();
     assert_eq!(notice.problem, EditProblem::AboveCap);
-    assert_eq!(notice.value, "100");
-    assert_eq!(notice.cap, "99");
-    assert_eq!(notice.label, "Level");
-    assert_eq!(ui.level().text, before.text, "the row still reads the document's value");
+    assert_eq!(notice.value, "1000000");
+    assert_eq!(notice.cap, "999999");
+    assert_eq!(notice.label, "Gil");
+    assert_eq!(ui.gil().text, before.text, "the row still reads the document's value");
     assert_eq!(ui.pending(), 0);
 
     bridge.invoke_notice_dismissed();
     assert!(!bridge.get_has_notice());
 
-    ui.commit(before.key, "100");
+    ui.commit(before.key, "1000000");
     assert!(bridge.get_has_notice());
     ui.commit(ui.gil().key, "500");
     assert!(!bridge.get_has_notice(), "a successful commit clears the notice");

@@ -11,7 +11,7 @@ mod common;
 use std::fs;
 use std::sync::Arc;
 
-use common::{Flow, Outcomes, Part, PrivateSlot, all_fields, fields, items, lists, pages, private_slot_copies, rows, section};
+use common::{Flow, Outcomes, Part, PrivateSlot, all_fields, fields, items, lists, must, pages, private_slot_copies, rows, section};
 use neoffse::core::{Key, RowId};
 use neoffse::data::Language;
 use neoffse_app::home::OpenOutcome;
@@ -41,15 +41,14 @@ fn check(slot: usize, data: &EditorData, editor: &EditorViewModel) {
     );
     for page in pages(&data.magic) {
         for row in fields(&page) {
-            assert_eq!(row.kind, FieldKind::Label, "slot {slot}: magic field {} is not a label", row.label);
+            assert!(row.kind == FieldKind::Label, "slot {slot}: magic field {} is not a label", row.label);
             assert!(!row.editable, "slot {slot}: magic field {} is editable", row.label);
         }
     }
     let all = all_fields(data);
     let keys: Vec<i32> = all.iter().map(|row| row.key).collect();
-    assert_eq!(
-        keys,
-        (0..i32::try_from(keys.len()).unwrap()).collect::<Vec<_>>(),
+    assert!(
+        keys == (0..i32::try_from(keys.len()).unwrap()).collect::<Vec<_>>(),
         "slot {slot}: keys are not dense"
     );
     for row in all.iter().filter(|row| row.kind == FieldKind::Picker) {
@@ -67,7 +66,7 @@ fn check(slot: usize, data: &EditorData, editor: &EditorViewModel) {
             list.title
         );
     }
-    assert_eq!(items(&data.party.lists).len(), 0, "slot {slot}: the party has a list");
+    assert!(items(&data.party.lists).is_empty(), "slot {slot}: the party has a list");
 }
 
 #[test]
@@ -75,13 +74,13 @@ fn every_private_slot_builds_the_editor_data() {
     let Some(slots) = private_slot_copies() else { return };
     for (position, PrivateSlot { name, site, copy }) in slots.iter().enumerate() {
         let index = position + 1;
-        let bytes = fs::read(copy).unwrap();
+        let bytes = must(fs::read(copy), &format!("private slot {index}: the copy does not read"));
 
         let flow = Flow::new(site, None);
         let outcomes = Outcomes::new();
         flow.click(name, &outcomes);
         flow.manual.run_all();
-        assert_eq!(outcomes.outcomes(), vec![OpenOutcome::Opened], "private slot {index} did not open");
+        assert!(outcomes.outcomes() == vec![OpenOutcome::Opened], "private slot {index} did not open");
 
         let data = flow.editor.data().unwrap_or_else(|_| panic!("private slot {index}: data failed"));
         check(index, &data, &flow.editor);
@@ -89,7 +88,7 @@ fn every_private_slot_builds_the_editor_data() {
         let session = flow.state.session().unwrap();
         {
             let mut session = session.lock().unwrap();
-            let view = session.view().unwrap();
+            let view = must(session.view(), &format!("private slot {index}: the view failed"));
             for section in &view.sections {
                 for entity in &section.entities {
                     for field in &entity.fields {
@@ -116,15 +115,21 @@ fn every_private_slot_builds_the_editor_data() {
                 .data()
                 .unwrap_or_else(|_| panic!("private slot {index}: expert {expert} data failed"));
             check(index, &rebuilt, &flow.editor);
-            assert_eq!(shape(&rebuilt), default_shape, "private slot {index}: the shape changes with the mode");
+            assert!(shape(&rebuilt) == default_shape, "private slot {index}: the shape changes with the mode");
         }
 
         let french = EditorViewModel::new(Arc::clone(&flow.state), Language::Fr);
         let french_data = french.data().unwrap_or_else(|_| panic!("private slot {index}: French data failed"));
         check(index, &french_data, &french);
-        assert_eq!(shape(&french_data), default_shape, "private slot {index}: the shape changes with the language");
+        assert!(
+            shape(&french_data) == default_shape,
+            "private slot {index}: the shape changes with the language"
+        );
 
         assert!(!flow.editor.is_dirty(), "private slot {index} is dirty");
-        assert_eq!(fs::read(copy).unwrap(), bytes, "private slot {index}: the copy changed");
+        assert!(
+            must(fs::read(copy), &format!("private slot {index}: the copy does not read")) == bytes,
+            "private slot {index}: the copy changed"
+        );
     }
 }

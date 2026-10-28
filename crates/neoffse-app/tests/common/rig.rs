@@ -21,7 +21,7 @@ use neoffse_app::state::AppState;
 use slint::ComponentHandle;
 use tempfile::TempDir;
 
-use super::{ID_1, Site, T0, Ui, make_backup, open_editor, slot_file, steam_folder};
+use super::{ID_1, Site, T0, Ui, make_backup, must, open_editor, slot_file, steam_folder};
 
 /// What the scripted probe answers.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -79,10 +79,10 @@ pub(crate) fn backup_count(data: &Path) -> usize {
         .map_or(0, |listing| listing.backups.len())
 }
 
-fn session_in(file: &Path) -> Session {
-    Registry::new(Language::En)
-        .open(file.parent().unwrap(), file.file_name().unwrap().to_str().unwrap(), Some(Game::Ff1Pr))
-        .unwrap()
+/// A session opened on the save file `file`.
+pub(crate) fn session_in(file: &Path) -> Session {
+    let opened = Registry::new(Language::En).open(file.parent().unwrap(), file.file_name().unwrap().to_str().unwrap(), Some(Game::Ff1Pr));
+    must(opened, "the save does not open")
 }
 
 /// The gil the save file `file` holds.

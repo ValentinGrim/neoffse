@@ -19,9 +19,12 @@ pub(crate) const NEW_NAME: &str = "Nö\"\\";
 
 /// The cases every FF I slot must allow. Every other case depends on the
 /// save (a free item, a worn item, a placeholder, a spell level) and may skip.
-pub(crate) const ALWAYS: [&str; 8] = [
+/// `level_up` skips for a first character at level 99: a private run exempts
+/// that one slot case and no other.
+pub(crate) const ALWAYS: [&str; 9] = [
     "gil",
     "level",
+    "level_up",
     "stat",
     "job",
     "name",

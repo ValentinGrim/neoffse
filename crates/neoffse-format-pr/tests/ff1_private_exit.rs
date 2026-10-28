@@ -42,6 +42,17 @@ fn skipped_line(skipped: &BTreeMap<&'static str, usize>) -> String {
     skipped.iter().map(|(name, count)| format!("{name} x{count}")).collect::<Vec<_>>().join(", ")
 }
 
+/// The stored level of the first character, the one the matrix edits.
+fn first_level(subject: &Subject) -> Option<i64> {
+    subject.tree.int(&format!("{CHARS}[0].parameter.addtionalLevel"))
+}
+
+/// The game's level cap, `MAX_LV`.
+fn max_level() -> i64 {
+    let tables = must_some(neoffse_data::tables_for(GAME), "no FF I tables");
+    must_some(tables.bound("MAX_LV"), "no MAX_LV in the FF I tables")
+}
+
 #[test]
 fn real_slots_prove_every_edit_kind() {
     let Some(slots) = slots() else { return };
@@ -55,7 +66,11 @@ fn real_slots_prove_every_edit_kind() {
         for name in &built.skipped {
             *skipped.entry(*name).or_default() += 1;
         }
+        let at_cap = first_level(&subject).is_some_and(|level| level >= max_level());
         for name in ALWAYS {
+            if name == "level_up" && at_cap {
+                continue;
+            }
             assert!(!built.skipped.contains(&name), "{}: the case {name} is skipped", subject.label);
         }
         for case in &built.cases {

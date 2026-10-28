@@ -13,6 +13,7 @@ mod manual;
 mod open;
 mod restoring;
 mod rig;
+mod save_proof;
 mod saving;
 mod site;
 mod slots;
@@ -38,11 +39,28 @@ pub(crate) use geometry::{
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes, PrivateSlot, private_slot_copies};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
-pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe};
-pub(crate) use saving::{Saving, saving};
+pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe, session_in};
+pub(crate) use save_proof::{Step, assert_same};
+pub(crate) use saving::{Saving, saving, saving_over};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
 pub(crate) use slots::{slot_bytes, slot_file};
 pub(crate) use window::Ui;
+
+/// The value of `result`, or a panic with `what` alone. The `Err` is dropped
+/// because its text can quote a path or a value of a private save.
+#[track_caller]
+pub(crate) fn must<T, E>(result: Result<T, E>, what: &str) -> T {
+    result.unwrap_or_else(|_| panic!("{what}"))
+}
+
+/// The value of `option`, or a panic with `what`.
+#[track_caller]
+pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
+    match option {
+        Some(value) => value,
+        None => panic!("{what}"),
+    }
+}
 
 pub(crate) fn registry() -> Arc<Registry> {
     Arc::new(Registry::new(Language::En))

@@ -35,6 +35,11 @@ fn any_dot_file_is_refused() {
 }
 
 #[test]
-fn a_dot_inside_a_name_passes() {
-    assert!(is_save_name(OsStr::new("save.bak")));
+fn a_name_outside_the_game_naming_is_refused() {
+    let short = &slot_name(1)[..43];
+    let long = format!("{}A", slot_name(1));
+    let odd = slot_name(1).replacen(char::from(slot_name(1).as_bytes()[0]), "-", 1);
+    for name in ["save.bak", "desktop.ini", "README.txt", short, long.as_str(), odd.as_str()] {
+        assert!(!is_save_name(OsStr::new(name)), "{name}");
+    }
 }

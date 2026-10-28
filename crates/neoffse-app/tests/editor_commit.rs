@@ -99,18 +99,36 @@ fn bad_text_is_refused_before_the_facade() {
 fn above_cap_is_refused_in_the_default_mode_and_accepted_in_expert() {
     let site = editing_site();
     let ed = editing(&site);
-    let key = party_key(&ed, "Aria", "Level");
+    let key = gil_key(&ed);
 
-    let notice = ed.editor().commit(key, text("100")).expect("above the cap");
+    let notice = ed.editor().commit(key, text("1000000")).expect("above the cap");
     assert_eq!(notice.problem, EditProblem::AboveCap);
-    assert_eq!(notice.cap, "99");
-    assert_eq!(notice.value, "100");
+    assert_eq!(notice.cap, "999999");
+    assert_eq!(notice.value, "1000000");
     assert_eq!(ed.pending(), 0);
 
     ed.editor().set_expert(true);
-    assert!(ed.editor().commit(key, text("100")).is_none());
+    assert!(ed.editor().commit(key, text("1000000")).is_none());
     assert_eq!(ed.pending(), 1);
-    assert!(field(&ed.data(), Part::Party, "Aria", "Level").above_cap);
+    assert!(field(&ed.data(), Part::Inventory, "Gil", "Gil").above_cap);
+}
+
+#[test]
+fn a_level_above_the_cap_is_clamped_to_it_in_both_modes() {
+    let site = editing_site();
+    let ed = editing(&site);
+    let key = party_key(&ed, "Aria", "Level");
+
+    assert!(ed.editor().commit(key, text("100")).is_none());
+    assert_eq!(field(&ed.data(), Part::Party, "Aria", "Level").text, "99");
+    assert_eq!(ed.pending(), 1);
+
+    ed.editor().set_expert(true);
+    let key = party_key(&ed, "Aria", "Level");
+    assert!(ed.editor().commit(key, text("500")).is_none());
+    let level = field(&ed.data(), Part::Party, "Aria", "Level");
+    assert_eq!(level.text, "99");
+    assert!(!level.above_cap);
 }
 
 #[test]
