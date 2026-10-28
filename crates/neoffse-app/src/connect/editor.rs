@@ -13,9 +13,13 @@
 use slint::{ComponentHandle, Model, ModelRc, VecModel, Weak};
 
 use super::history::sync_history;
+use super::{close_editor_page, refresh_home};
 use crate::editor::{EditorViewModel, History, Input, growth_notice, levels_gained, problem_notice};
 use crate::theme::sync_theme;
-use crate::{App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, Overview, PickerEntry, SectionData};
+use crate::{
+    App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, OpenProblem, Overview, PickerEntry,
+    SectionData,
+};
 
 /// Wires the editor callbacks of the [`EditorBridge`] global to `app.editor`.
 ///
@@ -41,6 +45,7 @@ pub fn connect_editor(window: &MainWindow, app: &App) {
         move |key, index| {
             act(&weak, &app, |editor| match usize::try_from(index) {
                 Ok(index) => editor.commit(key, Input::Name(index)),
+                // A negative index is a ComboBox with nothing selected: there is no name to commit.
                 Err(_) => Some(problem_notice(EditProblem::NotEditable, "")),
             });
         }
@@ -96,8 +101,12 @@ fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel)
             set_notice(&window.global::<EditorBridge>(), Some(problem_notice(EditProblem::NotEditable, "")), false);
             return;
         }
+        let was_open = app.state.is_open();
         let before = window.global::<EditorBridge>().get_overview();
         let notice = action(&app.editor);
+        if leave_if_lost(&window, app, was_open) {
+            return;
+        }
         let notice = notice.or_else(|| {
             let gained = if app.editor.expert() {
                 0
@@ -108,6 +117,22 @@ fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel)
         });
         refresh_with(&window, app, notice);
     }
+}
+
+/// Sends the user Home when the action lost the session: it was open before
+/// and the state holds none now. Home shows the internal problem. `was_open`
+/// keeps a stale edit after Back apart: no session before or after is not a
+/// loss, and the view model answers "not editable" for it. Returns whether
+/// the editor closed.
+pub(super) fn leave_if_lost(window: &MainWindow, app: &App, was_open: bool) -> bool {
+    if !was_open || app.state.is_open() {
+        return false;
+    }
+    close_editor_page(window, app);
+    window.set_open_problem(OpenProblem::Internal);
+    window.set_has_open_problem(true);
+    refresh_home(window, app);
+    true
 }
 
 /// The notice of the action wins over a failure of the rebuild: a stale edit

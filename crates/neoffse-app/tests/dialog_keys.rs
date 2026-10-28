@@ -45,6 +45,37 @@ fn escape_cancels_the_expert_warning() {
 }
 
 #[test]
+fn enter_cancels_the_expert_warning() {
+    let site = editing_site();
+    let ui = open_editor(&site);
+    let bridge = ui.bridge();
+    bridge.invoke_expert_toggle_requested();
+    assert!(bridge.get_expert_warning_open());
+
+    key(&ui, Key::Return);
+
+    assert!(!bridge.get_expert_warning_open());
+    assert!(!ui.app.editor.expert());
+    assert!(!bridge.get_expert_mode());
+}
+
+#[test]
+fn tab_then_enter_turns_expert_mode_on() {
+    let site = editing_site();
+    let ui = open_editor(&site);
+    let bridge = ui.bridge();
+    bridge.invoke_expert_toggle_requested();
+    assert!(bridge.get_expert_warning_open());
+
+    key(&ui, Key::Tab);
+    key(&ui, Key::Return);
+
+    assert!(ui.app.editor.expert());
+    assert!(!bridge.get_expert_warning_open());
+    assert!(bridge.get_expert_mode());
+}
+
+#[test]
 fn escape_cancels_the_discard_dialog_and_keeps_the_save() {
     let (ui, _site) = discard_dialog();
 

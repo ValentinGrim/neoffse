@@ -8,7 +8,7 @@
 
 use slint::ComponentHandle;
 
-use super::editor::refresh_with;
+use super::editor::{leave_if_lost, refresh_with};
 use crate::editor::History;
 use crate::{App, EditNotice, EditorBridge, EditorViewModel, MainWindow};
 
@@ -31,7 +31,11 @@ fn replay(window: &MainWindow, app: &App, step: fn(&EditorViewModel) -> Option<E
             return;
         }
         if let Some(window) = weak.upgrade() {
+            let was_open = app.state.is_open();
             let notice = step(&app.editor);
+            if leave_if_lost(&window, &app, was_open) {
+                return;
+            }
             refresh_with(&window, &app, notice);
         }
     }

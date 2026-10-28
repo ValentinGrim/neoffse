@@ -11,6 +11,7 @@ mod geometry;
 mod keys;
 mod manual;
 mod open;
+mod permissions;
 mod restoring;
 mod rig;
 mod save_proof;
@@ -38,12 +39,14 @@ pub(crate) use geometry::{
 };
 pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes, PrivateSlot, private_slot_copies};
+#[cfg(unix)]
+pub(crate) use permissions::{Locked, lock};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
 pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe, session_in};
 pub(crate) use save_proof::{Step, assert_same};
 pub(crate) use saving::{Saving, saving, saving_over};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};
-pub(crate) use slots::{slot_bytes, slot_file};
+pub(crate) use slots::{no_game_bytes, other_game_bytes, slot_bytes, slot_file};
 pub(crate) use window::Ui;
 
 /// The value of `result`, or a panic with `what` alone. The `Err` is dropped

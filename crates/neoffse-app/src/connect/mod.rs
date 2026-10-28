@@ -157,13 +157,19 @@ fn go_home(window: &MainWindow, app: &App) {
         return;
     }
     if app.editor.leave(Leave::Back) == LeaveAnswer::Left {
-        window.set_editor_open(false);
-        app.home_size.restore(window);
-        sync_expert(window, app);
+        close_editor_page(window, app);
         refresh_home(window, app);
     } else {
         window.global::<EditorBridge>().set_discard_dialog_open(true);
     }
+}
+
+/// Hides the editor page, gives Home its window size back and syncs the expert
+/// flags. The caller has closed the session.
+fn close_editor_page(window: &MainWindow, app: &App) {
+    window.set_editor_open(false);
+    app.home_size.restore(window);
+    sync_expert(window, app);
 }
 
 /// Steps back one level inside the editor: a character page or another

@@ -14,8 +14,8 @@
 use neoffse::Running;
 use slint::ComponentHandle;
 
+use super::close_editor_page;
 use super::editor::refresh_editor;
-use super::guard::sync_expert;
 use super::restore::sync_restore;
 use crate::editor::Leave;
 use crate::home::OpenOutcome;
@@ -109,15 +109,15 @@ fn reopen(window: &MainWindow, app: &App, restored: RestoreNotice) {
             finish_restore(&window, &done_app, restored);
         } else {
             done_app.editor.back();
-            window.set_editor_open(false);
-            done_app.home_size.restore(&window);
-            sync_expert(&window, &done_app);
+            close_editor_page(&window, &done_app);
             finish_restore(&window, &done_app, notice(RestoreProblem::ReopenFailed, ""));
         }
     });
 }
 
-/// Ends a restore that wrote nothing: the list stays as it was.
+/// Ends a restore that wrote nothing: the list stays as it was. A first write
+/// that failed can leave a safety backup the list does not show until the
+/// page opens again.
 fn finish_without_change(window: &MainWindow, app: &App, problem: RestoreProblem) {
     window.global::<RestoreBridge>().set_working(false);
     sync_restore(window, app, Some(notice(problem, "")));
@@ -126,14 +126,15 @@ fn finish_without_change(window: &MainWindow, app: &App, problem: RestoreProblem
 /// Ends a restore that may have written: `working` goes down, the page lists
 /// the backups again (the new "Before restore" backup is the top row) and
 /// shows `notice`. A list that cannot be read replaces the notice, except
-/// `Incomplete`: the user must learn the folder may hold a mix of files. The
-/// page lists what it can, an empty list here. Home scans again, after a
+/// `Incomplete` and `ReopenFailed`: the user must learn the folder may hold a
+/// mix of files, or that the open save closed. The page lists what it can, an
+/// empty list here. Home scans again, after a
 /// partial restore as after a full one, so a slot that was unreadable shows
 /// its summary on return.
 fn finish_restore(window: &MainWindow, app: &App, notice: RestoreNotice) {
     window.global::<RestoreBridge>().set_working(false);
     let listed = app.restore.game().and_then(|game| app.restore.show(game));
-    let shown = if notice.problem == RestoreProblem::Incomplete {
+    let shown = if matches!(notice.problem, RestoreProblem::Incomplete | RestoreProblem::ReopenFailed) {
         notice
     } else {
         listed.unwrap_or(notice)

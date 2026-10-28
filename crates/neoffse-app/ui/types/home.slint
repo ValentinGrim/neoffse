@@ -26,6 +26,7 @@ export struct FolderRow {
     origin: FolderOrigin,
     account: int,
     slots: [SlotRow],
+    unlisted: bool,
 }
 
 export struct GameRow {
@@ -36,4 +37,5 @@ export struct GameRow {
     slots: [SlotRow],
     folders: [FolderRow],
     no-save: bool,
+    unlisted: bool,
 }

@@ -102,6 +102,21 @@ fn save_anyway_saves_without_asking_again() {
 }
 
 #[test]
+fn tab_then_enter_saves_anyway() {
+    let site = editing_site();
+    let rig = warned(&site);
+
+    rig.ui.key(Key::Tab);
+    rig.ui.key(Key::Return);
+    rig.ui.manual.run_all();
+
+    assert!(!rig.ui.bridge().get_game_running_open());
+    assert_eq!(rig.gil_on_disk(), 500);
+    assert_eq!(rig.ui.bridge().get_notice().problem, EditProblem::Saved);
+    assert_eq!(rig.backups(), 1);
+}
+
+#[test]
 fn a_changed_file_opens_the_reload_dialog() {
     let site = editing_site();
     let rig = foreign(&site);
@@ -164,6 +179,38 @@ fn reload_replaces_the_session_with_the_disk() {
     assert_eq!(ui.bridge().get_character(), 0);
     assert!(!ui.bridge().get_has_notice());
     assert!(!ui.bridge().get_working());
+}
+
+#[test]
+fn enter_cancels_the_reload_dialog() {
+    let site = editing_site();
+    let rig = foreign(&site);
+
+    rig.ui.key(Key::Return);
+
+    assert!(!rig.ui.bridge().get_changed_on_disk_open());
+    assert_eq!(rig.ui.pending(), 1);
+    assert_eq!(rig.bytes(), slot_bytes(2));
+}
+
+#[test]
+fn tab_then_enter_reloads() {
+    let site = editing_site();
+    let rig = rig(&site, Machine::Quiet);
+    let ui = &rig.ui;
+    ui.make_dirty();
+    rig.change_on_disk(777);
+    ui.bridge().invoke_save_requested();
+    ui.manual.run_all();
+    assert!(ui.bridge().get_changed_on_disk_open());
+
+    ui.key(Key::Tab);
+    ui.key(Key::Return);
+    ui.manual.run_all();
+
+    assert_eq!(ui.pending(), 0);
+    assert_eq!(ui.gil().text, "777");
+    assert!(ui.window.get_editor_open());
 }
 
 #[test]

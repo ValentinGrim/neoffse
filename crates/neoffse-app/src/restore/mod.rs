@@ -16,5 +16,5 @@ mod target;
 
 pub use model::RestoreViewModel;
 pub use rows::{backup_row, backup_rows, reason_of};
-pub use run::RestoreOutcome;
+pub use run::{RestoreOutcome, outcome_of};
 pub use target::{replaces_open_file, same_folder, target_of};

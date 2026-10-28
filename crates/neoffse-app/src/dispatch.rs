@@ -28,7 +28,9 @@ impl Dispatcher for EventLoopDispatcher {
     }
 
     fn post(&self, task: Job) {
-        // An error means the event loop has ended, so the task has no UI left to serve.
+        // `EventLoopTerminated`: the loop ended, so no UI is left to serve the task.
+        // `NoEventLoopProvider`: no platform, or one without an event loop; the shipped app runs on winit.
+        // Either way the task is lost and nothing can recover it.
         let _ = slint::invoke_from_event_loop(task);
     }
 }

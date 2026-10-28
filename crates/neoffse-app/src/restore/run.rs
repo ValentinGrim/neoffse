@@ -38,24 +38,35 @@ pub enum RestoreOutcome {
     /// The save folder of the backup does not exist, or the manifest names no
     /// usable folder. Nothing was read or written.
     FolderMissing,
-    /// An error before the first write: no file changed. Also no selection
-    /// and no data folder.
+    /// An error before the first write, or a first write that failed: no
+    /// file changed. Also no selection and no data folder.
     Failed,
-    /// The restore stopped after the first write, or the worker panicked.
-    /// Some files may be replaced.
+    /// The restore stopped after the first write, so some files are
+    /// replaced, or the worker panicked and the code cannot tell how far it
+    /// got.
     Incomplete,
     /// Another restore runs. This call did nothing.
     Busy,
 }
 
 /// The outcome of a finished pipeline.
-fn outcome_of(result: Result<Restored, Error>, replaced_open: bool) -> RestoreOutcome {
+///
+/// A restore that stopped with nothing written (`RestoreFailed` with an empty
+/// `written`) is `Failed`: the atomic write leaves its target unchanged until
+/// the rename, so no file holds the backup's version
+/// (`docs/architecture.md#save-safety`). A stop after at least one write is
+/// `Incomplete`. `replaced_open` rides on `Restored` only.
+#[must_use]
+pub fn outcome_of(result: Result<Restored, Error>, replaced_open: bool) -> RestoreOutcome {
     match result {
         Ok(restored) => RestoreOutcome::Restored {
             safety: restored.safety.and_then(|backup| stamp_of(&backup.manifest.created)),
             replaced_open,
         },
         Err(Error::GameRunning { .. }) => RestoreOutcome::GameRunning,
+        Err(Error::Io {
+            source: IoError::RestoreFailed { written, .. },
+        }) if written.is_empty() => RestoreOutcome::Failed,
         Err(Error::Io {
             source: IoError::RestoreFailed { .. },
         }) => RestoreOutcome::Incomplete,
