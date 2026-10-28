@@ -81,6 +81,75 @@ export component LockMark inherits HorizontalLayout {
     }
 }
 
+// A check box that shows `source` and nothing else. A click or a key sends
+// `committed` with the new state; the box then shows `source` again, so a
+// refusal leaves the document's value on screen and a later change of the row
+// still reaches the box.
+component FieldCheck inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <bool> source;
+    in property <bool> enabled: true;
+    callback committed(bool);
+
+    min-width: check.min-width;
+    min-height: check.min-height;
+    preferred-width: check.preferred-width;
+    preferred-height: check.preferred-height;
+
+    changed source => { check.checked = root.source; }
+
+    check := ThemedCheck {
+        look: root.look;
+        width: 100%;
+        height: 100%;
+        checked: root.source;
+        enabled: root.enabled;
+        toggled => {
+            root.committed(self.checked);
+            self.checked = root.source;
+        }
+    }
+}
+
+// A drop-down that shows the entry at `source` (-1: none) and nothing else.
+// The std control keeps an index and a value, and clamps the index when the
+// model changes. A refresh builds a new model, and the clamp would turn "no
+// name" into the first name or leave a stale value that moves the index back.
+// `show` sets both from `source` after the model, the source and every pick.
+component FieldChoice inherits Rectangle {
+    in property <[string]> names;
+    in property <int> source;
+    in property <bool> enabled: true;
+    callback picked(int);
+
+    min-width: combo.min-width;
+    min-height: combo.min-height;
+    preferred-width: combo.preferred-width;
+    preferred-height: combo.preferred-height;
+    horizontal-stretch: combo.horizontal-stretch;
+    vertical-stretch: combo.vertical-stretch;
+
+    function show() {
+        combo.current-index = root.source;
+        combo.current-value = root.names[root.source];
+    }
+
+    changed source => { root.show(); }
+    changed names => { root.show(); }
+
+    combo := ComboBox {
+        width: 100%;
+        height: 100%;
+        model: root.names;
+        current-index: root.source;
+        enabled: root.enabled;
+        selected => {
+            root.picked(self.current-index);
+            root.show();
+        }
+    }
+}
+
 // The control a field gets, chosen by `field.kind`. Every callback goes to the
 // bridge; the control never holds the value, so a refusal shows the document's
 // value again.
@@ -135,16 +204,13 @@ export component FieldEditor inherits HorizontalLayout {
         color: root.look.warning;
         text: @tr("above the game limit");
     }
-    // The one std control left in the editor: no field of FF I has this kind,
-    // and a themed drop-down is a later task.
-    if root.field.kind == FieldKind.choice: ComboBox {
-        model: root.field.names;
-        current-index: root.field.name-index;
+    // The one std control left in the editor, wrapped so it follows the row. No
+    // field of FF I has this kind, and a themed drop-down is a later task.
+    if root.field.kind == FieldKind.choice: FieldChoice {
+        names: root.field.names;
+        source: root.field.name-index;
         enabled: root.field.editable && !EditorBridge.blocked;
-        selected => {
-            EditorBridge.field-name-picked(root.field.key, self.current-index);
-            self.current-index = root.field.name-index;
-        }
+        picked(index) => { EditorBridge.field-name-picked(root.field.key, index); }
     }
     if root.field.kind == FieldKind.choice: CommitEdit {
         look: root.look;
@@ -173,14 +239,11 @@ export component FieldEditor inherits HorizontalLayout {
         query-changed(text) => { EditorBridge.field-picker-query(root.field.key, text); }
         chosen(id) => { EditorBridge.field-picked(root.field.key, id); }
     }
-    if root.field.kind == FieldKind.toggle: ThemedCheck {
+    if root.field.kind == FieldKind.toggle: FieldCheck {
         look: root.look;
-        checked: root.field.checked;
+        source: root.field.checked;
         enabled: root.field.editable && !EditorBridge.blocked;
-        toggled => {
-            EditorBridge.field-toggled(root.field.key, self.checked);
-            self.checked = root.field.checked;
-        }
+        committed(checked) => { EditorBridge.field-toggled(root.field.key, checked); }
     }
     if root.field.locked && root.show-lock && root.field.kind != FieldKind.label: LockMark {
         look: root.look;
