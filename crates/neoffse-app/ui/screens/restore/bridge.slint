@@ -15,8 +15,11 @@ export global RestoreBridge {
     in property <bool> game-running-open;
     // A restore (and the reopen that follows it) runs on a worker.
     in property <bool> working;
+    // A dialog of either page other than the discard dialog covers the window, or a
+    // worker runs: the close request reads this one flag.
+    out property <bool> vetoes-close: root.confirm-open || root.game-running-open || root.working || EditorBridge.vetoes-close;
     // A dialog covers the page, or a worker runs: the controls stop taking input.
-    out property <bool> blocked: root.confirm-open || root.game-running-open || root.working || EditorBridge.blocked;
+    out property <bool> blocked: root.vetoes-close || EditorBridge.discard-dialog-open;
 
     callback back-requested();
     callback restore-requested(int);

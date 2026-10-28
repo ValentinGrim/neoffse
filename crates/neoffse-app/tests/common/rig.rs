@@ -4,8 +4,10 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 use i_slint_backend_testing::AccessibleRole::Button;
 use neoffse::core::{Capability, Edit, FieldId, Game, Value};
@@ -125,6 +127,25 @@ pub(crate) fn closeable_rig(site: &Site, machine: Machine) -> (Rig, AboutDialog)
     (Rig { ui, data, file, probes }, about)
 }
 
+/// A save held inside the process probe: its worker owns the session lock until `release`.
+pub(crate) struct HeldSave {
+    worker: JoinHandle<()>,
+    release: mpsc::Sender<()>,
+    timed_out: Arc<AtomicBool>,
+}
+
+impl HeldSave {
+    /// Lets the worker go and joins it. Panics with "a UI callback waited for the
+    /// running save" when the probe hit its 10 s timeout, which means a callback on
+    /// the UI thread blocked on the session lock. Does not run the posted results:
+    /// the caller runs `rig.ui.manual.run_all()` afterwards.
+    pub(crate) fn release(self) {
+        self.release.send(()).unwrap();
+        self.worker.join().unwrap();
+        assert!(!self.timed_out.load(Ordering::SeqCst), "a UI callback waited for the running save");
+    }
+}
+
 impl Rig {
     pub(crate) fn data_dir(&self) -> DataDir {
         DataDir::at(self.data.path())
@@ -141,14 +162,44 @@ impl Rig {
         assert!(self.ui.window.get_restore_open());
     }
 
-    /// Clicks the row of the backup at `T0`, then Restore in the confirmation.
-    /// Nothing has run: the next step is the worker, or the discard dialog.
-    pub(crate) fn start_restore(&self) {
+    /// Clicks the row of the backup at `T0`: the confirmation opens.
+    pub(crate) fn pick_backup(&self) {
         self.ui
             .element("Restore the backup of 2020-09-13 12:26 UTC", Button)
             .invoke_accessible_default_action();
         assert!(self.ui.restore_bridge().get_confirm_open());
+    }
+
+    /// Picks the backup at `T0`, then clicks Restore in the confirmation.
+    /// Nothing has run: the next step is the worker, or the discard dialog.
+    pub(crate) fn start_restore(&self) {
+        self.pick_backup();
         self.ui.element("Restore", Button).invoke_accessible_default_action();
+    }
+
+    /// Installs a probe that signals, then waits up to 10 s for `release`; calls
+    /// `invoke_save_requested`; runs the jobs on a second thread; returns once
+    /// the worker is inside the probe. Needs a dirty session.
+    pub(crate) fn hold_save(&self) -> HeldSave {
+        let (entered_tx, entered) = mpsc::channel::<()>();
+        let (release, release_rx) = mpsc::channel::<()>();
+        let release_rx = Mutex::new(release_rx);
+        let timed_out = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&timed_out);
+        // The probe runs inside `Session::save`, under the session lock.
+        self.ui.app.editor.set_process_probe(move |_| {
+            entered_tx.send(()).unwrap();
+            let waited = release_rx.lock().unwrap().recv_timeout(Duration::from_secs(10));
+            flag.store(waited.is_err(), Ordering::SeqCst);
+            Vec::new()
+        });
+        self.ui.bridge().invoke_save_requested();
+        let manual = Arc::clone(&self.ui.manual);
+        let worker = thread::spawn(move || {
+            manual.run_jobs();
+        });
+        entered.recv_timeout(Duration::from_secs(10)).expect("the save reached the probe");
+        HeldSave { worker, release, timed_out }
     }
 
     /// Backs up the rig's file as it is now, at `T0`, UTC.

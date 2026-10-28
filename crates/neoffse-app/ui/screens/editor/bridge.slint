@@ -34,10 +34,12 @@ export global EditorBridge {
     in property <bool> changed-on-disk-open;
     // A save or a reload runs on a worker.
     in property <bool> working;
-    // A modal dialog covers the page, or a worker runs: the controls under it
-    // stop taking input.
-    out property <bool> blocked: root.expert-warning-open || root.discard-dialog-open || root.review-open
+    // A dialog other than the discard dialog covers the page, or a worker runs:
+    // a close request waits, and the controls under it stop taking input.
+    out property <bool> vetoes-close: root.expert-warning-open || root.review-open
         || root.game-running-open || root.changed-on-disk-open || root.working;
+    // Any modal, the discard dialog included, covers the page, or a worker runs.
+    out property <bool> blocked: root.vetoes-close || root.discard-dialog-open;
 
     // Key and text, for the text and number kinds.
     callback field-text-committed(int, string);
