@@ -14,7 +14,7 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel, Weak};
 
 use super::history::sync_history;
 use super::{close_editor_page, refresh_home};
-use crate::editor::{EditorViewModel, History, Input, growth_notice, levels_gained, problem_notice};
+use crate::editor::{EditorViewModel, History, Input, problem_notice};
 use crate::theme::sync_theme;
 use crate::{
     App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, OpenProblem, Overview, PickerEntry,
@@ -86,13 +86,9 @@ pub fn refresh_editor(window: &MainWindow, app: &App) {
     refresh_with(window, app, None);
 }
 
-/// Runs `action`, then refreshes with the notice it returned.
-///
-/// An action that went through in default mode may have raised levels, and
-/// the game interface then grew the stats with random draws
-/// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`). The overview before
-/// and after tells how many levels grew, and the page says so. An error
-/// notice wins over that info notice.
+/// Runs `action` through the level-up rule, then refreshes with the notice it
+/// returned. An error notice wins over the level-up notice
+/// ([`EditorViewModel::with_growth`]).
 fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel) -> Option<EditNotice>) {
     if let Some(window) = weak.upgrade() {
         // The worker holds the session lock during a save, and the refresh
@@ -102,19 +98,10 @@ fn act(weak: &Weak<MainWindow>, app: &App, action: impl FnOnce(&EditorViewModel)
             return;
         }
         let was_open = app.state.is_open();
-        let before = window.global::<EditorBridge>().get_overview();
-        let notice = action(&app.editor);
+        let notice = app.editor.with_growth(|| action(&app.editor));
         if leave_if_lost(&window, app, was_open) {
             return;
         }
-        let notice = notice.or_else(|| {
-            let gained = if app.editor.expert() {
-                0
-            } else {
-                levels_gained(&before, &app.editor.overview())
-            };
-            (gained > 0).then(|| growth_notice(gained))
-        });
         refresh_with(&window, app, notice);
     }
 }

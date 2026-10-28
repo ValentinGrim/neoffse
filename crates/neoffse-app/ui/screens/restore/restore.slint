@@ -120,7 +120,7 @@ export component RestorePage inherits FocusScope {
             color: Shell.look.muted;
         }
         if RestoreBridge.unreadable-count > 0: ShellText {
-            text: RestoreBridge.unreadable-count == 1 ? @tr("1 backup could not be read") : @tr("{} backups could not be read", RestoreBridge.unreadable-count);
+            text: @tr("{n} backup could not be read" | "{n} backups could not be read" % RestoreBridge.unreadable-count);
             color: Shell.look.muted;
             font-size: Shell.look.font-small;
             overflow: elide;

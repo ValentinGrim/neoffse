@@ -10,7 +10,7 @@ mod common;
 use std::fs;
 
 use common::{Paged, Ui, editing_site};
-use i_slint_backend_testing::AccessibleRole::Button;
+use i_slint_backend_testing::AccessibleRole::{Button, Text};
 use neoffse_app::{BackupReason, RestoreNotice, RestoreProblem, SlotKind};
 use slint::Model;
 use slint::platform::Key;
@@ -53,6 +53,18 @@ fn unreadable_folders_show_as_a_count() {
 
     assert_eq!(p.bridge().get_unreadable_count(), 2);
     assert_eq!(p.rows().len(), 1);
+}
+
+#[test]
+fn unreadable_count_reads_singular_and_plural() {
+    let (_site, p) = paged_with_page();
+    let shown = |sentence: &str| p.ui.has_element(sentence, Text);
+    for (count, sentence) in [(1, "1 backup could not be read"), (2, "2 backups could not be read")] {
+        p.bridge().set_unreadable_count(count);
+        assert!(shown(sentence), "{count}");
+    }
+    p.bridge().set_unreadable_count(0);
+    assert!(!shown("1 backup could not be read") && !shown("0 backups could not be read"));
 }
 
 #[test]

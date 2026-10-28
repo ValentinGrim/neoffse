@@ -9,13 +9,16 @@
 //! [`build`] turns a `SaveView` into the Slint data, and [`EditorViewModel`]
 //! sends each commit to the session as one edit. `history` counts the unsaved
 //! changes and replays undo and redo, `save` runs the save pipeline on a
-//! worker thread. `leave` asks before a dirty session closes. `review` shapes the change list of the review dialog and
-//! the time of a backup. `overview` shapes the party cards; it is the one module
+//! worker thread. `leave` asks before a dirty session closes. `growth` adds
+//! the level-up notice to an edit that raised levels. `review` shapes the
+//! change list of the review dialog and the time of a backup. `overview`
+//! shapes the party cards; it is the one module
 //! that names game fields. The Slint side lives in
 //! `ui/types/editor.slint` and `ui/screens/editor/bridge.slint`.
 
 mod edit;
 mod field_row;
+mod growth;
 mod history;
 mod input;
 mod kind;
@@ -35,7 +38,7 @@ pub use layout::{Built, Locks, build};
 pub use leave::{Leave, LeaveAnswer};
 pub use model::EditorViewModel;
 pub use notice::{growth_notice, notice_of, problem_notice, reload_failed_notice, save_failed_notice, saved_notice};
-pub use overview::{levels_gained, overview};
+pub use overview::{card_of_page, levels_gained, overview};
 pub use pick::{entry_name, picker_entries};
 pub use review::{review_rows, stamp_of};
 pub use save::SaveOutcome;

@@ -20,7 +20,8 @@ use crate::assets::AssetProvider;
 use crate::{CharacterCard, Overview};
 
 /// The party overview of `view`: one card per Party entity in section order,
-/// and the gil.
+/// the table that names the card of each party page ([`card_of_page`]), and
+/// the gil.
 ///
 /// `present` is false for a game without a card builder (today every game
 /// but FF I), and no card is built and `assets` is never asked. A card holds
@@ -65,9 +66,27 @@ pub fn levels_gained(before: &Overview, after: &Overview) -> u32 {
         .fold(0, u32::saturating_add)
 }
 
+/// For each page `0..pages`, the position in `cards` of the first card whose
+/// `page` equals it, `-1` when none does. A card whose `page` is negative or
+/// at least `pages` maps to no entry.
+#[must_use]
+pub fn card_of_page(cards: &[CharacterCard], pages: usize) -> Vec<i32> {
+    let mut table = vec![-1; pages];
+    for (position, card) in cards.iter().enumerate() {
+        let Some(entry) = usize::try_from(card.page).ok().and_then(|page| table.get_mut(page)) else {
+            continue;
+        };
+        if *entry < 0 {
+            // No save holds 2^31 cards: the saturation never meets a real position.
+            *entry = i32::try_from(position).unwrap_or(i32::MAX);
+        }
+    }
+    table
+}
+
 fn ff1_overview(view: &SaveView, game: Game, language: Language, assets: &dyn AssetProvider) -> Overview {
-    let cards: Vec<CharacterCard> = view
-        .section(Capability::Party)
+    let section = view.section(Capability::Party);
+    let cards: Vec<CharacterCard> = section
         .map(|section| {
             section
                 .entities
@@ -77,8 +96,10 @@ fn ff1_overview(view: &SaveView, game: Game, language: Language, assets: &dyn As
                 .collect()
         })
         .unwrap_or_default();
+    let pages = section.map_or(0, |section| section.entities.len());
     Overview {
         present: true,
+        card_of_page: model_of(card_of_page(&cards, pages)),
         cards: model_of(cards),
         gil: gil(view).into(),
     }

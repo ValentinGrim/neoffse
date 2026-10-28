@@ -27,16 +27,20 @@ export component FieldList inherits ScrollView {
 // One Party character: a portrait frame holding the sprite at 2x, 64 px (the
 // initial when there is none), the name and the job over the fields. Back
 // returns to the cards. The sprite and the job come from the character's card,
-// so a game with no cards shows the name alone.
+// which Rust names for the page, so a game with no cards shows the name alone.
 export component CharacterEditPage inherits VerticalLayout {
     in property <Look> look: Theme.look;
     in property <EntityPage> page;
-    // Index of `page` among the party pages: the card that matches it.
+    // Index of `page` among the party pages.
     in property <int> index;
 
     // The sprite side; the frame adds the two lines around it.
     private property <length> sprite-side: 64px;
-    private property <bool> has-card: root.index >= 0 && root.index < EditorBridge.overview.cards.length;
+    // The card that opens this page; Rust names it, so the order of the cards never
+    // matters. A table shorter than the page list leaves the page without a card: an
+    // out-of-range array read gives 0 in Slint, which would pick the first card.
+    private property <int> card-index: root.index >= 0 && root.index < EditorBridge.overview.card-of-page.length ? EditorBridge.overview.card-of-page[root.index] : -1;
+    private property <bool> has-card: root.card-index >= 0 && root.card-index < EditorBridge.overview.cards.length;
 
     spacing: root.look.spacing;
 
@@ -45,8 +49,8 @@ export component CharacterEditPage inherits VerticalLayout {
 
         if root.has-card: PortraitFrame {
             look: root.look;
-            initial: EditorBridge.overview.cards[root.index].initial;
-            portrait: EditorBridge.overview.cards[root.index].portrait;
+            initial: EditorBridge.overview.cards[root.card-index].initial;
+            portrait: EditorBridge.overview.cards[root.card-index].portrait;
             // The sprite is 32 px: 64 px inside the frame shows it at 2x, a
             // whole multiple, as on the party cards. The two lines sit outside it.
             width: root.sprite-side + 2 * self.inset;
@@ -62,9 +66,9 @@ export component CharacterEditPage inherits VerticalLayout {
                 color: root.look.selected;
                 overflow: elide;
             }
-            if root.has-card && EditorBridge.overview.cards[root.index].job != "": LookText {
+            if root.has-card && EditorBridge.overview.cards[root.card-index].job != "": LookText {
                 look: root.look;
-                text: EditorBridge.overview.cards[root.index].job;
+                text: EditorBridge.overview.cards[root.card-index].job;
                 font-size: root.look.font-small;
                 color: root.look.muted;
                 overflow: elide;

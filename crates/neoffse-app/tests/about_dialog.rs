@@ -1,7 +1,8 @@
 //! Offscreen tests for the About dialog wiring, run on Slint's testing
 //! backend. No test opens a desktop window or starts an event loop.
 
-use neoffse_app::{FONT_CREDIT, MainWindow, UI_FONT_CREDIT, connect_about, new_about_dialog};
+use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use neoffse_app::{AboutDialog, FontCredit, MainWindow, connect_about, font_credit, new_about_dialog, ui_font_credit};
 use slint::ComponentHandle;
 
 /// Installs the testing platform for the calling thread. Must run before
@@ -47,15 +48,47 @@ fn about_dialog_shows_license_expression() -> Result<(), slint::PlatformError> {
     Ok(())
 }
 
+/// Whether the dialog draws a text element reading `sentence`.
+fn shows(about: &AboutDialog, sentence: &str) -> bool {
+    ElementHandle::find_by_accessible_label(about, sentence).any(|element| element.accessible_role() == Some(AccessibleRole::Text))
+}
+
+fn credit(family: &str, author: &str, license: &str) -> FontCredit {
+    FontCredit {
+        family: family.into(),
+        author: author.into(),
+        license: license.into(),
+    }
+}
+
 #[test]
 fn about_dialog_shows_both_font_credits() -> Result<(), slint::PlatformError> {
     init_testing_backend();
     let about = new_about_dialog()?;
-    assert_eq!(about.get_font_credit(), FONT_CREDIT);
-    assert_eq!(about.get_ui_font_credit(), UI_FONT_CREDIT);
-    assert!(FONT_CREDIT.contains("EliDirkx98"));
-    assert!(FONT_CREDIT.contains("CC BY-SA 3.0"));
-    assert!(UI_FONT_CREDIT.contains("SIL OFL 1.1"));
+    assert!(shows(&about, "Cornelia Sans by EliDirkx98, CC BY-SA 3.0"));
+    assert!(shows(&about, "Barlow by The Barlow Project Authors, SIL OFL 1.1"));
+    let pixel = font_credit();
+    assert_eq!(
+        (pixel.family.as_str(), pixel.author.as_str(), pixel.license.as_str()),
+        ("Cornelia Sans", "EliDirkx98", "CC BY-SA 3.0")
+    );
+    let app = ui_font_credit();
+    assert_eq!(
+        (app.family.as_str(), app.author.as_str(), app.license.as_str()),
+        ("Barlow", "The Barlow Project Authors", "SIL OFL 1.1")
+    );
+    Ok(())
+}
+
+#[test]
+fn the_credit_sentence_is_written_in_markup() -> Result<(), slint::PlatformError> {
+    init_testing_backend();
+    let about = new_about_dialog()?;
+    about.set_font_credit(credit("Aa", "Bb", "Cc"));
+    assert!(shows(&about, "Aa by Bb, Cc"));
+    about.set_ui_font_credit(credit("Dd", "Ee", "Ff"));
+    assert!(shows(&about, "Dd by Ee, Ff"));
+    assert!(shows(&about, "Aa by Bb, Cc"), "the first credit stays");
     Ok(())
 }
 

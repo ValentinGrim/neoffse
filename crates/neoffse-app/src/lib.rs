@@ -39,8 +39,8 @@ pub use dispatch::{Dispatcher, EventLoopDispatcher, Job, WorkerPanic, run_async}
 pub use editor::{EditorViewModel, Leave, LeaveAnswer};
 pub use generated::{
     AboutDialog, BackupReason, BackupRow, CharacterCard, EditNotice, EditProblem, EditorBridge, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow,
-    FolderOrigin, FolderRow, Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, RestoreBridge, RestoreNotice,
-    RestoreProblem, ReviewKind, ReviewRow, SectionData, Shell, SlotKind, SlotRow, SummaryRow, Theme, ThemeId,
+    FolderOrigin, FolderRow, FontCredit, Fonts, FrameStyle, GameRow, ItemList, ItemRow, Look, MainWindow, OpenProblem, Overview, PickerEntry, RestoreBridge,
+    RestoreNotice, RestoreProblem, ReviewKind, ReviewRow, SectionData, Shell, SlotKind, SlotRow, SummaryRow, Theme, ThemeId,
 };
 pub use language::{language_for_locale, system_language};
 pub use picker::{FilePicker, NativePicker};
@@ -54,12 +54,26 @@ use neoffse::io::discovery::Environment;
 use slint::platform::WindowEvent;
 use slint::{CloseRequestResponse, ComponentHandle};
 
-/// The attribution the About dialog shows for the PR font.
-pub const FONT_CREDIT: &str = "Cornelia Sans by EliDirkx98, CC BY-SA 3.0";
+/// The credit the About dialog shows for the Pixel Remaster font: family,
+/// author, license.
+#[must_use]
+pub fn font_credit() -> FontCredit {
+    FontCredit {
+        family: "Cornelia Sans".into(),
+        author: "EliDirkx98".into(),
+        license: "CC BY-SA 3.0".into(),
+    }
+}
 
-/// The attribution the About dialog shows for the app font: the family, the
-/// copyright holder named in its `OFL.txt`, the license.
-pub const UI_FONT_CREDIT: &str = "Barlow by The Barlow Project Authors, SIL OFL 1.1";
+/// The credit for the app font. The author is the holder its `OFL.txt` names.
+#[must_use]
+pub fn ui_font_credit() -> FontCredit {
+    FontCredit {
+        family: "Barlow".into(),
+        author: "The Barlow Project Authors".into(),
+        license: "SIL OFL 1.1".into(),
+    }
+}
 
 /// Builds the windows, wires them together and runs the event loop.
 ///
@@ -108,8 +122,8 @@ pub fn new_about_dialog() -> Result<AboutDialog, slint::PlatformError> {
     let about = AboutDialog::new()?;
     about.set_app_version(env!("CARGO_PKG_VERSION").into());
     about.set_license(env!("CARGO_PKG_LICENSE").into());
-    about.set_font_credit(FONT_CREDIT.into());
-    about.set_ui_font_credit(UI_FONT_CREDIT.into());
+    about.set_font_credit(font_credit());
+    about.set_ui_font_credit(ui_font_credit());
     Ok(about)
 }
 
