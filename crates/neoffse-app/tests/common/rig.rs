@@ -58,12 +58,15 @@ fn scripted_probes(ui: &Ui, machine: Machine) -> Arc<AtomicUsize> {
     probes
 }
 
-/// Points the data folder of `state` at a plain file inside `folder`: no
-/// backup, listing or save can use it.
+/// Points the data folder of `state` at `folder/broken-data`, where the FF I
+/// backup folder is a plain file: no listing, backup or save can use it. A path
+/// under a plain file is not enough, since Windows reports it as `NotFound`,
+/// which the listing reads as "no backup yet".
 pub(crate) fn break_data_dir(state: &AppState, folder: &Path) {
-    let not_a_folder = folder.join("not-a-folder");
-    fs::write(&not_a_folder, b"x").unwrap();
-    state.set_data_dir(DataDir::at(&not_a_folder));
+    let data = DataDir::at(folder.join("broken-data"));
+    fs::create_dir_all(data.backups_dir()).unwrap();
+    fs::write(data.backups_dir().join(Game::Ff1Pr.id()), b"x").unwrap();
+    state.set_data_dir(data);
 }
 
 /// The `created` text of the newest FF I backup under the data folder `data`.
@@ -151,7 +154,7 @@ impl Rig {
         DataDir::at(self.data.path())
     }
 
-    /// Points the data folder at a plain file.
+    /// Points the data folder at one whose FF I backup folder is a plain file.
     pub(crate) fn break_data_dir(&self) {
         break_data_dir(&self.ui.app.state, self.data.path());
     }
