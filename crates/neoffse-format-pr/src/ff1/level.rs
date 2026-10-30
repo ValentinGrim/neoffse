@@ -13,23 +13,7 @@ use neoffse_core::{Edit, EditError, FieldId, Value};
 
 use super::derived::level_for;
 use super::{Ff1Model, Rolls, names};
-
-/// The edits of a game-interface edit, in apply order.
-pub(super) struct Plan {
-    pub(super) edits: Vec<Edit>,
-    /// The number of leading edits that apply under `CapPolicy::Enforce`: the
-    /// requested edit and its link. The rest are growth edits, which the game
-    /// stores as raw sums (`docs/formats/pixel-remaster.md#level-up-in-ff-i`,
-    /// "What a step leaves alone").
-    pub(super) enforced: usize,
-}
-
-impl From<Vec<Edit>> for Plan {
-    fn from(edits: Vec<Edit>) -> Self {
-        let enforced = edits.len();
-        Self { edits, enforced }
-    }
-}
+use crate::shared::plan::Plan;
 
 /// The field `name` of character `id`.
 pub(super) fn character_field(id: u32, name: &'static str) -> FieldId {

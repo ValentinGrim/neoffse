@@ -1,14 +1,13 @@
 //! The path that reaches the value of a binding, and the FF I reads that
-//! need a character's own layout (spell slots, equipment wearers). Row and
+//! need a character's own layout (spell slots). Row and
 //! dictionary lookups live in [`crate::shared::read`].
 
 use neoffse_core::{EditError, FieldId};
 
 use super::binding::{Binding, Part};
-use super::names;
 use crate::document::{Document, DocumentError, Segment};
-use crate::shared::paths::{Collection, Path, characters_target, element, gil_path, with};
-use crate::shared::read::{Located, count_path, entry_value, find_row, format_error, missing_row, read_int, read_key, read_text, slot_path, wrong_kind};
+use crate::shared::paths::{Path, element, gil_path, with};
+use crate::shared::read::{Located, character_part, count_path, entry_value, read_int, read_key, read_text, slot_path, wrong_kind};
 
 /// The path to the value of `binding`. `MissingRow` for an absent row,
 /// `UnknownField` for a dictionary without the key, `Format` for a read that
@@ -17,20 +16,10 @@ pub(super) fn locate(document: &mut Document, binding: &Binding, field: &FieldId
     if binding.is_derived() {
         return Err(EditError::ReadOnly { field: field.clone() });
     }
-    let failed = |source| format_error(field, source);
     match *binding {
         Binding::Gil => Ok(gil_path()),
         Binding::Count { list, key } => count_path(document, list, key, field),
-        Binding::Character { id, part } => {
-            let index = find_row(document, Collection::Character, id)
-                .map_err(failed)?
-                .ok_or_else(|| missing_row(names::CHARACTER, id))?;
-            let base = element(characters_target(), index);
-            locate_part(document, base, part).map_err(|error| match error {
-                Located::Absent => EditError::UnknownField { field: field.clone() },
-                Located::Failed(source) => format_error(field, source),
-            })
-        }
+        Binding::Character { id, part } => character_part(document, id, field, |document, base| locate_part(document, base, part)),
     }
 }
 
@@ -95,27 +84,4 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
         }
         Part::Slot(slot) | Part::SlotCount(slot) => slot_path(document, base, slot, matches!(part, Part::SlotCount(_)))?,
     })
-}
-
-/// The number of equipment slots, over all characters, that hold
-/// `content_id` (`docs/formats/pixel-remaster.md#inventory`: an equipped id
-/// appears in the inventory with a count at least this number).
-pub(super) fn wearers(document: &mut Document, content_id: u32) -> Result<usize, DocumentError> {
-    let target = characters_target();
-    let mut count = 0;
-    for index in 0..document.array_len(&target)? {
-        let dictionary = with(element(target.clone(), index), &[Segment::Key("equipmentList"), Segment::Doc]);
-        let keys = with(dictionary.clone(), &[Segment::Key("keys")]);
-        for entry in 0..document.array_len(&keys)? {
-            let slot = read_key(document, &with(keys.clone(), &[Segment::Index(entry)]))?;
-            if !(1..=names::EQUIPMENT_SLOTS).contains(&slot) {
-                continue;
-            }
-            let value = [Segment::Key("values"), Segment::Index(entry), Segment::Doc, Segment::Key("contentId")];
-            if read_key(document, &with(dictionary.clone(), &value))? == content_id {
-                count += 1;
-            }
-        }
-    }
-    Ok(count)
 }

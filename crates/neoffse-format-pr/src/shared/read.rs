@@ -7,7 +7,8 @@
 
 use neoffse_core::{EditError, FieldId, FormatError, RowId};
 
-use super::paths::{Collection, List, Path, element, with};
+use super::names;
+use super::paths::{Collection, List, Path, characters_target, element, with};
 use crate::document::{Document, DocumentError, Scalar, Segment, render_path};
 
 /// The error of a failed document read, bound to the field that asked.
@@ -136,4 +137,22 @@ pub(crate) fn count_path(document: &mut Document, list: List, key: u32, field: &
         .map_err(|source| format_error(field, source))?
         .ok_or_else(|| missing_row(list.section(), key))?;
     Ok(with(element(list.target(), index), &[Segment::Key("count")]))
+}
+
+/// The path to a part of the character `id`: the row is found by `id`, then
+/// `part` builds the path from the character's element. `MissingRow` for an
+/// absent character, `UnknownField` when `part` finds no entry, `Format` for
+/// a read that fails.
+pub(crate) fn character_part<F>(document: &mut Document, id: u32, field: &FieldId, part: F) -> Result<Path, EditError>
+where
+    F: FnOnce(&mut Document, Path) -> Result<Path, Located>,
+{
+    let index = find_row(document, Collection::Character, id)
+        .map_err(|source| format_error(field, source))?
+        .ok_or_else(|| missing_row(names::CHARACTER, id))?;
+    let base = element(characters_target(), index);
+    part(document, base).map_err(|error| match error {
+        Located::Absent => EditError::UnknownField { field: field.clone() },
+        Located::Failed(source) => format_error(field, source),
+    })
 }
