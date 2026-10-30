@@ -28,7 +28,7 @@ A few in-game checks of the level and experience rules are still open ([Open que
 Its document lists the party, the items, the key items and the gil, edits them, and encodes the file back.
 The tests show that an edit followed by encode and decode changes the intended values and nothing else.  
 A document offers two ways to edit.
-`apply_game` edits the way the game does: equipping an item also updates the inventory and the slot count, and a value above the game's cap is refused.
+`apply_game` edits the way the game does: equipping an item also updates the inventory and the slot count, and it refuses a value above the game's cap.
 `apply` with `CapPolicy::StorageOnly` writes any value the save can hold, for an expert mode.  
 `neoffse-data` embeds the FF I tables: items, equipment, abilities, jobs, commands, monsters, the game's caps and the level-up growth tables, with English and French names.  
 `neoffse-format-pr` decodes and encodes the Pixel Remaster save files of the six games and edits their JSON text by path, without rewriting the values it does not touch.
@@ -46,8 +46,7 @@ See [`docs/roadmap.md`](docs/roadmap.md) for the milestones.
 - One format per isolated, tested module.
 - Show every change before saving, with undo and redo.
 
-[Principles](docs/architecture.md#principles) in the architecture
-document gives the reason behind each one.
+The reason behind each one sits in [Principles](docs/architecture.md#principles).
 
 ## Workspace
 
