@@ -9,6 +9,7 @@ use crate::entry::Entry;
 use crate::error::DataError;
 use crate::growth::{Growth, parse_growth};
 use crate::rows::{CommandFile, JobFile, MonsterFile, abilities, content, names};
+use crate::skills::{Skills, ability_rows, parse_skills};
 use crate::tables::Sources;
 
 /// The tables and caps of one game, before `GameTables` wraps them.
@@ -16,6 +17,7 @@ pub(crate) struct Parsed {
     pub(crate) tables: BTreeMap<TableKind, Vec<Entry>>,
     pub(crate) bounds: BTreeMap<String, i64>,
     pub(crate) growth: Option<Growth>,
+    pub(crate) skills: Option<Skills>,
 }
 
 #[derive(Deserialize)]
@@ -24,8 +26,9 @@ struct BoundsFile {
     bounds: BTreeMap<String, i64>,
 }
 
-/// Parses the texts in file order and returns the first error. `monsters` and
-/// `growth` are read only when present.
+/// Parses the texts in file order and returns the first error. `monsters`,
+/// `growth` and `skills` are read only when present; `skills` comes last
+/// because its rules check the ability table.
 pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> {
     let mut tables = BTreeMap::new();
     content(&read("content.toml", sources.content)?, &mut tables)?;
@@ -44,10 +47,15 @@ pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> 
     if let Some(growth) = &growth {
         check_level_cap(&bounds.bounds, growth)?;
     }
+    let skills = sources
+        .skills
+        .map(|text| parse_skills(text, &bounds.bounds, ability_rows(&tables)))
+        .transpose()?;
     Ok(Parsed {
         tables,
         bounds: bounds.bounds,
         growth,
+        skills,
     })
 }
 

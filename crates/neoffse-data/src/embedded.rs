@@ -25,6 +25,7 @@ static FF1: Embedded = Embedded {
         monsters: Some(include_str!("../../../data/pr/ff1/monsters.toml")),
         bounds: include_str!("../../../data/pr/ff1/bounds.toml"),
         growth: Some(include_str!("../../../data/pr/ff1/growth.toml")),
+        skills: None,
     },
     tables: OnceLock::new(),
 };
@@ -38,6 +39,7 @@ static FF2: Embedded = Embedded {
         monsters: None,
         bounds: include_str!("../../../data/pr/ff2/bounds.toml"),
         growth: None,
+        skills: Some(include_str!("../../../data/pr/ff2/skills.toml")),
     },
     tables: OnceLock::new(),
 };
@@ -51,6 +53,7 @@ static FF3: Embedded = Embedded {
         monsters: None,
         bounds: include_str!("../../../data/pr/ff3/bounds.toml"),
         growth: None,
+        skills: None,
     },
     tables: OnceLock::new(),
 };
@@ -64,6 +67,7 @@ static FF4: Embedded = Embedded {
         monsters: None,
         bounds: include_str!("../../../data/pr/ff4/bounds.toml"),
         growth: None,
+        skills: None,
     },
     tables: OnceLock::new(),
 };
@@ -77,6 +81,7 @@ static FF5: Embedded = Embedded {
         monsters: None,
         bounds: include_str!("../../../data/pr/ff5/bounds.toml"),
         growth: None,
+        skills: None,
     },
     tables: OnceLock::new(),
 };
@@ -90,6 +95,7 @@ static FF6: Embedded = Embedded {
         monsters: None,
         bounds: include_str!("../../../data/pr/ff6/bounds.toml"),
         growth: None,
+        skills: None,
     },
     tables: OnceLock::new(),
 };

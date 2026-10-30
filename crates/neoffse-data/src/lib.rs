@@ -7,7 +7,7 @@
 //! ships here: facts only. The crate has no `maps` table yet.
 //!
 //! [`tables_for`] gives the parsed tables of a game, or `None` for a game with
-//! no data yet. [`GameTables::parse`] parses any set of seven texts, two of them
+//! no data yet. [`GameTables::parse`] parses any set of eight texts, three of them
 //! optional, and callers look entries up by [`TableKind`] and id.
 //! Names repeat inside a table, so an id is the only key. The role of the
 //! crate among the others is in `docs/architecture.md#crate-roles`.
@@ -27,14 +27,20 @@
 //! has `MAX_LV` rows when `bounds.toml` names that cap, group and job ids rise,
 //! every group starts at level 2 and covers every level of `exp_table` in each
 //! column, `hp_value1` is 0 or 1, every job names an existing group, and no
-//! table is empty. `monsters.toml` and `growth.toml` may be absent: a game
-//! without them has no monster table and its growth accessors give `None`.
+//! table is empty. `skills.toml` holds the base stats per status, the skill
+//! proficiency curve and the spell chains of FF II. Its rules: the first status id
+//! is 1 and the ids rise, `total_exp` starts at 0 and rises strictly with
+//! `MAX_MAGICAL_LEVEL` and `MAX_WEAPON_LEVEL` rows when `bounds.toml` names them,
+//! the chains rise, start at least `length` apart, and every ability id of a chain
+//! is an ability row with a content id. `monsters.toml`, `growth.toml` and
+//! `skills.toml` may be absent: a game without them has no monster table and its
+//! growth and skill accessors give `None` or 0.
 //!
 //! - [`embedded`]: the tables the crate ships, [`sources_for`] and [`tables_for`].
 //! - [`entry`]: the rows of a table, [`Entry`], its [`AbilityInfo`] and
 //!   [`AbilityKind`] for an ability row, and the [`Language`] of a name.
 //! - [`error`]: [`DataError`], why a set of texts failed to parse.
-//! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the seven texts, two of them optional, that build them.
+//! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the eight texts, three of them optional, that build them.
 //!
 //! ```
 //! use neoffse_core::{Game, TableKind};
@@ -59,10 +65,12 @@ pub mod error;
 mod growth;
 mod parse;
 mod rows;
+mod skills;
 pub mod tables;
 
 pub use embedded::{sources_for, tables_for};
 pub use entry::{AbilityInfo, AbilityKind, Entry, Language};
 pub use error::DataError;
 pub use growth::GrowthStep;
+pub use skills::{BaseStats, SpellStep};
 pub use tables::{GameTables, Sources};

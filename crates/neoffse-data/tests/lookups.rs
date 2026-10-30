@@ -105,6 +105,7 @@ fn crlf_text_parses_the_same() {
         monsters: Some(&crlf[4]),
         bounds: &crlf[5],
         growth: Some(&crlf[6]),
+        skills: None,
     };
     assert_eq!(GameTables::parse(Game::Ff1Pr, &sources).unwrap(), tables());
 }
