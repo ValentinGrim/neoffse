@@ -108,13 +108,25 @@ def build_content(spec: ContentSpec, csvs: Csvs, names: Names, tally: Tally) -> 
 
 
 def _ability_contents(spec: AbilitySpec, csvs: Csvs) -> dict[int, dict[str, str]]:
-    """The content rows of the ability type, by `type_value` (the ability id)."""
-    by_value: dict[int, dict[str, str]] = {}
+    """The content rows of the ability type, by `type_value` (the ability id).
+
+    A repeated content id stops the run unless `spec.last_row_wins`: then the later row
+    replaces the earlier one before `type_value` is read, as the game's loader does
+    (docs/formats/pixel-remaster.md#master-data-per-game, repeated IDs)."""
+    by_id: dict[int, dict[str, str]] = {}
     for row in csvs[spec.content_csv]:
         where = f"{spec.content_csv} id {row.get('id')}"
         if _int(row, "type_id", where=where) != spec.content_type:
             continue
-        value = _int(row, "type_value", where=where)
+        content_id = _int(row, "id", where=spec.content_csv)
+        if content_id in by_id and not spec.last_row_wins:
+            raise ExportError(
+                f"{spec.content_csv}: id {content_id} repeats in type {spec.content_type}"
+            )
+        by_id[content_id] = row
+    by_value: dict[int, dict[str, str]] = {}
+    for content_id, row in by_id.items():
+        value = _int(row, "type_value", where=f"{spec.content_csv} id {content_id}")
         if value in by_value:
             raise ExportError(
                 f"{spec.content_csv}: type_value {value} repeats in type {spec.content_type}"

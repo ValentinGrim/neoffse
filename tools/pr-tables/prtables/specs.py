@@ -32,7 +32,7 @@ class StorySpec:
     """Rows whose name key sits in a story file, and nowhere else the tool reads
     (docs/formats/pixel-remaster.md#rows-without-a-name)."""
 
-    file: str  # "story_cha_{lang}.txt", under Game.message_dir
+    file: str  # story file name with {lang}, under Game.message_dir
     rows: tuple[tuple[str, int], ...]  # (csv name, row id); each csv is a NamedSpec table
 
 
@@ -68,6 +68,7 @@ class AbilitySpec:
     notes: tuple[str, ...]
     names: NamePolicy = NamePolicy()
     contentless_ok: bool = False  # an ability with no type-4 content row exports bare
+    last_row_wins: bool = False  # a repeated type-4 content id keeps its last row, as the game does
 
 
 @dataclass(frozen=True)

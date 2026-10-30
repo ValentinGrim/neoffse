@@ -12,7 +12,7 @@ pub(crate) fn ff1() -> &'static GameTables {
 }
 
 /// The games with embedded data: FF I and each game part appends its own.
-pub(crate) const EMBEDDED: &[Game] = &[Game::Ff1Pr, Game::Ff2Pr, Game::Ff3Pr, Game::Ff4Pr, Game::Ff5Pr];
+pub(crate) const EMBEDDED: &[Game] = &[Game::Ff1Pr, Game::Ff2Pr, Game::Ff3Pr, Game::Ff4Pr, Game::Ff5Pr, Game::Ff6Pr];
 
 /// The cached tables of an embedded game.
 pub(crate) fn game_tables(game: Game) -> &'static GameTables {

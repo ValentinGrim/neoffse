@@ -9,6 +9,7 @@ spec allows it.
 """
 
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Collection, Mapping, Sequence
 
@@ -22,6 +23,16 @@ NONE_KEY = "with key None"
 UNRESOLVED = "with a key found in no system file"
 NO_CONTENT = "with no content row"
 FROM_STORY = "names read from the story file"
+
+
+def _check_name_shape(raw: str, *, label: str, lang: str) -> None:
+    """Refuse a story text that reads as a line of dialogue: it holds a space or ends in
+    punctuation. The message names the row and never quotes the text."""
+    if raw and (any(char.isspace() for char in raw) or unicodedata.category(raw[-1])[0] == "P"):
+        raise ExportError(
+            f"{label}, {lang}: the story text holds a space or ends in punctuation, "
+            "so it is not a name"
+        )
 
 
 def _story_fields(names: Names, key: str, *, label: str, story: Names, tally: Tally) -> Row:
@@ -38,6 +49,7 @@ def _story_fields(names: Names, key: str, *, label: str, story: Names, tally: Ta
         text = story.get(lang, {}).get(key)
         if text is None:
             raise ExportError(f"{label}: key {key} is missing from the {lang} story file")
+        _check_name_shape(text, label=label, lang=lang)
         fields[f"name_{lang}"] = clean_name(text, where=f"{label}, {lang}, {key}")
     tally[FROM_STORY] += 1
     return fields
