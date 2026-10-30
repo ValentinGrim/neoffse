@@ -13,7 +13,9 @@ use neoffse_app::FilePicker;
 use neoffse_app::home::{HomeViewModel, OpenOutcome, OpenViewModel, SlotTarget};
 use neoffse_app::state::AppState;
 
-use super::{ID_1, Manual, Site, registry, scanned, steam_folder};
+use neoffse::Registry;
+
+use super::{ID_1, Manual, Site, registry, scanned_with, steam_folder};
 
 /// A picker that returns a fixed answer and records who asked.
 pub(crate) struct FixedPicker {
@@ -83,10 +85,15 @@ impl Flow {
     /// Scans `site` to the end, then builds the open flow with a picker that
     /// answers `pick`.
     pub(crate) fn new(site: &Site, pick: Option<PathBuf>) -> Self {
-        let home = scanned(site);
+        Self::with_registry(site, pick, registry())
+    }
+
+    /// [`Flow::new`] over `registry`: the scan and the open flow share it.
+    pub(crate) fn with_registry(site: &Site, pick: Option<PathBuf>, registry: Arc<Registry>) -> Self {
+        let home = scanned_with(site, Arc::clone(&registry));
         let state = Arc::new(AppState::new());
         let picker = FixedPicker::new(pick);
-        let open = OpenViewModel::new(registry(), Arc::clone(&picker) as Arc<dyn FilePicker>, Arc::clone(&state));
+        let open = OpenViewModel::new(registry, Arc::clone(&picker) as Arc<dyn FilePicker>, Arc::clone(&state));
         let editor = EditorViewModel::new(Arc::clone(&state), Language::En);
         Self {
             home,

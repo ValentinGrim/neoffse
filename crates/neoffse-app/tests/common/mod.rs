@@ -12,6 +12,7 @@ mod keys;
 mod manual;
 mod open;
 mod permissions;
+mod refusing;
 mod restoring;
 mod rig;
 mod save_proof;
@@ -23,8 +24,6 @@ mod window;
 use std::sync::Arc;
 
 use neoffse::Registry;
-use neoffse::data::Language;
-use neoffse::pr::ff1::Ff1Format;
 use neoffse_app::home::HomeViewModel;
 use neoffse_app::{GameRow, SlotRow};
 use slint::{Model, ModelRc};
@@ -42,6 +41,7 @@ pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes, PrivateSlot, private_slot_copies};
 #[cfg(unix)]
 pub(crate) use permissions::{Locked, lock};
+pub(crate) use refusing::{Refusing, registry_with};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
 pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe, session_in};
 pub(crate) use save_proof::{Step, assert_same};
@@ -69,12 +69,17 @@ pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
 /// FF I alone, not the shipped list: the tests that mean "FF I alone" (the
 /// unsupported traces on FF II) keep their meaning when a game registers.
 pub(crate) fn registry() -> Arc<Registry> {
-    Arc::new(Registry::from_formats(vec![Arc::new(Ff1Format::with_language(Language::En))]))
+    registry_with(Vec::new())
 }
 
 /// A view model over `site`, scanned to the end, filter on.
 pub(crate) fn scanned(site: &Site) -> HomeViewModel {
-    let home = HomeViewModel::new(registry(), environment(site));
+    scanned_with(site, registry())
+}
+
+/// A view model over `site` and `registry`, scanned to the end, filter on.
+pub(crate) fn scanned_with(site: &Site, registry: Arc<Registry>) -> HomeViewModel {
+    let home = HomeViewModel::new(registry, environment(site));
     let manual = Manual::new();
     home.start_scan(&manual.dispatcher(), || {});
     manual.run_all();
