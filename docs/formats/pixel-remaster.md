@@ -1102,6 +1102,7 @@ Rows per CSV, without the header line:
   They are the keywords of the game ([Content types 5 to 9](#content-types-5-to-9)).
 - Type 7 (FF V and FF VI): every `type_value` is a `command.csv` ID.
   The `mes_id_name` of that command row equals the content key on 201 of 236 rows in FF V and on 33 of 33 in FF VI.
+  One of the 201 is content 877, where both keys are `None`.
   The 35 other FF V rows fall in two groups ([Content types 5 to 9](#content-types-5-to-9)).
 - Type 9 (FF VI) holds 27 rows, contents 62 to 88, `type_value` 1 to 27, all with `MSG_MAGIC_NAME_*` keys.
   They are the espers of the game ([Content types 5 to 9](#content-types-5-to-9)).
@@ -1383,8 +1384,12 @@ The 35 FF V rows whose key differs from their command's fall in two groups [D]:
   All 32 sit in `learning.csv` (`type_id` 5, with `job_id`).
   The content row is what the player learns, and the command row is what the player uses.
 - 3 rows (879, 1030, 1503) carry the key `None`.
-  They point to commands 6, 100 and 247, whose `ability_id` is 5, 673 and 990 (`Skip`, `ReverseSkip`, `TargetCharacterSkip`) and whose `command_type` is 6, `LimitedATBBattle` in `Last.Defaine.Master.CommandType` [B].
-  None sits in `learning.csv`.
+  They point to commands 6, 100 and 247, whose key is `MSG_CMD_NAME_51`, whose `ability_id` is 5, 673 and 990 (`Skip`, `ReverseSkip`, `TargetCharacterSkip`) and whose `command_type` is 6, `LimitedATBBattle` in `Last.Defaine.Master.CommandType` [B].
+  None of the three sits in `learning.csv`.
+
+A fourth row, content 877, also carries the key `None`.
+Its `type_value` is 4, and command 4 has key `None` too, so its key equals the command's and it falls outside the 35.
+FF V holds 4 type-7 rows with key `None` and 232 with a name.
 
 FF V's `learning.csv` points to 67 type-7 and 33 type-4 content rows.
 FF VI's 33 type-7 rows appear in no `learning.csv` row, and all 33 keys match their command.
