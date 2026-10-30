@@ -60,21 +60,24 @@ pub struct Entry {
     pub kind: TableKind,
     /// True for the empty-slot row of an equipment table.
     pub placeholder: bool,
-    /// The English name, as the file spells it.
-    pub name_en: String,
-    /// The French name, as the file spells it.
-    pub name_fr: String,
+    /// The English name, as the file spells it. `None` for a row the game names
+    /// with nothing (`docs/formats/pixel-remaster.md#rows-without-a-name`). Set
+    /// exactly when `name_fr` is.
+    pub name_en: Option<String>,
+    /// The French name, as the file spells it. `None` exactly when `name_en` is.
+    pub name_fr: Option<String>,
     /// Some exactly for the rows of [`TableKind::Ability`].
     pub ability: Option<AbilityInfo>,
 }
 
 impl Entry {
-    /// The name in `language`.
+    /// The name in `language`; `None` for a row without a name. An empty name
+    /// is a name: it comes back as `Some("")`.
     #[must_use]
-    pub fn name(&self, language: Language) -> &str {
+    pub fn name(&self, language: Language) -> Option<&str> {
         match language {
-            Language::En => &self.name_en,
-            Language::Fr => &self.name_fr,
+            Language::En => self.name_en.as_deref(),
+            Language::Fr => self.name_fr.as_deref(),
         }
     }
 }

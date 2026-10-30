@@ -14,7 +14,8 @@
 //!
 //! The parser checks the file contract, not only the types: ids start at 1
 //! and rise, a `kind` string is one of the known kinds, an ability `level` is
-//! 0 to 8 and its `content_id` is not 0, `placeholder` appears only as `true`,
+//! 0 to 8 and its `content_id` is not 0, a row has both names or neither
+//! (`name in one language only` otherwise), `placeholder` appears only as `true`,
 //! only on an equipment kind and once per kind, and every cap key starts with
 //! `MAX_` and holds no negative value. A row that breaks a value rule gives
 //! [`DataError::Rule`]. `growth.toml` holds base HP and vitality per class, the
@@ -39,7 +40,7 @@
 //!
 //! let tables = tables_for(Game::Ff1Pr).ok_or("no FF I tables")?;
 //! let potion = tables.entry(TableKind::Item, 2).ok_or("no item 2")?;
-//! assert_eq!(potion.name(Language::En), "Potion");
+//! assert_eq!(potion.name(Language::En), Some("Potion"));
 //! assert_eq!(tables.bound("MAX_GIL"), Some(999_999));
 //! assert_eq!(tables.base_hp(1), Some(35));
 //! assert_eq!(tables.base_vitality(1), Some(15));
@@ -55,6 +56,7 @@ pub mod entry;
 pub mod error;
 mod growth;
 mod parse;
+mod rows;
 pub mod tables;
 
 pub use embedded::{sources_for, tables_for};

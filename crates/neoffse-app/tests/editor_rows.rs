@@ -16,7 +16,7 @@ fn labels(data: &EditorData, title: &str) -> Vec<String> {
 }
 
 fn content_name(id: u32) -> String {
-    tables_for(Game::Ff1Pr).unwrap().content(id).unwrap().name(Language::En).to_owned()
+    tables_for(Game::Ff1Pr).unwrap().content(id).unwrap().name(Language::En).unwrap().to_owned()
 }
 
 fn right_hand(ed: &Editing) -> String {
@@ -139,7 +139,10 @@ fn entries_follow_the_language() {
         .table(TableKind::Item)
         .unwrap()
         .iter()
-        .find(|entry| !entry.name_en.is_empty() && !entry.name_fr.is_empty() && entry.name_en != entry.name_fr)
+        .find(|entry| {
+            let has = |name: &Option<String>| name.as_deref().is_some_and(|name| !name.is_empty());
+            has(&entry.name_en) && has(&entry.name_fr) && entry.name_en != entry.name_fr
+        })
         .expect("an item whose names differ");
 
     let items = list(&ed.data(), "Items").key;
@@ -152,11 +155,11 @@ fn entries_follow_the_language() {
             .name
             .to_string()
     };
-    assert_eq!(name_of(ed.editor()), differing.name_en);
+    assert_eq!(Some(name_of(ed.editor()).as_str()), differing.name_en.as_deref());
 
     let french = EditorViewModel::new(Arc::clone(&ed.flow.state), Language::Fr);
     french.data().unwrap();
-    assert_eq!(name_of(&french), differing.name_fr);
+    assert_eq!(Some(name_of(&french).as_str()), differing.name_fr.as_deref());
 }
 
 #[test]

@@ -21,7 +21,7 @@ const CONTENT_KINDS: [TableKind; 7] = [
 
 fn names(kind: TableKind, id: u32) -> (&'static str, &'static str) {
     let entry = ff1().entry(kind, id).unwrap();
-    (entry.name_en.as_str(), entry.name_fr.as_str())
+    (entry.name_en.as_deref().unwrap(), entry.name_fr.as_deref().unwrap())
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn a_wrong_kind_finds_nothing() {
 fn placeholder_per_equipment_kind() {
     // #id-spaces-and-tables, #equipment-slots
     let weapon = ff1().placeholder(TableKind::Weapon).unwrap();
-    assert_eq!((weapon.id, weapon.name_en.as_str()), (62, "Empty"));
+    assert_eq!((weapon.id, weapon.name_en.as_deref()), (62, Some("Empty")));
     for (kind, id) in [
         (TableKind::Shield, 130),
         (TableKind::Armor, 131),
@@ -66,7 +66,7 @@ fn placeholder_per_equipment_kind() {
         let entry = ff1().placeholder(kind).unwrap();
         assert_eq!(entry.id, id);
         assert_eq!(entry.kind, kind);
-        assert_eq!((entry.name_en.as_str(), entry.name_fr.as_str()), ("None", "---"));
+        assert_eq!((entry.name_en.as_deref(), entry.name_fr.as_deref()), (Some("None"), Some("---")));
     }
     assert!(ff1().placeholder(TableKind::Item).is_none());
     assert!(ff1().placeholder(TableKind::KeyItem).is_none());
@@ -104,8 +104,8 @@ fn the_bestiary_has_128_monsters() {
 #[test]
 fn language_picks_the_name() {
     let ether = ff1().content(5).unwrap();
-    assert_eq!(ether.name(Language::En), "Ether");
-    assert_eq!(ether.name(Language::Fr), "Éther");
+    assert_eq!(ether.name(Language::En), Some("Ether"));
+    assert_eq!(ether.name(Language::Fr), Some("Éther"));
     assert_eq!(Language::ALL, [Language::En, Language::Fr]);
 }
 
@@ -162,7 +162,7 @@ fn content_ids_run_from_2_to_202() {
 fn the_crown_is_key_item_46() {
     // #game-master-data, "Item or key item"
     let crown = ff1().entry(TableKind::KeyItem, 46).unwrap();
-    assert_eq!((crown.name_en.as_str(), crown.name_fr.as_str()), ("Crown", "Couronne"));
+    assert_eq!((crown.name_en.as_deref(), crown.name_fr.as_deref()), (Some("Crown"), Some("Couronne")));
     assert!(!crown.placeholder);
 }
 
@@ -170,10 +170,10 @@ fn the_crown_is_key_item_46() {
 fn x_potion_nunchaku_and_knights_armor_are_real_rows() {
     // #go-editor-tables: content ids the Go editor lacked, none an empty slot.
     let found = |id| ff1().content(id).unwrap();
-    assert_eq!((found(4).kind, found(4).name_en.as_str()), (TableKind::Item, "X-Potion"));
-    assert_eq!((found(104).kind, found(104).name_en.as_str()), (TableKind::Weapon, "Nunchaku"));
-    assert_eq!((found(105).kind, found(105).name_en.as_str()), (TableKind::Weapon, "Iron Nunchaku"));
-    assert_eq!((found(151).kind, found(151).name_en.as_str()), (TableKind::Armor, "Knight's Armor"));
+    assert_eq!((found(4).kind, found(4).name_en.as_deref()), (TableKind::Item, Some("X-Potion")));
+    assert_eq!((found(104).kind, found(104).name_en.as_deref()), (TableKind::Weapon, Some("Nunchaku")));
+    assert_eq!((found(105).kind, found(105).name_en.as_deref()), (TableKind::Weapon, Some("Iron Nunchaku")));
+    assert_eq!((found(151).kind, found(151).name_en.as_deref()), (TableKind::Armor, Some("Knight's Armor")));
     for id in [4, 104, 105, 151, 166] {
         assert!(!found(id).placeholder, "content {id} is no empty slot");
     }

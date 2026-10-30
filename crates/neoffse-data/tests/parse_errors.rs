@@ -5,7 +5,7 @@ mod common;
 
 use std::error::Error;
 
-use common::{id_order, minimal, toml_file};
+use common::{id_order, minimal, rule, toml_file};
 use neoffse_core::Game;
 use neoffse_data::{DataError, GameTables, Sources};
 
@@ -62,12 +62,12 @@ fn a_missing_top_level_key_is_refused() {
 }
 
 #[test]
-fn a_missing_name_is_refused() {
+fn a_name_in_one_language_is_a_rule_error() {
     let sources = Sources {
         content: "[[content]]\nid = 1\nkind = \"item\"\nname_en = \"A\"\n",
         ..minimal()
     };
-    assert_eq!(toml_file(parse(&sources)), "content.toml");
+    assert_eq!(rule(parse(&sources)), ("content.toml", "id 1".to_string(), "name in one language only"));
 }
 
 #[test]

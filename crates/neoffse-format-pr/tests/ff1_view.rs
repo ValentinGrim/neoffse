@@ -104,7 +104,7 @@ fn item_labels_follow_the_language() {
     for language in Language::ALL {
         let view = model.view(*language).unwrap();
         let label = &view.find(&item(names::INVENTORY, key).with_name(names::COUNT)).unwrap().0.label;
-        assert_eq!(label, entry.name(*language));
+        assert_eq!(Some(label.as_str()), entry.name(*language));
     }
     assert_ne!(entry.name(Language::En), entry.name(Language::Fr));
 }

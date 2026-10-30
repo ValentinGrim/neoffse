@@ -49,7 +49,7 @@ fn the_class_map_follows_the_generated_job_names() {
     for (index, expected) in JOB_NAMES.into_iter().enumerate() {
         let id = u32::try_from(index).unwrap() + 1;
         let entry = tables.entry(TableKind::Job, id).unwrap();
-        assert_eq!(entry.name(Language::En), expected, "job {id}");
+        assert_eq!(entry.name(Language::En), Some(expected), "job {id}");
     }
 }
 

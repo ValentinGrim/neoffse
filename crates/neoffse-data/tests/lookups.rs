@@ -17,10 +17,10 @@ fn entry_finds_by_kind_and_id() {
     let entry = tables.entry(TableKind::Item, 5).unwrap();
     assert_eq!(entry.id, 5);
     assert_eq!(entry.kind, TableKind::Item);
-    assert_eq!(tables.entry(TableKind::Weapon, 8).unwrap().name_en, "Dagger");
-    assert_eq!(tables.entry(TableKind::Job, 2).unwrap().name_en, "Thief");
-    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name_en, "Defend");
-    assert_eq!(tables.entry(TableKind::Monster, 1).unwrap().name_en, "Goblin");
+    assert_eq!(tables.entry(TableKind::Weapon, 8).unwrap().name_en.as_deref(), Some("Dagger"));
+    assert_eq!(tables.entry(TableKind::Job, 2).unwrap().name_en.as_deref(), Some("Thief"));
+    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name_en.as_deref(), Some("Defend"));
+    assert_eq!(tables.entry(TableKind::Monster, 1).unwrap().name_en.as_deref(), Some("Goblin"));
     let cure = tables.entry(TableKind::Ability, 3).unwrap();
     let info = cure.ability.unwrap();
     assert_eq!((info.content_id, info.kind, info.level), (400, AbilityKind::WhiteMagic, 1));
@@ -68,10 +68,10 @@ fn table_is_ascending_and_keeps_placeholders() {
 fn names_per_language_and_accents() {
     let tables = tables();
     let ether = tables.entry(TableKind::Item, 5).unwrap();
-    assert_eq!(ether.name(Language::En), "Ether");
-    assert_eq!(ether.name(Language::Fr), "Éther");
+    assert_eq!(ether.name(Language::En), Some("Ether"));
+    assert_eq!(ether.name(Language::Fr), Some("Éther"));
     assert_ne!(ether.name(Language::En), ether.name(Language::Fr));
-    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name(Language::Fr), "Défense");
+    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name(Language::Fr), Some("Défense"));
 }
 
 #[test]

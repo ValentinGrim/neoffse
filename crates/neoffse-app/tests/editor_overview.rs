@@ -218,8 +218,8 @@ fn the_overview_follows_the_language() {
 
     let french = EditorViewModel::new(Arc::clone(&ed.flow.state), Language::Fr);
     let card = items(&french.overview().cards).into_iter().next().unwrap();
-    assert_eq!(card.job, entry.name(Language::Fr));
-    assert_eq!(cards(&ed)[0].job, entry.name(Language::En));
+    assert_eq!(Some(card.job.as_str()), entry.name(Language::Fr));
+    assert_eq!(Some(cards(&ed)[0].job.as_str()), entry.name(Language::En));
 }
 
 #[test]

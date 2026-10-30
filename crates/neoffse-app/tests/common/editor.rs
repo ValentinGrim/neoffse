@@ -154,7 +154,7 @@ pub(crate) fn item_label(id: u32, fallback: &str) -> String {
     let tables = tables_for(Game::Ff1Pr).expect("FF I tables");
     tables
         .content(id)
-        .map(|entry| entry.name(Language::En))
+        .and_then(|entry| entry.name(Language::En))
         .filter(|name| !name.is_empty())
         .map_or_else(|| format!("{fallback} {id}"), str::to_owned)
 }

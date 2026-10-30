@@ -64,7 +64,8 @@ impl GameTables {
     /// not know, an id that is below 1 or does not rise above the id before
     /// it in its file, or a row that breaks a rule of the file contract
     /// ([`DataError::Rule`]): an ability level above 8, an ability
-    /// `content_id` of 0, a placeholder written as `false`, a placeholder
+    /// `content_id` of 0, a row with one name field and not the other, a
+    /// placeholder written as `false`, a placeholder
     /// outside the five equipment kinds or repeated in one kind, a cap key
     /// without the `MAX_` prefix, or a negative cap. `growth.toml` adds its
     /// own rules: status ids rise from 1, `total_exp` starts at 0 and rises

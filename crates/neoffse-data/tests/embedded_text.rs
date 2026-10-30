@@ -34,7 +34,7 @@ fn all_names() -> Vec<(TableKind, u32, &'static str, &'static str)> {
                 .table(*kind)
                 .unwrap()
                 .iter()
-                .map(|entry| (*kind, entry.id, entry.name_en.as_str(), entry.name_fr.as_str()))
+                .map(|entry| (*kind, entry.id, entry.name_en.as_deref().unwrap(), entry.name_fr.as_deref().unwrap()))
         })
         .collect()
 }

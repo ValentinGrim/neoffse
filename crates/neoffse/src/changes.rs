@@ -144,11 +144,10 @@ impl Texts<'_> {
         }
         if let (Some(tables), Ok(id)) = (self.tables, u32::try_from(number)) {
             for kind in &meta.tables {
-                if let Some(entry) = tables.entry(*kind, id) {
-                    let name = entry.name(self.language);
-                    if !name.is_empty() {
-                        return name.to_owned();
-                    }
+                if let Some(entry) = tables.entry(*kind, id)
+                    && let Some(name) = entry.name(self.language).filter(|name| !name.is_empty())
+                {
+                    return name.to_owned();
                 }
             }
         }

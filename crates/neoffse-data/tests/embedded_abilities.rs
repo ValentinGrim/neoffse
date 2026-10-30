@@ -7,14 +7,14 @@ mod common;
 
 use common::ff1;
 use neoffse_core::TableKind;
-use neoffse_data::AbilityKind;
+use neoffse_data::{AbilityKind, Language};
 
 fn ability(id: u32) -> &'static neoffse_data::Entry {
     ff1().entry(TableKind::Ability, id).unwrap()
 }
 
 fn name_en(kind: TableKind, id: u32) -> &'static str {
-    ff1().entry(kind, id).unwrap().name_en.as_str()
+    ff1().entry(kind, id).unwrap().name(Language::En).unwrap()
 }
 
 #[test]
@@ -23,7 +23,7 @@ fn ability_100_sits_at_content_310() {
     let curaja = ability(100);
     let info = curaja.ability.unwrap();
     assert_eq!((info.content_id, info.level, info.kind), (310, 7, AbilityKind::WhiteMagic));
-    assert_eq!((curaja.name_en.as_str(), curaja.name_fr.as_str()), ("Curaja", "Soin Max"));
+    assert_eq!((curaja.name_en.as_deref(), curaja.name_fr.as_deref()), (Some("Curaja"), Some("Soin Max")));
     assert_eq!(ff1().ability_by_content(310).unwrap().id, 100);
     // Ability content ids are no content-table ids.
     assert!(ff1().content(310).is_none());
@@ -62,10 +62,10 @@ fn spell_level_and_school_follow_the_id() {
 #[test]
 fn repeated_names_keep_every_id() {
     let (first, second) = (ability(53), ability(100));
-    assert_eq!((first.name_en.as_str(), second.name_en.as_str()), ("Curaja", "Curaja"));
+    assert_eq!((first.name_en.as_deref(), second.name_en.as_deref()), (Some("Curaja"), Some("Curaja")));
     assert_ne!(first.id, second.id);
     assert_ne!(first.ability.unwrap().content_id, second.ability.unwrap().content_id);
-    assert_eq!(second.name_fr, "Soin Max");
+    assert_eq!(second.name_fr.as_deref(), Some("Soin Max"));
     assert_eq!(name_en(TableKind::Monster, 120), "Lich");
     assert_eq!(name_en(TableKind::Monster, 121), "Lich");
     for (id, name) in [
