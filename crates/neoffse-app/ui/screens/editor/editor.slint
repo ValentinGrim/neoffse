@@ -1,0 +1,214 @@
+import { SummaryRow } from "../../types/home.slint";
+import { EditorBridge } from "bridge.slint";
+import { EditorCommand } from "../../types/editor.slint";
+import { IconButton } from "../../widgets/controls.slint";
+import { Frame, LookText } from "../../widgets/frames.slint";
+import { Icons } from "../../theme/icons.slint";
+import { PartyCards } from "../../games/pr/cards.slint";
+import { CommandList, StatusPanel } from "../../games/pr/menu.slint";
+import { NoticeBar } from "notice-bar.slint";
+import { PendingBar } from "pending-bar.slint";
+import { SummaryLine } from "../../widgets/text.slint";
+import { CharacterEditPage, CharacterPage, InventoryPage } from "pages.slint";
+import { Look } from "../../theme/look.slint";
+import { Theme } from "../../theme/theme.slint";
+
+component NoSection inherits LookText {
+    text: @tr("This save has no such section.");
+    color: self.look.muted;
+    horizontal-alignment: center;
+    vertical-alignment: center;
+}
+
+// The editor page, laid out like the game's menu: the command list and the
+// status panel on the left, the current command's page in a frame on the
+// right. Home leaves the save; Back steps up one level and leaves from the top.
+//
+// The root takes the focus, so Escape does what Back does when no control
+// holds it. A control that uses Escape accepts it first.
+export component EditorPage inherits FocusScope {
+    in property <SummaryRow> summary;
+    callback back-requested();
+    callback home-requested();
+
+    private property <Look> look: Theme.look;
+    // True while a dialog covers the page.
+    private property <bool> covered: EditorBridge.blocked;
+    private property <int> pages: EditorBridge.data.party.pages.length;
+    // The Party command shows a character page.
+    private property <bool> on-character: EditorBridge.command == EditorCommand.party && EditorBridge.character >= 0 && EditorBridge.character < root.pages;
+    // The Party command shows its cards, not a character page.
+    private property <bool> on-cards: EditorBridge.command == EditorCommand.party && EditorBridge.data.party.present && !root.on-character;
+
+    focus-on-tab-navigation: false;
+
+    init => { self.focus(); }
+    // A dialog's buttons vanish with it, and the focus would go with them.
+    changed covered => {
+        if !root.covered {
+            self.focus();
+        }
+    }
+    key-pressed(event) => {
+        if event.text == Key.Escape && !EditorBridge.blocked {
+            root.back-requested();
+            return accept;
+        }
+        return reject;
+    }
+
+    // Control is Command on macOS. A focused `ThemedEdit` sees the key first
+    // and keeps these chords: Ctrl+Z always, and the redo chord of the platform
+    // (Ctrl+Y on Windows, Ctrl+Shift+Z elsewhere). It ignores every other
+    // Control chord, so the other redo chord and Ctrl+S reach the page.
+    KeyBinding {
+        keys: @keys(Control + Z);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.undo-requested(); }
+    }
+    KeyBinding {
+        keys: @keys(Control + Y);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.redo-requested(); }
+    }
+    KeyBinding {
+        keys: @keys(Control + Shift + Z);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.redo-requested(); }
+    }
+    KeyBinding {
+        keys: @keys(Control + S);
+        enabled: !EditorBridge.blocked;
+        activated => { EditorBridge.review-requested(); }
+    }
+
+    // Moves to a command's top page. The control that was clicked may vanish
+    // with the old page, so the root takes the focus first.
+    function go-to(command: EditorCommand, character: int) {
+        self.focus();
+        EditorBridge.command = command;
+        EditorBridge.character = character;
+    }
+
+    VerticalLayout {
+        padding: root.look.padding;
+        spacing: root.look.spacing;
+
+        HorizontalLayout {
+            spacing: root.look.spacing;
+            IconButton {
+                icon: Icons.home;
+                label: @tr("Home");
+                enabled: !EditorBridge.blocked;
+                clicked => { root.home-requested(); }
+            }
+            IconButton {
+                icon: Icons.arrow-back;
+                label: @tr("Back");
+                enabled: !EditorBridge.blocked;
+                clicked => { root.back-requested(); }
+            }
+            LookText {
+                text: root.summary.game;
+                font-family: root.look.font-family-strong;
+                font-weight: root.look.font-weight-strong;
+                font-size: root.look.font-title;
+            }
+            LookText {
+                horizontal-stretch: 1;
+                text: SummaryLine.rest(root.summary);
+                color: root.look.muted;
+                overflow: elide;
+            }
+        }
+        if EditorBridge.has-notice: NoticeBar { }
+        // On the cards the row asks for its preferred height, which the cards
+        // panel decides (the left column holds less), and the filler under it
+        // takes the room left. Another page stretches the row.
+        HorizontalLayout {
+            vertical-stretch: root.on-cards ? 0 : 1;
+            spacing: root.look.spacing * 1.5;
+
+            // Its children stretch by default, which grows the column to its
+            // maximum and hides the preferred width; no stretch lets the width decide.
+            VerticalLayout {
+                horizontal-stretch: 0;
+                min-width: root.look.font-body * 10;
+                max-width: root.look.font-body * 15;
+                preferred-width: min(root.look.font-body * 15, max(root.look.font-body * 10, root.width * 0.2));
+                spacing: root.look.spacing;
+
+                CommandList {
+                    vertical-stretch: 0;
+                    chosen(command) => { root.go-to(command, -1); }
+                }
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+                StatusPanel {
+                    vertical-stretch: 0;
+                    time: root.summary.play-time;
+                    gil: EditorBridge.overview.gil;
+                }
+            }
+            // On the cards the panel keeps the height of its cards, like the
+            // game's menu window, and the room left stays empty. Another page
+            // fills the column.
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: root.on-cards ? LayoutAlignment.start : LayoutAlignment.stretch;
+
+                if root.on-cards: PartyCards {
+                    vertical-stretch: 0;
+                    overview: EditorBridge.overview;
+                    pages: EditorBridge.data.party.pages;
+                    enabled: !EditorBridge.blocked;
+                    activated(page) => { root.go-to(EditorCommand.party, page); }
+                }
+                if !root.on-cards: Frame {
+                    vertical-stretch: 1;
+
+                    if EditorBridge.command == EditorCommand.party && !EditorBridge.data.party.present: NoSection { }
+                    if root.on-character && EditorBridge.data.party.present: CharacterEditPage {
+                        page: EditorBridge.data.party.pages[EditorBridge.character];
+                        index: EditorBridge.character;
+                    }
+                    if EditorBridge.command == EditorCommand.items && !EditorBridge.data.inventory.present: NoSection { }
+                    if EditorBridge.command == EditorCommand.items && EditorBridge.data.inventory.present: InventoryPage {
+                        section: EditorBridge.data.inventory;
+                    }
+                    if EditorBridge.command == EditorCommand.magic && !EditorBridge.data.magic.present: NoSection { }
+                    if EditorBridge.command == EditorCommand.magic && EditorBridge.data.magic.present: CharacterPage {
+                        pages: EditorBridge.data.magic.pages;
+                        read-only: EditorBridge.data.magic.read-only;
+                    }
+                }
+            }
+        }
+        // Present on the cards only: a layout puts its spacing around an item
+        // even at zero height, and the other pages keep their room.
+        if root.on-cards: Rectangle {
+            vertical-stretch: 1;
+        }
+        // A button may disable itself (the last Undo does), so the page takes the focus first.
+        PendingBar {
+            count: EditorBridge.pending-count;
+            can-undo: EditorBridge.can-undo;
+            can-redo: EditorBridge.can-redo;
+            enabled: !EditorBridge.blocked;
+            working: EditorBridge.working;
+            undo => {
+                root.focus();
+                EditorBridge.undo-requested();
+            }
+            redo => {
+                root.focus();
+                EditorBridge.redo-requested();
+            }
+            review => {
+                root.focus();
+                EditorBridge.review-requested();
+            }
+        }
+    }
+}

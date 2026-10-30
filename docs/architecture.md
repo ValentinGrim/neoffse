@@ -18,7 +18,8 @@ NeoFFSE edits the saves of Final Fantasy I to XVI, XI and XIV excepted, and star
 - The project code is `MIT OR Apache-2.0`.
 
 - Slint comes under the Slint Royalty-free Desktop, Mobile and Web Applications License 2.0.
-  That license requires the `AboutSlint` widget in the app's About dialog, and the user reaches that dialog from the top-level menu.
+  That license requires one of two attributions: the `AboutSlint` widget in an About dialog that the top-level menu reaches, or the Slint badge on a public web page.
+  The app takes the first route: Help > About NeoFFSE opens the dialog.
 
 - The ID tables come from the game's own master data.  
   `tools/pr-tables/` reads the master data and message files of the user's install ([Game master data](formats/pixel-remaster.md#game-master-data))
@@ -39,8 +40,13 @@ NeoFFSE edits the saves of Final Fantasy I to XVI, XI and XIV excepted, and star
 
 - Square Enix owns the game data and artwork.
   **Graphic and audio assets (sprites, portraits, textures, music, sounds) never enter the repository.**  
-  Tables of facts that editing needs (IDs, names, kinds, caps) may, and `tools/pr-tables/` generates them.  
+  Tables of facts that editing needs (IDs, names, kinds, caps, base HP and vitality, experience totals, growth curves) may, and `tools/pr-tables/` generates them.  
   [Visual assets](#visual-assets) describes how the app shows portraits under that rule.
+
+- The app embeds two fonts, Cornelia Sans (CC BY-SA 3.0) and Barlow (SIL OFL 1.1), and the Material Symbols icon set (Apache-2.0).
+  It also embeds six original class sprites under CC0 1.0.
+  Each file travels with its notice, and [`licenses/README.md`](../licenses/README.md) lists the source and license of each one.
+  The About dialog credits both fonts.
 
 ## Principles
 
@@ -59,9 +65,9 @@ Every crate follows five rules.
    
 3. **Edit concepts through dedicated widgets, and keep the raw value in reach.**  
    A player thinks in spells and levels, and the save stores IDs and integers.
-   A character's Magic widget lists the spells it knows and offers a dropdown to add one.
+   A character's Magic widget lists the spells it knows, and adding one waits for research on the spell slot rules.
    A spell or skill level shows its named level and its raw value side by side, and both edit the same field.
-   An advanced mode shows the raw document tree behind a warning, for the fields no widget covers yet.
+   Expert mode lifts the game's caps behind a warning, and a raw document tree for the fields no widget covers has no milestone yet.
 
 4. **One format, one isolated and tested module.** Adding FF VII cannot break FF I.  
    Each format lives in its own crate with its own fixtures and round-trip tests, and depends on no other format crate.
@@ -73,7 +79,7 @@ Every crate follows five rules.
 
 The engine is a stack of library crates under one facade, `neoffse`.
 The desktop app, `neoffse-app`, sits on top and depends on `neoffse` alone.
-The facade exports nothing yet: it will re-export the stack (M4), and another Rust project will depend on it the same way.
+The facade re-exports the stack as the modules `core`, `data`, `io` and `pr`, and another Rust project depends on it the same way.
 
 ```
 neoffse/
@@ -94,13 +100,14 @@ neoffse/
 │   ├── neoffse-format-pr/      FF I to VI Pixel Remaster: codec,
 │   │                           lossless document, game table, slot names.
 │   │                           FF I domain mapping and format
-│   ├── neoffse/                (M4) public facade: re-exports, format
-│   │                           registry, save pipeline
+│   ├── neoffse/                public facade: re-exports, format
+│   │                           registry, session with edit history,
+│   │                           save pipeline, backup restore
 │   ├── neoffse-app/            Slint desktop app
 │   │   ├── build.rs
 │   │   ├── ui/                 .slint markup
-│   │   ├── src/lib.rs          UI layer: window types, callback wiring
-│   │   ├── src/main.rs
+│   │   ├── src/                view models, callback wiring, image
+│   │   │                           providers; main.rs calls run
 │   │   └── tests/              offscreen UI tests
 │   └── neoffse-testkit/        fixtures and private-save locator, dev-dependency
 ├── data/                       TOML ID tables
@@ -108,7 +115,7 @@ neoffse/
 │                               and private real saves, ignored (private/)
 ├── tools/cipher-vectors/       Go program that writes the cipher test vectors
 ├── tools/pr-tables/            Python script that generates data/pr/ from a game install
-├── assets/                     (M4) original art, free-license art
+├── assets/                     fonts, icons and class sprites
 ├── licenses/                   third-party notices
 └── docs/                       this file, roadmap, formats/
 ```
@@ -118,13 +125,13 @@ The layering is `neoffse-app → neoffse → neoffse-format-* → neoffse-data �
 with `neoffse-io` beside the format crates: a crate depends only on crates to its right.  
 A format crate knows the domain and its ID tables and never the file system, and `neoffse-io` knows the file system and no format.  
 
-The `neoffse` facade (M4) joins them. The workspace edges are:
+The `neoffse` facade joins them. The workspace edges are:
 - `neoffse-core` and `neoffse-io` depend on no workspace crate.
 - `neoffse-data` depends on `neoffse-core`: its tables are keyed by `TableKind` and `Game`.
 - `neoffse-format-pr` depends on `neoffse-core` and `neoffse-data`.
 - `neoffse` depends on `neoffse-core`, `neoffse-data`, `neoffse-io` and `neoffse-format-pr`.
 - `neoffse-app` depends on `neoffse`.
-- `neoffse-io` has `neoffse-format-pr` as a dev-dependency, for the ignored `real_discovery` test only.
+- `neoffse-io` has `neoffse-format-pr` as a dev-dependency, for the tests that read the game table (`games::GAMES`) and, in the ignored `real_discovery` test, the codec.
   It must not become a standard dependency: the I/O crate would then know a format.
 
 A format crate never imports another format crate.
@@ -147,6 +154,7 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   A format sees file names and bytes and never a path.
 
 - **`neoffse-data`** holds the ID tables of a game, keyed by `TableKind`, with English and French names and the game's caps (`MAX_GIL` and the like).
+  It also holds the growth tables of the FF I level-up rule: base HP and vitality per class, experience totals and growth curves.
   The TOML files under `data/pr/<game>/` hold the text, and `include_str!` embeds it, so a library caller needs no data directory.
   Only FF I has tables so far.
   Names repeat inside a table, so an ID is the only lookup key.
@@ -155,7 +163,8 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
 
 - **`neoffse-io`** touches the user's files and knows no save format.
   It finds save folders, keeps backups, replaces a file through the verified write of [Save safety](#save-safety) and scans for a running game.
-  Every file operation goes through the `FileOps` trait, one method per step, so a test makes any single step fail.
+  Every step of a write, a backup copy and a restore goes through the `FileOps` trait, one method per step, so a test makes any single step fail.
+  Reads, folder listings and discovery call the operating system without it.
   A format crate publishes where its saves sit as plain data (`PrGame` rows in `games::GAMES`), and the caller turns the rows into the descriptors discovery takes.
   Discovery never writes.
   It returns every folder it finds and lists the places it could not read.
@@ -167,15 +176,20 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   The lossless document reads and edits that text by path and leaves every value it does not touch as written.
   The `ff1` module maps an FF I slot onto the domain of `neoffse-core`.
   `Ff1Format` refuses a file that is no slot, or a slot of another game ([Telling the games apart](formats/pixel-remaster.md#telling-the-games-apart)).
-  `Ff1Document` reads and writes by field path, never by position, and reports the capabilities `Party` and `Inventory`.
-  The Magic section arrives with M4 ([Roadmap](roadmap.md#m4-app-ff-i-end-to-end)).
+  `Ff1Document` reads and writes by field path, never by position, and reports the capabilities `Party`, `Inventory` and `Magic`.
+  The spell slots of the Magic section are read only: writing spells waits for research on the slot rules ([Roadmap](roadmap.md#m4-app-ff-i-end-to-end)).
+  A rise of a character's level also plays the growth step of each level gained.
+  The random draws come from the `Rolls` trait, whose real source wraps `rand`, so no `rand` type reaches the public API.
   [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md) holds every byte-level rule.
 
-- **`neoffse`** (M4) re-exports the crates above so a caller depends on one crate.
-  It also holds the glue the dependency rule keeps out of the lower crates: the registry that asks each format to detect a file, the edit history, and the save pipeline that joins a format's encoder and decoder to the verified write of `neoffse-io`.
+- **`neoffse`** re-exports the crates above so a caller depends on one crate.
+  It also holds the glue the dependency rule keeps out of the lower crates.
+  `Registry` asks each format to detect a file, scans a folder and opens a file into a `Session`.
+  `Session` keeps the edit history with undo and redo, edits through the default interface (`edit`) or the expert one (`edit_expert`), lists the net `changes` for a review, and runs the save pipeline that joins a format's encoder and decoder to the verified write of `neoffse-io`.
+  The registry also lists the backups of a game and restores one with no session and no format, since the main case is a file that no longer opens.
 
 - **`neoffse-app`** is the Slint desktop app.
-  Its library target holds the window types that `ui/app.slint` generates and the code that wires their callbacks, and the binary only calls `run`.
+  Its library target holds the window types that `ui/app.slint` generates, one view model per screen, the code that wires their callbacks and the image providers, and the binary only calls `run`.
   The library target lets integration tests drive the windows (see [Test policy](#test-policy)).
 
 - **`neoffse-testkit`** locates and reads the committed fixtures and finds the private real saves through `NEOFFSE_SAVES`.
@@ -189,6 +203,7 @@ Both traits live in `neoffse_core::format`; the document trait is dyn-compatible
 
 ```rust
 pub trait SaveFormat: Send + Sync {
+    fn game(&self) -> Game;
     fn detect(&self, probe: &FileProbe<'_>) -> Option<Detection>;
     fn open(&self, files: &SaveFiles) -> Result<Box<dyn SaveDocument>, FormatError>;
 }
@@ -208,7 +223,7 @@ pub trait SaveDocument: Send {
   A save that spans several files fits the same type.
 - **Detection.** `detect` is pure: it reads a `FileProbe` (name, size, head of the file) and returns a `Detection`, or `None`.
   `Confidence` runs `Possible` (the name fits), `Likely` (the name and a cheap content check fit), `Certain` (the first bytes prove it), so the registry picks the best claim.
-  The six PR formats claim the same file names, so the facade (M4) breaks the tie with the game of the save folder.
+  The PR formats claim the same file names (only FF I ships today), so the facade breaks the tie with the game of the save folder.
   A format never claims the leftover `.neoffse-*.tmp` file of an atomic write.
 - **Open.** `open` copies what it needs, so the document keeps no borrow.
   It refuses a file that does not fit its game with a `FormatError::Decode`, never a panic.
@@ -217,7 +232,7 @@ pub trait SaveDocument: Send {
   Both take `&mut self` because a format may defer parsing, and neither changes a value.
 - **Encode and verify.** `encode` returns the files to write under the names `open` received.
   `verify` decodes such files from their bytes alone and compares the result with the whole in-memory document, including the data the view omits.
-  The facade (M4) calls it from the hook of `neoffse_io::atomic::write` ([Save safety](#save-safety), step 6).
+  The facade calls it from the hook of `neoffse_io::atomic::write_with` ([Save safety](#save-safety), step 7).
 
 ### Edit interfaces
 
@@ -233,6 +248,7 @@ Every `apply` returns the inverse edit, and redo applies the original edit again
 - **Game: `apply_game(edit)`.** The edit changes the save the way the game would, so the result keeps the invariants the game keeps.
   Caps and ID tables are always enforced.
   In FF I, setting `character.<id>.equipment.<slot>` expands into the slot, the inventory row and the slot count ([Equipment slots](formats/pixel-remaster.md#equipment-slots)).
+  A Level or Experience edit sets the other field too, and a rise of the level also applies the growth step of each level gained, with random draws, as raw sums under `StorageOnly` ([Level-up in FF I](formats/pixel-remaster.md#level-up-in-ff-i)).
   The call returns a `GameChange`: the plain edits it applied and their inverses, which replay through `apply_all` under `StorageOnly` and cannot fail on a game rule.
   `OutOfRange` names the range the edit broke, which under this interface can be a game floor such as the number of wearers.
 - **Locks.** `row_locked` and `field_locked` tell the UI which controls the game interface refuses whatever the value, so it greys them before the click.
@@ -243,14 +259,19 @@ Every `apply` returns the inverse edit, and redo applies the original edit again
 
 ### Technology stack
 
-The workspace pins every dependency in its `Cargo.toml` files, and this table gives the reason for each choice.
-A crate tagged with a milestone enters the workspace with it.
+Each dependency's version requirement sits in a `Cargo.toml`, and the committed `Cargo.lock` fixes the resolved versions.
+This table gives the reason for each choice.
+`binrw` is not in the workspace yet.
 
 | Need | Crate | Why |
 |---|---|---|
 | UI | `slint`, `slint-build` | `.slint` markup, translations through `@tr` (FR and EN) |
-| UI tests | `i-slint-backend-testing` | headless tests with no window and no event loop |
-| File dialogs (M4) | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
+| UI tests | `i-slint-backend-testing` | the Slint layer runs on a testing backend that opens no window on the desktop |
+| File dialogs | `rfd` | native dialogs, XDG portal on Linux (Flatpak-safe) |
+| System language | `sys-locale` | reads the locale that picks the English or French names of the game data |
+| Level-up draws | `rand` | the random rolls of an FF I level-up step, behind the `Rolls` trait |
+| Fonts | Cornelia Sans, Barlow | embedded in the binary: Cornelia Sans (CC BY-SA 3.0) draws the Pixel Remaster look, Barlow (SIL OFL 1.1) the app shell |
+| Icons | Material Symbols | one outlined SVG set (Apache-2.0) for every icon of the app |
 | JSON | `serde`, `serde_json` | the lossless document layer needs key order (`preserve_order`), a number's written text (`arbitrary_precision`) and the bytes of an untouched value (`raw_value`) |
 | Deflate, base64 | `flate2` (`rust_backend`), `base64` | raw deflate without a zlib header in pure Rust; standard alphabet with `=` padding |
 | ID table text | `toml`, `serde` | each raw row refuses unknown keys, so a column the export tool adds fails the tests until the parser handles it |
@@ -262,9 +283,8 @@ A crate tagged with a milestone enters the workspace with it.
 | Data dir | `directories` | locates the backups ([Save safety](#save-safety)) |
 | Steam library list | `keyvalues-parser` | reads `libraryfolders.vdf` |
 | Running game | `sysinfo` | process scan before a write; its minimum Rust version, 1.95, sets the `rust-version` of the workspace |
-| Errors | `thiserror` in libraries, `anyhow` in the app (M4) | [Errors](#errors) |
-| Logging (M4) | `tracing` | |
-| Tests | `proptest`; `insta` (M4) | property tests on codecs and on the document; snapshots |
+| Errors | `thiserror` | one error enum per failure domain ([Errors](#errors)) |
+| Tests | `proptest` | property tests on codecs and on the document |
 
 The three Slint crates carry an `=` pin to one exact version in `crates/neoffse-app/Cargo.toml`.
 `i-slint-backend-testing` is internal to Slint and requires the exact version of `slint`, so a Slint update moves all three together.
@@ -278,21 +298,28 @@ A library crate returns errors and does not panic on anything read from a file.
 
 - **One enum per failure domain.** A library crate declares `thiserror` enums, for example `CodecError`, `EditError` and `IoError`.
   A format converts its own errors into `FormatError` and keeps them as the source.
-  The app (M4) uses `anyhow` and adds context at the boundary.
+  The app turns an error into a notice that carries a date, a count or a field label, never a path or an error's text.
 - **Non-exhaustive.** Every error enum is `#[non_exhaustive]`, so a `match` needs a wildcard arm and a later version may add a variant.
-- **Display and source.** `Display` never repeats the source error, so an `anyhow` chain prints each cause once.
+- **Display and source.** `Display` never repeats the source error, so a caller that walks `source()` prints each cause once.
   `RestoreFailed` and `RollbackFailed` return their boxed error as `source()`, so a caller downcasts to `Box<IoError>` or `Box<EditError>`; their rustdoc gives the exact form.
 - **No panic path on input data.** The workspace lints deny `unwrap_used` and `expect_used`, and a test root allows both, since a test asserts by panicking.
 - **Position.** An error carries the position when the code knows it, and its variant names the step that failed: a byte offset in the file for base64, a rendered path such as `userData.ownedCharacterList.target[2].parameter` for the document.
 - **A refused edit changes nothing.** The error names the field and the reason, and the document stays as it was, except after `EditError::RollbackFailed`.
   `OutOfRange` carries the range the edit broke, and `AboveCap` carries the game cap, which the UI reads to offer expert mode.
 - **Errors hold personal paths.** The `Display` and `Debug` output of the `neoffse-io` errors and of its discovery, backup and environment types name paths under the user's home.
-  `Debug` of `SaveFolder` also holds a SteamID64, `ProcessInfo` the first command-line argument of a process, and `Manifest` the source folder.
+  `Debug` of `SaveFolder` also holds a SteamID64, `ProcessInfo` the first command-line argument of a process, `Manifest` and `Request` the source folder, and `Backup`, `Listing` and `Restored` the backup folders.
   An error from `LibraryListInvalid` can quote a line of `libraryfolders.vdf`.
   No function of the crate logs or prints them, and a caller must not print them raw: log the variant and the `Operation`, or a count of skipped places.
+- **Facade errors and session values.** `Error::GameRunning` names the executables found running.
+  `Error::ChangedOnDisk` carries the file name, which appears in `Debug` only.
+  `Session::dir` and `Session::name` return the folder and the file name of the open save: personal values a caller must not log.
+- **Facade results.** `Debug` of `Saved` prints the backup folder and the source folder, and `Debug` of `Scan` and `Found` prints file names.
+  A caller must not log them.
+- **App rows.** The Slint structs that `neoffse-app` re-exports at its crate root and that carry names, values or paths (`GameRow`, `FolderRow`, `SlotRow`, `SummaryRow`, `FieldRow`, `ReviewRow`, `CharacterCard`, `BackupRow`, `EditNotice` and the structs that group them) print them in `Debug`.
+  The re-export of each carries the rustdoc line.
 - **Save content in `Debug` output.** The types that hold a slot's content (`SaveSummary`, `SaveView`, `Value`, `Edit`, `Document`, `Ff1Model` and their parts) print character names, field values or the JSON text.
   A caller must not log them.
-  The rustdoc of each such type says "`Debug` prints save content: never log it."
+  The rustdoc of each such type says that `Debug` prints save content and that a caller must not log it.
   `SaveFiles` prints file names and byte counts only, and `FormatError` and `OpenError` hold file names, counts and document paths, never a path on disk.
 
 ## Test policy
@@ -338,9 +365,12 @@ A library crate returns errors and does not panic on anything read from a file.
   On Linux, run `cargo test -p neoffse-io --test real_discovery -- --ignored --nocapture`.
   For Windows, build the executable on Linux with `cargo test -p neoffse-io --test real_discovery --target x86_64-pc-windows-gnu --no-run` (this needs `mingw-w64` and the `x86_64-pc-windows-gnu` Rust target), copy `target/x86_64-pc-windows-gnu/debug/deps/real_discovery-<hash>.exe` to the Windows machine and run it there with `--ignored --nocapture`.
 - **Test profile.** The root `Cargo.toml` sets `opt-level = 2` in `[profile.test]`, because the cipher and the property tests are CPU bound.
-- **UI and snapshots (M4).** View models carry the UI logic and run in plain Rust tests, and `insta` will pin change summaries and view model state.
-  The Slint layer runs on Slint's testing backend: its tests call `init_no_event_loop`, so they create no window and no event loop.
-  No test opens a window on the developer's desktop.
+  It keeps line tables only, and none for dependencies, because full debug info made each `neoffse-app` test binary about 500 MB.
+- **UI.** View models carry the UI logic and run in plain Rust tests.
+  The Slint layer runs on Slint's testing backend, which has no screen: its tests call `init_no_event_loop` and create no event loop, so no test opens a window on the developer's desktop.
+  `event_loop.rs` is the exception: its one test calls `init_integration_test_with_system_time` to check that `EventLoopDispatcher` posts a task to the event loop.
+  Only a few tests call `show()` on the backend (`editor_close.rs`, `restore_failures.rs`, `about_dialog.rs` and the `closeable_rig` helper).
+  `build.rs` compiles `ui/app.slint` with debug info outside release builds and sets `SLINT_EMIT_DEBUG_INFO` for the `slint!` macro, so a test reads the role and label of an element through `ElementHandle`, and the geometry tests read bounds from the accessibility tree.
 - **CI.** `.github/workflows/ci.yml` runs on each push to `develop` and to a milestone branch (`v*.*.*`), and on each pull request into `develop`.
   The `checks` job runs on Linux and Windows: format, a `Cargo.lock` check, `scripts/clippy.sh` and `cargo test --workspace --locked`.
   On Linux it also tests `neoffse-format-pr` alone (feature unification can hide a missing feature) and builds the docs with warnings denied, so a broken intra-doc link fails the build.
@@ -368,61 +398,96 @@ A comment states what the code cannot show; it never narrates the next line.
 ## UI architecture
 
 The `.slint` files draw; Rust view models decide.
-The screens below land with M4; M0 ships the window, the top-level menu and the About dialog.
+The app has a Home screen, an editor, a Restore page and an About dialog.
 
 - **Presentation only in `.slint`.** Layout, styling and `@tr` strings.
   No validation, no bounds, no save knowledge.
 - **View models.** One Rust view model per screen turns domain types into Slint structs and `VecModel`s, and user actions into `Edit`s, and it runs without a window.
   A Slint callback becomes an `Edit` that the view model sends through the facade, and the view model then refreshes from the document.
-  It picks each widget from `FieldMeta` (see [Principles](#principles), rule 3): an ID table gives a searchable dropdown, a named enum gives a dropdown beside a raw spin box, and the bounds clamp the spin box.
+  It picks each widget from `FieldMeta` (see [Principles](#principles), rule 3): a read-only field is a label, a flag a check box, a string a text box, an integer that references an ID table a searchable drop-down, an integer with named values a drop-down plus a text box for the raw value, and any other integer a text box.
+  The text box beside the drop-down is the only way to enter a value with no name.
+  A text box sends one edit on Enter or on focus loss, and Rust clamps the typed number to the storage bounds, so text above the Level's bound of 99 becomes 99.
+  Each control shows the document's value: after a click or a commit, accepted or refused, a check box, a drop-down or a text box shows it again.
 - **Default and expert mode.** In the default mode the view model sends a new edit through `apply_game`, keeps the returned `GameChange` for undo and redo, and greys a control that `field_locked` or `row_locked` reports.
-  In expert mode it sends the edit through `apply` with `CapPolicy::StorageOnly`.
+  In expert mode, which View > Expert mode switches on behind a warning, it sends the edit through `apply` with `CapPolicy::StorageOnly`.
   An `AboveCap` error from the default mode is the cue to offer the switch ([Edit interfaces](#edit-interfaces)).
-- **Threads.** The Steam scan and other slow work run on a worker thread, which returns its result to the UI through `slint::invoke_from_event_loop`.
+- **Threads.** The Steam scan, the save and the restore run on a worker thread, which returns its result to the UI through `slint::invoke_from_event_loop`.
+- **Closing.** A close request, from the window button or File > Quit, does nothing while a dialog other than the discard dialog is open or while a save, reload or restore runs.
+  The discard dialog is the exception: it answers the close, and its buttons do nothing while a worker runs.
+  With unsaved edits and no such dialog, a close request opens the discard dialog, and a clean session closes.
+- **Looks.** Every Pixel Remaster game shares one look: the colours of the game's menu, Cornelia Sans, and a banded frame drawn with Slint primitives, with rounded corners of 6 px on panels.
+  A class sprite shows at twice its size in a portrait frame.
+  Home, the Restore page, the dialogs and the About dialog use the app shell, a flat navy look in Barlow.
 - **Screens.**
-  - *Home*: the detected saves with their summary (game, slot, party, play time), plus an Open button for any file.
-  - *Editor*: one section per `Capability` the save reports.
-  - *Pending changes bar*: the count of unsaved edits, Undo, and "Review & save", which opens the change summary.
-  - *Restore*: the backups of the current game, newest first, with their reason and date.
+  - *Home*: each Pixel Remaster game with the saves that discovery finds (slot, party, play time, place), a filter that shows the owned games only, a Backups button per game, a Refresh button and an "Open a file..." button for any file.
+    A game without a format reads "Not supported yet".
+    A slot file the scan cannot read stays in the list as a row that reads "This save cannot be read", and a click tries to open it again and reports the cause.
+    A save folder that discovery found and the app could not list reads "The save folder could not be read".
+    The warning "Some places could not be searched (n)" counts only the places discovery could not search.
+  - *Editor*: laid out like the game's menu, with the command list (Party, Items, Magic) and a status panel (play time and gil) on the left and the current page on the right.
+    Party shows one card per character, and a card opens the character's page with its fields.
+    Items lists gil, the items and the key items.
+    Magic lists the spell slots of each character and is read only.
+    A save without a section shows "This save has no such section."
+  - *Pending changes bar*: always shown, with the count of unsaved edits ("No unsaved changes" at zero), Undo, Redo and "Review & save", which opens the change summary.
+  - *Review*: the net changes, before and after, and the Steam Cloud note ([Save safety](#save-safety)).
+  - *Restore*: the backups of one game, newest first, with the slot, the reason and the date.
+    Home reaches it through the Backups button, and the File menu reaches it through "Restore a backup..." while an editor is open.
   - *Advanced*: the raw document tree behind a warning. No milestone schedules it yet.
-  - *About*: version, licenses and the `AboutSlint` widget, reached from the top-level menu.
-- **Assets.** The app asks an `AssetProvider` for portraits and icons ([Visual assets](#visual-assets)).
+  - *About*: version, licenses, the two font credits and the `AboutSlint` widget, reached from the top-level menu.
+- **Dialogs.** A save or a restore that meets a running game asks to continue, a save that meets a file changed on disk offers a reload, and a leave with unsaved edits asks to discard or to review and save.
+- **Assets.** The app asks an `AssetProvider` for portraits ([Visual assets](#visual-assets)).
 
 ## Visual assets
 
-The app (M4) picks each image from the best of three providers, and the repository never holds a graphic or audio asset extracted from a game.
-One `AssetProvider` trait in the app layer hides the choice, so no library crate depends on it.
+The app shows portraits through one `AssetProvider` trait in `neoffse-app`, and the repository never holds a graphic or audio asset extracted from a game.
+Because the trait sits in the app layer, no library crate depends on the choice.
+A `ProviderChain` asks its providers in order and the first image wins.
+Today the chain holds `OriginalSprites` alone.
 The providers, in order of preference:
 
 1. **Local extraction.** The app extracts portraits from the user's own game installation into the user cache directory (`~/.cache/neoffse/assets/<game>/` on Linux), and NeoFFSE never commits or redistributes them.
    The provider will sit behind the `local-assets` cargo feature of `neoffse-app`, off by default, so public builds leave it out.
-   It needs the install folder, which `neoffse-io` discovery does not locate (`NEOFFSE_GAME_DIR` will override the lookup), and the Unity asset bundles of the PR games need research before any code.
+   It needs the install folder, which `neoffse-io` discovery returns as `Install::path`, and the Unity asset bundles of the PR games need research before any code.
    No milestone schedules it.
-2. **Bundled free art.** Files in `assets/` with a known author and a free license, attributed per file in REUSE style (`REUSE.toml`).
-   The folder holds no such file yet.
-3. **Silhouettes (M4).** Original generic images in `assets/`.
-   They replace any missing portrait, and public builds show no other images for now.
+2. **Bundled free art.** Files in `assets/` with a known author and a free license, attributed per file in [`licenses/README.md`](../licenses/README.md).
+   The two fonts and the icon set are such files.
+3. **Original sprites.** The six FF I class sprites in `assets/portraits/ff1-pr/` are original work under CC0 1.0, and `OriginalSprites` serves them by job id.
+   They replace any missing portrait, and public builds show no other portraits for now.
 
-A user who owns the game sees real portraits on their own machine, and a public build redistributes nothing the project has no right to ship.
+With local extraction in place, a user who owns the game sees real portraits on their own machine, and a public build redistributes nothing the project has no right to ship.
 
 ## Save safety
 
-A save reaches disk through one pipeline in the `neoffse` facade (M4), and any failure before the final rename leaves the original file as it was.
-`neoffse-io` provides the backup, write, rename and process steps (M2), and the facade joins them to the format's encoder and decoder.
+A save reaches disk through one pipeline, `Session::save` in the `neoffse` facade, and any failure before the final rename leaves the original file as it was.
+`neoffse-io` provides the backup, write, rename and process steps, and the facade joins them to the format's encoder and decoder.
+A session with no edit since its clean point writes nothing: no process scan, no read, no backup.
+The session counts edits and compares no value, so edits that cancel out, or an edit that sets the value a field already holds, count: the save then backs up and writes the file again.
 
-1. The facade checks for a running game process through the [`process`](../crates/neoffse-io/src/process.rs) module of `neoffse-io`, and the app warns when it finds one.
-   The user may cancel or continue.
-2. The user reviews the change summary and confirms.
-3. `neoffse-io` copies the current files into a new backup folder and writes its `backup.json`.
+1. The user reviews the change summary and confirms.
+   The summary lists the net difference from the clean state, and a value set and then set back is no change.
+2. The facade checks for a running game process through the [`process`](../crates/neoffse-io/src/process.rs) module of `neoffse-io`, and the app warns when it finds one.
+   The user may cancel or save anyway.
+3. The facade re-reads every file the session read and compares the bytes with what the session read.
+   A difference means another program wrote the file since the open, and the save stops with `Error::ChangedOnDisk`.
+   The app then offers to reload the file, which drops the unsaved edits.
 4. The format encodes the document.
-   The PR encoder refuses a JSON text above `MAX_PAYLOAD_LEN` (16 MiB), the cap the decoder applies, so the pipeline never writes a file that step 6 or a later load would refuse.
-5. `neoffse-io` writes the bytes to a temporary file in the save's own folder, so the rename stays on one filesystem, and flushes it to disk.
-6. The format decodes the temporary file, and the facade compares the result with the in-memory document (`SaveDocument::verify`, which covers the whole document, not only the view).
-   The facade hands this check to `neoffse_io::atomic::write` as a hook.
+   The PR encoder refuses a JSON text above `MAX_PAYLOAD_LEN` (16 MiB), the cap the decoder applies, so the pipeline never writes a file that step 7 or a later load would refuse.
+5. `neoffse-io` copies the current files into a new backup folder and writes its `backup.json`.
+   The backup follows the encode, so an encode that fails takes none.
+6. `neoffse-io` writes the bytes to a temporary file in the save's own folder, so the rename stays on one filesystem, and flushes it to disk.
+7. The format decodes the temporary file, and the facade compares the result with the in-memory document (`SaveDocument::verify`, which covers the whole document, not only the view).
+   The facade hands this check to `neoffse_io::atomic::write_with` as a hook.
    On a mismatch, or on any other failure before the rename, a guard in `neoffse-io` deletes the temporary file, also when the hook panics, and the call returns an error.
-7. `neoffse-io` renames the temporary file over the original.
+8. `neoffse-io` renames the temporary file over the original.
 
-Step 3 runs before step 4, so an encode that fails leaves a backup that counts against the retention limit of its game.
+A format with several files runs steps 6 to 8 once per file, so each file gets its own verified write.
+A failure after the first rename leaves the earlier files written, and the backup holds every file as it was.
+The session holds the bytes from before the save, so its next save stops with `Error::ChangedOnDisk` on a file already written: the caller opens the save again first.
+The PR formats keep one file per save.
+
+After a successful save the written bytes become the clean point of the session.
+The history stays, so undo and redo still work.
 
 **Process matching.**
 The scan is best effort: a process the system hides stays invisible, so the check can warn but never prove that the game is closed.
@@ -448,19 +513,24 @@ The `backup` module documents the naming and the manifest.
 
 - `neoffse-io` keeps the 20 newest readable backups per game and deletes older ones after a backup succeeds.
   The count covers the whole game, not each slot, so edits to one slot can push out the last backup of another.
+  A restore never deletes the backup it reads from, so a game can hold 21.
   A folder with a backup name but no readable `backup.json` is reported by `list` and never counted or deleted.
-- A restore reads the manifest and every backup file first, so a missing or unreadable file stops it before any write.
-  It then backs up the files it will replace (`"reason": "before-restore"`) and writes the backup's files one by one through the atomic write of steps 5 to 7.
-  No format takes part: the check of step 6 compares the bytes of the temporary file with the bytes of the backup.
+- A restore scans for the game's process first, like a save, and the app lets the user restore anyway.
+  It reads the manifest and every backup file next, so a missing or unreadable file stops it before any write.
+  It then backs up the files it will replace (`"reason": "before-restore"`) and writes the backup's files one by one through the atomic write of steps 6 to 8.
+  No format takes part: the check of step 7 compares the bytes of the temporary file with the bytes of the backup.
   The user can undo a restore by restoring the new backup.
 - A restore that fails while it writes returns `IoError::RestoreFailed`.
   The files already written keep the backup's version, and no rollback runs, because it would write to the disk that refused the last write.
   The error carries the safety backup as the way back.
+  When the first write fails, no file changed: the app reports a failure, and the safety backup stays on disk.
+  A stop after at least one write is incomplete: some files hold the backup's version, and the app says so.
 - `restore` writes into any existing folder it receives and does not compare it with the `sourceDir` of the manifest, which a library move or a reinstall can make stale.
-  The facade (M4) derives `target_dir` from a fresh discovery or from the manifest.
+  The app restores into the absolute `sourceDir` of the manifest and checks with `is_dir` first.
+  A relative or missing folder stops the restore before any read or write.
 - **Steam Cloud.** Steam syncs PR saves to its cloud.
   After an edit, Steam may report a conflict at the next launch, and the user must keep the local files or Steam replaces the edit with the cloud copy.
-  The app (M4) shows this note after a save.
+  The review dialog shows this note before the user confirms a save.
 
 ## Layers and milestone boundaries
 

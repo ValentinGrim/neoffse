@@ -21,6 +21,18 @@ use crate::error::{IoError, Operation};
 const TEMP_PREFIX: &str = ".neoffse-";
 const TEMP_SUFFIX: &str = ".tmp";
 
+/// Whether `name` is a temporary file of this module's write: it starts with
+/// `.neoffse-` and ends with `.tmp`, with at least one character between.
+///
+/// The match is case-sensitive. A folder listing uses it to leave out the
+/// file a crashed write left behind.
+#[must_use]
+pub fn is_temp_name(name: &str) -> bool {
+    name.strip_prefix(TEMP_PREFIX)
+        .and_then(|rest| rest.strip_suffix(TEMP_SUFFIX))
+        .is_some_and(|random| !random.is_empty())
+}
+
 /// The file operations of the write pipeline, one method per step.
 pub trait FileOps {
     /// Creates an empty file with a unique name inside `dir` and returns it

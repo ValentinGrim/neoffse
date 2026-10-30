@@ -66,6 +66,8 @@ use manifest::MANIFEST_FILE;
 const MAX_SUFFIX: u32 = 99;
 
 /// What to back up.
+///
+/// `Debug` prints `source_dir`, a path under the user's home: never log it.
 #[derive(Debug, Clone, Copy)]
 pub struct Request<'a> {
     /// The game id, checked by [`DataDir::game_backups_dir`].
@@ -167,6 +169,8 @@ fn create_protecting<O: FileOps + ?Sized>(ops: &O, data: &DataDir, request: &Req
     // The backup exists and the save pipeline goes on. A failed deletion
     // leaves an extra old backup, and the next successful call prunes again.
     let _ = list::prune(&game_dir, &backup, protect);
+    // fill_folder synced the files and the manifest. A failed sync here risks only the
+    // new folder's entry in the game folder after a power cut, and the backup is already made.
     let _ = ops.sync_dir(&game_dir);
     Ok(backup)
 }

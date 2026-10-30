@@ -39,10 +39,10 @@ unwrap_used = "deny"
 
 [workspace.dependencies]
 neoffse-core = { path = "crates/neoffse-core", version = "0.3.0" }
-neoffse-data = { path = "crates/neoffse-data", version = "0.2.0" }
-neoffse-io = { path = "crates/neoffse-io", version = "0.3.0" }
-neoffse-format-pr = { path = "crates/neoffse-format-pr", version = "0.4.0" }
-neoffse = { path = "crates/neoffse", version = "0.2.0" }
+neoffse-data = { path = "crates/neoffse-data", version = "0.3.0" }
+neoffse-io = { path = "crates/neoffse-io", version = "0.4.0" }
+neoffse-format-pr = { path = "crates/neoffse-format-pr", version = "0.5.0" }
+neoffse = { path = "crates/neoffse", version = "0.3.0" }
 neoffse-testkit = { path = "crates/neoffse-testkit" }
 
 [profile.test]
@@ -50,3 +50,11 @@ neoffse-testkit = { path = "crates/neoffse-testkit" }
 # bound, and the largest codec test encrypts and decrypts about 16 MiB
 # (`max_text_len_admits_the_worst_case_payload`).
 opt-level = 2
+# Line tables keep the file and line of each backtrace frame. Full debug
+# info made each neoffse-app test binary about 500 MB, and a test run relinks
+# all of them.
+debug = "line-tables-only"
+
+# Dependencies carry no debug info in test builds.
+[profile.test.package."*"]
+debug = false

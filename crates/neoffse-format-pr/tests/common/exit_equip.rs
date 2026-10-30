@@ -134,6 +134,8 @@ fn equip(facts: &Facts<'_>, name: &'static str, pick: Pick, slot: u32, kind: Tab
         name,
         edits: vec![edit],
         proof,
+        linked: None,
         raw: false,
+        rolled: false,
     })
 }

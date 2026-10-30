@@ -144,6 +144,30 @@ fn restoring_the_oldest_of_twenty_backups_keeps_it() {
 }
 
 #[test]
+fn restoring_the_oldest_backup_twice_keeps_it_and_prunes_another() {
+    let w = world("restore-restoring_the_oldest_backup_twice_keeps_it_and_prunes_another");
+    for n in 0..20 {
+        fs::write(w.source.join(SLOT), format!("gen-{n}")).unwrap();
+        make(&w, "ff1-pr", T0 + n);
+    }
+    edit(&w);
+    let backups = list(&w.data, "ff1-pr").unwrap().backups;
+    let oldest = backups.last().unwrap().clone();
+    let second_oldest = backups[backups.len() - 2].dir.clone();
+    let before = tree(&oldest.dir);
+
+    restore_at(&w, &oldest, T0 + 100).unwrap();
+    edit(&w);
+    restore_at(&w, &oldest, T0 + 200).unwrap();
+
+    assert_eq!(read(&w, SLOT), b"gen-0");
+    assert!(oldest.dir.is_dir());
+    assert_eq!(tree(&oldest.dir), before);
+    assert!(!second_oldest.exists());
+    assert_eq!(list(&w.data, "ff1-pr").unwrap().backups.len(), 21);
+}
+
+#[test]
 fn restore_protects_its_backup_under_another_spelling_of_the_data_root() {
     let w = world("restore-restore_protects_its_backup_under_another_spelling_of_the_data_root");
     for n in 0..MAX_BACKUPS {

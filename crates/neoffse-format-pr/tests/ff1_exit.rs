@@ -91,7 +91,7 @@ fn level_changes_one_token_five_documents_deep() {
         vec![ViewChange::Set(level.clone(), Value::Int(40))],
         &[(path, "40".to_owned())],
     );
-    game("level", Edit::set(level, Value::Int(40)), &expected);
+    prove(&subject(), "level", &[Edit::set(level, Value::Int(40))], How::Raw, &expected);
 }
 
 #[test]

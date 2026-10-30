@@ -1,16 +1,24 @@
-//! The Windows search: the Documents folder and its OneDrive variants.
+//! The Windows search: the Documents folder and its OneDrive variants for
+//! saves, the Steam libraries under `Program Files (x86)` for installs.
 
 use std::fs;
 use std::path::PathBuf;
 
+use super::steam::{installs, libraries, roots};
 use super::{Discovery, Environment, Origin, SteamGame, probe, settle};
 use crate::error::Operation;
 
-/// Probes each distinct Documents folder for each game.
+/// Probes each distinct Documents folder for each game, then lists the
+/// installs of the Steam libraries.
 ///
-/// Source: `docs/formats/pixel-remaster.md#save-folder`. Steam roots and
-/// libraries play no part here.
+/// Source: `docs/formats/pixel-remaster.md#save-folder`. Saves ignore Steam
+/// libraries; the libraries add installs only.
 pub(super) fn search(environment: &Environment, games: &[SteamGame<'_>], found: &mut Discovery) {
+    save_folders(environment, games, found);
+    steam_installs(environment, games, found);
+}
+
+fn save_folders(environment: &Environment, games: &[SteamGame<'_>], found: &mut Discovery) {
     // The known folder first, then the fallbacks of the Go editor. On a
     // OneDrive machine the known folder and a fallback name one folder.
     let candidates = [
@@ -36,4 +44,15 @@ pub(super) fn search(environment: &Environment, games: &[SteamGame<'_>], found: 
             probe(&steam_dir, game, &origin, found);
         }
     }
+}
+
+/// The root is `<program_files_x86>/Steam`, read from the environment and not
+/// from the registry. It counts when it holds a `steamapps` folder.
+fn steam_installs(environment: &Environment, games: &[SteamGame<'_>], found: &mut Discovery) {
+    let Some(program_files) = environment.program_files_x86.as_deref() else {
+        return;
+    };
+    let roots = roots(&[program_files.join("Steam")], &mut found.skipped);
+    let libraries = libraries(roots, &mut found.skipped);
+    installs(&libraries, games, found);
 }

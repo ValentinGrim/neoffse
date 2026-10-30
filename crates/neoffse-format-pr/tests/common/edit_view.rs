@@ -100,15 +100,22 @@ pub(super) fn raises_worn_count(before: &SaveView, changes: &[ViewChange]) -> bo
     })
 }
 
-/// Every field value by id, and the entity ids of each collection in order.
+/// Every stored field value by id, and the entity ids of each collection in
+/// order. The computed `max_hp` and `next_level` are left out: an edit of the
+/// level, the experience or the gain moves them, and the document check
+/// already proves the stored keys.
 fn flatten(view: &SaveView) -> (Fields, Order) {
     let mut fields = Fields::new();
     let mut order = Order::new();
     for entity in view.sections.iter().flat_map(|section| &section.entities) {
         order.entry(entity.id.section()).or_default().push(entity.id.clone());
-        for field in &entity.fields {
+        for field in entity.fields.iter().filter(|field| !is_computed(&field.id)) {
             fields.insert(field.id.clone(), field.value.clone());
         }
     }
     (fields, order)
+}
+
+fn is_computed(id: &FieldId) -> bool {
+    matches!(id.keys().last(), Some(Key::Name(names::MAX_HP | names::NEXT_LEVEL)))
 }

@@ -15,15 +15,19 @@ pub(crate) mod exit_cases;
 pub(crate) mod exit_equip;
 mod exit_facts;
 mod exit_fields;
+mod exit_growth;
 pub(crate) mod ff1_ability_rules;
 pub(crate) mod ff1_format;
+pub(crate) mod ff1_magic;
 pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
 pub(crate) mod ff1_rules;
 pub(crate) mod ff1_save;
+pub(crate) mod growth_oracle;
 pub(crate) mod json_diff;
 mod json_scan;
 pub(crate) mod json_tree;
+pub(crate) mod rolls;
 
 use neoffse_format_pr::document::Segment;
 
@@ -36,19 +40,28 @@ pub(crate) const GAMES: [&str; 6] = ["ff1", "ff2", "ff3", "ff4", "ff5", "ff6"];
 pub(crate) const STEAM_CLOUD_MARKER: &str = "steam_autocloud.vdf";
 
 /// True when a file of a private game folder can be a save: not the Steam
-/// cloud marker and not a dot-file (KDE writes `.directory`).
+/// cloud marker, not a dot-file (KDE writes `.directory`), and named as the
+/// game names its files, 44 characters of the base64 alphabet that may hold
+/// `=` (`docs/formats/pixel-remaster.md#slot-files`). This leaves out stray
+/// files such as `desktop.ini` and `README.txt`.
 pub(crate) fn is_save_name(name: &OsStr) -> bool {
-    name != STEAM_CLOUD_MARKER && !name.as_encoded_bytes().starts_with(b".")
+    name != STEAM_CLOUD_MARKER
+        && !name.as_encoded_bytes().starts_with(b".")
+        && name.len() == 44
+        && name
+            .as_encoded_bytes()
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'='))
 }
 
-/// The private save files of `game` without the Steam cloud marker and the
-/// dot-files. `None` when the game has no private saves or only such files;
+/// The private save files of `game`: the files [`is_save_name`] accepts.
+/// `None` when the game has no private saves or only other files;
 /// the second case reports the skip through `neoffse_testkit::skip`.
 pub(crate) fn save_files(game: &str) -> Option<Vec<PathBuf>> {
     let mut files = neoffse_testkit::private_saves(game)?;
     files.retain(|path| path.file_name().is_none_or(is_save_name));
     if files.is_empty() {
-        neoffse_testkit::skip(&format!("{game} holds only the Steam cloud marker or hidden files"));
+        neoffse_testkit::skip(&format!("{game} holds no file named like a save"));
         return None;
     }
     Some(files)
@@ -72,6 +85,22 @@ pub(crate) fn segments(steps: &[Step]) -> Vec<Segment<'_>> {
             Step::Doc => Segment::Doc,
         })
         .collect()
+}
+
+/// The path to the character at `index` of the party, then `rest`. It ends
+/// at the element, a string that holds a document: `rest` starts with
+/// [`Segment::Doc`] to read inside it.
+pub(crate) fn character_path<'a>(index: usize, rest: &[Segment<'a>]) -> Vec<Segment<'a>> {
+    let mut path = vec![
+        Segment::Key("userData"),
+        Segment::Doc,
+        Segment::Key("ownedCharacterList"),
+        Segment::Doc,
+        Segment::Key("target"),
+        Segment::Index(index),
+    ];
+    path.extend_from_slice(rest);
+    path
 }
 
 /// Wraps `doc` in quotes and escapes `\` and `"`, as the game embeds a document

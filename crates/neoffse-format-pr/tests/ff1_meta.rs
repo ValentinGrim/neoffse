@@ -50,7 +50,7 @@ fn table() -> Vec<Row> {
         row(character(names::HP), "HP", Some(999), &[]),
         row(character(names::MAX_HP_GAIN), "Max HP gain", None, &[]),
     ];
-    // The six stats take the 99 of their MAX_* key; Magic has no cap.
+    // The six stats take the 99 of their MAX_* key; Magic and the two gains have no cap.
     let stats = [
         (names::POWER, "Power", Some(99)),
         (names::VITALITY, "Vitality", Some(99)),
@@ -59,6 +59,8 @@ fn table() -> Vec<Row> {
         (names::SPIRIT, "Spirit", Some(99)),
         (names::LUCK, "Luck", Some(99)),
         (names::MAGIC, "Magic", None),
+        (names::ACCURACY_GAIN, "Accuracy gain", None),
+        (names::MAGIC_EVASION_GAIN, "Magic evasion gain", None),
     ];
     rows.extend(stats.map(|(name, label, cap)| row(character(name), label, cap, &[])));
     for number in 1..=8 {
@@ -99,11 +101,21 @@ fn field_meta_matches_the_field_table_row_by_row() {
     for row in table() {
         let meta = model.field_meta(&row.field).unwrap_or_else(|| panic!("{} has no meta", row.field));
         assert_eq!(meta.label, row.label, "{}", row.field);
-        assert_eq!(meta.shape, Shape::Int { min: row.min, max: STORAGE }, "{}", row.field);
+        // The level is bounded by MAX_LV; every other number by the storage maximum.
+        let max = if row.field == character(names::LEVEL) { 99 } else { STORAGE };
+        assert_eq!(meta.shape, Shape::Int { min: row.min, max }, "{}", row.field);
         assert_eq!(meta.cap, row.cap, "{}", row.field);
         assert_eq!(meta.tables, row.tables, "{}", row.field);
         assert!(meta.names.is_empty(), "{}", row.field);
     }
+}
+
+#[test]
+fn the_level_meta_reports_the_game_cap_as_its_maximum() {
+    let model = standard_model();
+    let meta = model.field_meta(&character(names::LEVEL)).unwrap();
+    assert_eq!(meta.shape, Shape::Int { min: 0, max: 99 });
+    assert_eq!(meta.cap, Some(99));
 }
 
 #[test]
@@ -114,7 +126,7 @@ fn read_only_is_false_for_every_field() {
     for (list, key) in [(names::INVENTORY, 62), (names::INVENTORY, 89), (names::KEY_ITEMS, 45)] {
         fields.push(FieldId::new(list).with_id(key).with_name(names::COUNT));
     }
-    assert_eq!(fields.len(), 43);
+    assert_eq!(fields.len(), 45);
     for field in fields {
         assert!(!model.field_meta(&field).unwrap().read_only, "{field}");
     }
@@ -241,7 +253,7 @@ fn a_path_that_names_an_absent_row_still_has_a_meta() {
 }
 
 #[test]
-fn character_fields_lists_39_ids_in_display_order() {
+fn character_fields_lists_41_ids_in_display_order() {
     let mut want: Vec<String> = [
         "name",
         "job",
@@ -256,6 +268,8 @@ fn character_fields_lists_39_ids_in_display_order() {
         "spirit",
         "luck",
         "magic",
+        "accuracy_gain",
+        "magic_evasion_gain",
     ]
     .iter()
     .map(|name| format!("character.2.{name}"))
@@ -281,5 +295,5 @@ fn character_fields_lists_39_ids_in_display_order() {
 #[test]
 fn capabilities_and_game_constants() {
     assert_eq!(GAME, Game::Ff1Pr);
-    assert_eq!(CAPABILITIES, [Capability::Party, Capability::Inventory]);
+    assert_eq!(CAPABILITIES, [Capability::Party, Capability::Inventory, Capability::Magic]);
 }

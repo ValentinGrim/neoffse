@@ -1,0 +1,55 @@
+import { ThemedButton } from "../../widgets/controls.slint";
+import { LookText } from "../../widgets/frames.slint";
+import { Look } from "../../theme/look.slint";
+import { Theme } from "../../theme/theme.slint";
+
+// The bar at the bottom of the editor: how many edits wait to be saved, and
+// the buttons that undo, redo and open the review. The page shows it at all
+// times: at zero it says so and Review & save waits. Its height does not
+// depend on the count, so the page does not jump when the first edit lands.
+export component PendingBar inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <int> count;
+    in property <bool> can-undo;
+    in property <bool> can-redo;
+    // False while a dialog covers the page or a worker runs.
+    in property <bool> enabled: true;
+    // A save runs: the count gives way to a progress word.
+    in property <bool> working: false;
+    callback undo();
+    callback redo();
+    callback review();
+
+    preferred-height: row.preferred-height;
+
+    row := HorizontalLayout {
+        spacing: root.look.spacing;
+        alignment: stretch;
+
+        LookText {
+            look: root.look;
+            horizontal-stretch: 1;
+            text: root.working ? @tr("Working...") : root.count == 0 ? @tr("No unsaved changes") : @tr("{n} unsaved change" | "{n} unsaved changes" % root.count);
+            overflow: elide;
+        }
+        ThemedButton {
+            look: root.look;
+            text: @tr("Undo");
+            enabled: root.enabled && root.can-undo;
+            clicked => { root.undo(); }
+        }
+        ThemedButton {
+            look: root.look;
+            text: @tr("Redo");
+            enabled: root.enabled && root.can-redo;
+            clicked => { root.redo(); }
+        }
+        ThemedButton {
+            look: root.look;
+            text: @tr("Review & save");
+            primary: true;
+            enabled: root.enabled && root.count > 0;
+            clicked => { root.review(); }
+        }
+    }
+}

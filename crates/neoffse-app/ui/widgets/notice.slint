@@ -1,0 +1,66 @@
+import { IconButton, ThemedButton } from "controls.slint";
+import { Icon, Icons } from "../theme/icons.slint";
+import { Shell } from "../theme/shell.slint";
+import { ShellText } from "shell-text.slint";
+
+// A strip that tells the user something: a coloured bar at the left, an icon,
+// one line of text, an optional button and a dismiss button. It draws the
+// warning look, or the info look (accent colour, check icon) when `info` is
+// set. It reads no model; `NoticeBar` and the Home screen feed it.
+export component NoticeStrip inherits Rectangle {
+    in property <string> text;
+    // The label of the extra button; empty hides it.
+    in property <string> offer-text;
+    in property <bool> enabled: true;
+    // An outcome to report and not a refusal: the accent colour and a check.
+    in property <bool> info: false;
+    callback offer-clicked();
+    callback dismissed();
+
+    private property <color> tone: root.info ? Shell.look.accent : Shell.look.warning;
+
+    background: root.tone.with-alpha(0.14);
+    border-width: Shell.look.frame-width;
+    border-color: root.tone.with-alpha(0.4);
+    border-radius: Shell.look.frame-radius;
+    min-height: row.min-height;
+    preferred-height: row.preferred-height;
+
+    Rectangle {
+        x: 0px;
+        width: 3px;
+        background: root.tone;
+    }
+    row := HorizontalLayout {
+        padding: Shell.look.spacing;
+        padding-left: Shell.look.padding;
+        spacing: Shell.look.spacing;
+
+        Icon {
+            source: root.info ? Icons.check : Icons.warning;
+            tint: root.tone;
+            width: Shell.look.font-body * 1.5;
+            height: Shell.look.font-body * 1.5;
+            y: (parent.height - self.height) / 2;
+        }
+        ShellText {
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+            text: root.text;
+        }
+        if root.offer-text != "": ThemedButton {
+            look: Shell.look;
+            text: root.offer-text;
+            enabled: root.enabled;
+            clicked => { root.offer-clicked(); }
+        }
+        IconButton {
+            look: Shell.look;
+            icon: Icons.close;
+            label: @tr("Dismiss");
+            enabled: root.enabled;
+            clicked => { root.dismissed(); }
+        }
+    }
+}

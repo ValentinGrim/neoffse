@@ -1,11 +1,44 @@
-import { AboutSlint, StandardButton, VerticalBox } from "std-widgets.slint";
+import { AboutSlint, Palette, StandardButton, VerticalBox } from "std-widgets.slint";
+import { ThemedButton } from "widgets/controls.slint";
+import { ModalDialog } from "widgets/dialogs.slint";
+import { EditorBridge } from "screens/editor/bridge.slint";
+import { EditorPage } from "screens/editor/editor.slint";
+import { RestoreBridge } from "screens/restore/bridge.slint";
+import { RestoreDialogs } from "screens/restore/dialogs.slint";
+import { RestorePage } from "screens/restore/restore.slint";
+import { ReviewDialog } from "screens/editor/review.slint";
+import { Fonts } from "theme/fonts.slint";
+import { HomeScreen } from "screens/home/home.slint";
+import { FrameStyle, Look } from "theme/look.slint";
+import { Shell } from "theme/shell.slint";
+import { Theme, ThemeId } from "theme/theme.slint";
+import { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types/home.slint";
+
+export { CharacterCard, EditNotice, EditProblem, EditorCommand, EditorData, EntityPage, FieldKind, FieldRow, ItemList, ItemRow, Overview, PickerEntry, ReviewKind, ReviewRow, SectionData } from "types/editor.slint";
+export { EditorBridge } from "screens/editor/bridge.slint";
+export { RestoreBridge } from "screens/restore/bridge.slint";
+export { BackupReason, BackupRow, RestoreNotice, RestoreProblem } from "types/restore.slint";
+// Exported so the font imports enter the compiled document and a test reads the family names.
+export { Fonts }
+// The looks: `Theme` follows the open save's game, `Shell` is the app's own.
+export { FrameStyle, Look, Shell, Theme, ThemeId }
+export { FolderOrigin, FolderRow, GameRow, OpenProblem, SlotKind, SlotRow, SummaryRow } from "types/home.slint";
+
+// The facts of a font credit. The sentence is written in `AboutDialog`.
+export struct FontCredit { family: string, author: string, license: string }
 
 export component AboutDialog inherits Dialog {
     in property <string> app-version;
     in property <string> license;
+    in property <FontCredit> font-credit;
+    in property <FontCredit> ui-font-credit;
     callback dismiss();
 
     title: @tr("About NeoFFSE");
+    background: Shell.look.window-fill;
+
+    // The std scroll bars and `AboutSlint` stay legible on navy.
+    init => { Palette.color-scheme = ColorScheme.dark; }
 
     VerticalBox {
         Text {
@@ -22,6 +55,14 @@ export component AboutDialog inherits Dialog {
             text: @tr("License: {}", root.license);
             horizontal-alignment: center;
         }
+        Text {
+            text: @tr("{} by {}, {}", root.font-credit.family, root.font-credit.author, root.font-credit.license);
+            horizontal-alignment: center;
+        }
+        Text {
+            text: @tr("{} by {}, {}", root.ui-font-credit.family, root.ui-font-credit.author, root.ui-font-credit.license);
+            horizontal-alignment: center;
+        }
         AboutSlint { }
     }
 
@@ -35,16 +76,60 @@ export component MainWindow inherits Window {
     callback about-requested();
     callback quit-requested();
 
+    in property <[GameRow]> games;
+    in property <bool> scanning;
+    in property <bool> scan-failed;
+    in property <int> skipped-count;
+    in-out property <bool> owned-only: true;
+    callback owned-only-toggled(bool);
+    callback rescan-requested();
+    callback slot-clicked(int);
+    in property <bool> has-open-problem;
+    in property <OpenProblem> open-problem;
+    in property <bool> busy;
+    in property <bool> editor-open;
+    in property <SummaryRow> editor-summary;
+    callback open-file-requested();
+    callback back-requested();
+    callback home-requested();
+    callback problem-dismissed();
+    in property <bool> restore-open;
+    callback restore-menu-requested();
+    callback backups-requested(string);
+
     title: @tr("NeoFFSE");
     preferred-width: 800px;
     preferred-height: 600px;
+    background: Theme.look.window-fill;
+    // The PR menu at its dense text size fits the 800 by 600 size Home opens at, so the
+    // editor does not grow the window. Home keeps no minimum of its own.
+    min-width: Theme.id == ThemeId.pr ? 800px : 0px;
+    min-height: Theme.id == ThemeId.pr ? 600px : 0px;
+
+    // The std scroll bars and the `ComboBox` stay legible on navy.
+    init => { Palette.color-scheme = ColorScheme.dark; }
 
     MenuBar {
         Menu {
             title: @tr("File");
             MenuItem {
+                title: @tr("Restore a backup...");
+                enabled: root.editor-open && !root.restore-open && !EditorBridge.blocked;
+                activated => { root.restore-menu-requested(); }
+            }
+            MenuItem {
                 title: @tr("Quit");
                 activated => { root.quit-requested(); }
+            }
+        }
+        Menu {
+            title: @tr("View");
+            MenuItem {
+                title: @tr("Expert mode");
+                checkable: true;
+                checked <=> EditorBridge.expert-menu-checked;
+                enabled: root.editor-open && !EditorBridge.blocked;
+                activated => { EditorBridge.expert-toggle-requested(); }
             }
         }
         Menu {
@@ -56,8 +141,108 @@ export component MainWindow inherits Window {
         }
     }
 
-    Text {
-        text: @tr("Final Fantasy save editor");
-        horizontal-alignment: center;
+    if !root.restore-open && !root.editor-open: HomeScreen {
+        games: root.games;
+        scanning: root.scanning;
+        scan-failed: root.scan-failed;
+        skipped-count: root.skipped-count;
+        owned-only <=> root.owned-only;
+        busy: root.busy;
+        has-open-problem: root.has-open-problem;
+        open-problem: root.open-problem;
+        owned-only-toggled(on) => { root.owned-only-toggled(on); }
+        rescan-requested => { root.rescan-requested(); }
+        open-file-requested => { root.open-file-requested(); }
+        slot-clicked(key) => { root.slot-clicked(key); }
+        backups-requested(id) => { root.backups-requested(id); }
+        problem-dismissed => { root.problem-dismissed(); }
     }
+    if !root.restore-open && root.editor-open: EditorPage {
+        summary: root.editor-summary;
+        back-requested => { root.back-requested(); }
+        home-requested => { root.home-requested(); }
+    }
+    if root.restore-open: RestorePage { }
+    if EditorBridge.expert-warning-open: ModalDialog {
+        title: @tr("Turn on expert mode?");
+        message: @tr("Expert mode skips the game's rules and limits. A value the game does not expect can corrupt the save or crash the game.");
+        cancelled => { EditorBridge.expert-warning-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.expert-warning-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Turn on expert mode");
+            primary: true;
+            clicked => { EditorBridge.expert-warning-confirmed(); }
+        }
+    }
+    if EditorBridge.discard-dialog-open: ModalDialog {
+        title: @tr("Discard unsaved changes?");
+        message: @tr("Discard drops your unsaved changes to this save.");
+        cancelled => { EditorBridge.discard-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.discard-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Discard");
+            clicked => { EditorBridge.discard-confirmed(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Review & save");
+            primary: true;
+            clicked => { EditorBridge.discard-review-requested(); }
+        }
+    }
+    if EditorBridge.review-open: ReviewDialog {
+        cancelled => { EditorBridge.review-cancelled(); }
+        saved => { EditorBridge.save-requested(); }
+    }
+    if EditorBridge.game-running-open: ModalDialog {
+        title: @tr("Save while the game runs?");
+        message: @tr("The game is running. Saving now may be lost or overwritten. Save anyway?");
+        cancelled => { EditorBridge.save-anyway-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.save-anyway-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Save anyway");
+            primary: true;
+            clicked => { EditorBridge.save-anyway-confirmed(); }
+        }
+    }
+    if EditorBridge.changed-on-disk-open: ModalDialog {
+        title: @tr("The save changed on disk");
+        message: @tr("The file changed on disk since you opened it. Reload it to continue. Reloading drops your unsaved changes.");
+        cancelled => { EditorBridge.reload-cancelled(); }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Cancel");
+            // The first button takes the focus, so Enter cancels.
+            init => { self.focus(); }
+            clicked => { EditorBridge.reload-cancelled(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Reload");
+            primary: true;
+            clicked => { EditorBridge.reload-confirmed(); }
+        }
+    }
+    RestoreDialogs { }
 }

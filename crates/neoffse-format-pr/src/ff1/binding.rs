@@ -106,6 +106,14 @@ pub(super) enum Part {
     Exp,
     Hp,
     MaxHpGain,
+    /// `addtionalAccuracyRate`.
+    AccuracyGain,
+    /// `addtionalAbilityEvasionRate`.
+    MagicEvasionGain,
+    /// Computed from the status table, read only.
+    MaxHp,
+    /// Computed from the experience table, read only.
+    NextLevel,
     Stat(Stat),
     /// `currentMpCountList`, spell level 1 to 8.
     Charges(u32),
@@ -115,6 +123,11 @@ pub(super) enum Part {
     Slot(u32),
     /// `count` of an equipment slot, 1 to 5.
     SlotCount(u32),
+    /// The ability in a spell slot, read only.
+    Spell {
+        level: u32,
+        slot: u32,
+    },
 }
 
 /// What a [`FieldId`] names.
@@ -150,6 +163,23 @@ impl Binding {
         }
     }
 
+    /// True for the ability id of a spell slot, a value that sits inside a
+    /// JSON string.
+    pub(super) fn is_spell(&self) -> bool {
+        matches!(self, Self::Character { part: Part::Spell { .. }, .. })
+    }
+
+    /// True for a computed field, which has no document path.
+    pub(super) fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            Self::Character {
+                part: Part::MaxHp | Part::NextLevel,
+                ..
+            }
+        )
+    }
+
     /// True for the one text field, `name`.
     pub(super) fn is_text(&self) -> bool {
         matches!(self, Self::Character { part: Part::Name, .. })
@@ -160,6 +190,7 @@ impl Part {
     fn declared(keys: &[Key]) -> Option<Self> {
         let level_ok = |level: u32| (1..=names::SPELL_LEVELS).contains(&level);
         let slot_ok = |slot: u32| (1..=names::EQUIPMENT_SLOTS).contains(&slot);
+        let spell_slot_ok = |slot: u32| (1..=names::SPELL_SLOTS).contains(&slot);
         match keys {
             [Key::Name(names::NAME)] => Some(Self::Name),
             [Key::Name(names::JOB)] => Some(Self::Job),
@@ -167,6 +198,10 @@ impl Part {
             [Key::Name(names::EXP)] => Some(Self::Exp),
             [Key::Name(names::HP)] => Some(Self::Hp),
             [Key::Name(names::MAX_HP_GAIN)] => Some(Self::MaxHpGain),
+            [Key::Name(names::ACCURACY_GAIN)] => Some(Self::AccuracyGain),
+            [Key::Name(names::MAGIC_EVASION_GAIN)] => Some(Self::MagicEvasionGain),
+            [Key::Name(names::MAX_HP)] => Some(Self::MaxHp),
+            [Key::Name(names::NEXT_LEVEL)] => Some(Self::NextLevel),
             [Key::Name(names::POWER)] => Some(Self::Stat(Stat::Power)),
             [Key::Name(names::VITALITY)] => Some(Self::Stat(Stat::Vitality)),
             [Key::Name(names::AGILITY)] => Some(Self::Stat(Stat::Agility)),
@@ -178,6 +213,9 @@ impl Part {
             [Key::Name(names::CHARGES_MAX_GAIN), Key::Id(level)] if level_ok(*level) => Some(Self::ChargesMaxGain(*level)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot)] if slot_ok(*slot) => Some(Self::Slot(*slot)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot), Key::Name(names::COUNT)] if slot_ok(*slot) => Some(Self::SlotCount(*slot)),
+            [Key::Name(names::SPELL), Key::Id(level), Key::Id(slot)] if level_ok(*level) && spell_slot_ok(*slot) => {
+                Some(Self::Spell { level: *level, slot: *slot })
+            }
             _ => None,
         }
     }

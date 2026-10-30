@@ -11,7 +11,7 @@ commits its output.
 `--install` reads the bundles from the game's install folder and the Steam
 build id from the appmanifest next to it. `--bundles` takes a folder that
 holds the two bundle files directly, for a copy of them. The tool only reads
-the bundles. It writes the six files under <out>/<game>/, and only when
+the bundles. It writes the seven files under <out>/<game>/, and only when
 their bytes change.
 """
 
@@ -38,11 +38,13 @@ from .build import (  # noqa: E402
     parse_messages,
 )
 from .bundles import find_bundle, parse_build_id, read_assets, sha256_of  # noqa: E402
+from .growth import build_growth  # noqa: E402
 from .render import (  # noqa: E402
     Provenance,
     check_roundtrip,
     file_header,
     render_array,
+    render_arrays,
     render_table,
 )
 from .tables import GAMES, Game  # noqa: E402
@@ -117,7 +119,7 @@ def _array_output(
 def _render_all(
     game: Game, prov: Provenance, texts: Mapping[str, str], messages: Mapping[str, str]
 ) -> list[_Output]:
-    """Build and render the six files, in order. Nothing touches the disk."""
+    """Build and render the seven files, in order. Nothing touches the disk."""
     csvs = {
         csv: parse_csv(texts[game.master_dir + csv], name=game.master_dir + csv)
         for csv in game.csv_files()
@@ -156,6 +158,12 @@ def _render_all(
     text = render_table(header, "bounds", values)
     check_roundtrip(text, {"bounds": values})
     outputs.append(_Output(game.bounds.file, text, len(values), []))
+    tables = build_growth(game.growth, csvs)
+    header = file_header(game, game.growth.file, prov, game.growth.notes)
+    text = render_arrays(header, list(tables.items()))
+    check_roundtrip(text, tables)
+    count = sum(1 if isinstance(rows, dict) else len(rows) for rows in tables.values())
+    outputs.append(_Output(game.growth.file, text, count, []))
     return outputs
 
 

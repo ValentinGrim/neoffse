@@ -1,0 +1,283 @@
+import { ComboBox } from "std-widgets.slint";
+import { FieldKind, FieldRow } from "../../types/editor.slint";
+import { EditorBridge } from "bridge.slint";
+import { ThemedCheck } from "../../widgets/check.slint";
+import { ThemedEdit } from "../../widgets/controls.slint";
+import { LookText } from "../../widgets/frames.slint";
+import { Icon, Icons } from "../../theme/icons.slint";
+import { PickerField } from "../../widgets/picker.slint";
+import { Look } from "../../theme/look.slint";
+import { Theme } from "../../theme/theme.slint";
+
+// A text box that sends one edit per commit: Enter or focus loss, and only
+// when the text differs from `source`. After every commit, accepted or
+// refused, the box shows the document's value again. Escape puts the
+// document's value back when the text differs, and passes the key on to the
+// page (Back) when it does not.
+export component CommitEdit inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <string> source;
+    // The accessible name.
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <TextHorizontalAlignment> alignment: left;
+    callback committed(string);
+
+    min-width: edit.min-width;
+    min-height: edit.min-height;
+    preferred-width: edit.preferred-width;
+    preferred-height: edit.preferred-height;
+
+    function commit() {
+        if edit.text != root.source {
+            root.committed(edit.text);
+        }
+        edit.text = root.source;
+    }
+
+    changed source => { edit.text = root.source; }
+
+    edit := ThemedEdit {
+        look: root.look;
+        width: 100%;
+        height: 100%;
+        text: root.source;
+        label: root.label;
+        enabled: root.enabled;
+        alignment: root.alignment;
+        accepted => { root.commit(); }
+        escaped => {
+            if self.text != root.source {
+                self.text = root.source;
+                return true;
+            }
+            return false;
+        }
+        changed has-focus => {
+            if !self.has-focus {
+                root.commit();
+            }
+        }
+    }
+}
+
+// The small "locked" mark: a padlock and a word.
+export component LockMark inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
+
+    spacing: 4px;
+
+    Icon {
+        source: Icons.lock;
+        tint: root.look.muted;
+        width: root.look.font-body;
+        y: (parent.height - self.height) / 2;
+    }
+    LookText {
+        look: root.look;
+        text: @tr("locked");
+        font-size: root.look.font-small;
+        color: root.look.muted;
+    }
+}
+
+// A check box that shows `source` and nothing else. A click or a key sends
+// `committed` with the new state; the box then shows `source` again, so a
+// refusal leaves the document's value on screen and a later change of the row
+// still reaches the box.
+component FieldCheck inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <bool> source;
+    in property <bool> enabled: true;
+    callback committed(bool);
+
+    min-width: check.min-width;
+    min-height: check.min-height;
+    preferred-width: check.preferred-width;
+    preferred-height: check.preferred-height;
+
+    changed source => { check.checked = root.source; }
+
+    check := ThemedCheck {
+        look: root.look;
+        width: 100%;
+        height: 100%;
+        checked: root.source;
+        enabled: root.enabled;
+        toggled => {
+            root.committed(self.checked);
+            self.checked = root.source;
+        }
+    }
+}
+
+// A drop-down that shows the entry at `source` (-1: none) and nothing else.
+// The std control keeps an index and a value, and clamps the index when the
+// model changes. A refresh builds a new model, and the clamp would turn "no
+// name" into the first name or leave a stale value that moves the index back.
+// `show` sets both from `source` after the model, the source and every pick.
+component FieldChoice inherits Rectangle {
+    in property <[string]> names;
+    in property <int> source;
+    in property <bool> enabled: true;
+    callback picked(int);
+
+    min-width: combo.min-width;
+    min-height: combo.min-height;
+    preferred-width: combo.preferred-width;
+    preferred-height: combo.preferred-height;
+    horizontal-stretch: combo.horizontal-stretch;
+    vertical-stretch: combo.vertical-stretch;
+
+    function show() {
+        combo.current-index = root.source;
+        combo.current-value = root.names[root.source];
+    }
+
+    changed source => { root.show(); }
+    changed names => { root.show(); }
+
+    combo := ComboBox {
+        width: 100%;
+        height: 100%;
+        model: root.names;
+        current-index: root.source;
+        enabled: root.enabled;
+        selected => {
+            root.picked(self.current-index);
+            root.show();
+        }
+    }
+}
+
+// The control a field gets, chosen by `field.kind`. Every callback goes to the
+// bridge; the control never holds the value, so a refusal shows the document's
+// value again.
+export component FieldEditor inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
+    in property <FieldRow> field;
+    // The accessible name; the field's label when empty. An item row passes
+    // the item's name, so its count reads as "Potion", not "Count".
+    in property <string> name;
+    // The small "locked" mark; a row that shows its own mark turns this off.
+    in property <bool> show-lock: true;
+
+    private property <string> label: root.name != "" ? root.name : root.field.label;
+
+    spacing: root.look.spacing;
+
+    if root.field.kind == FieldKind.label: LookText {
+        look: root.look;
+        horizontal-stretch: 1;
+        overflow: elide;
+        text: root.field.shown != "" ? root.field.shown : root.field.text;
+    }
+    if root.field.kind == FieldKind.text: CommitEdit {
+        look: root.look;
+        horizontal-stretch: 1;
+        source: root.field.text;
+        label: root.label;
+        enabled: root.field.editable && !EditorBridge.blocked;
+        committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
+    }
+    if root.field.kind == FieldKind.number: CommitEdit {
+        look: root.look;
+        preferred-width: root.look.font-body * 7.5;
+        max-width: root.look.font-body * 7.5;
+        // Seven digits stay readable however narrow the page gets.
+        min-width: root.look.font-body * 6;
+        source: root.field.text;
+        label: root.label;
+        enabled: root.field.editable && !EditorBridge.blocked;
+        alignment: right;
+        committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
+    }
+    if root.field.kind == FieldKind.number && root.field.cap != "": LookText {
+        look: root.look;
+        font-size: root.look.font-small;
+        color: root.look.muted;
+        text: @tr("game limit {}", root.field.cap);
+    }
+    if root.field.kind == FieldKind.number && root.field.above-cap: LookText {
+        look: root.look;
+        font-size: root.look.font-small;
+        color: root.look.warning;
+        text: @tr("above the game limit");
+    }
+    // The one std control left in the editor, wrapped so it follows the row. No
+    // field of FF I has this kind, and a themed drop-down is a later task.
+    if root.field.kind == FieldKind.choice: FieldChoice {
+        names: root.field.names;
+        source: root.field.name-index;
+        enabled: root.field.editable && !EditorBridge.blocked;
+        picked(index) => { EditorBridge.field-name-picked(root.field.key, index); }
+    }
+    if root.field.kind == FieldKind.choice: CommitEdit {
+        look: root.look;
+        preferred-width: root.look.font-body * 7.5;
+        max-width: root.look.font-body * 7.5;
+        source: root.field.text;
+        label: root.label;
+        enabled: root.field.editable && !EditorBridge.blocked;
+        alignment: right;
+        committed(text) => { EditorBridge.field-text-committed(root.field.key, text); }
+    }
+    if root.field.kind == FieldKind.picker: PickerField {
+        look: root.look;
+        preferred-width: root.look.font-body * 12;
+        max-width: root.look.font-body * 12;
+        entries: EditorBridge.picker-entries;
+        enabled: root.field.editable && !EditorBridge.blocked;
+        icon: Icons.expand-more;
+        has-icon: true;
+        icon-trailing: true;
+        button-text: root.field.known && root.field.shown != "" ? root.field.shown
+            : root.field.known ? @tr("Entry {}", root.field.text)
+            : @tr("Unknown ({})", root.field.text);
+        accessible-name: @tr("{}: {}", root.label, self.button-text);
+        opened => { EditorBridge.field-picker-query(root.field.key, ""); }
+        query-changed(text) => { EditorBridge.field-picker-query(root.field.key, text); }
+        chosen(id) => { EditorBridge.field-picked(root.field.key, id); }
+    }
+    if root.field.kind == FieldKind.toggle: FieldCheck {
+        look: root.look;
+        source: root.field.checked;
+        enabled: root.field.editable && !EditorBridge.blocked;
+        committed(checked) => { EditorBridge.field-toggled(root.field.key, checked); }
+    }
+    if root.field.locked && root.show-lock && root.field.kind != FieldKind.label: LockMark {
+        look: root.look;
+    }
+    // Takes the leftover width, so a fixed-width control keeps its width.
+    if root.field.kind != FieldKind.text && root.field.kind != FieldKind.label: Rectangle {
+        horizontal-stretch: 1;
+    }
+}
+
+// The label column of a field row and of an item row: it holds the same count
+// of characters at any body size, and elides past its width.
+export component FieldLabel inherits LookText {
+    min-width: root.look.font-body * 5;
+    preferred-width: root.look.font-body * 10;
+    max-width: root.look.font-body * 10;
+    overflow: elide;
+    color: root.look.label;
+}
+
+// A field with its label on the left.
+export component FieldLine inherits HorizontalLayout {
+    in property <Look> look: Theme.look;
+    in property <FieldRow> field;
+
+    spacing: root.look.padding;
+
+    FieldLabel {
+        look: root.look;
+        text: root.field.label;
+    }
+    FieldEditor {
+        look: root.look;
+        horizontal-stretch: 1;
+        field: root.field;
+    }
+}

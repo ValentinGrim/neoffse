@@ -1,0 +1,41 @@
+// Data contract between the Rust view models and the screens. Presentation
+// types only: no rule about a save lives here.
+
+export enum SlotKind { numbered, auto-save, quick-save, other }
+export enum FolderOrigin { steam-proton, documents, other }
+export enum OpenProblem { busy, unknown-slot, unsupported, unreadable, not-a-save, internal }
+
+export struct SummaryRow {
+    game: string,
+    kind: SlotKind,
+    number: int,
+    party: string,
+    location: string,
+    play-time: string,
+}
+
+export struct SlotRow {
+    key: int,
+    summary: SummaryRow,
+    summarized: bool,
+    unreadable: bool,
+    openable: bool,
+}
+
+export struct FolderRow {
+    origin: FolderOrigin,
+    account: int,
+    slots: [SlotRow],
+    unlisted: bool,
+}
+
+export struct GameRow {
+    // The game id, "ff1-pr".
+    id: string,
+    title: string,
+    supported: bool,
+    slots: [SlotRow],
+    folders: [FolderRow],
+    no-save: bool,
+    unlisted: bool,
+}

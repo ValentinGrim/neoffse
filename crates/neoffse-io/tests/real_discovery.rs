@@ -7,12 +7,14 @@
 //! kinds only: paths, `SteamID64` values and file names are personal data.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
 use std::fs;
 use std::path::Path;
 
 use neoffse_format_pr::container::decode;
 use neoffse_format_pr::games::GAMES;
-use neoffse_io::discovery::{Environment, Origin, SaveFolder, SteamGame, discover};
+use neoffse_io::discovery::{Environment, Origin, SaveFolder, discover};
 
 /// A real save is a few hundred KiB; a larger file is not one.
 const MAX_FILE_LEN: u64 = 64 * 1024 * 1024;
@@ -57,7 +59,7 @@ fn report_for(id: &'static str, folders: &[SaveFolder]) -> GameReport {
 }
 
 #[allow(clippy::print_stderr, reason = "a manual run prints its counts on stderr")]
-fn print_report(reports: &[GameReport], skipped: usize) {
+fn print_report(reports: &[GameReport], installs: usize, skipped: usize) {
     let mut lines: Vec<String> = reports
         .iter()
         .map(|report| {
@@ -76,6 +78,7 @@ fn print_report(reports: &[GameReport], skipped: usize) {
             )
         })
         .collect();
+    lines.push(format!("installs: {installs}"));
     lines.push(format!("skipped: {skipped}"));
     eprintln!("{}", lines.join("\n"));
 }
@@ -83,18 +86,10 @@ fn print_report(reports: &[GameReport], skipped: usize) {
 #[test]
 #[ignore = "reads the real Steam install of this machine"]
 fn discovery_finds_a_decodable_save_for_each_of_the_six_games() {
-    let games: Vec<SteamGame<'_>> = GAMES
-        .iter()
-        .map(|game| SteamGame {
-            id: game.id,
-            app_id: game.app_id,
-            folder: game.folder,
-        })
-        .collect();
-    let found = discover(&Environment::platform(), &games);
+    let found = discover(&Environment::platform(), &common::installs::games());
 
     let reports: Vec<GameReport> = GAMES.iter().map(|game| report_for(game.id, &found.folders)).collect();
-    print_report(&reports, found.skipped.len());
+    print_report(&reports, found.installs.len(), found.skipped.len());
 
     for report in &reports {
         assert!(!report.decodable.is_empty(), "{}: no save folder found", report.id);

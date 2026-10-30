@@ -4,8 +4,8 @@
 
 mod common;
 
-use common::changed_span;
 use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::{changed_span, character_path};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Key, Value};
 use neoffse_format_pr::document::{Scalar, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, names};
@@ -139,7 +139,7 @@ fn an_edit_keeps_play_time_and_siblings_verbatim() {
         path.extend_from_slice(tail);
         path
     };
-    let element = |index| user(&[Segment::Key("ownedCharacterList"), Segment::Doc, Segment::Key("target"), Segment::Index(index)]);
+    let element = |index| character_path(index, &[]);
     let paths = [
         user(&[Segment::Key("playTime")]),
         user(&[Segment::Key("normalOwnedItemList")]),
@@ -169,18 +169,7 @@ fn edits_go_by_id() {
     model
         .apply(&set(&character_field(4, names::LEVEL), Value::Int(50)), CapPolicy::Enforce)
         .unwrap();
-    let level = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(2),
-        Segment::Doc,
-        Segment::Key("parameter"),
-        Segment::Doc,
-        Segment::Key("addtionalLevel"),
-    ];
+    let level = character_path(2, &[Segment::Doc, Segment::Key("parameter"), Segment::Doc, Segment::Key("addtionalLevel")]);
     assert_eq!(model.read(&level).unwrap(), Scalar::Int(50));
     for ((field, was), (_, now)) in before.iter().zip(snapshot(&mut model)) {
         if *field != character_field(4, names::LEVEL) {
@@ -197,22 +186,14 @@ fn charges_and_equipment_edits_go_by_dictionary_key() {
         character.equipment.reverse();
     }
     let mut model = model(&data.render());
-    let character = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-        Segment::Index(0),
-        Segment::Doc,
-    ];
+    let character = character_path(0, &[Segment::Doc]);
     let charges = FieldId::new(names::CHARACTER).with_id(1).with_name(names::CHARGES).with_id(1);
     model.apply(&set(&charges, Value::Int(9)), CapPolicy::Enforce).unwrap();
     model.apply(&set(&slot(1, 1), Value::Int(104)), CapPolicy::Enforce).unwrap();
     model
         .apply(&set(&slot(1, 1).with_name(names::COUNT), Value::Int(6)), CapPolicy::Enforce)
         .unwrap();
-    let mut path = character.to_vec();
+    let mut path = character.clone();
     path.extend([
         Segment::Key("parameter"),
         Segment::Doc,
@@ -222,7 +203,7 @@ fn charges_and_equipment_edits_go_by_dictionary_key() {
         Segment::Index(7),
     ]);
     assert_eq!(model.read(&path).unwrap(), Scalar::Int(9));
-    let mut path = character.to_vec();
+    let mut path = character.clone();
     path.extend([
         Segment::Key("equipmentList"),
         Segment::Doc,

@@ -1,0 +1,309 @@
+import { ScrollView } from "std-widgets.slint";
+import { FocusRing } from "../../widgets/control-frame.slint";
+import { ThemedCheck } from "../../widgets/check.slint";
+import { ThemedButton } from "../../widgets/controls.slint";
+import { Icons } from "../../theme/icons.slint";
+import { NoticeStrip } from "../../widgets/notice.slint";
+import { Shell } from "../../theme/shell.slint";
+import { ShellText, ShellTitle } from "../../widgets/shell-text.slint";
+import { FolderRow, GameRow, OpenProblem, SlotRow } from "../../types/home.slint";
+import { HomeText } from "text.slint";
+import { SlotText, SummaryLines } from "../../widgets/text.slint";
+
+// One slot as a card: its name and its summary, and a click, Enter or Space
+// that opens it.
+component SlotLine inherits Rectangle {
+    in property <SlotRow> slot;
+    in property <bool> busy;
+    callback clicked(int);
+
+    private property <bool> active: root.slot.openable && !root.busy;
+
+    forward-focus: scope;
+    opacity: root.slot.openable ? 1.0 : 0.6;
+    background: Shell.look.panel-fill;
+    border-width: Shell.look.frame-width;
+    border-color: Shell.look.rule;
+    border-radius: Shell.look.frame-radius;
+
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        // A slot that cannot open is no focus stop.
+        enabled: root.active;
+        focus-on-click: false;
+        accessible-role: button;
+        accessible-label: SlotText.name(root.slot.summary.kind, root.slot.summary.number);
+        accessible-enabled: root.active;
+        accessible-action-default => { root.clicked(root.slot.key); }
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == " " {
+                if !event.repeat {
+                    root.clicked(root.slot.key);
+                }
+                return accept;
+            }
+            return reject;
+        }
+    }
+    Rectangle {
+        background: touch.has-hover && root.active ? Shell.look.hover-fill : transparent;
+    }
+    if touch.has-hover && root.active: Rectangle {
+        x: 0px;
+        width: 3px;
+        background: Shell.look.accent;
+    }
+    column := VerticalLayout {
+        padding: Shell.look.spacing;
+        padding-left: Shell.look.padding;
+        spacing: 2px;
+
+        ShellText {
+            text: SlotText.name(root.slot.summary.kind, root.slot.summary.number);
+            font-family: Shell.look.font-family-strong;
+            font-weight: Shell.look.font-weight-strong;
+            overflow: elide;
+        }
+        if root.slot.summarized: SummaryLines {
+            summary: root.slot.summary;
+        }
+        if root.slot.unreadable: ShellText {
+            text: @tr("This save cannot be read");
+            color: Shell.look.muted;
+            overflow: elide;
+        }
+    }
+    FocusRing {
+        look: Shell.look;
+        shown: scope.has-focus;
+    }
+    touch := TouchArea {
+        mouse-cursor: root.active ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            if root.active {
+                root.clicked(root.slot.key);
+            }
+        }
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                scope.focus();
+            }
+        }
+    }
+}
+
+// The slots of one game or folder as a grid of cards. Slint 1.18 has no flow
+// layout, and a layout whose row count follows the width loops with the
+// scroll view that sizes the page. So the cards sit at computed positions:
+// as many columns as fit at the minimum card width, every card the height of
+// a title and three summary lines. The cards come in model order, so the focus
+// runs row by row, then card by card.
+component SlotList inherits Rectangle {
+    in property <[SlotRow]> slots;
+    in property <bool> busy;
+    callback clicked(int);
+
+    private property <length> gap: Shell.look.spacing;
+    private property <length> min-card: 340px;
+    private property <length> card-height: 2 * Shell.look.spacing + Shell.look.font-body * 1.3 + 3 * (Shell.look.font-small * 1.3 + 2px);
+    private property <int> columns: max(1, Math.floor((root.width + root.gap) / (root.min-card + root.gap)));
+    private property <int> row-count: Math.ceil(root.slots.length / root.columns);
+    private property <length> card-width: (root.width - (root.columns - 1) * root.gap) / root.columns;
+
+    min-width: 0px;
+    height: root.row-count * root.card-height + max(0, root.row-count - 1) * root.gap;
+
+    for slot[index] in root.slots: SlotLine {
+        x: mod(index, root.columns) * (root.card-width + root.gap);
+        y: Math.floor(index / root.columns) * (root.card-height + root.gap);
+        width: root.card-width;
+        height: root.card-height;
+        slot: slot;
+        busy: root.busy;
+        clicked(key) => { root.clicked(key); }
+    }
+}
+
+component FolderBlock inherits VerticalLayout {
+    in property <FolderRow> folder;
+    in property <bool> busy;
+    callback clicked(int);
+
+    ShellText {
+        text: root.folder.account > 0 ? @tr("{}, account {}", HomeText.origin(root.folder.origin), root.folder.account) : HomeText.origin(root.folder.origin);
+        color: Shell.look.muted;
+        font-size: Shell.look.font-small;
+        font-italic: true;
+        overflow: elide;
+    }
+    if root.folder.slots.length == 0 && !root.folder.unlisted: ShellText {
+        text: @tr("No save found");
+        color: Shell.look.muted;
+        overflow: elide;
+    }
+    if root.folder.unlisted: ShellText {
+        text: @tr("The save folder could not be read");
+        color: Shell.look.muted;
+        overflow: elide;
+    }
+    SlotList {
+        slots: root.folder.slots;
+        busy: root.busy;
+        clicked(key) => { root.clicked(key); }
+    }
+}
+
+// One game: a flat translucent panel, its title over a thin line, then its saves.
+component GameBlock inherits Rectangle {
+    in property <GameRow> game;
+    in property <bool> busy;
+    callback clicked(int);
+    callback backups(string);
+
+    background: Shell.look.panel-fill;
+    border-width: Shell.look.frame-width;
+    border-color: Shell.look.rule;
+    border-radius: Shell.look.frame-radius;
+    min-height: column.min-height;
+    preferred-height: column.preferred-height;
+
+    column := VerticalLayout {
+        padding: Shell.look.padding;
+        spacing: 4px;
+
+        HorizontalLayout {
+            spacing: Shell.look.spacing;
+            ShellTitle {
+                horizontal-stretch: 1;
+                text: root.game.title;
+                color: root.game.supported ? Shell.look.text : Shell.look.muted;
+                overflow: elide;
+            }
+            ThemedButton {
+                look: Shell.look;
+                text: @tr("Backups");
+                accessible-name: @tr("Backups of {}", root.game.title);
+                enabled: !root.busy;
+                clicked => { root.backups(root.game.id); }
+            }
+        }
+        Rectangle {
+            height: Shell.look.frame-width;
+            background: Shell.look.rule;
+        }
+        if !root.game.supported: ShellText {
+            text: @tr("Not supported yet");
+            color: Shell.look.muted;
+            overflow: elide;
+        }
+        if root.game.no-save: ShellText {
+            text: @tr("No save found");
+            color: Shell.look.muted;
+            overflow: elide;
+        }
+        if root.game.unlisted: ShellText {
+            text: @tr("The save folder could not be read");
+            color: Shell.look.muted;
+            overflow: elide;
+        }
+        SlotList {
+            slots: root.game.slots;
+            busy: root.busy;
+            clicked(key) => { root.clicked(key); }
+        }
+        for folder in root.game.folders: FolderBlock {
+            folder: folder;
+            busy: root.busy;
+            clicked(key) => { root.clicked(key); }
+        }
+    }
+}
+
+// The Home screen: toolbar, messages, then the games with their saves.
+export component HomeScreen inherits VerticalLayout {
+    in property <[GameRow]> games;
+    in property <bool> scanning;
+    in property <bool> scan-failed;
+    in property <int> skipped-count;
+    in-out property <bool> owned-only;
+    in property <bool> busy;
+    in property <bool> has-open-problem;
+    in property <OpenProblem> open-problem;
+    callback owned-only-toggled(bool);
+    callback rescan-requested();
+    callback open-file-requested();
+    callback slot-clicked(int);
+    callback backups-requested(string);
+    callback problem-dismissed();
+
+    padding: Shell.look.padding;
+    spacing: Shell.look.spacing;
+
+    HorizontalLayout {
+        spacing: Shell.look.spacing;
+        ThemedCheck {
+            look: Shell.look;
+            text: @tr("Show owned games only");
+            checked <=> root.owned-only;
+            toggled => { root.owned-only-toggled(self.checked); }
+        }
+        Rectangle { }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Refresh");
+            icon: Icons.refresh;
+            has-icon: true;
+            enabled: !root.busy && !root.scanning;
+            clicked => { root.rescan-requested(); }
+        }
+        ThemedButton {
+            look: Shell.look;
+            text: @tr("Open a file...");
+            icon: Icons.folder-open;
+            has-icon: true;
+            enabled: !root.busy && !root.scanning;
+            clicked => { root.open-file-requested(); }
+        }
+    }
+    if root.has-open-problem: NoticeStrip {
+        text: root.open-problem == OpenProblem.busy ? @tr("Another save is still opening.")
+            : root.open-problem == OpenProblem.unknown-slot ? @tr("This save is no longer in the list. Refresh and try again.")
+            : root.open-problem == OpenProblem.unsupported ? @tr("This game is not supported yet.")
+            : root.open-problem == OpenProblem.unreadable ? @tr("The file cannot be read.")
+            : root.open-problem == OpenProblem.not-a-save ? @tr("This file is not a save the editor can open.")
+            : @tr("An internal error stopped the open. Try again.");
+        dismissed => { root.problem-dismissed(); }
+    }
+    if root.scan-failed: ShellText {
+        text: @tr("The search for saves stopped on an internal error. Press Refresh to try again.");
+        color: Shell.look.warning;
+        overflow: elide;
+    }
+    if root.scanning && root.games.length == 0: ShellText {
+        text: @tr("Looking for saves...");
+        color: Shell.look.muted;
+    }
+    if root.skipped-count > 0: ShellText {
+        text: @tr("Some places could not be searched ({})", root.skipped-count);
+        color: Shell.look.muted;
+        font-size: Shell.look.font-small;
+        overflow: elide;
+    }
+    ScrollView {
+        VerticalLayout {
+            spacing: Shell.look.spacing;
+            for game in root.games: GameBlock {
+                vertical-stretch: 0;
+                game: game;
+                busy: root.busy;
+                clicked(key) => { root.slot-clicked(key); }
+                backups(id) => { root.backups-requested(id); }
+            }
+            // Takes the spare height of a short list, so no panel stretches.
+            Rectangle {
+                vertical-stretch: 1;
+            }
+        }
+    }
+}

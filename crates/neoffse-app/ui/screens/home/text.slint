@@ -1,0 +1,15 @@
+// Language-dependent sentences of the Home screen.
+
+import { FolderOrigin } from "../../types/home.slint";
+
+export global HomeText {
+    pure public function origin(origin: FolderOrigin) -> string {
+        if origin == FolderOrigin.steam-proton {
+            return @tr("Steam (Proton)");
+        }
+        if origin == FolderOrigin.documents {
+            return @tr("Documents");
+        }
+        return @tr("Other location");
+    }
+}

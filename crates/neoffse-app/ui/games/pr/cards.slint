@@ -1,0 +1,220 @@
+import { ScrollView } from "std-widgets.slint";
+import { CharacterCard, EntityPage, Overview } from "../../types/editor.slint";
+import { Frame, LookText, PortraitFrame, PressRow, RuleLine } from "../../widgets/frames.slint";
+
+// One character: a portrait frame with the sprite (the initial when there is
+// none), the job over the name, HP, the eight charges in two rows of four, the
+// level, and the experience or the next level. A click, Enter or Space opens
+// the character's page.
+component CharacterRow inherits PressRow {
+    in property <CharacterCard> card;
+    in property <bool> last;
+
+    // A fixed sprite, twice the 32 px source so its pixels stay whole: the
+    // card's height comes from its rows, never the other way round.
+    private property <length> side: 64px;
+    // The portrait frame: the sprite and the two lines around it.
+    private property <length> frame: root.side + 2 * portrait-frame.inset;
+    // The label column of the stats: wide enough for "HP", "MP" and "Lv".
+    private property <length> label-width: root.look.font-body * 2.5;
+
+    name: root.card.name;
+    // The card keeps the height of its rows (the portrait is twice the sprite
+    // and the four text rows decide the height), whatever room the panel has.
+    min-height: body.min-height;
+    preferred-height: body.preferred-height;
+
+    body := HorizontalLayout {
+        padding: root.look.padding;
+        spacing: root.look.padding;
+
+        Rectangle {
+            width: root.frame;
+            portrait-frame := PortraitFrame {
+                look: root.look;
+                initial: root.card.initial;
+                portrait: root.card.portrait;
+                x: 0px;
+                y: (parent.height - self.height) / 2;
+                width: root.frame;
+                height: root.frame;
+            }
+        }
+        VerticalLayout {
+            min-width: root.look.font-body * 5;
+            preferred-width: root.look.font-body * 8;
+            max-width: root.look.font-body * 8;
+            alignment: center;
+
+            LookText {
+                look: root.look;
+                text: root.card.job;
+                font-size: root.look.font-small;
+                color: root.look.muted;
+                overflow: elide;
+            }
+            LookText {
+                look: root.look;
+                text: root.card.name;
+                overflow: elide;
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+
+            HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("HP");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.hp-max != "" ? root.card.hp + "/ " + root.card.hp-max : root.card.hp;
+                    overflow: elide;
+                }
+            }
+            if root.card.charges.length >= 8: HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("MP");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.charges[0] + "/ " + root.card.charges[1] + "/ " + root.card.charges[2] + "/ " + root.card.charges[3];
+                }
+            }
+            if root.card.charges.length >= 8: HorizontalLayout {
+                Rectangle {
+                    width: root.label-width;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.charges[4] + "/ " + root.card.charges[5] + "/ " + root.card.charges[6] + "/ " + root.card.charges[7];
+                }
+            }
+            HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("Lv");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.level;
+                }
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.next-exp != "" ? @tr("Next level") : @tr("Exp");
+                    color: root.look.label;
+                }
+                Rectangle {
+                    width: root.look.padding;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.next-exp != "" ? root.card.next-exp : root.card.exp;
+                    horizontal-alignment: right;
+                }
+            }
+        }
+    }
+    if !root.last: RuleLine {
+        look: root.look;
+        y: parent.height - self.height;
+        x: root.look.padding;
+        width: parent.width - 2 * root.look.padding;
+    }
+}
+
+// A character of a game with no card builder: its name, on one line.
+component PlainRow inherits PressRow {
+    in property <string> text;
+
+    name: root.text;
+    min-height: root.look.row-height;
+    preferred-height: root.look.row-height;
+
+    LookText {
+        look: root.look;
+        x: root.look.padding;
+        width: parent.width - 2 * root.look.padding;
+        height: parent.height;
+        text: root.text;
+        overflow: elide;
+    }
+}
+
+// The party panel: each card keeps the natural height of its rows and the
+// column scrolls when the cards outgrow the panel. A game with no cards lists
+// the characters as plain rows.
+//
+// The panel asks for the height of its rows plus its own padding, so inside a
+// column that aligns to the start it stops under the last card, with the same
+// margin as above the first one. The layout shrinks it to the room there is,
+// and the rows scroll.
+//
+// The layout cannot loop: a card's height comes from its rows only, the
+// column's height is the sum of the cards, and the panel's height is the
+// column's plus its padding. Nothing reads the panel's height to size a card.
+// The scroll view's height is read only to scroll a focused card into view.
+export component PartyCards inherits Frame {
+    in property <Overview> overview;
+    in property <[EntityPage]> pages;
+    in property <bool> enabled: true;
+    // The height of every row together, from the column's preferred height.
+    // The scroll view's own `content-height` would not do: it never falls
+    // under the view's height, so it would read back the panel's height.
+    out property <length> content-height: column.preferred-height;
+    // The index into the party pages.
+    callback activated(int);
+
+    preferred-height: root.content-height + 2 * root.look.padding;
+
+    // Brings the row at `top` with `height` into view. `content-y` is zero
+    // or negative.
+    function reveal(top: length, height: length) {
+        if top < -scroll.content-y {
+            scroll.content-y = -top;
+        } else if top + height > -scroll.content-y + scroll.height {
+            scroll.content-y = scroll.height - top - height;
+        }
+    }
+
+    scroll := ScrollView {
+        column := VerticalLayout {
+            padding-right: 20px;
+            alignment: start;
+
+            for card[index] in root.overview.cards: CharacterRow {
+                card: card;
+                last: index == root.overview.cards.length - 1;
+                enabled: root.enabled;
+                activated => { root.activated(card.page); }
+                changed has-focus => {
+                    if self.has-focus {
+                        root.reveal(self.y, self.height);
+                    }
+                }
+            }
+            for page[index] in root.overview.present ? [] : root.pages: PlainRow {
+                text: page.label;
+                enabled: root.enabled;
+                activated => { root.activated(index); }
+                changed has-focus => {
+                    if self.has-focus {
+                        root.reveal(self.y, self.height);
+                    }
+                }
+            }
+        }
+    }
+}

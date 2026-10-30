@@ -40,7 +40,7 @@ fn party_lists_the_characters_in_document_order() {
         let id = u32::try_from(index).unwrap() + 1;
         assert_eq!(entity.id, character(id));
         assert_eq!(entity.label, NAMES[index]);
-        let expected = names::character_fields(id);
+        let expected = names::party_fields(id);
         let found: Vec<&FieldId> = entity.fields.iter().map(|field| &field.id).collect();
         assert_eq!(found, expected.iter().collect::<Vec<_>>());
         for field in &entity.fields {
@@ -145,13 +145,13 @@ fn an_absent_key_leaves_the_field_out() {
     let (_, view) = view_of(&slot);
     let party = &view.section(Capability::Party).unwrap().entities;
     let count_3 = character(3).with_name(names::EQUIPMENT).with_id(3).with_name(names::COUNT);
-    assert_eq!(party[2].fields.len(), 38);
+    assert_eq!(party[2].fields.len(), 42);
     assert!(party[2].fields.iter().all(|field| field.id != count_3));
     let charges_3 = character(1).with_name(names::CHARGES).with_id(3);
-    assert_eq!(party[0].fields.len(), 38);
+    assert_eq!(party[0].fields.len(), 42);
     assert!(party[0].fields.iter().all(|field| field.id != charges_3));
-    assert_eq!(party[1].fields.len(), 39);
-    assert_eq!(party[3].fields.len(), 39);
+    assert_eq!(party[1].fields.len(), 43);
+    assert_eq!(party[3].fields.len(), 43);
 
     let slot = SlotData {
         gil: None,

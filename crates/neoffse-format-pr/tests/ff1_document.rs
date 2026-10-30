@@ -87,9 +87,9 @@ fn apply_returns_the_inverse() {
 #[test]
 fn the_policy_reaches_the_model() {
     let mut document = opened(&original());
-    let level = Edit::set(FieldId::new(names::CHARACTER).with_id(1).with_name(names::LEVEL), Value::Int(100));
-    assert!(matches!(document.apply(&level, ENFORCE), Err(EditError::AboveCap { .. })));
-    assert!(document.apply(&level, STORAGE_ONLY).is_ok());
+    let gil = set_gil(1_000_000);
+    assert!(matches!(document.apply(&gil, ENFORCE), Err(EditError::AboveCap { .. })));
+    assert!(document.apply(&gil, STORAGE_ONLY).is_ok());
 }
 
 #[test]

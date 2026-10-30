@@ -1,4 +1,5 @@
-//! The view of a slot: the party and the inventory as the editor shows them.
+//! The view of a slot: the party, the inventory and the magic as the editor
+//! shows them.
 
 use neoffse_core::{Capability, EditError, Entity, FieldId, FieldView, FormatError, RowId, SaveView, Section, Value};
 use neoffse_data::Language;
@@ -17,10 +18,27 @@ fn is_absent(error: &EditError) -> bool {
     }
 }
 
+/// The name of character `id` when `fields` holds a non-empty one, else
+/// `Character <id>`.
+fn character_label(id: u32, fields: &[FieldView]) -> String {
+    let name_id = FieldId::new(names::CHARACTER).with_id(id).with_name(names::NAME);
+    fields
+        .iter()
+        .find_map(|view| match &view.value {
+            Value::Text(name) if view.id == name_id && !name.is_empty() => Some(name.clone()),
+            _ => None,
+        })
+        .unwrap_or_else(|| format!("Character {id}"))
+}
+
 impl Ff1Model {
-    /// A snapshot of the editable content: a Party section with one entity per
-    /// character in document order, then an Inventory section with the gil
-    /// entity, the rows of `inventory` and the rows of `key_items`.
+    /// A snapshot of the slot: a Party section with one entity per character
+    /// in document order (43 fields each, `names::party_fields`: the 41 stored
+    /// fields plus the computed `max_hp` and `next_level`), an Inventory section with the gil entity, the rows
+    /// of `inventory` and the rows of `key_items`, then a Magic section with
+    /// one entity per character in the same order. A Magic entity holds the
+    /// read-only spell slots of its character (`names::spell_fields`) and its
+    /// label follows the Party rule.
     ///
     /// Only the item names of the row entities follow `language`; the field
     /// labels stay English. An item the tables do not name is labelled
@@ -35,7 +53,8 @@ impl Ff1Model {
     pub fn view(&mut self, language: Language) -> Result<SaveView, FormatError> {
         let party = self.party_section()?;
         let inventory = self.inventory_section(language)?;
-        Ok(SaveView::new(vec![party, inventory]))
+        let magic = self.magic_section()?;
+        Ok(SaveView::new(vec![party, inventory, magic]))
     }
 
     /// The view of `id`, `None` when the save does not hold the field.
@@ -60,22 +79,31 @@ impl Ff1Model {
         for id in self.rows_of(&character)? {
             let entity_id = character.clone().with_id(id);
             let mut fields = Vec::new();
-            for field in names::character_fields(id) {
+            for field in names::party_fields(id) {
                 fields.extend(self.field_view(field)?);
             }
-            let name_id = entity_id.clone().with_name(names::NAME);
-            let label = fields
-                .iter()
-                .find_map(|view| match &view.value {
-                    Value::Text(name) if view.id == name_id && !name.is_empty() => Some(name.clone()),
-                    _ => None,
-                })
-                .unwrap_or_else(|| format!("Character {id}"));
+            let label = character_label(id, &fields);
             entities.push(Entity::new(entity_id, label, fields));
         }
         let mut section = Section::new(Capability::Party, entities);
         section.collections = self.collection_meta(&character).into_iter().collect();
         Ok(section)
+    }
+
+    fn magic_section(&mut self) -> Result<Section, FormatError> {
+        let character = FieldId::new(names::CHARACTER);
+        let mut entities = Vec::new();
+        for id in self.rows_of(&character)? {
+            let entity_id = character.clone().with_id(id);
+            let name = self.field_view(entity_id.clone().with_name(names::NAME))?;
+            let label = character_label(id, name.as_slice());
+            let mut fields = Vec::new();
+            for field in names::spell_fields(id) {
+                fields.extend(self.field_view(field)?);
+            }
+            entities.push(Entity::new(entity_id, label, fields));
+        }
+        Ok(Section::new(Capability::Magic, entities))
     }
 
     fn inventory_section(&mut self, language: Language) -> Result<Section, FormatError> {

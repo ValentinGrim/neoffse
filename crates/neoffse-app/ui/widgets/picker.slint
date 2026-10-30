@@ -1,0 +1,187 @@
+import { ListView } from "std-widgets.slint";
+import { PickerEntry } from "../types/editor.slint";
+import { ThemedButton, ThemedEdit } from "controls.slint";
+import { Frame, LookText } from "frames.slint";
+import { Icon, Icons } from "../theme/icons.slint";
+import { Look } from "../theme/look.slint";
+import { Theme } from "../theme/theme.slint";
+
+// The inside of a picker popup: a search box over a list of entries. It owns
+// the highlight and takes its keys before the search box: Up and Down move
+// the highlight, Enter chooses it, Escape asks the popup to close.
+component PickerBody inherits FocusScope {
+    in property <Look> look: Theme.look;
+    in property <[PickerEntry]> entries;
+    // Counts the openings of the popup: each one clears the search and the highlight.
+    in property <int> openings;
+    callback query-changed(string);
+    callback chosen(int);
+    callback close-requested();
+
+    private property <string> query;
+    private property <int> highlight;
+    private property <length> row-height: root.look.row-height;
+
+    focus-on-click: false;
+    focus-on-tab-navigation: false;
+    forward-focus: search;
+
+    // Moves the highlight and scrolls it into view.
+    function move(step: int) {
+        root.highlight = max(0, min(root.entries.length - 1, root.highlight + step));
+        let top = root.highlight * root.row-height;
+        if top + list.content-y < 0px {
+            list.content-y = -top;
+        } else if top + root.row-height + list.content-y > list.visible-height {
+            list.content-y = list.visible-height - top - root.row-height;
+        }
+    }
+
+    changed entries => {
+        root.highlight = 0;
+        list.content-y = 0px;
+    }
+    changed openings => {
+        root.query = "";
+        root.highlight = 0;
+        list.content-y = 0px;
+    }
+
+    capture-key-pressed(event) => {
+        if event.text == Key.Escape {
+            root.close-requested();
+            return accept;
+        }
+        if event.text == Key.DownArrow {
+            root.move(1);
+            return accept;
+        }
+        if event.text == Key.UpArrow {
+            root.move(-1);
+            return accept;
+        }
+        if event.text == Key.Return {
+            if root.entries.length > 0 {
+                root.chosen(root.entries[root.highlight].id);
+            }
+            return accept;
+        }
+        return reject;
+    }
+
+    Rectangle {
+        background: root.look.window-fill;
+        border-radius: root.look.frame-radius;
+    }
+    Frame {
+        look: root.look;
+        gap: root.look.spacing;
+
+        HorizontalLayout {
+            spacing: root.look.spacing;
+            Icon {
+                source: Icons.search;
+                tint: root.look.muted;
+                width: root.look.font-body;
+                y: (parent.height - self.height) / 2;
+            }
+            search := ThemedEdit {
+                look: root.look;
+                text <=> root.query;
+                placeholder: @tr("Search");
+                label: @tr("Search");
+                edited => { root.query-changed(self.text); }
+            }
+        }
+        list := ListView {
+            for entry[index] in root.entries: Rectangle {
+                height: root.row-height;
+                background: index == root.highlight ? root.look.hover-fill : transparent;
+                accessible-role: list-item;
+                accessible-label: entry.name != "" ? entry.name : @tr("Entry {}", entry.id);
+                accessible-action-default => { root.chosen(entry.id); }
+
+                TouchArea {
+                    changed has-hover => {
+                        if self.has-hover {
+                            root.highlight = index;
+                        }
+                    }
+                    clicked => { root.chosen(entry.id); }
+                }
+                LookText {
+                    look: root.look;
+                    x: root.look.spacing;
+                    width: parent.width - 2 * root.look.spacing;
+                    height: parent.height;
+                    overflow: elide;
+                    color: index == root.highlight ? root.look.selected : root.look.text;
+                    text: entry.name != "" ? entry.name : @tr("Entry {}", entry.id);
+                }
+            }
+        }
+    }
+}
+
+// A button that opens a searchable list of entries. Rust filters the list:
+// `query-changed` asks for a new one, `entries` holds the answer.
+export component PickerField inherits Rectangle {
+    in property <Look> look: Theme.look;
+    in property <string> button-text;
+    // The accessible name when it differs from `button-text`.
+    in property <string> accessible-name;
+    in property <bool> enabled: true;
+    in property <image> icon;
+    in property <bool> has-icon;
+    in property <bool> icon-trailing;
+    in property <[PickerEntry]> entries;
+    callback opened();
+    callback query-changed(string);
+    callback chosen(int);
+
+    private property <int> openings;
+
+    min-width: button.min-width;
+    min-height: button.min-height;
+    preferred-width: button.preferred-width;
+    preferred-height: button.preferred-height;
+
+    button := ThemedButton {
+        look: root.look;
+        width: 100%;
+        height: 100%;
+        text: root.button-text;
+        accessible-name: root.accessible-name;
+        icon: root.icon;
+        has-icon: root.has-icon;
+        icon-trailing: root.icon-trailing;
+        enabled: root.enabled;
+        clicked => {
+            root.openings += 1;
+            root.opened();
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        // The popup lines up with the right edge of the button: the pickers sit in the right column.
+        x: root.width - self.width;
+        y: root.height;
+        width: root.look.font-body * 20;
+        height: root.look.row-height * 12;
+        close-policy: close-on-click-outside;
+        forward-focus: body;
+
+        body := PickerBody {
+            look: root.look;
+            entries: root.entries;
+            openings: root.openings;
+            query-changed(text) => { root.query-changed(text); }
+            chosen(id) => {
+                root.chosen(id);
+                popup.close();
+            }
+            close-requested => { popup.close(); }
+        }
+    }
+}

@@ -83,6 +83,21 @@ pub enum IoError {
         /// The rejected id.
         game: String,
     },
+    /// A file name cannot name a file of a save folder: it is empty, `.` or
+    /// `..`, or it holds `/`, `\`, `:` or a NUL.
+    #[error("invalid file name {name:?}")]
+    InvalidFileName {
+        /// The rejected name.
+        name: String,
+    },
+    /// A file is longer than the limit a read accepts.
+    #[error("file too large (limit {limit} bytes): {path}")]
+    FileTooLarge {
+        /// The file.
+        path: PathBuf,
+        /// The limit in bytes, [`MAX_READ_LEN`](crate::files::MAX_READ_LEN).
+        limit: u64,
+    },
     /// The check on a file written to disk failed.
     #[error("verification of {path} failed")]
     VerificationFailed {
