@@ -12,16 +12,19 @@
 
 use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FieldMeta, GameChange, RowId, Shape, Value};
 
-use super::binding::{Binding, Collection, List, Part};
+use super::binding::{Binding, Part};
 use super::level::Plan;
-use super::locate::{find_row, format_error, wearers};
+use super::locate::wearers;
 use super::{Ff1Model, Rolls, ThreadRolls, meta, names};
+use crate::shared::meta::STORAGE_MAX;
+use crate::shared::paths::{Collection, List};
+use crate::shared::read::{find_row, format_error};
 
 /// The upper storage bound of a count field.
 fn storage_max(meta: &FieldMeta) -> i64 {
     match meta.shape {
         Shape::Int { max, .. } => max,
-        _ => meta::STORAGE_MAX,
+        _ => STORAGE_MAX,
     }
 }
 

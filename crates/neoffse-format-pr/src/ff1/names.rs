@@ -17,17 +17,8 @@
 
 use neoffse_core::{FieldId, Key};
 
-/// Section of the gil counter, `userData.owendGil`.
-pub const GIL: &str = "gil";
-/// Section of the party characters, one row per `ownedCharacterList` element.
-pub const CHARACTER: &str = "character";
-/// Section of the normal item rows (items and equipment), `normalOwnedItemList`.
-pub const INVENTORY: &str = "inventory";
-/// Section of the key item rows, `importantOwendItemList`.
-pub const KEY_ITEMS: &str = "key_items";
+pub use crate::shared::names::{CHARACTER, COUNT, GIL, INVENTORY, KEY_ITEMS, NAME};
 
-/// Character name, `name`.
-pub const NAME: &str = "name";
 /// Character job, `jobId`.
 pub const JOB: &str = "job";
 /// Character level, `parameter.addtionalLevel`.
@@ -69,8 +60,6 @@ pub const CHARGES: &str = "charges";
 pub const CHARGES_MAX_GAIN: &str = "charges_max_gain";
 /// Equipment slots, `equipmentList`; the slot is the key that follows.
 pub const EQUIPMENT: &str = "equipment";
-/// Count of an inventory row or of an equipment slot.
-pub const COUNT: &str = "count";
 /// One spell slot, `abilitySlotDataList`; the spell level and the slot
 /// number are the two keys that follow. Read only.
 pub const SPELL: &str = "spell";

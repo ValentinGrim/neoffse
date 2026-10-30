@@ -19,7 +19,13 @@
 //!   reads and edits them through two interfaces, `apply` under a
 //!   `CapPolicy` and `apply_game`, which edits the way the game does.
 //!   [`ff1::Ff1Format`] and [`ff1::Ff1Document`] implement `SaveFormat` and
-//!   `SaveDocument` on top of it.
+//!   `SaveDocument` on top of it, as aliases of the generic types of
+//!   [`shared`].
+//! - [`shared`]: what the six games share: the section names of a slot, the
+//!   document paths of its collections, the reads that find a row or a
+//!   dictionary entry by key, the open pipeline ([`shared::SlotFormat`])
+//!   and the open document ([`shared::SlotDocument`]), generic over the
+//!   [`shared::SlotModel`] of a game.
 //! - [`games`]: the six games with their game id, Steam app ID, folder under
 //!   `My Games` and executable name, and [`games::identify`], which names the
 //!   game of a slot document by its vehicle count and refuses it when a marker
@@ -52,4 +58,5 @@ pub mod document;
 pub mod ff1;
 pub mod games;
 mod open_error;
+pub mod shared;
 pub mod slots;

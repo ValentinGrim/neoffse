@@ -12,11 +12,11 @@
 use neoffse_core::{Edit, EditError, FieldId, Value};
 use neoffse_data::GrowthStep;
 
-use super::binding::{Collection, characters_target, element, with};
 use super::level::character_field;
-use super::locate::{find_row, format_error, missing_row, read_int};
 use super::{Ff1Model, Rolls, names};
 use crate::document::Segment;
+use crate::shared::paths::{Collection, characters_target, element, with};
+use crate::shared::read::{find_row, format_error, missing_row, read_int};
 
 /// The Knight job id. Knight and Ninja add the charges of a row and hold every
 /// value at [`KNIGHT_NINJA_CHARGE_CAP`]; every other job replaces the values

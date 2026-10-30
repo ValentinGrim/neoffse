@@ -5,85 +5,7 @@
 use neoffse_core::{EditError, FieldId, Key};
 
 use super::names;
-use crate::document::Segment;
-
-/// A path into the document; every key name is a `'static` literal.
-pub(super) type Path = Vec<Segment<'static>>;
-
-/// The two lists of `userData` that hold `{contentId, count}` rows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum List {
-    /// `normalOwnedItemList`: items and equipment.
-    Inventory,
-    /// `importantOwendItemList`: key items.
-    KeyItems,
-}
-
-impl List {
-    /// The document key of the list (the game's spelling).
-    fn document_key(self) -> &'static str {
-        match self {
-            List::Inventory => "normalOwnedItemList",
-            List::KeyItems => "importantOwendItemList",
-        }
-    }
-
-    /// The section name of the list's rows.
-    pub(super) fn section(self) -> &'static str {
-        match self {
-            List::Inventory => names::INVENTORY,
-            List::KeyItems => names::KEY_ITEMS,
-        }
-    }
-
-    /// Path to the `target` array of the list.
-    pub(super) fn target(self) -> Path {
-        vec![
-            Segment::Key("userData"),
-            Segment::Doc,
-            Segment::Key(self.document_key()),
-            Segment::Doc,
-            Segment::Key("target"),
-        ]
-    }
-}
-
-/// A collection of the model, named by its section.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Collection {
-    /// `ownedCharacterList`.
-    Character,
-    /// One of the item lists.
-    Items(List),
-}
-
-impl Collection {
-    /// The collection that `field` names exactly, if any.
-    pub(super) fn of(field: &FieldId) -> Option<Self> {
-        match field.keys() {
-            [Key::Name(names::CHARACTER)] => Some(Self::Character),
-            [Key::Name(names::INVENTORY)] => Some(Self::Items(List::Inventory)),
-            [Key::Name(names::KEY_ITEMS)] => Some(Self::Items(List::KeyItems)),
-            _ => None,
-        }
-    }
-
-    /// Path to the `target` array of the collection.
-    pub(super) fn target(self) -> Path {
-        match self {
-            Self::Character => characters_target(),
-            Self::Items(list) => list.target(),
-        }
-    }
-
-    /// The key that identifies a row inside its element.
-    pub(super) fn row_key(self) -> &'static str {
-        match self {
-            Self::Character => "id",
-            Self::Items(_) => "contentId",
-        }
-    }
-}
+use crate::shared::paths::List;
 
 /// The seven stat fields; each maps to one `addtional...` key of `parameter`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,27 +171,4 @@ impl Stat {
             Stat::Magic => None,
         }
     }
-}
-
-/// Path to `ownedCharacterList.target`.
-pub(super) fn characters_target() -> Path {
-    vec![
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-    ]
-}
-
-/// Path to the document of the element `index` of `target`.
-pub(super) fn element(mut target: Path, index: usize) -> Path {
-    target.push(Segment::Index(index));
-    target.push(Segment::Doc);
-    target
-}
-
-pub(super) fn with(mut path: Path, tail: &[Segment<'static>]) -> Path {
-    path.extend_from_slice(tail);
-    path
 }

@@ -8,10 +8,11 @@
 use neoffse_core::{EditError, FieldId, Value};
 use neoffse_data::GameTables;
 
-use super::binding::{Collection, Part, characters_target, element, with};
-use super::locate::{find_row, format_error, missing_row, read_int};
+use super::binding::Part;
 use super::names;
 use crate::document::{Document, DocumentError, Segment};
+use crate::shared::paths::{Collection, characters_target, element, with};
+use crate::shared::read::{find_row, format_error, missing_row, read_int};
 
 /// The value of the computed `part` of character `id`.
 ///

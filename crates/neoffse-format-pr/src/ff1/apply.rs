@@ -5,13 +5,13 @@
 //! below the wearers and an edit of a placeholder row all pass when the value
 //! sits inside the bounds of the policy.
 
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, FieldMeta, Value};
+use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
 
+use super::Ff1Model;
 use super::binding::Binding;
-use super::locate::{format_error, locate, read_int, read_text};
+use super::locate::locate;
 use super::meta;
-use super::{Ff1Model, Scalar};
-use crate::document::Segment;
+use crate::shared::write::{Target, set_value};
 
 impl Ff1Model {
     /// Applies `edit` to the document and returns the edit that undoes it.
@@ -63,49 +63,12 @@ impl Ff1Model {
             return Err(EditError::ReadOnly { field: field.clone() });
         }
         let path = locate(&mut self.document, &binding, field)?;
-        meta.check(field, value, policy)?;
-        if policy == CapPolicy::Enforce {
-            self.check_tables(&meta, field, value)?;
-        }
-        let old = self.read_old(&binding, &path, field)?;
-        meta.check(field, &old, CapPolicy::StorageOnly)?;
-        let scalar = match value {
-            Value::Int(int) => Scalar::Int(*int),
-            Value::Text(text) => Scalar::Text(text.clone()),
-            Value::Bool(flag) => Scalar::Bool(*flag),
-            // Unreachable: `meta.check` above rejects a kind the field's shape does not take.
-            _ => return Err(EditError::ReadOnly { field: field.clone() }),
+        let target = Target {
+            field,
+            meta: &meta,
+            path: &path,
+            text: binding.is_text(),
         };
-        self.document.set(&path, &scalar).map_err(|source| format_error(field, source))?;
-        Ok(Edit::Set {
-            field: field.clone(),
-            value: old,
-        })
-    }
-
-    /// A field with tables takes only ids that one of them lists. A
-    /// placeholder is an entry of its table, so the bare-hand placeholder
-    /// of a slot passes (`docs/formats/pixel-remaster.md#equipment-slots`).
-    fn check_tables(&self, meta: &FieldMeta, field: &FieldId, value: &Value) -> Result<(), EditError> {
-        let Value::Int(id) = value else { return Ok(()) };
-        if meta.tables.is_empty() {
-            return Ok(());
-        }
-        let listed = u32::try_from(*id).is_ok_and(|id| meta.tables.iter().any(|kind| self.tables.entry(*kind, id).is_some()));
-        if listed {
-            Ok(())
-        } else {
-            Err(EditError::UnknownId { field: field.clone(), id: *id })
-        }
-    }
-
-    /// The stored value, read the way `get` reads it.
-    fn read_old(&mut self, binding: &Binding, path: &[Segment<'_>], field: &FieldId) -> Result<Value, EditError> {
-        let read = if binding.is_text() {
-            read_text(&mut self.document, path).map(Value::Text)
-        } else {
-            read_int(&mut self.document, path).map(Value::Int)
-        };
-        read.map_err(|source| format_error(field, source))
+        set_value(&mut self.document, self.tables, &target, value, policy)
     }
 }
