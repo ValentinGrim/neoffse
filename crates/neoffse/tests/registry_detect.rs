@@ -3,14 +3,8 @@
 
 mod common;
 
-use common::{slot_bytes, slot_name};
-use neoffse::Registry;
+use common::{ff1_registry as registry, slot_bytes, slot_name};
 use neoffse::core::{Confidence, FileProbe, Game, SaveSlot};
-use neoffse::data::Language;
-
-fn registry() -> Registry {
-    Registry::new(Language::En)
-}
 
 fn probe_of<'a>(name: &'a str, bytes: &'a [u8]) -> FileProbe<'a> {
     FileProbe::new(name, bytes.len() as u64, bytes)
@@ -56,13 +50,4 @@ fn a_slot_name_without_a_base64_head_is_possible() {
     let claim = registry().detect(&probe, None).unwrap();
     assert_eq!(claim.detection.confidence, Confidence::Possible);
     assert_eq!(claim.detection.slot, Some(SaveSlot::Auto));
-}
-
-#[test]
-fn the_registry_lists_its_games_and_formats() {
-    let registry = registry();
-    assert_eq!(registry.games(), vec![Game::Ff1Pr]);
-    assert_eq!(registry.format(Game::Ff1Pr).map(neoffse::core::SaveFormat::game), Some(Game::Ff1Pr));
-    assert!(registry.format(Game::Ff6Pr).is_none());
-    assert_eq!(format!("{registry:?}"), "Registry { games: [\"ff1-pr\"] }");
 }

@@ -189,8 +189,11 @@ impl Registry {
     ///
     /// With `game: Some(game)`, the format of `game` opens it. With `None`,
     /// every format tries in `Game::ALL` order and the first that opens the
-    /// file wins, whatever the file's name. The session starts clean, with
-    /// the bytes read as its [`original`](Session::original).
+    /// file wins, whatever the file's name. The registry does not rank the
+    /// attempts by [`SaveFormat::detect`]: a format must refuse a file of
+    /// another game, as [`SaveFormat::open`] requires, and the registry trusts
+    /// that. The session starts clean, with the bytes read as its
+    /// [`original`](Session::original).
     ///
     /// # Errors
     ///

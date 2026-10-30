@@ -3,15 +3,10 @@
 
 mod common;
 
-use common::{folder_with, slot_bytes, slot_name};
+use common::{ff1_registry as registry, folder_with, slot_bytes, slot_name};
+use neoffse::Error;
 use neoffse::core::{FormatError, Game};
-use neoffse::data::Language;
 use neoffse::io::error::{IoError, Operation};
-use neoffse::{Error, Registry};
-
-fn registry() -> Registry {
-    Registry::new(Language::En)
-}
 
 #[test]
 fn a_slot_opens_by_name_with_or_without_a_game() {
