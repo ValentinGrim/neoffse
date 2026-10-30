@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use neoffse_core::{Detection, FileProbe, FormatError, Game, PROBE_HEAD_LEN, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_data::Language;
+use neoffse_format_pr::OpenError;
 use neoffse_format_pr::ff1::Ff1Format;
 use neoffse_io::atomic::is_temp_name;
 use neoffse_io::error::IoError;
@@ -119,6 +120,38 @@ impl Registry {
     #[must_use]
     pub fn format(&self, game: Game) -> Option<&dyn SaveFormat> {
         self.shared(game).map(|format| &**format)
+    }
+
+    /// True when `error` says the file belongs to a game this registry has no
+    /// format for.
+    ///
+    /// [`Error::UnsupportedGame`] is true. [`Error::NoFormat`] is true when it
+    /// holds at least one attempt and every attempt was refused because
+    /// another game owns the file, a game the registry has no format for.
+    /// Every other error is false. A file in a game's own folder that another
+    /// game owns is [`Error::Format`] and gives false: the folder's format
+    /// refused it, and no other format was asked.
+    ///
+    /// The `Display` and `Debug` of [`Error`] hold no new text.
+    #[must_use]
+    pub fn is_unsupported_game(&self, error: &Error) -> bool {
+        match error {
+            Error::UnsupportedGame { .. } => true,
+            Error::NoFormat { attempts } => !attempts.is_empty() && attempts.iter().all(|(_, attempt)| self.names_unregistered_game(attempt)),
+            _ => false,
+        }
+    }
+
+    /// Whether a format refused the file because a game without a format here
+    /// owns it. A refusal that is no `OpenError` names no game.
+    fn names_unregistered_game(&self, error: &FormatError) -> bool {
+        let FormatError::Decode { source } = error else {
+            return false;
+        };
+        match source.downcast_ref::<OpenError>() {
+            Some(OpenError::OtherGame { found: Some(game), .. }) => self.format(*game).is_none(),
+            _ => false,
+        }
     }
 
     fn shared(&self, game: Game) -> Option<&Arc<dyn SaveFormat>> {

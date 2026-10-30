@@ -9,7 +9,8 @@ use neoffse::core::{
     CapPolicy, Capability, Confidence, Detection, Edit, EditError, FileProbe, FormatError, Game, SaveDocument, SaveFiles, SaveFormat, SaveSummary, SaveView,
 };
 use neoffse::data::Language;
-use neoffse::pr::ff1::{Ff1Format, OpenError};
+use neoffse::pr::OpenError;
+use neoffse::pr::ff1::Ff1Format;
 
 /// Why a stand-in refuses a file.
 #[derive(Clone, Copy)]
