@@ -23,9 +23,9 @@ fn the_embedded_text_is_the_committed_file() {
     assert_eq!(sources.abilities, committed("abilities.toml"));
     assert_eq!(sources.jobs, committed("jobs.toml"));
     assert_eq!(sources.commands, committed("commands.toml"));
-    assert_eq!(sources.monsters, committed("monsters.toml"));
+    assert_eq!(sources.monsters, Some(committed("monsters.toml").as_str()));
     assert_eq!(sources.bounds, committed("bounds.toml"));
-    assert_eq!(sources.growth, committed("growth.toml"));
+    assert_eq!(sources.growth, Some(committed("growth.toml").as_str()));
 }
 
 #[test]

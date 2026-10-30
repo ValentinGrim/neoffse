@@ -8,7 +8,7 @@
 //! `maps` table yet.
 //!
 //! [`tables_for`] gives the parsed tables of a game, [`GameTables::parse`]
-//! parses any seven texts, and callers look entries up by [`TableKind`] and id.
+//! parses any set of seven texts, two of them optional, and callers look entries up by [`TableKind`] and id.
 //! Names repeat inside a table, so an id is the only key. The role of the
 //! crate among the others is in `docs/architecture.md#crate-roles`.
 //!
@@ -24,13 +24,14 @@
 //! has `MAX_LV` rows when `bounds.toml` names that cap, group and job ids rise,
 //! every group starts at level 2 and covers every level of `exp_table` in each
 //! column, `hp_value1` is 0 or 1, every job names an existing group, and no
-//! table is empty.
+//! table is empty. `monsters.toml` and `growth.toml` may be absent: a game
+//! without them has no monster table and its growth accessors give `None`.
 //!
 //! - [`embedded`]: the tables the crate ships, [`sources_for`] and [`tables_for`].
 //! - [`entry`]: the rows of a table, [`Entry`], its [`AbilityInfo`] and
 //!   [`AbilityKind`] for an ability row, and the [`Language`] of a name.
 //! - [`error`]: [`DataError`], why a set of texts failed to parse.
-//! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the seven texts that build them.
+//! - [`tables`]: [`GameTables`], the tables and caps of one game, and [`Sources`], the seven texts, two of them optional, that build them.
 //!
 //! ```
 //! use neoffse_core::{Game, TableKind};

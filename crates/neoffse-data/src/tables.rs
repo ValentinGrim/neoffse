@@ -21,7 +21,7 @@ const CONTENT_KINDS: [TableKind; 7] = [
     TableKind::Gloves,
 ];
 
-/// The text of the seven files of one game.
+/// The text of the files of one game: seven, two of them optional.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sources<'a> {
     /// `content.toml`: items, key items and equipment.
@@ -32,12 +32,13 @@ pub struct Sources<'a> {
     pub jobs: &'a str,
     /// `commands.toml`.
     pub commands: &'a str,
-    /// `monsters.toml`: the bestiary.
-    pub monsters: &'a str,
+    /// `monsters.toml`: the bestiary. `None` for a game whose bestiary key space the document does not state yet.
+    pub monsters: Option<&'a str>,
     /// `bounds.toml`: the game's caps.
     pub bounds: &'a str,
     /// `growth.toml`: base stats per class, experience per level and growth rows.
-    pub growth: &'a str,
+    /// `None` for a game with no levels or whose level-up rule the document does not state yet.
+    pub growth: Option<&'a str>,
 }
 
 /// The immutable tables and caps of one game.
@@ -48,13 +49,14 @@ pub struct GameTables {
     game: Game,
     tables: BTreeMap<TableKind, Vec<Entry>>,
     bounds: BTreeMap<String, i64>,
-    growth: Growth,
+    growth: Option<Growth>,
 }
 
 impl GameTables {
-    /// Parses the seven texts of `game` in the order content, abilities, jobs,
-    /// commands, monsters, bounds, growth. The function reads no disk and keeps no
-    /// global state.
+    /// Parses the texts of `game` in the order content, abilities, jobs,
+    /// commands, monsters, bounds, growth. `monsters` and `growth` are optional
+    /// and skipped when `None`: a `Some` text is always parsed, an empty one
+    /// included. The function reads no disk and keeps no global state.
     ///
     /// # Errors
     ///
@@ -87,8 +89,9 @@ impl GameTables {
     }
 
     /// The entries of one table, ascending by id, placeholders included.
-    /// `None` when the game has no table of that kind (`TableKind::Map`
-    /// today). A present table is never empty.
+    /// `None` when the game has no table of that kind: `TableKind::Map` today,
+    /// and `TableKind::Monster` when `Sources.monsters` is `None`. A present
+    /// table is never empty.
     #[must_use]
     pub fn table(&self, kind: TableKind) -> Option<&[Entry]> {
         self.tables.get(&kind).map(Vec::as_slice)
@@ -138,33 +141,36 @@ impl GameTables {
     }
 
     /// The base HP of the `character_status` row with that id (the
-    /// `characterStatusId` of a save). `None` for an id without a row.
+    /// `characterStatusId` of a save). `None` for an id without a row and when
+    /// the game ships no growth tables.
     #[must_use]
     pub fn base_hp(&self, status_id: u32) -> Option<u32> {
-        self.growth.base_hp(status_id)
+        self.growth.as_ref().and_then(|growth| growth.base_hp(status_id))
     }
 
     /// The total experience a character needs to reach `level`: 0 at level 1.
-    /// `None` for level 0 and for a level above the last row (99 in FF I).
+    /// `None` for level 0, for a level above the last row (99 in FF I) and
+    /// when the game ships no growth tables.
     #[must_use]
     pub fn exp_to_reach(&self, level: u32) -> Option<u32> {
-        self.growth.exp_to_reach(level)
+        self.growth.as_ref().and_then(|growth| growth.exp_to_reach(level))
     }
 
     /// The base vitality of the `character_status` row with that id (the
     /// `characterStatusId` of a save), the base of the HP rule
     /// (`docs/formats/pixel-remaster.md#level-up-in-ff-i`). `None` for an id
-    /// without a row.
+    /// without a row, and when the game ships no growth tables.
     #[must_use]
     pub fn base_vitality(&self, status_id: u32) -> Option<u32> {
-        self.growth.base_vitality(status_id)
+        self.growth.as_ref().and_then(|growth| growth.base_vitality(status_id))
     }
 
     /// The growth row of the job's growth group at `level`. `None` for a job
     /// without a row in `intermediate_growth_curve`, for level 0 and 1, and
-    /// above the last level of the group (99 in FF I).
+    /// above the last level of the group (99 in FF I), and when the game ships
+    /// no growth tables.
     #[must_use]
     pub fn growth_step(&self, job_id: u32, level: u32) -> Option<GrowthStep> {
-        self.growth.growth_step(job_id, level)
+        self.growth.as_ref().and_then(|growth| growth.growth_step(job_id, level))
     }
 }

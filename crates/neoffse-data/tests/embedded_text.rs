@@ -67,7 +67,7 @@ fn embedded_text_has_no_bom_and_no_carriage_return() {
         ("abilities", sources.abilities),
         ("jobs", sources.jobs),
         ("commands", sources.commands),
-        ("monsters", sources.monsters),
+        ("monsters", sources.monsters.unwrap()),
         ("bounds", sources.bounds),
     ] {
         assert!(!text.starts_with('\u{feff}'), "{file}");

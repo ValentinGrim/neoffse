@@ -18,7 +18,7 @@ use crate::tables::Sources;
 pub(crate) struct Parsed {
     pub(crate) tables: BTreeMap<TableKind, Vec<Entry>>,
     pub(crate) bounds: BTreeMap<String, i64>,
-    pub(crate) growth: Growth,
+    pub(crate) growth: Option<Growth>,
 }
 
 #[derive(Deserialize)]
@@ -86,7 +86,8 @@ struct BoundsFile {
     bounds: BTreeMap<String, i64>,
 }
 
-/// Parses the seven texts in file order and returns the first error.
+/// Parses the texts in file order and returns the first error. `monsters` and
+/// `growth` are read only when present.
 pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> {
     let mut tables = BTreeMap::new();
     content(&read("content.toml", sources.content)?, &mut tables)?;
@@ -95,12 +96,16 @@ pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> 
     names("jobs.toml", &jobs.job, TableKind::Job, &mut tables)?;
     let commands: CommandFile = read("commands.toml", sources.commands)?;
     names("commands.toml", &commands.command, TableKind::Command, &mut tables)?;
-    let monsters: MonsterFile = read("monsters.toml", sources.monsters)?;
-    names("monsters.toml", &monsters.monster, TableKind::Monster, &mut tables)?;
+    if let Some(text) = sources.monsters {
+        let monsters: MonsterFile = read("monsters.toml", text)?;
+        names("monsters.toml", &monsters.monster, TableKind::Monster, &mut tables)?;
+    }
     let bounds: BoundsFile = read("bounds.toml", sources.bounds)?;
     check_bounds(&bounds.bounds)?;
-    let growth = parse_growth(sources.growth)?;
-    check_level_cap(&bounds.bounds, &growth)?;
+    let growth = sources.growth.map(parse_growth).transpose()?;
+    if let Some(growth) = &growth {
+        check_level_cap(&bounds.bounds, growth)?;
+    }
     Ok(Parsed {
         tables,
         bounds: bounds.bounds,

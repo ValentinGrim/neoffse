@@ -146,7 +146,7 @@ fn id_zero_is_refused() {
     );
     assert_eq!(
         id_order(parse(&Sources {
-            monsters: &monsters,
+            monsters: Some(&monsters),
             ..minimal()
         })),
         ("monsters.toml", 0)
@@ -174,7 +174,7 @@ fn a_repeated_id_is_refused() {
     );
     assert_eq!(
         id_order(parse(&Sources {
-            monsters: &monsters,
+            monsters: Some(&monsters),
             ..minimal()
         })),
         ("monsters.toml", 4)
@@ -202,7 +202,7 @@ fn a_descending_id_is_refused() {
     );
     assert_eq!(
         id_order(parse(&Sources {
-            monsters: &monsters,
+            monsters: Some(&monsters),
             ..minimal()
         })),
         ("monsters.toml", 5)

@@ -102,9 +102,9 @@ fn crlf_text_parses_the_same() {
         abilities: &crlf[1],
         jobs: &crlf[2],
         commands: &crlf[3],
-        monsters: &crlf[4],
+        monsters: Some(&crlf[4]),
         bounds: &crlf[5],
-        growth: &crlf[6],
+        growth: Some(&crlf[6]),
     };
     assert_eq!(GameTables::parse(Game::Ff1Pr, &sources).unwrap(), tables());
 }

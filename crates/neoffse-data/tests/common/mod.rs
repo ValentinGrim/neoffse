@@ -226,7 +226,7 @@ pub(crate) fn curve_text(groups: &[u32], last: u32) -> String {
     job_text(&jobs) + &groups.iter().map(|g| group_text(*g, last)).collect::<String>()
 }
 
-/// Seven small valid texts: two rows per array file (three in `content`) and
+/// Seven small valid texts, optional ones included: two rows per array file (three in `content`) and
 /// three caps.
 pub(crate) fn minimal() -> Sources<'static> {
     Sources {
@@ -234,9 +234,9 @@ pub(crate) fn minimal() -> Sources<'static> {
         abilities: ABILITIES,
         jobs: JOBS,
         commands: COMMANDS,
-        monsters: MONSTERS,
+        monsters: Some(MONSTERS),
         bounds: BOUNDS,
-        growth: GROWTH,
+        growth: Some(GROWTH),
     }
 }
 
@@ -246,7 +246,7 @@ pub(crate) fn parse_growth(growth: &str) -> Result<GameTables, DataError> {
     GameTables::parse(
         Game::Ff1Pr,
         &Sources {
-            growth,
+            growth: Some(growth),
             bounds: BOUNDS_NO_LEVEL,
             ..minimal()
         },
