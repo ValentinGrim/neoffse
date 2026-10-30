@@ -6,7 +6,8 @@
 //! backups, discovery) and [`pr`] (the Pixel Remaster formats). It holds
 //! what joins them today:
 //!
-//! - [`Registry`]: the formats NeoFFSE ships. It claims the files of a
+//! - [`Registry`]: the formats NeoFFSE ships, or any set given to
+//!   [`Registry::from_formats`]. It claims the files of a
 //!   folder ([`Registry::scan`]) and opens one ([`Registry::open`]).
 //! - [`Session`]: one opened save with its edit history. It edits in the
 //!   default or the expert mode, undoes and redoes, tells whether the

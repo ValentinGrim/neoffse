@@ -5,15 +5,10 @@ mod common;
 
 use std::fs;
 
-use common::{folder_with, slot_bytes, slot_name, write_in};
+use common::{ff1_registry as registry, folder_with, slot_bytes, slot_name, write_in};
+use neoffse::Error;
 use neoffse::core::{Game, SaveSlot};
-use neoffse::data::Language;
 use neoffse::io::error::IoError;
-use neoffse::{Error, Registry};
-
-fn registry() -> Registry {
-    Registry::new(Language::En)
-}
 
 #[test]
 fn a_folder_lists_its_slot_files_only_in_name_order() {

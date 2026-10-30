@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use neoffse_core::{Detection, FileProbe, FormatError, Game, PROBE_HEAD_LEN, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_data::Language;
+use neoffse_format_pr::OpenError;
 use neoffse_format_pr::ff1::Ff1Format;
 use neoffse_io::atomic::is_temp_name;
 use neoffse_io::error::IoError;
@@ -17,11 +18,14 @@ use crate::session::Session;
 /// The game, format and document of a successful open.
 type Opened = (Game, Arc<dyn SaveFormat>, Box<dyn SaveDocument>);
 
-/// The formats NeoFFSE ships, one per supported game.
+/// The formats NeoFFSE ships, one per supported game, or the set that
+/// [`Registry::from_formats`] receives.
 ///
 /// The registry is `Send + Sync`. Its `Debug` lists the games.
 pub struct Registry {
-    /// In `Game::ALL` order: `detect` and `open` rely on it for ties.
+    /// One format per game, in the order given. `format` looks a game up by
+    /// `SaveFormat::game`, and `detect` and `open` walk `Game::ALL`, so this
+    /// order decides nothing.
     formats: Vec<Arc<dyn SaveFormat>>,
 }
 
@@ -70,7 +74,8 @@ impl fmt::Debug for Registry {
 }
 
 impl Registry {
-    /// Builds the registry of the shipped formats. Today: FF I.
+    /// Builds the registry of the shipped formats. Each shipped game has one
+    /// line here. Today: FF I.
     ///
     /// `language` names the game data in the views the formats build.
     ///
@@ -80,9 +85,29 @@ impl Registry {
     /// are invalid, a defect of the build.
     #[must_use]
     pub fn new(language: Language) -> Self {
-        Self {
-            formats: vec![Arc::new(Ff1Format::with_language(language))],
+        Self::from_formats(vec![Arc::new(Ff1Format::with_language(language))])
+    }
+
+    /// A registry that holds `formats` and no other.
+    ///
+    /// The registry keeps one format per game. The order given decides
+    /// nothing: [`Registry::games`], [`Registry::detect`] and
+    /// [`Registry::open`] follow `Game::ALL`.
+    ///
+    /// # Panics
+    ///
+    /// When two formats report the same [`Game`], with the message `two
+    /// formats for <game id>`. The duplicate is a wiring defect of the
+    /// caller, not data read from a file.
+    #[must_use]
+    pub fn from_formats(formats: Vec<Arc<dyn SaveFormat>>) -> Self {
+        let mut seen: Vec<Game> = Vec::with_capacity(formats.len());
+        for format in &formats {
+            let game = format.game();
+            assert!(!seen.contains(&game), "two formats for {}", game.id());
+            seen.push(game);
         }
+        Self { formats }
     }
 
     /// The games the registry has a format for, in `Game::ALL` order.
@@ -95,6 +120,38 @@ impl Registry {
     #[must_use]
     pub fn format(&self, game: Game) -> Option<&dyn SaveFormat> {
         self.shared(game).map(|format| &**format)
+    }
+
+    /// True when `error` says the file belongs to a game this registry has no
+    /// format for.
+    ///
+    /// [`Error::UnsupportedGame`] is true. [`Error::NoFormat`] is true when it
+    /// holds at least one attempt and every attempt was refused because
+    /// another game owns the file, a game the registry has no format for.
+    /// Every other error is false. A file in a game's own folder that another
+    /// game owns is [`Error::Format`] and gives false: the folder's format
+    /// refused it, and no other format was asked.
+    ///
+    /// The `Display` and `Debug` of [`Error`] hold no new text.
+    #[must_use]
+    pub fn is_unsupported_game(&self, error: &Error) -> bool {
+        match error {
+            Error::UnsupportedGame { .. } => true,
+            Error::NoFormat { attempts } => !attempts.is_empty() && attempts.iter().all(|(_, attempt)| self.names_unregistered_game(attempt)),
+            _ => false,
+        }
+    }
+
+    /// Whether a format refused the file because a game without a format here
+    /// owns it. A refusal that is no `OpenError` names no game.
+    fn names_unregistered_game(&self, error: &FormatError) -> bool {
+        let FormatError::Decode { source } = error else {
+            return false;
+        };
+        match source.downcast_ref::<OpenError>() {
+            Some(OpenError::OtherGame { found: Some(game), .. }) => self.format(*game).is_none(),
+            _ => false,
+        }
     }
 
     fn shared(&self, game: Game) -> Option<&Arc<dyn SaveFormat>> {
@@ -112,8 +169,8 @@ impl Registry {
     /// first in `Game::ALL`.
     #[must_use]
     pub fn detect(&self, probe: &FileProbe<'_>, folder_game: Option<Game>) -> Option<Claim> {
-        // Guards a format whose `detect` claims by content. The FF I format already
-        // refuses any name outside its slot table, so no test can reach this line today.
+        // A format that claims by content must never claim a leftover of the atomic
+        // write (`docs/architecture.md#format-traits`).
         if is_temp_name(probe.name) {
             return None;
         }
@@ -165,8 +222,11 @@ impl Registry {
     ///
     /// With `game: Some(game)`, the format of `game` opens it. With `None`,
     /// every format tries in `Game::ALL` order and the first that opens the
-    /// file wins, whatever the file's name. The session starts clean, with
-    /// the bytes read as its [`original`](Session::original).
+    /// file wins, whatever the file's name. The registry does not rank the
+    /// attempts by [`SaveFormat::detect`]: a format must refuse a file of
+    /// another game, as [`SaveFormat::open`] requires, and the registry trusts
+    /// that. The session starts clean, with the bytes read as its
+    /// [`original`](Session::original).
     ///
     /// # Errors
     ///

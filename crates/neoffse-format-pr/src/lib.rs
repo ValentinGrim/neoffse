@@ -32,6 +32,7 @@
 //!   key of another game contradicts the count.
 //! - [`slots`]: the 22 slot file names shared by the six games, and the
 //!   detection that recognizes a slot file by its name and head.
+//! - [`OpenError`]: why a file is no slot of the game that tried to open it.
 //!
 //! Decode a file, edit one value, encode it again:
 //!
@@ -60,3 +61,5 @@ pub mod games;
 mod open_error;
 pub mod shared;
 pub mod slots;
+
+pub use open_error::OpenError;
