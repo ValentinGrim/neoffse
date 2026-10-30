@@ -17,6 +17,7 @@ Every [M] on an FF I character value in those sections rests on 8 character stat
 The ranges quoted there are observations, not bounds: no measured value comes from a new game (level 1, bare hands, low gil).
 Two in-game tests on edited copies of one FF I slot add readings for the level and the level-up ([Level-up in FF I](#level-up-in-ff-i)).
 Their start states are NeoFFSE edits, not game states, so they stay out of the 8 and carry the tag [M, edited copy].
+The FF II rules ([FF II](#ff-ii)) rest on four FF II files: the Quick Save, slot 1 and the Auto Save that the game wrote, and slot 2 that KiameV's editor wrote.
 The names and IDs of FF I items, equipment, abilities, jobs, commands, maps and monsters, and the bounds the game states, come from the game's own master data, read from the FF I install ([Game master data](#game-master-data)); the other five installs are measured too ([Master data per game](#master-data-per-game)).
 
 ### Games
@@ -47,7 +48,9 @@ Platforms covered:
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
 | Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix; bundles and files listed in [Game master data](#game-master-data); read with UnityPy 1.25.4 from copies of the bundles. FF II to VI PR, apps 1173780 to 1173820, builds in [Master data per game](#master-data-per-game), same Unity version, read the same way | IDs, kinds and English and French names of the FF I items, equipment, abilities, jobs, commands, maps and monsters, the base HP and experience tables, and the bounds in `game_constant_int.csv` ([Game master data](#game-master-data) and the four sections after it); for FF II to VI, the file inventory, content types, ability `type_id` values, name-key gaps, `MAX_` keys and curve counts ([Master data per game](#master-data-per-game)) [D] |
-| Game binary | `GameAssembly.dll` and `global-metadata.dat` of FF I PR, build 20249397 (IL2CPP, Unity 2019.4.26f1), © Square Enix, and of FF II to VI PR, builds 20251646, 20264899, 20265023, 20265087 and 20265119; copies read with `llvm-objdump` and own readers for the metadata tables; class and method names come from the metadata, rules from the machine code | the FF I level-up rule ([Level-up in FF I](#level-up-in-ff-i)); for FF II to VI, the ability and content type enums, the ability grouping and the path of a missing name ([Ability types](#ability-types), [Ability groups](#ability-groups), [Content types 5 to 9](#content-types-5-to-9), [Rows without a name](#rows-without-a-name)) [B] |
+| Game binary | `GameAssembly.dll` and `global-metadata.dat` of FF I PR, build 20249397 (IL2CPP, Unity 2019.4.26f1), © Square Enix, and of FF II to VI PR, builds 20251646, 20264899, 20265023, 20265087 and 20265119; copies read with `llvm-objdump` and own readers for the metadata tables; class and method names come from the metadata, rules from the machine code | the FF I level-up rule ([Level-up in FF I](#level-up-in-ff-i)); for FF II to VI, the ability and content type enums, the ability grouping and the path of a missing name ([Ability types](#ability-types), [Ability groups](#ability-groups), [Content types 5 to 9](#content-types-5-to-9), [Rows without a name](#rows-without-a-name)); for FF II, the growth, skill, spell, keyword, party and bound rules of [FF II](#ff-ii) and the readers of `currentExp` and `addtionalLevel` [B] |
+| Game misc data and prefabs | FF II PR, Steam app 1173780, build 20251646, © Square Enix: `serial_misc_assets.json` in `misc_assets_all_<hash>.bundle`, and the prefabs of the `key_*`, `touch_party_setting`, `touch_play_data` and `touch_serial_common` bundles; read with UnityPy 1.25.4 from copies of the bundles | the spell chain table `magic_level_acquisition_table` ([Spells in FF II](#spells-in-ff-ii)); the bindings of `status_details.prefab` and of the result prefabs ([Character growth in FF II](#character-growth-in-ff-ii)) [D] |
+| FF II guides | [Final Fantasy II: how to level up, RPG Site](https://www.rpgsite.net/feature/11516-final-fantasy-ii-how-to-level-up-and-an-explanation-on-the-leveling-system), no license stated; [Rank (Final Fantasy II), Fandom](https://finalfantasy.fandom.com/wiki/Rank_%28Final_Fantasy_II%29), CC BY-SA; [Final Fantasy II (Pixel Remaster), RPGFan](https://www.rpgfan.com/review/final-fantasy-ii-pixel-remaster/). The Fandom and RPGFan pages were read as search summaries; nothing copied | the 100-points-per-level claim for weapons, which the binary contradicts ([Skill levels in FF II](#skill-levels-in-ff-ii)); the effect of rank on proficiency, which agrees with the binary; Boost and its HP option [C] |
 | Go editor tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | the FF I names the editor uses, compared with the game ([Go editor tables](#go-editor-tables)) |
 | FF6 Hacking wiki | [Final Fantasy VI Pixel Remaster page](https://www.ff6hacking.com/wiki/doku.php?id=ff6pr) and the CSV legend it links, no license stated; read, nothing copied | cross-check of the FF VI `AbilityType` names; its `ability_group.csv` sheet shifts the designations by one row against the data, which wins [C] |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
@@ -79,8 +82,8 @@ The 34 measured files, sizes in bytes.
 |---|---|
 | [M] | Measured on the 32 game-written Steam files (FF I to VI) or, for roots, libraries and Steam Cloud, on one Linux Steam install; "[M, two editor files]" marks a measurement on the two editor-written files, and "[M, edited copy]" a measurement on a file the game wrote after a battle played on a copy edited with NeoFFSE (FF I, one slot) |
 | [G] | Verified in game, including a menu read on an edited copy |
-| [D] | Read from the game's own master data or message files (FF I, build 20249397, unless the text names another game and its build); not checked on other builds |
-| [B] | Read in the game's binary (FF I, build 20249397, IL2CPP, unless the text names another game), on a copy: class and method names come from the metadata, rules from the machine code. FF II to VI builds 20251646, 20264899, 20265023, 20265087 and 20265119 carry the tag for the enums, the grouping, the missing-name path and the master-data loader of [Master data per game](#master-data-per-game); not checked on other builds |
+| [D] | Read from the game's own master data, message files or, for FF II, the misc assets file and the UI prefabs of the `key_*` bundles (FF I, build 20249397, unless the text names another game and its build); not checked on other builds |
+| [B] | Read in the game's binary (FF I, build 20249397, IL2CPP, unless the text names another game), on a copy: class and method names come from the metadata, rules from the machine code. FF II to VI builds 20251646, 20264899, 20265023, 20265087 and 20265119 carry the tag for the enums, the grouping, the missing-name path and the master-data loader of [Master data per game](#master-data-per-game). FF II build 20251646 carries it for the rules of [FF II](#ff-ii) too: skill and stat growth, spell learning and forgetting, keywords, joining, the integer types of the counters, the equipment helpers and the readers of `currentExp` and `addtionalLevel`; each such fact names its class and method. Not checked on other builds |
 | [C] | Taken from the code, tests or commit messages of KiameV's Go editor, or from the code or documentation of another source named beside the tag; not measured |
 | [I] | Inferred from measurements, or a rule NeoFFSE applies; consistent with the data, not proven |
 
@@ -966,7 +969,7 @@ The keys of the saved bestiary are these monster IDs ([Bestiary](#bestiary)).
 
 ### Bounds in the master data
 
-The game states six caps and several stat caps in `game_constant_int.csv` (96 rows: `id`, `key_name`, `value1`, `value2`) [D]:
+FF I's `game_constant_int.csv` (96 rows: `id`, `key_name`, `value1`, `value2`) states six caps and several stat caps [D]; the other games differ ([Master data per game](#master-data-per-game)):
 
 | Save field | `key_name` | `value1` |
 |---|---|---|
@@ -1152,7 +1155,8 @@ The cells list the slots that hold 1:
 
 Each game holds five empty-slot rows, one per group 1 to 5, under its own keys.
 Each key serves only those rows.
-No save of FF II to VI confirms these IDs.
+No save of FF III to VI confirms these IDs.
+The FF II saves confirm 47, 209, 210 and 211, and hold 47, not 208, in an empty second hand [M] ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
 
 | Game | Weapon key, ID | Armor key | Shield, armor, helmet, gloves IDs |
 |---|---|---|---|
@@ -1635,17 +1639,17 @@ Identify a character by `id`; names repeat and change.
 |---|---|---|
 | `id` | int | 1 to N, unique [M]; NeoFFSE refuses a file that repeats an `id` [I] |
 | `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the id names the `character_status.csv` row, the base class, whose `hp` is the base of the maximum HP ([Maximum HP and experience tables](#maximum-hp-and-experience-tables)) [M, D, G] |
-| `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
+| `isEnableCorps` | bool | FF II: `false` on 4 of 8 characters in slot 1, 5 of 8 in the Auto Save and 3 of 7 in the Quick Save [M]; it equals membership of `corpsList` ([People and party in FF II](#people-and-party-in-ff-ii)). The Go editor runs its per-game ability rules only for `true` [C] |
 | `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; names in `job.csv` ([ID spaces and tables](#id-spaces-and-tables)) |
 | `name` | string | raw UTF-8, may hold non-ASCII [M]; two FF I heroes may share a name, FF VI has two Mogs [C, `d8a6c6f`] |
-| `currentExp` | int | [M]; the game caps it at 9 999 999 (`MAX_EXP`) [D] ([Bounds in the master data](#bounds-in-the-master-data)) |
+| `currentExp` | int | [M]; the game caps it at 9 999 999 (`MAX_EXP`) [D] ([Bounds in the master data](#bounds-in-the-master-data)). FF II adds each battle's share to it and shows that share on the result list; no rule reads the total ([Character growth in FF II](#character-growth-in-ff-ii)) |
 | `parameter` | JSON | stats, below |
 | `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C]. The FF I values read Attack, Magic, Items, Defend and Flee in `command.csv` [M, D] |
 | `abilityList`, `abilitySlotDataList`, `additionOrderOwnedAbilityIds`, `sortOrderOwnedAbilityIds`, `abilityDictionary`, `skillLevelTargets`, `learningAbilitys` | JSON | [Abilities](#abilities) |
-| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries (`id` 1 to 12), FF II 8 [M]. FF I: `level` 1 and `currentProficiency` 0 in every entry of the 8 character states [M]; FF I does not use them [I] |
+| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries (`id` 1 to 12), FF II 4 to 8, growing as people join [M]. FF I: `level` 1 and `currentProficiency` 0 in every entry of the 8 character states [M]; FF I does not use them [I] |
 | `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4); slots and `count` in [Equipment slots](#equipment-slots) |
 | `equipmentAbilitys` | JSON list | `[0,0,0]` in FF I and FF II [M] |
-| `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C] |
+| `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C]. In FF II `numberOfButtles` is the Boost battle counter, 0 to 9 ([Character growth in FF II](#character-growth-in-ff-ii)) [B, M] |
 
 NeoFFSE edits the characters in place and never inserts or removes a character row [I].
 
@@ -1828,6 +1832,8 @@ An empty slot holds the placeholder `contentId` of its slot, not 0 [M, 1 entry; 
   Unequip writes the slot's placeholder, copies the count of the placeholder's inventory row into the slot `count` (when the list holds that row) and keeps the item in the inventory.
   The game interface refuses to set a slot `count` by hand, since the equip plan owns it [I].
   The raw interface writes any of these fields alone.
+- **FF II.**
+  Slots 1 and 2 each take a weapon or a shield, and an empty hand holds 47 ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
 
 ### Abilities
 
@@ -1840,7 +1846,7 @@ Ability object: `{"abilityId":int,"contentId":int,"skillLevel":int}`.
 | Game | `contentId − abilityId` | Tag |
 |---|---|---|
 | FF I | 208 | [M] 47 of 47 abilities and slot spells, slot 1 and Quick Save; [D] 95 of 96 `ability.csv` rows, the exception being ability 100 at content 310 (offset 210) |
-| FF II | 207 on spells, 226 on ability 711 (content 937) | [M] 119 entries in 3 slots: 96 spells at 207 (up to 35 in one slot) and 23 entries of ability 711 at 226; each FF II character holds ability 711 |
+| FF II | 207 on 704 `ability.csv` rows, 226 on 100 rows (ability 711, content 937, is one) and 931 on abilities 1 to 4 | [D] over the 808 rows; [M] 119 entries in 3 slots: 96 spells at 207 (up to 35 in one slot) and 23 entries of ability 711 at 226; each FF II character holds ability 711 |
 | FF III | 250 on the measured entries; the Go editor gives 201 | [M] 16 entries (8 `Other`, 8 `TwoSwordStyle`) at 250; 201 is [C] and no measured entry shows it |
 | FF IV | 310 | [C] |
 | FF V | 266 | [C] |
@@ -1860,14 +1866,14 @@ Character keys that reference abilities:
 |---|---|---|
 | `abilityList` | ability objects as JSON strings | one entry per `abilityId` [M] |
 | `additionOrderOwnedAbilityIds` | content IDs | the content IDs of `abilityList`, same order, in all 35 characters of the six slots [M] |
-| `sortOrderOwnedAbilityIds` | content IDs | empty or a subset of the owned ones; only FF II had entries [M]; the Go editor never edits it |
-| `abilityDictionary` | dictionary | FF II: key `3` maps to `{"target":[ability JSON strings]}`; FF I: empty [M]; meaning not measured |
-| `skillLevelTargets` | dictionary | FF II: keys 0 to 9 with ints; FF I: empty [M]; meaning not measured |
+| `sortOrderOwnedAbilityIds` | content IDs | empty or a subset of the owned ones; only FF II had entries [M]: the player's spell order [B]; the Go editor never edits it |
+| `abilityDictionary` | dictionary | FF II: key `3`, the Magic command, maps to `{"target":[ability JSON strings]}`, a second copy of the spells; FF I: empty [M, B] ([Spells in FF II](#spells-in-ff-ii)) |
+| `skillLevelTargets` | dictionary | FF II: keys 0 to 9 with ints, the weapon, shield, bare-hand and evasion proficiency; FF I: empty [M, B] ([Skill levels in FF II](#skill-levels-in-ff-ii)) |
 | `learningAbilitys` | list | empty in FF I and FF II [M] |
 
 `userData → learnedAbilityList` holds ability IDs.
 In FF I it equals the union of the party's `abilityId`s as a set (47 IDs in slot 1 and the Quick Save), and its order is not ascending [M, 4 slots].
-In FF II it does not equal that union, and its meaning is unknown [M].
+In FF II it does not equal that union: it holds every ability ID that a learning wrote, across the party, and keeps it after a row change or a forget; slot 1 holds 46, with 711 first [M, B] ([Spells in FF II](#spells-in-ff-ii)).
 
 **FF I spell slots** [M].
 `abilitySlotDataList → target[]` holds 8 JSON strings, one per spell level: `{"level":1..8,"slotInfo":"<JSON>"}`.
@@ -1890,14 +1896,18 @@ The two spellcasters hold 47 spells in all, `abilityId` 5 to 68, every one in `A
 
 **`skillLevel`.**
 FF I: `0` [M].
-FF II: spell proficiency, 0 to 456 measured; the Go editor edits it as a level [M, C].
+FF II: the proficiency total of the spell on the `exp_table.csv` curve, not a level; the highest spell value measured is 456, level 11 ([Skill levels in FF II](#skill-levels-in-ff-ii), [Spells in FF II](#spells-in-ff-ii)) [M, B].
+The Go editor edits it as a level [C]: slot 2 holds the 400 that it wrote on 12 spells ([Row and value in FF II](#row-and-value-in-ff-ii)).
 FF VI: learning percentage, 100 means learned [C].
 
 ### Party
 
 `userData → corpsList` lists the active party; keep `characterId` values pointing at existing character `id`s.
+FF II also uses `characterId` 0 for an empty seat.
 
 - `corpsList → target[]`: 4 JSON strings `{"id":1,"characterId":n}` in FF I, FF II, FF III, FF V and FF VI, 5 in FF IV; `id` is 1 in each entry in FF I and FF II [M].
+  In FF II `id` is `Last.Defaine.User.CorpsId`, Front 1 and Back 2 [B]; FF I's 1 reads as Front too [I].
+  FF II's Auto Save holds `characterId` 0 in its fourth seat [M].
   NeoFFSE lists the party in the order of this list [I].
   The measured files do not show whether that order is the battle order.
   The editor view lists every character in the order of `ownedCharacterList`, in the party or not [I].
@@ -1906,7 +1916,7 @@ FF VI: learning percentage, 100 means learned [C].
   FF VI uses several parties [C].
 - `userData.corpsSlotIndex`: `0` in all six slots [M].
 - `mapData.playableCharacterCorpsId`: 0 to 3 [M]; meaning not measured.
-- `userData → releasedJobs → target`: FF I 1 to 12, FF II 4 entries [M].
+- `userData → releasedJobs → target`: FF I 1 to 12, FF II 3 or 4 entries: 4 in the Quick Save, slot 1 and slot 2, and 3 in the Auto Save [M].
 
 ### Inventory
 
@@ -2003,7 +2013,7 @@ The count identifies the game ([Telling the games apart](#telling-the-games-apar
 
 | Key in `userData` | Type | Notes |
 |---|---|---|
-| `owendGil` | int | the game caps it at 999 999 (`MAX_GIL`) [D] |
+| `owendGil` | int | the game caps it at 999 999 in FF I and 9 999 999 in FF II to VI (`MAX_GIL`) [D] ([Master data per game](#master-data-per-game)) |
 | `totalGil` | int | `0` in all six slots |
 | `playTime` | float | seconds; an invented example is `13621.814333377138` |
 | `steps`, `escapeCount` | int | `0` in all six slots |
@@ -2099,6 +2109,466 @@ The rules below come from the Go code [C] unless a tag says otherwise.
   Related keys: `partyPlayableCharacterCorpsId`, `currentSelectedPartyId`.
 - Cursed Shield fights: `dataStorage.global[9]`.
 
+### FF II
+
+FF II has no character level and no experience rule.
+At the end of a battle, `Last.Systems.StatusUpProvider::Execution` raises weapon and spell proficiency, then HP, MP and six stats, from the battle log [B].
+A spell's level sits in its `abilityId`, one of 16 consecutive IDs of its chain, and `skillLevel` holds the proficiency total.
+The figures below are for build 20251646, and each [B] fact names the class and method that hold the rule.
+
+Four FF II files back the [M] facts:
+
+| Label | File | Writer | `battleCount` | Characters | Keywords |
+|---|---|---|---|---|---|
+| Quick Save | `Rl18osV3…` | game | 408 | 7 | 6 |
+| Slot 1 | `ookrbATY…` | game | 768 | 8 | 12 |
+| Auto Save | `7nCxyzTw…` | game | 769 | 8 | 12 |
+| Slot 2 | `vgU2wnua…` | KiameV's editor | 768 | 8 | 12 |
+
+"31 character states" counts the rows of all four files (7 + 8 + 8 + 8), the editor-written slot 2 included.
+"Game-file states" leaves out slot 2 and counts 23.
+
+The files cannot test these cases, so the rules for them rest on [B] and [D]: a bow equipped, a spell or weapon skill at level 16 (the highest measured are level 11 for a spell and a value of 533 for a weapon skill), a stat at its cap, a back-row member, the return of Leon (status 9), Ultima, a run with the Boost settings of `cheatSettingsData` off or at other rates, and an Auto Save with no editor pass in its history.
+
+#### Skill levels in FF II
+
+**Where the save holds them.**
+`skillLevelTargets` is a `{keys, values}` dictionary with keys 0 to 9 on every FF II character [M, 31 states].
+The keys come from `Last.Defaine.SkillLevelTarget` [B]:
+
+| Key | Enum name | Reads | Level from | Top value |
+|---|---|---|---|---|
+| 0 | `WeaponSword` | swords | `exp_table.csv` | 860 |
+| 1 | `WeaponKnife` | knives | same | 860 |
+| 2 | `WeaponSpear` | spears | same | 860 |
+| 3 | `WeaponAxe` | axes | same | 860 |
+| 4 | `WeaponCane` | staves and rods | same | 860 |
+| 5 | `WeaponBow` | bows | same | 860 |
+| 6 | `WeaponShield` | shields | same | 860 |
+| 7 | `WeaponWrestle` | bare hands | same | 860 |
+| 8 | `PhysicalAvoidance` | evasion | `value / 100 + 1` | 1 500 [C] |
+| 9 | `AbilityAvoidance` | magic evasion | `value / 100 + 1` | 1 500 [C] |
+
+The enum also names `RightArm` 10 and `LeftArm` 11, and no save holds them [M].
+`Serial.FF2.Management.SystemConfigData::.ctor` lists targets 0 to 9 [B].
+
+`StatusUpProvider::.cctor` maps the `weapon.csv` `category_type` to a target [B, D]: 1 sword, 5 knife, 6 spear, 8 axe, 10 cane, 12 bow, 43 bare hands (held by content 47 alone).
+`StatusUpProvider::GetSkillUpWeaponTarget` returns 6 for a held armor row, which is a shield, and 7 by default [B].
+Spell proficiency sits in the `skillLevel` of the spell entries ([Spells in FF II](#spells-in-ff-ii)).
+
+**The value.**
+`skillLevel` and the weapon values are totals.
+`ExpUtility::GetExpLevel` takes the highest `exp_table.csv` row whose `total_exp` does not pass the value, and `ExpUtility::GetNextTotalExp` takes the next row's total [B].
+Both read the single curve of 16 rows, with `total_exp` 0, 20, 45, 70, 100, 135, 175, 220, 270, 330, 400, 480, 570, 660, 760 and 860 [D].
+`Last.UI.SkillLevelProvider::SettingSkillLevel` shows that level as text and fills a gauge from `ExpUtility::GetNextExp` and `GetExpDifference`.
+It pins the gauge when the text equals `MAX_MAGICAL_LEVEL`, 16 [B].
+`Serial.FF2.UI.KeyInput.StatusDetailsController::UpdateView` calls it for each skill row with `SkillLevelTargets[target]` [B].
+
+Growth computes an evasion level as `value / 100 + 1`, while the screen's provider reads `exp_table.csv`.
+Which rows the screen draws sits in a prefab that was not read ([question 35](#open-questions)).
+
+Every game-written spell row fits the curve: on the Quick Save and slot 1, the row of the 61 spell entries gives the `exp_table.csv` level of the `abilityList` `skillLevel` in 61 of 61 cases [M].
+Examples: ability 335 (level 11) at 456, ability 12 (level 8) at 251 and ability 330 (level 6) at 139.
+Public guides state 100 points per level for weapons [C, RPG Site].
+Build 20251646 reads `exp_table.csv` for weapons, shields and bare hands [B], and the starting values agree: 20 is level 2 and 45 is level 3 [M, D].
+
+**The rule that raises them.**
+`StatusUpProvider::Execution` runs per character at the end of a battle.
+It calls `ExecutionSkillUpWeapon`, `ExecutionSkillUpMagic`, `ExecutionSkillUpPhysicalAvoidance`, `ExecutionSkillUpAbilityAvoidance` and `ExecutionParameterUp` in that order [B].
+`level` below is the skill's current level.
+`rank` is `Last.Battle.BattleSkillUpInformation.MonsterAverageRank`, the battle's enemy rank; the code that fills it is unread.
+The log filters read the actor from `BattlePlayerData` and exclude item uses (`<Execution>b__15_0` and `b__1`).
+
+| Skill | Uses counted | Gain | Then |
+|---|---|---|---|
+| Weapon | `Fight` (type 4) log rows of the hand's target; a non-shield attack with a shield in the other hand counts for both the weapon and the shield | `max(uses - level + rank + 10, 0)`; no gain when that value is at most 10 | `min(value + gain, next total)` |
+| Spell | log rows of that `abilityId` with type 1 or 2, from the character | `max(uses - level + rank + 2, 0)` | same; at the next total the row changes |
+| Physical evasion | enemy attack rows that target the character (`b__19_0`, body unread) | `max(uses - level + rank - 3, 0)`; a character named by `ForcedAvoidanceCountUpCharacterId` takes an extra 1 | cut at the next multiple of 100 |
+| Magic evasion | enemy magic rows that target the character (`b__20_0` to `_2`, bodies unread) | `max(uses - level + rank + 4, 0)` | same |
+
+Gains pass the Boost settings of `cheatSettingsData` through `CheatSettingsClient` [B].
+`learningProficiencyRate` scales weapons, `magicLearningProficiencyRate` scales spells and magic evasion, and `parameterUpRate` scales physical evasion.
+Each is read at its field offset in `Last.Data.CheatSettingsData`, and the rate multiplies the gain as a float.
+
+- **Caps.**
+  `GetNextTotalExp` returns 0 at the top, and the code skips the skill.
+  The `min` holds a value at the next total, so one battle raises a skill by one level at most.
+  Evasion stops at level 16, or when `ConfirmedEvasionCount` or `ConfirmedMagicDefenseCount` reaches 16 (`MAX_EVASION_TIMES_LEVEL`, `MAX_ABILITY_DEFENSE_TIMES_LEVEL`), so 1 500 is the top value [B, C].
+- **Decline.**
+  None.
+  `ExecutionSkillUpWeapon` and its siblings subtract nothing from a stored value, and the gain's floor is 0 [B].
+- **Menu cast.**
+  `StatusUpProvider::SkillUpAbilityUsedInMenu` adds `AbilityUsedInMenuSkillUpValue`, 2, through the magic rate, under the same `min` and the same row change [B].
+
+**Start values.**
+`Serial.FF2.Management.JobInfomationData::SetSkillLevel`, called by `OwnedCharacterClient::AddFromMaster`, sets keys 0 to 7 to the `total_exp` of a level per status row.
+The levels come from `JobInfomationData::.ctor` [B]:
+
+| Status | Sword | Knife | Spear | Axe | Cane | Bow | Shield | Bare |
+|---|---|---|---|---|---|---|---|---|
+| 1 to 4, 10 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| 5 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 2 |
+| 6 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+| 7 | 4 | 4 | 1 | 1 | 1 | 3 | 1 | 1 |
+| 8 | 7 | 1 | 7 | 1 | 1 | 1 | 4 | 1 |
+| 9 | 7 | 4 | 6 | 8 | 5 | 3 | 2 | 2 |
+
+The saves agree: the status 6 character reads 20 on its untrained keys, and the status 7 character reads 0 for the unused spear, axe and shield and 45 for the bow [M].
+
+#### Character growth in FF II
+
+**Fields.**
+
+| Field | FF II meaning | Evidence |
+|---|---|---|
+| `addtionalLevel` | 1, written once at creation; no screen draws it and no FF II branch takes it | 31 of 31 character states [M]; readers in the paragraphs below [B, D] |
+| `currentExp` | battle experience, added at battle end; the result list shows each share, and no rule reads the total | the shares match across the party, with values from 888 to 3 306 for two members; a guest out of the party keeps its value [M]. `StatusUpProvider::Execution` and its callees call no `GetExpLevel` on it [B] |
+| `exp_table.csv` | the proficiency curve, not a character curve | `SkillExpTableGroupId` is 1 in `StatusUpProvider`, and every caller passes 1 [B] |
+| `growth_curve.csv`, `intermediate_growth_curve.csv` | empty | header only [D] |
+| `addtionalMaxHp`, `addtionalMaxMp` | gain over `character_status.hp` and `mp` | rule below [M, D, B] |
+| `addtionalPower`, `addtionalVitality`, `addtionalAgility`, `addtionalIntelligence`, `addtionalSpirit`, `addtionalMagic` | gain over the status row's stat | rule below |
+| `addionalWeight`, `addtionalLuck`, `addtionalAttack`, `addtionalDefense` and the rate and count fields | 0 on 31 states | [M]; `StatusUpProvider` writes none of them [B] |
+| `numberOfButtles` | Boost battle counter, 0 to 9 | rule below [B, M] |
+
+`Serial.FF2.UI.KeyInput.StatusDetailsController::UpdateView` writes to `expText` and `nextExpText`.
+Both are null in `status_details.prefab`, so the status screen shows no level, experience or next-level row [B, D].
+The level text sits under an inactive object of that prefab, and `GetNextExp` returns 0 in FF II: it passes group 0, and `exp_table.csv` holds only group 1 [B, D].
+
+**Readers of `currentExp`.**
+`BattleResultProvider::Genelate` adds the battle's share to each character at every won battle.
+The one reachable display is the result list (`ResultCharacterListContentController::SetData`): it shows the share and counts it down to 0.
+The total reaches no screen.
+No FF II formula, shop, event, script or level-up reads `currentExp` [B, D].
+The headers of the list's Exp and Next columns have no text in `system_en.txt`, so the English screen should show a name, an empty column and the number under empty headers [B, D, I].
+No in-game reading confirms this ([question 47](#open-questions)).
+
+**Readers of `addtionalLevel`.**
+`OwnedCharacterClient::AddFromMaster` writes it once, at creation, and it holds 1.
+Every reachable reader ends in a null text, an inactive object or a branch no FF II data takes [B, D, M].
+On an edited save, a level above 1 changes nothing the code names ([question 48](#open-questions)).
+
+**The growth rule.**
+`StatusUpProvider::ExecutionParameterUp` applies it [B].
+`natural` is the status base plus the stored gain, clamped by its cap (`PlayerCharacterParameter::NaturalMaxHp`, `NaturalPower`).
+`roll(n)` is `Random.Range(0, n + 1)`.
+
+| Stored field | Trigger | Gain | Stops at |
+|---|---|---|---|
+| `addtionalMaxHp` | damage in this battle above 0, and `roll(9)` at least `ConfirmedMaxHp / damage` | `min(ConfirmedVitality, 99)` | `NaturalMaxHp` reaches `MAX_HP` 9 999 |
+| `addtionalVitality` | the same trigger | 1 | `MAX_VITALITY` 99 |
+| `addtionalMaxMp` | MP spent plus MP damage above 0, and `roll(9)` at least `ConfirmedMaxMp / used` | `min(ConfirmedMagic, 99)` | `MAX_MP` 999 |
+| `addtionalMagic` | the same trigger | 1 | `MAX_MAGIC` 99 |
+| `addtionalPower` | count of `Fight` rows above `roll(min(45, natural))` | 1 | `MAX_STRNGTH` 99 |
+| `addtionalIntelligence` | count of type-2 rows above `roll(min(25, natural))` | 1 | `MAX_INTELIGENCE` 99 |
+| `addtionalSpirit` | count of type-1 rows above `roll(min(15, natural))` | 1 | `MAX_SPRIT` 99 |
+| `addtionalAgility` | `ConfirmedEvasionRate / 4` above `roll(255)` | 1 | `MAX_AGILITY` 99 |
+
+The tables sit in `StatusUpProvider::.cctor` as `AdditionalParameterRandomTable` and `AdditionalParameterCalcTable`, keyed by `Last.Defaine.ParameterType` (2 HP, 3 MP, 4 Power, 5 Vitality, 6 Agility, 8 Intelligence, 9 Spirit, 14 Magic) [B].
+The trigger's division is integer division.
+`Execution` seeds the generator with `ConfirmedAgility * JobId * seed`, and `Last.Systems.BattleResultProvider::Genelate` takes the seed from `DateTime.Now.Millisecond` [B].
+As in FF I, no tool can recompute the stored gains.
+
+**Boost.**
+`ExecutionParameterUpHp` reads `isHpIncreaseByFightCount`.
+On a battle with no HP raise, the counter `numberOfButtles` rises; at 10 it resets and the character gets the HP gain without the Vitality point [B].
+Measured: `numberOfButtles` holds 0 to 9 on 31 states, `isHpIncreaseByFightCount` is `true` in all four files and `parameterUpRate` is 1 [M].
+
+**Checks on the saves.**
+Between the Quick Save and slot 1, 360 battles apart, for characters in the party throughout [M, D, C]:
+
+| Character, field | Stat range | Stat gains | Sum of the gain per stat point | Stored gain | Rest |
+|---|---|---|---|---|---|
+| 2, MP | Magic 19 to 33 | 14 | 357 | 357 | 0 |
+| 1, MP | Magic 5 to 6 | 1 | 5 | 5 | 0 |
+| 3, MP | Magic 5 to 6 | 1 | 5 | 5 | 0 |
+| 1, HP | Vitality 20 to 40 | 20 | 590 | 1 659 | 1 069 |
+| 2, HP | Vitality 20 to 41 | 21 | 630 | 1 710 | 1 080 |
+| 3, HP | Vitality 22 to 44 | 22 | 715 | 1 820 | 1 105 |
+
+The MP rows match the sums with no remainder, with the gain taken before the Magic point.
+The HP rest fits the Boost path: 360 battles at one gain per 10 give at most 36 gains, and 1 069, 1 080 and 1 105 divide into 36 gains of 29.7, 30.0 and 30.7, inside each Vitality range.
+That shows the size of a gain and leaves the rate of the Boost path open.
+Two alternatives fail.
+A fixed MP gain fails: 357 over 14 points is no constant, and characters 1 and 3 show 5.
+A gain taken after the Magic point would give 371 and 6.
+
+**Differences from FF I.**
+
+| FF I rule | FF II |
+|---|---|
+| `addtionalLevel` follows `currentExp` | fails: 1 at every experience measured |
+| Level cap `MAX_LV` 99 | the row exists, and no growth reads it [B]; the level stays at 1 |
+| Growth replay from `growth_curve.csv` | does not apply: the file is empty, so FF I's step finds no row |
+| Next level `total_exp(L + 1) - currentExp` | does not apply: `currentExp` passes 860 on 4 of 8 characters in slot 1 [M] |
+| Stored gains over a base file | holds: `min(base + gain, cap)`, and the file stores no maximum [M, B] |
+| The game stores raw sums and caps on read | holds for reads; the game's raise stops at the cap, so its own saves stay at or under it [B] |
+
+**Reading a stored gain.**
+The game reads `min(max(base + gain, 0), cap)` [B].
+The load path keeps any stored value [I].
+A gain with `base + gain` at or under the cap is a state the game can reach, and no battle count or proficiency enters the stored gain [B].
+The base comes from the character's `character_status.csv` row, and the caps are [D]:
+
+| Field | Cap key | Cap |
+|---|---|---|
+| Max HP | `MAX_HP` | 9 999 |
+| Max MP | `MAX_MP` | 999 |
+| Power, Vitality, Agility, Intelligence, Spirit, Magic | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_MAGIC` | 99 |
+
+Wounded states occur in slot 1: current HP 468 of 491, 430 of 513 and 648 of 771 [M].
+The maximum HP is not the current HP in FF II, which answers [question 20](#open-questions) for this game.
+`MAX_LUCK` exists, the status rows hold 0 for Luck and nothing raises it [D, B].
+
+#### Spells in FF II
+
+**Chains and levels.**
+`ability.csv` IDs 5 to 644 form 40 spells of 16 rows each, and the spell level is `(abilityId - 5) mod 16 + 1` [D].
+`use_value`, the MP cost, and `attack_count` both equal the level on 640 of 640 rows, and the 16 rows of a chain share one `mes_id_name` [D].
+`ability_lv` stays 0 ([Master data per game](#master-data-per-game)).
+The `type_id` varies by chain: 20 chains hold type 1 and 20 hold type 2 [D].
+
+`Misc.MiscAssetDesc.magic_level_acquisition_table` lists each step [D].
+It sits in `serial_misc_assets.json`, inside `misc_assets_all_<hash>.bundle`, and holds 640 pairs `{current_ability_id, next_ability_id}`.
+`next_ability_id` is `current_ability_id + 1`, or 0 on the sixteenth row of a chain.
+A level-up replaces the ability entry with the next ID [B].
+
+| Rule | FF I | FF II |
+|---|---|---|
+| Layout | 8 levels of 3 slots | a flat list of up to 16 spells; `abilitySlotDataList` has FF I's shape and every value is `""` on 31 states [M] |
+| Spell level | `(id - 5) / 8 + 1` | `(id - 5) mod 16 + 1` |
+| School | from the offset inside the level | from the chain: `type_id` 1 or 2 |
+| `contentId - abilityId` | 208 | 207 on the spells measured ([Abilities](#abilities)) |
+| Charges | per spell level | none: spells cost MP; `currentMpCountList` and `addtionalMaxMpCountList` hold zeros [M], and `MAX_MAGICAL_TIMES` does not exist [D] |
+| `abilityList` | equals the slots | adds ability 711 |
+
+**Learning.**
+The 40 tomes are `item.csv` rows reached by contents 151 to 190.
+Each row's `menu_function_group_id` names a `function_group.csv` row with `function1_id` 47 (`LearningAbility` in `Last.Defaine.Master.FunctionType`) and `function1_value2` set to the first row of a chain: 5, 21, 37 and so on to 629 [D, B].
+`Serial.FF2.Management.UseItemData::IsUseLearningAbility` decides whether a tome works [B]:
+
+- `TargetCommandId` is 3 and `LearningMaxCount` is 16 (`.ctor`).
+  `Last.Management.AbilityFilter::GetAbilityList` counts the abilities of the character that the Magic command lists, and a count of 16 refuses.
+- `CreateGroup` walks the chain, up to 16 rows, and an owned row of the same chain refuses.
+
+`OwnedCharacterClient::AddAbility(characterId, abilityId)` writes [B]:
+
+- a new entry with `skillLevel` 0 at the end of `abilityList`,
+- the content ID at the end of `additionOrderOwnedAbilityIds`,
+- the rebuilt dictionary, through `Last.Systems.AbilityUtility::SetTargetAbilityList`,
+- the ability ID in `learnedAbilityList` when absent.
+
+It refuses a repeated ability, an unknown character and an ability with no content row.
+Measured: the status 4 character holds 16 spells in all files, and ability 711 sits beside them, outside the count [M].
+The tomes reach the 40 first rows of the chains, IDs `5 + 16k` for k from 0 to 39, and no other row [D, B].
+`ability.csv` holds 116 more rows of type 1 or 2 (645 to 805, with gaps) with item-use and battle keys, and no tome points to them; no character holds one [D, M].
+
+**Forgetting.**
+`Serial.FF2.UI.KeyInput.AbilityWindowController::FIxForgetAbility` calls `OwnedCharacterClient::ForgetAbility`, which calls `RemoveAbility` [B].
+It removes the entry from `abilityList` and from each dictionary list that holds it, and the content ID from `additionOrderOwnedAbilityIds` (`OwnedCharacterData` +0x40).
+It leaves `sortOrderOwnedAbilityIds` alone, and `learnedAbilityList` keeps the ID: no code path removes it [B].
+Relearning runs `AddAbility`, so the spell restarts at the first row with 0 proficiency, unless the unread consumer of `SystemConfigData.IsTransferSkillLevel` (which returns 1) changes that ([question 43](#open-questions)).
+
+**Spell level and the row change.**
+In `StatusUpProvider::ExecutionSkillUpMagic`, a `skillLevel` that reaches the next total makes the game take `next_ability_id` from the chain table [B].
+It finds the type-4 content row, builds a new `OwnedAbility` with that ability, content and value, and swaps it in place in `abilityList`.
+It replaces the content ID in `additionOrderOwnedAbilityIds` and `sortOrderOwnedAbilityIds` in place, or appends it when absent, and swaps the entry in the dictionary list of every command that holds it.
+
+#### Row and value in FF II
+
+**Row and value are two facts.**
+The game changes them together, and nothing in the file ties them.
+Slot 2, which KiameV's editor wrote, differs from slot 1 on 12 spell entries of one character, and the editor wrote `skillLevel` 400 on each with the rows unchanged ([Slot 2 of FF I and FF II](#slot-2-of-ff-i-and-ff-ii)) [M, editor file].
+The Auto Save holds 456 on the same 12 entries.
+The game wrote that file, with a `battleCount` of 769 against 768, and the rows of the 12 entries give levels 1 to 8 [M].
+The battle rule does not explain 400 becoming 456: a battle adds a small gain and moves no row.
+A further editor pass before the game loaded the data would fit [I]; nothing confirms it.
+The Auto Save shows that the game writes a mismatched pair without repair [M].
+Its 12 entries stay out of every check on game rules.
+
+By `ExecutionSkillUpMagic`, such a spell shows the level of its value (11 for 456), keeps the MP cost and power of its row, and moves one row at each next total [B, I].
+A level change that matches what the game writes changes five things for one spell of one character [B, I]:
+
+1. the `abilityId` of that level in the chain, and the content ID of its type-4 row,
+2. `skillLevel`, set to `total_exp(level)`,
+3. the same two values on the entry in `abilityList` and on the entry in `abilityDictionary` key 3,
+4. the old content ID in `additionOrderOwnedAbilityIds`, replaced,
+5. the old content ID in `sortOrderOwnedAbilityIds`, replaced when it holds it.
+
+**The two copies.**
+`OwnedCharacterData` holds `OwnedAbilityList` at +0x18 and `AbilityDictionary` at +0x50 [B].
+Its copy constructor builds new `OwnedAbility` objects for each.
+`BattleResultProvider::Genelate` installs a copy after growth (`OwnedCharacterClient::SetOwnedCharacter`), and `ExecutionSkillUpMagic` sets the value on the list's object [B].
+So the dictionary's value goes stale until the row changes.
+
+Measured on the three game files: the two copies hold the same IDs in the same order, minus 711, on every character.
+15 of the 16 spells of the status 4 character are equal, and the rest differ with the list at or above the dictionary, for example 251 against 227 and 83 against 70 [M].
+The dictionary row equals the level of its own value on all 96 game-file entries [M].
+Which copy the Magic screen draws is open ([question 36](#open-questions)).
+
+**The Magic list.**
+`command.csv` row 3 names `ability_group_id` 1, `ability_group.csv` holds group 1 with `type_id` 1 and 2, and `chanting.csv` rows 1 and 2 give the ability types 1 and 2 [D].
+`SystemConfigData::IsAbilityGroupCheck` returns 1 [B], and `command_lv` and `ability_lv` are 0, so the level filter passes every ability [D].
+The Magic list holds the owned abilities of type 1 or 2, which leaves out ability 711 (type 12).
+Measured: each dictionary list equals `abilityList` minus 711 [M].
+The closures of `AbilityFilter` come from FF VI's binary and were not re-read on FF II ([Ability groups](#ability-groups)).
+
+#### Keywords in FF II
+
+`userData → ownedKeyWaordList → target` is a flat list of ints, not JSON strings.
+It lists the keywords in acquisition order (917, 918, 921, 919 and so on) with no repeat, and holds 6 entries in the Quick Save and 12 in each other file, IDs 917 to 931 [M].
+Every ID is a type-6 content row [D].
+
+The 15 rows are contents 917 to 931, keys `MSG_IMP_WORD_01` to `_15`, `type_value` 1 to 15 [D].
+Their short names, in order, are Wild Rose, Mythril, Dreadnought, Palamecia, Airship, Goddess's Bell, Sunfire, Mysidia, Ultima Tome, Dragoons, Wyverns, Cyclone, Jade Passage, Mask and Ekmet Teloes [D].
+
+`Last.Management.UserDataClient::AddKeyWord(contentId)` checks that the content row has type 6 and is absent from the list, and appends it [B].
+The script function `Last.Interpreter.Instructions.SystemCall.Current::NbrMemory` calls it, plays a sound and opens `SecretWordUIClient` [B].
+So a story event adds a keyword, and a debug item menu adds them all (`ItemDebugController::AddAll`) [B].
+`AddKeyWord` is the only write method the metadata names, so no method removes a keyword [B, names].
+`game_constant_int.csv` `WORD_LEARN_MEMORY` is 15 [D], which reads as the target of an achievement [I].
+Whether a keyword added out of order opens dialogue before the story reaches it is open ([question 44](#open-questions)).
+
+#### People and party in FF II
+
+**People.**
+`job.csv` holds one row per person, 1 to 9, keyed `MSG_CHAR_NAME_01` to `_09`: Firion, Maria, Guy, Minwu, Josef, Gordon, Leila, Ricard and Leon [D].
+`jobId` equals the `job_id` of the character's `character_status.csv` row on all 31 states [M, D], so `job` names the person here.
+The game hides job text (`SystemConfigData::IsVisibleJobText` returns 0) and job names on equipment (`IsEquipableJobName` returns 0) [B].
+`job_group.csv` row 1 accepts jobs 1 to 9, and every equipment row names that group, so any person wears any item [D].
+
+| Status | `job_id` | Person | Base HP, MP | Joins through |
+|---|---|---|---|---|
+| 1, 2, 3 | 1, 2, 3 | Firion, Maria, Guy | 30, 10; 20, 10; 40, 10 | `INIT_PARTY_1` to `_3`, new game [D] |
+| 10 | 9 | Leon, first form | 30, 5 | `INIT_PARTY_4` = 10 [D]; the row exists with `isEnableCorps` false on all states [M] |
+| 4 | 4 | Minwu | 175, 103 | `SystemCall.Current::JoinMingWu` |
+| 5 | 5 | Josef | 235, 5 | `JoinJosef` |
+| 6 | 6 | Gordon | 128, 15 | `JoinGordon` |
+| 7 | 7 | Leila | 248, 35 | `JoinReila` |
+| 8 | 8 | Ricard | 549, 5 | `JoinRichard` |
+| 9 | 9 | Leon, return | 1 098, 5 | `JoinLeonhart` |
+
+`SystemCall.Current::JoinCharacter` calls `Corps::UnlockCharacter`, which creates the row from master data the first time through `OwnedCharacterClient::AddFromMaster`.
+Next it calls `Corps::AddMemberToCorps`, `Character::RemoveCondition`, `RecoveryHp` and `RecoveryMp` [B].
+`SecededCharacter` calls `Corps::RemoveMemberFromCorps` and leaves the row and its gains: the rows of Josef, Gordon and Minwu stay after they leave [B, M].
+Scripts find a person through the status (`Corps::GetCharacterIdFromStatusId`) [B].
+`SystemCall.Current::AddPowerToCorps`, `AddSpiritToCorps`, `AddIntelligenceToCorps` and `AddAgilityToCorps` exist, so a story event can add stats beyond the battle rule and the stored gain has no fixed sum [B, names].
+
+The rows grow by join: 7 in the Quick Save and 8 in slot 1 and the Auto Save [M].
+The status table allows 10 rows at most [D, I].
+`id` follows join order, not the status: Leon's first form is 4, Minwu 5, Josef 6, Gordon 7 and Leila 8 [M].
+What `JoinLeonhart` does to the status 10 row, and whether status 9 is a new row, is unproven: no save reaches it, and the code touches statuses 9, 10 and 11 [B, unread beyond those constants].
+
+**Job lists.**
+`jobList` starts with the person's own job and holds 4 to 8 entries on 31 states, each with `level` 1 and `currentProficiency` 0 [M].
+It grows as people join.
+`userData.releasedJobs` holds 3 or 4 entries ([Party](#party)).
+In the four files it equals jobs 1 to 3 plus the `jobId` of the fourth `corpsList` member, and an empty seat adds nothing [M, I].
+The Quick Save holds 1, 2, 3 and 6. Slot 1 and slot 2 hold 1, 2, 3 and 7. The Auto Save, whose fourth seat is empty, holds 1, 2, 3.
+
+**Party.**
+`isEnableCorps` equals membership of `corpsList` on all 31 states [M].
+`corpsList` has four seats (`GetMemberMaxCount` returns 4) [B].
+Its `id` is `Last.Defaine.User.CorpsId`, Front 1 and Back 2 [B], and `characterId` 0 marks an empty seat, as in the fourth entry of the Auto Save [M].
+`character_status.csv` `corps` starts Maria at 2 and `INIT_CORPS_2` is 2 [D], yet the saves hold 1 in every entry [M].
+A row change made in game would write the field [I] ([question 41](#open-questions)).
+
+**The row command.**
+`commandList` is `[1, 3, 4, 2, 5, 7]`: Attack, Magic, Items, Defend, Flee and Row [M, D].
+Command 7 runs ability 797, type 7 `Change` [D].
+The Row command is FF II's sixth command, so a five-entry `commandList` is an FF I shape.
+
+#### Other fields in FF II
+
+| Path | Holds |
+|---|---|
+| `learnedAbilityList` | every ability ID that an `AddAbility` wrote, across the party, kept after a row change or a forget; 46 in slot 1, with 711 first [M, B] |
+| `character.sortOrderOwnedAbilityIds` | the player's spell order, as content IDs [M, B] |
+| `character.abilitySlotDataList` | the empty grid [M] |
+| `character.currentMpCountList`, `addtionalMaxMpCountList` | zeros [M] |
+| `character.learningAbilitys`, `equipmentAbilitys`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | empty or 0 on 31 states [M] |
+| `character.parameter.addtional…Count`, `…Rate`, `addtionalAttack`, `addtionalDefense`, `addtionalAbilityDefense` | 0 on 31 states [M] |
+| `character.parameter.currentConditionList` | `{"target":[]}` [M] |
+| `userData.cheatSettingsData` | nine Boost keys, which change growth [B] |
+| `userData.ownedMagicList`, `ownedMagicStoneList`, `warehouseItemList` | empty [M] |
+| `userData.owendCrystalFlags` | 4 booleans, all false [M] |
+| `userData.ownedTransportationList` | 7 vehicles ([Transportation](#transportation)) |
+| `dataStorage` | the `scenario`, `treasure`, `global`, `area` and `map` flags |
+
+`Last.Battle` computes attack, defence, evasion and the hit counts per battle from equipment and skills (`Serial.FF2.Calc.CalcExecuteFF2`); the file stores none of them [M, B].
+Weight sits in `weapon.csv` and `armor.csv` and is read at battle [D].
+`achievement.csv` and `game_constant_int.csv` hold targets that these fields reach: `ALL_EQUIP_SKILL` 16, `ALL_MAGIC_SKILL` 16, `WORD_LEARN_MEMORY` 15, `ALL_AREA_VISIT` 27 and `TOTAL_CHEST_COUNT` 243 [D].
+The achievement code is unread.
+
+#### Bounds in FF II
+
+`Last.Data.User.UserSaveData` declares `owendGil`, `escapeCount`, `battleCount`, `corpsSlotIndex`, `openChestCount`, `steps`, `saveCompleteCount`, `monstersKilledCount` and `totalGil` as C# `int`.
+`OwnedCharacterSaveData` declares `id`, `characterStatusId`, `jobId`, `currentExp` and `numberOfButtles` as `int`, and `OwnedAbilitySaveData` declares `abilityId`, `contentId` and `skillLevel` as `int`.
+`playTime` is a `double` [B].
+
+The `MAX_` keys of `game_constant_int.csv` that apply to FF II fields [D]:
+
+| Field | Key | Value |
+|---|---|---|
+| `owendGil` | `MAX_GIL` | 9 999 999 |
+| inventory `count` | `MAX_ITEM` | 99 |
+| HP, MP, stats | [Character growth in FF II](#character-growth-in-ff-ii) | |
+| weapon, shield and bare-hand skill | `MAX_WEAPON_LEVEL` | level 16, value 860 |
+| spell | `MAX_MAGICAL_LEVEL` | level 16, value 860 |
+| evasion and magic evasion | `MAX_EVASION_TIMES_LEVEL`, `MAX_ABILITY_DEFENSE_TIMES_LEVEL` | level 16, value 1 500 |
+| `currentExp` | `MAX_EXP` | 9 999 999 [I] |
+
+These keys have no save field in FF II: `MAX_ATTACK`, `MAX_DEFENSE`, `MAX_ABILITY_ATTACK`, `MAX_ABILITY_DEFENSE`, `MAX_ACCURACY_RATE` and its siblings, `MAX_ATTACK_SPEED`, `MAX_HIT_VALUE`, `MAX_EVASION_TIMES`, `MAX_ABILITY_DEFENSE_TIMES`, `MAX_ACCURACY_TIMES` and `MAX_LV`.
+
+#### Equipment slots in FF II
+
+`parts_group.csv` and the `parts_group_id` of `weapon.csv` and `armor.csv` state the slots [D]:
+
+| Slot | Takes | Empty holds | Evidence |
+|---|---|---|---|
+| 1 | weapon (group 1), shield (group 2) | 47 | 12 of 12 empty first hands read 47 [M] |
+| 2 | weapon, shield | 47, not 208 | 12 of 12 empty second hands read 47; 208 sits in no slot [M] |
+| 3 | armor (21 rows) | 209 | [M, D] |
+| 4 | helmet (11) | 210 | [M, D] |
+| 5 | gloves (11) | 211 | [M, D] |
+
+FF I binds equipment slot 1 to a weapon and slot 2 to a shield, with a placeholder per slot ([Equipment slots](#equipment-slots)).
+Both rules fail in FF II:
+
+- On the three game files, equipment slot 2 holds 12 empty entries, 10 weapons and 1 shield (content 105, in the Quick Save). No measured equipment slot 1 holds a shield [M].
+- An empty hand holds 47 in either equipment slot. Content 208 stays a row with an inventory count of 5 and sits in no measured slot [M]. [Question 40](#open-questions) checks a hand that held a shield.
+- Equipment slots 1 and 2 can hold the same ID, for example 60 and 60, or 91 and 91. On all three game files, every held ID's inventory count covers the number of slots that hold it [M].
+- The equip floor of [Inventory](#inventory) holds on those files [M].
+  The placeholder rows sit in the inventory of save slot 1 with counts 10, 5, 5, 11 and 11 for 47 and 208 to 211; their meaning is open.
+
+`weapon.csv` holds 7 rows with `category_type` 12 (bows), `two_handed_flag` 1 and `back_flag` 1 [D].
+`OwnedItemData::get_IsTwoHanded` and `get_IsBow` exist, and `OwnedCharacterClient::CorrectNotEquipTwoHandedShields` is the game's cleanup [B, names].
+No measured character holds a bow, so the stored form of a two-handed row is open ([question 39](#open-questions)).
+
+#### Nameless rows in FF II
+
+Five FF II rows have no name: `content.csv` key `None` on contents 937, 962, 963, 1025 and 1026, which are abilities 711, 736, 737, 799 and 800 [D].
+Ability 711 is `TwoSwordStyle` (12), and the others are `Fight` (4) [D].
+No job, command, monster or other content row of FF II lacks a key [D].
+
+| Row | In the saves | Reach |
+|---|---|---|
+| 711 | on every character: 7, 8, 8 and 8 entries in the four files (31), first in `abilityList` and in `learnedAbilityList`; `abilityDictionary` does not hold it [M] | `ability_random_group.csv` holds it on groups 1 to 3 with rate 0, and `character_status.csv` `ability_random_group_id` names 1 to 3 [D] |
+| 736, 737, 799, 800 | in no file [M] | no save route found |
+
+`Last.Data.User.OwnedCharacterData::get_HasTwoSwordStyle` exists, so row 711 reads as FF II's dual-wield permission, and removing it may stop a character from dual wielding [I].
+Every other ability row of FF II has a name, so ability 711 is the one nameless row in the saves ([Rows without a name](#rows-without-a-name)).
+
+#### Identifying FF II
+
+The shared gate of [Telling the games apart](#telling-the-games-apart) rejects nothing on a real FF II save [M, 4 files]:
+
+- `ownedTransportationList.target` holds 7 entries, the count that maps to FF II.
+- `cheatSettingsData.jobProficiencyRate`, `wonderWandIndex` and `mapData.otherPartyDataList` are absent, so no marker contradicts the count.
+- `ownedCharacterList`, `normalOwnedItemList` and `importantOwendItemList` exist with unique `id` and `contentId` values.
+
+FF II has no key-name marker of its own.
+The count of `skillLevelTargets` keys separates the games: 10 on every FF II character, 0 on FF I, FF IV, FF V and FF VI, and 2 on FF III [M, 16 files].
+
 ### Slot `configData`
 
 `configData` keys, in order [M]: `buttonType`, `battleModeIndex`, `battleSpeedIndex`, `battleMessageSpeedIndex`, `isCursorMemory`, `isKeepAutoBattle`, `messageSpeed`, `isLeftActionIcon`, `isLeftVirtualPad`, `isLeftMenuCommand`, `isLeftBattleCommand`, `reequipIndex`, `analogModeIndex`, `isAutoDash` (an int, `1`).
@@ -2146,7 +2616,7 @@ A writer changes the keys the user edited and nothing else, re-encodes the conta
 14. FF VI toggles and reselecting a character appended duplicate or unlearned spells [C, `d8a6c6f`].
 15. FF I abilities added in the editor kept `contentId` 0 [C, `375f916`].
 16. FF I slot spells went into `additionOrderOwnedAbilityIds` twice [C, `375f916`].
-17. FF II ability 711 breaks the +207 rule; it maps to 937 [M].
+17. FF II holds three offsets between `contentId` and `abilityId` (207, 226 and 931); ability 711 breaks the +207 rule and maps to 937 [M, D].
 18. "Reset Sort" wrote row numbers `1..N` into `normalOwnedItemSortIdList` [C, `6ef3bc7`].
 19. Time stamps: a `0` prefix, one en-US layout, and a rewrite of stamps the editor could not parse [C, `6ef3bc7`].
 20. `NowToTicks` is 112 days off; the .NET epoch offset is `621355968000000000` [C].
@@ -2168,6 +2638,9 @@ A writer changes the keys the user edited and nothing else, re-encodes the conta
 
 Questions 1 to 25 need a real save or an in-game test.
 Questions 26 to 34 need an in-game test, a save that uses the rows, or a read of the game's binary.
+Questions 35 to 45 are FF II in-game tests, each run on a copy of a save, edited and loaded in the game: character numbers are `id`s in FF II slot 1 ([FF II](#ff-ii)).
+Question 46 lists the FF II binary reads still open.
+Questions 47 and 48 are FF II in-game readings on the experience and level fields.
 
 1. FF III to VI: slot names 2 to 20 and the Quick Save name (FF I and FF II: slot names 3 to 20), the ability offsets, FF VI espers and other parties, and how the game writes non-ASCII text in FF III, V and VI.
    The measured saves come from early game.
@@ -2178,7 +2651,7 @@ Questions 26 to 34 need an in-game test, a save that uses the rows, or a read of
    None of the 34 files had a stream length divisible by 32.
 5. The `timeStamp` layout: FF I and FF II used different layouts on one machine, and the setting that picks the layout is unknown.
 6. `timeStampTicks`: local time or UTC?
-7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `pointIn`, `playableCharacterCorpsId`, `skillLevelTargets`, `abilityDictionary`, `scenarioFlags`, and the FF II `learnedAbilityList`.
+7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `pointIn`, `playableCharacterCorpsId` and `scenarioFlags`.
 8. Does the game accept an inventory item missing from a non-empty `normalOwnedItemSortIdList`?
 9. The PlayStation variant: file layout after extraction, presence of a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not measured.
@@ -2244,3 +2717,52 @@ Questions 26 to 34 need an in-game test, a save that uses the rows, or a read of
 34. How does the game display a saved pair such as (1525, 1861)?
     The load keeps both values ([Master data per game](#master-data-per-game)), and the name functions look the ability up through its content row, which the repeat removed.
     A test copy that holds one of the four abilities, opened on the magic screen, would settle it.
+35. FF II evasion rows.
+    Character 1 stores 252 (evasion) and 342 (magic evasion).
+    Read the skill levels shown: 3 and 4 give `value / 100 + 1`, 8 and 10 give `exp_table.csv`.
+    The reading settles the rule for those two rows ([Skill levels in FF II](#skill-levels-in-ff-ii)).
+36. Which spell copy the screen draws.
+    Character 2's spell 12 holds 251 in `abilityList` and 227 in `abilityDictionary`, at level 8, whose band runs 220 to 270.
+    Read the gauge on the Magic screen and in battle: about 62% means the list, 14% the dictionary.
+37. A mismatched spell.
+    On a copy with spell 197 at `skillLevel` 456 and its row unchanged, read the shown level, the MP cost and, after one cast, the saved `abilityId`.
+    The expected reading is level 11, MP 1 and row 197, which shows that a one-sided edit misleads ([Row and value in FF II](#row-and-value-in-ff-ii)).
+38. A paired edit.
+    On a copy, set one spell to level 10 with the five changes of [Row and value in FF II](#row-and-value-in-ff-ii): row, `skillLevel` 330, content ID, both copies and both order lists.
+    Read the level, the MP cost 10 and the gauge, cast once in battle and save.
+    The expected reading is a value that rises and two copies that keep the row.
+39. A bow.
+    Equip a bow and save.
+    Read `equipmentList` keys 1 and 2 and the inventory count of the bow's content ID.
+    The reading shows the stored form of a two-handed row ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
+40. Hands and shields.
+    Remove a shield from equipment slot 2, save and read the slot: 47 or 208.
+    Read which hand equipment slot 1 labels on the status 7 character (`dominant_arm` 2).
+    The readings settle the unequip placeholder and the hand label.
+41. Row.
+    Set a member to the back row, save, and read `id` in `corpsList` and `corpsSlots`.
+    A 2 confirms `CorpsId` and shows that the row lives in those lists ([People and party in FF II](#people-and-party-in-ff-ii)).
+42. A stat above its cap.
+    On a copy with `addtionalPower` at 120, read the shown Power: 99 confirms the clamp on read.
+    Win a battle, save and read the field: an unchanged value confirms that the raise stops at the cap.
+43. Forget and relearn.
+    Forget a spell of level 4 or more, use its tome and save.
+    Read the row and `skillLevel`: the first row and 0 confirm `AddAbility`, and a kept level shows that `IsTransferSkillLevel` carries it.
+    Then read `learnedAbilityList`: the forgotten ID stays.
+44. A keyword ahead of the story.
+    On a copy, append a keyword the save lacks.
+    Read the Words list and ask an NPC about it.
+    The reading shows whether the list alone unlocks dialogue and whether a story flag gates it.
+45. Ability 711 on screen.
+    Open the Magic and status screens and read whether any row or blank line shows.
+    The expected reading is none.
+    It settles [question 27](#open-questions) for FF II.
+46. FF II binary reads left open, none of them blocking a read of the saves: the code that fills `MonsterAverageRank`; the log rows that `<Execution>b__19_0` and `b__20_*` keep; `JoinLeonhart` beyond its constants; the consumer of `IsTransferSkillLevel`; the `Condition` filter of `BattleResultProvider::Genelate`; the second `Genelate` loop over members out of battle; the achievement code behind `ALL_EQUIP_SKILL`, `ALL_MAGIC_SKILL`, `WORD_LEARN_MEMORY`, `ALL_AREA_VISIT` and `TOTAL_CHEST_COUNT`; and, among the readers of `currentExp` and `addtionalLevel`, whether a shipped build opens `Last.Debugs.*` and `Last.Battle.Damage.*`, the `UnityEvent` calls in prefabs, the touch bundles outside `touch_party_setting`, `touch_play_data` and `touch_serial_common` (`CloudSaveMainContentController` reads the level), one unread script file, `<>c::<GetResult>b__0_0` and the native `JsonUtility`.
+47. FF II result list and status detail.
+    Win a battle against an enemy that gives experience and read the panel below Gil.
+    The code predicts one row per party member with a name, an empty column and a number that counts down to 0 under empty headers, and 0 in both columns for a member with no share [B, D, I].
+    Compare the first number of a row with that character's `currentExp` gain between a save before the battle and a save after it.
+    Then open the status detail of one character: the prefab predicts no Lv, Exp or Next row.
+48. An edited FF II level.
+    On a copy, set `addtionalLevel` to 50 for one character, play one battle and save.
+    Expect damage, hit and menus unchanged and the file still holding 50 ([Character growth in FF II](#character-growth-in-ff-ii)).
