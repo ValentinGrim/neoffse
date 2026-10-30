@@ -30,6 +30,19 @@
 //!   and the slot count, refuses the edits the game never makes, and returns
 //!   a `GameChange`. [`Ff2Model::row_locked`] and [`Ff2Model::field_locked`]
 //!   name the rows and fields it refuses whatever the value.
+//!
+//! [`Ff2Model::summary`] and [`Ff2Model::view`] read the slot for the Home
+//! screen and the editor: the first gives the slot, play time, place and
+//! party, the second a snapshot of every character, item row and gil. Both
+//! leave the document untouched.
+//!
+//! [`Ff2Format`] implements `neoffse_core::SaveFormat` for the game: it
+//! detects a slot file by its name and opens it as an [`Ff2Document`], which
+//! implements `neoffse_core::SaveDocument` over the model, the container
+//! facts of the opened file and its name. Both are aliases of the generic
+//! [`SlotFormat`] and [`SlotDocument`] of [`crate::shared`], instantiated
+//! with [`Ff2Model`]; the impl of `SlotModel` for the model lives in this
+//! module.
 
 mod apply;
 mod binding;
@@ -38,19 +51,42 @@ mod game;
 mod locate;
 mod meta;
 pub mod names;
+mod slot;
+mod summary;
+mod view;
 
-use neoffse_core::{CollectionMeta, EditError, FieldId, FieldMeta, Game, Value};
+use neoffse_core::{Capability, CollectionMeta, EditError, FieldId, FieldMeta, Game, Value};
 use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
+use crate::shared::{SlotDocument, SlotFormat};
 use binding::Binding;
 use locate::locate;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff2Pr;
+
+/// The capabilities of an FF II slot: the party and the inventory (gil sits
+/// under the inventory).
+pub const CAPABILITIES: [Capability; 2] = [Capability::Party, Capability::Inventory];
+
+/// The FF II Pixel Remaster format of `neoffse-core`: detection by slot name
+/// and the typed open.
+///
+/// It holds the ID tables and the language of the view labels, fixed for
+/// every document it opens: a language switch builds a new format. It is an
+/// alias of the generic [`SlotFormat`] of the shared layer.
+pub type Ff2Format = SlotFormat<Ff2Model>;
+
+/// An FF II slot opened by [`Ff2Format`].
+///
+/// It keeps the BOM and the exact trailer of the opened file and the file
+/// name, so `encode` writes the file back as it came. Its `Debug` is written
+/// by hand and prints the file name only, and it has no `Clone`.
+pub type Ff2Document = SlotDocument<Ff2Model>;
 
 /// An FF II slot document with its ID tables.
 ///
