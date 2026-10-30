@@ -52,7 +52,15 @@ impl Ff2Model {
     /// Equipping the placeholder of the slot is the unequip: the first and
     /// third steps only, the slot `count` copies the count of the placeholder
     /// row (omitted when the row is absent), and the item that left stays in
-    /// the inventory. Every other edit is one plain edit.
+    /// the inventory. A `Set` of `character.<id>.spell.<chain>` is the Level
+    /// edit: it expands into the plain `Set`s of the stored places of the
+    /// spell (the `abilityList` entry, the key-3 dictionary copy and the old
+    /// content id in each order list,
+    /// `docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`), and the
+    /// inverse restores each place to its exact old value, a mismatched pair
+    /// included. A character with no copy of the spell in the key-3
+    /// dictionary gets `UnknownField` and no write. Every other edit is one
+    /// plain edit.
     ///
     /// The plan applies all or none: a failure at any step gives the document
     /// back byte for byte.
@@ -165,6 +173,7 @@ impl Ff2Model {
                 let plan = equip_plan(&mut self.document, self.tables, field, (id, slot), content_id, names::EQUIPMENT_SLOTS)?;
                 return Ok(plan.into());
             }
+            Binding::Character { id, part: Part::Spell(chain) } => return self.spell_plan(field, id, chain, number),
             Binding::Character {
                 id,
                 part: part @ (Part::MaxHpGain | Part::MaxMpGain | Part::Stat(_)),

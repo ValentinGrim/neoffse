@@ -119,6 +119,17 @@ pub(crate) enum Located {
     Failed(DocumentError),
 }
 
+impl Located {
+    /// The error a caller reports for `field`: `UnknownField` for an absent
+    /// entry, the `Format` error of the read otherwise.
+    pub(crate) fn into_error(self, field: &FieldId) -> EditError {
+        match self {
+            Self::Absent => EditError::UnknownField { field: field.clone() },
+            Self::Failed(source) => format_error(field, source),
+        }
+    }
+}
+
 impl From<DocumentError> for Located {
     fn from(source: DocumentError) -> Self {
         Self::Failed(source)
@@ -161,8 +172,5 @@ where
         .map_err(|source| format_error(field, source))?
         .ok_or_else(|| missing_row(names::CHARACTER, id))?;
     let base = element(characters_target(), index);
-    part(document, base).map_err(|error| match error {
-        Located::Absent => EditError::UnknownField { field: field.clone() },
-        Located::Failed(source) => format_error(field, source),
-    })
+    part(document, base).map_err(|error| error.into_error(field))
 }

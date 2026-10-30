@@ -27,6 +27,7 @@ pub(crate) mod ff2_real;
 pub(crate) mod ff2_render;
 pub(crate) mod ff2_rules;
 pub(crate) mod ff2_save;
+pub(crate) mod ff2_spell;
 pub(crate) mod growth_oracle;
 pub(crate) mod json_diff;
 mod json_scan;

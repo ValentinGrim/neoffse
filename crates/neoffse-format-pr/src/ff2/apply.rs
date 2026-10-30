@@ -27,6 +27,13 @@ impl Ff2Model {
     /// the old value that runs under `CapPolicy::StorageOnly`. A failed call
     /// leaves the document as it was.
     ///
+    /// A `Set` of a spell level (`character.<id>.spell.<chain>`) is
+    /// `ReadOnly` under both policies, before any document read: one `Set`
+    /// cannot return the exact inverse of the places the level moves. The
+    /// raw interface edits those places one by one (`ability.<i>.<part>`,
+    /// `dictionary.<j>.<part>`, `addition_order.<k>`, `sort_order.<k>`), and
+    /// [`apply_game`](Self::apply_game) writes them together.
+    ///
     /// An `Insert` or `Remove` acts on a row of `inventory` or `key_items`
     /// and returns the `Remove` or `Insert` that restores the row at its
     /// place, bytes included. `Insert` checks the collection, the key bounds,

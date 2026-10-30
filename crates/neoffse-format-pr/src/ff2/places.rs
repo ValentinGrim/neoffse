@@ -33,6 +33,16 @@ pub(super) enum Group {
     Dictionary,
 }
 
+impl Group {
+    /// The group word of a place field.
+    fn name(self) -> &'static str {
+        match self {
+            Self::Ability => names::ABILITY,
+            Self::Dictionary => names::DICTIONARY,
+        }
+    }
+}
+
 /// The three values of an ability entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntryPart {
@@ -95,7 +105,7 @@ pub(super) enum Order {
 
 impl Order {
     /// The path to the array of content ids for the character at `base`.
-    fn list(self, base: &Path) -> Path {
+    pub(super) fn list(self, base: &Path) -> Path {
         let key = match self {
             Self::Addition => "additionOrderOwnedAbilityIds",
             Self::Sort => "sortOrderOwnedAbilityIds",
@@ -126,6 +136,14 @@ pub(super) enum Place {
 }
 
 impl Place {
+    /// The field that names this place on character `id`.
+    pub(super) fn field(self, id: u32) -> FieldId {
+        match self {
+            Self::Entry { group, position, part } => names::place(id, group.name(), position, part.name()),
+            Self::Order { order, position } => names::order_place(id, order.name(), position),
+        }
+    }
+
     /// The place that `keys` (after `character.<id>`) name, `None` for any other path.
     pub(super) fn declared(keys: &[Key]) -> Option<Self> {
         let entry = |group, position: &u32, part: &&str| {
@@ -227,6 +245,12 @@ pub(super) fn entries_of(document: &mut Document, base: &Path, group: Group, fie
     counted(document, list, field)
 }
 
+/// The path and the length of the list `order` of the character at `base`,
+/// `None` when the character has no such list.
+pub(super) fn order_of(document: &mut Document, base: &Path, order: Order, field: &FieldId) -> Result<Option<(Path, usize)>, EditError> {
+    counted(document, Ok(order.list(base)), field)
+}
+
 /// The view label of an entry: its ability's name, `Entry <id>` without one.
 fn entry_label(tables: &GameTables, language: Language, ability: i64) -> String {
     match u32::try_from(ability) {
@@ -249,7 +273,6 @@ pub(super) fn fields(document: &mut Document, tables: &GameTables, id: u32, lang
         let Some((list, len)) = entries_of(document, &base, group, &character)? else {
             continue;
         };
-        let group_name = if group == Group::Ability { names::ABILITY } else { names::DICTIONARY };
         for (index, position) in (0..len).zip(0_u32..) {
             let entry = element(list.clone(), index);
             let ability =
@@ -262,21 +285,23 @@ pub(super) fn fields(document: &mut Document, tables: &GameTables, id: u32, lang
                     read_stored(document, &with(entry.clone(), &[Segment::Key(part.key())]), &character)?
                 };
                 let Some(value) = stored else { continue };
-                let mut meta = meta(Place::Entry { group, position, part }, tables);
+                let place = Place::Entry { group, position, part };
+                let mut meta = meta(place, tables);
                 meta.label = format!("{prefix} {}, {name}, {}", position + 1, part.word());
-                fields.push(FieldView::new(names::place(id, group_name, position, part.name()), meta, Value::Int(value)));
+                fields.push(FieldView::new(place.field(id), meta, Value::Int(value)));
             }
         }
     }
     for order in [Order::Addition, Order::Sort] {
-        let Some((list, len)) = counted(document, Ok(order.list(&base)), &character)? else {
+        let Some((list, len)) = order_of(document, &base, order, &character)? else {
             continue;
         };
         for (index, position) in (0..len).zip(0_u32..) {
             let value = read_int(document, &with(list.clone(), &[Segment::Index(index)])).map_err(|source| format_error(&character, source))?;
-            let mut meta = meta(Place::Order { order, position }, tables);
+            let place = Place::Order { order, position };
+            let mut meta = meta(place, tables);
             meta.label = format!("{} {}", order.label(), position + 1);
-            fields.push(FieldView::new(names::order_place(id, order.name(), position), meta, Value::Int(value)));
+            fields.push(FieldView::new(place.field(id), meta, Value::Int(value)));
         }
     }
     Ok(fields)
