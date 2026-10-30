@@ -11,6 +11,14 @@ pub(crate) fn ff1() -> &'static GameTables {
     tables_for(Game::Ff1Pr).unwrap()
 }
 
+/// The games with embedded data: FF I and each game part appends its own.
+pub(crate) const EMBEDDED: &[Game] = &[Game::Ff1Pr, Game::Ff2Pr];
+
+/// The cached tables of an embedded game.
+pub(crate) fn game_tables(game: Game) -> &'static GameTables {
+    tables_for(game).unwrap()
+}
+
 pub(crate) const CONTENT: &str = r#"# minimal/content.toml
 # Written by hand for the tests: two kinds of content and a placeholder.
 
