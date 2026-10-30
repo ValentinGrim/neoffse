@@ -185,21 +185,7 @@ impl Ff1Model {
     /// document holds another shape: a float or an oversized integer where
     /// an integer belongs, a non-string name.
     pub fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
-        let binding = Binding::resolve(field)?;
-        if let Binding::Character { id, part } = binding
-            && binding.is_derived()
-        {
-            return derived::value(&mut self.document, self.tables, id, part, field);
-        }
-        let path = locate(&mut self.document, &binding, field)?;
-        let read = if binding.is_text() {
-            read_text(&mut self.document, &path).map(Value::Text)
-        } else if binding.is_spell() {
-            read_ability(&mut self.document, &path).map(|id| Value::Int(i64::from(id)))
-        } else {
-            read_int(&mut self.document, &path).map(Value::Int)
-        };
-        read.map_err(|source| format_error(field, source))
+        get_in(&mut self.document, self.tables, field)
     }
 
     /// The metadata of `field`, or `None` for an undeclared path. It reads
@@ -216,4 +202,24 @@ impl Ff1Model {
     pub fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
         Some(collection_meta(Collection::of(collection)?, self.tables))
     }
+}
+
+/// The body of [`Ff1Model::get`], over the parts of the model so that the
+/// shared summary can call it with the document it is walking.
+pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
+    let binding = Binding::resolve(field)?;
+    if let Binding::Character { id, part } = binding
+        && binding.is_derived()
+    {
+        return derived::value(document, tables, id, part, field);
+    }
+    let path = locate(document, &binding, field)?;
+    let read = if binding.is_text() {
+        read_text(document, &path).map(Value::Text)
+    } else if binding.is_spell() {
+        read_ability(document, &path).map(|id| Value::Int(i64::from(id)))
+    } else {
+        read_int(document, &path).map(Value::Int)
+    };
+    read.map_err(|source| format_error(field, source))
 }

@@ -10,7 +10,8 @@
 //! alias: `Ff1Format` is `SlotFormat<Ff1Model>` and `Ff1Document` is
 //! `SlotDocument<Ff1Model>`. [`SlotFormat`] runs the open pipeline: it
 //! decodes the container, parses the JSON text, applies the game rule and
-//! checks the shape.
+//! checks the shape. The summary of a slot and the inventory section of its
+//! view are the same for every game.
 
 mod document;
 mod format;
@@ -21,6 +22,8 @@ pub mod names;
 pub(crate) mod open;
 pub(crate) mod paths;
 pub(crate) mod read;
+pub(crate) mod summary;
+pub(crate) mod view;
 pub(crate) mod write;
 
 pub use document::SlotDocument;
