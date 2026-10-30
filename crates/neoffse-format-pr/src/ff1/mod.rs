@@ -84,6 +84,7 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
+use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
 use binding::Binding;
@@ -198,6 +199,6 @@ impl Ff1Model {
     /// any other path.
     #[must_use]
     pub fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
-        Some(meta::collection_meta(Collection::of(collection)?, self.tables))
+        Some(collection_meta(Collection::of(collection)?, self.tables))
     }
 }

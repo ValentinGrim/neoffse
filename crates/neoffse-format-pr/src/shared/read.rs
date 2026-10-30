@@ -7,7 +7,7 @@
 
 use neoffse_core::{EditError, FieldId, FormatError, RowId};
 
-use super::paths::{Collection, Path, element, with};
+use super::paths::{Collection, List, Path, element, with};
 use crate::document::{Document, DocumentError, Scalar, Segment, render_path};
 
 /// The error of a failed document read, bound to the field that asked.
@@ -118,4 +118,13 @@ impl From<DocumentError> for Located {
 pub(crate) fn entry_value(document: &mut Document, dictionary: Path, key: u32) -> Result<Path, Located> {
     let index = find_entry(document, &dictionary, key)?.ok_or(Located::Absent)?;
     Ok(with(dictionary, &[Segment::Key("values"), Segment::Index(index)]))
+}
+
+/// The path to the `count` of the row `key` in `list`. `MissingRow` for an
+/// absent row, `Format` for a read that fails.
+pub(crate) fn count_path(document: &mut Document, list: List, key: u32, field: &FieldId) -> Result<Path, EditError> {
+    let index = find_row(document, Collection::Items(list), key)
+        .map_err(|source| format_error(field, source))?
+        .ok_or_else(|| missing_row(list.section(), key))?;
+    Ok(with(element(list.target(), index), &[Segment::Key("count")]))
 }

@@ -7,6 +7,7 @@
 //! A game module keeps its own field vocabulary and rules and calls this
 //! layer for the rest.
 
+pub(crate) mod meta;
 pub mod names;
 pub(crate) mod paths;
 pub(crate) mod read;

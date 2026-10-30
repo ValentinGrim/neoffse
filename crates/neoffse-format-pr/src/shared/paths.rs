@@ -107,3 +107,8 @@ pub(crate) fn with(mut path: Path, tail: &[Segment<'static>]) -> Path {
     path.extend_from_slice(tail);
     path
 }
+
+/// Path to the gil counter, `userData.owendGil`.
+pub(crate) fn gil_path() -> Path {
+    vec![Segment::Key("userData"), Segment::Doc, Segment::Key("owendGil")]
+}
