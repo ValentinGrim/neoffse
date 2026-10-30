@@ -17,11 +17,14 @@ use crate::session::Session;
 /// The game, format and document of a successful open.
 type Opened = (Game, Arc<dyn SaveFormat>, Box<dyn SaveDocument>);
 
-/// The formats NeoFFSE ships, one per supported game.
+/// The formats NeoFFSE ships, one per supported game, or the set that
+/// [`Registry::from_formats`] receives.
 ///
 /// The registry is `Send + Sync`. Its `Debug` lists the games.
 pub struct Registry {
-    /// In `Game::ALL` order: `detect` and `open` rely on it for ties.
+    /// One format per game, in the order given. `format` looks a game up by
+    /// `SaveFormat::game`, and `detect` and `open` walk `Game::ALL`, so this
+    /// order decides nothing.
     formats: Vec<Arc<dyn SaveFormat>>,
 }
 
@@ -70,7 +73,8 @@ impl fmt::Debug for Registry {
 }
 
 impl Registry {
-    /// Builds the registry of the shipped formats. Today: FF I.
+    /// Builds the registry of the shipped formats. Each shipped game has one
+    /// line here. Today: FF I.
     ///
     /// `language` names the game data in the views the formats build.
     ///
@@ -80,9 +84,29 @@ impl Registry {
     /// are invalid, a defect of the build.
     #[must_use]
     pub fn new(language: Language) -> Self {
-        Self {
-            formats: vec![Arc::new(Ff1Format::with_language(language))],
+        Self::from_formats(vec![Arc::new(Ff1Format::with_language(language))])
+    }
+
+    /// A registry that holds `formats` and no other.
+    ///
+    /// The registry keeps one format per game. The order given decides
+    /// nothing: [`Registry::games`], [`Registry::detect`] and
+    /// [`Registry::open`] follow `Game::ALL`.
+    ///
+    /// # Panics
+    ///
+    /// When two formats report the same [`Game`], with the message `two
+    /// formats for <game id>`. The duplicate is a wiring defect of the
+    /// caller, not data read from a file.
+    #[must_use]
+    pub fn from_formats(formats: Vec<Arc<dyn SaveFormat>>) -> Self {
+        let mut seen: Vec<Game> = Vec::with_capacity(formats.len());
+        for format in &formats {
+            let game = format.game();
+            assert!(!seen.contains(&game), "two formats for {}", game.id());
+            seen.push(game);
         }
+        Self { formats }
     }
 
     /// The games the registry has a format for, in `Game::ALL` order.
@@ -112,8 +136,8 @@ impl Registry {
     /// first in `Game::ALL`.
     #[must_use]
     pub fn detect(&self, probe: &FileProbe<'_>, folder_game: Option<Game>) -> Option<Claim> {
-        // Guards a format whose `detect` claims by content. The FF I format already
-        // refuses any name outside its slot table, so no test can reach this line today.
+        // A format that claims by content must never claim a leftover of the atomic
+        // write (`docs/architecture.md#format-traits`).
         if is_temp_name(probe.name) {
             return None;
         }

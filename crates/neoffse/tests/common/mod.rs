@@ -3,6 +3,8 @@
 #![allow(dead_code, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod stand_in;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,6 +16,9 @@ use neoffse::pr::container::{self, Container};
 use neoffse::pr::ff1::names;
 use neoffse::pr::slots::SLOT_FILES;
 use tempfile::TempDir;
+
+#[allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
+pub(crate) use stand_in::*;
 
 /// A synthetic FF I slot in the game's container: BOM, base64, CRLF.
 pub(crate) fn slot_bytes() -> Vec<u8> {
