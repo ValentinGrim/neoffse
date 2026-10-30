@@ -2330,7 +2330,8 @@ The maximum HP is not the current HP in FF II, which answers [question 20](#open
 The `type_id` varies by chain: 20 chains hold type 1 and 20 hold type 2 [D].
 
 `Misc.MiscAssetDesc.magic_level_acquisition_table` lists each step [D].
-It sits in `serial_misc_assets.json`, inside `misc_assets_all_<hash>.bundle`, and holds 640 pairs `{current_ability_id, next_ability_id}`.
+`magic_level_acquisition_table` is a top-level key of the JSON object in `Assets/GameAssets/Serial/Data/Misc/serial_misc_assets.json`, the only entry of `misc_assets_all_<hash>.bundle` that is a TextAsset [D].
+Its value is a list of 640 pairs `{current_ability_id, next_ability_id}`.
 `next_ability_id` is `current_ability_id + 1`, or 0 on the sixteenth row of a chain.
 A level-up replaces the ability entry with the next ID [B].
 
