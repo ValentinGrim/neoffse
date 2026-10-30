@@ -386,9 +386,9 @@ A comment states what the code cannot show; it never narrates the next line.
   Write a full paragraph when a block needs one to be safe to touch.
 - A comment cites what a reader can still resolve in a year: a `docs/formats` heading, a test name, a milestone number.
   A task or review number means nothing outside the tracker that issued it.
-- A Rust source or test file holds 300 lines at most.
-  Split it into modules before it gets there.
-  The Go program under `tools/` is outside the rule.
+- A Rust source or test file holds about 300 lines.
+  A split belongs where it helps the reader, and a file may pass that size when no such split exists.
+  The Go program under `tools/` is outside the guideline.
 - The lint set lives in the root `Cargo.toml` under `[workspace.lints]`, and `scripts/clippy.sh` runs clippy with `-D warnings` over every target.
   An exception lives in the code as `#[allow(..., reason = "...")]`, and every `allow` carries its reason.
   The one exception outside the code is the allowed duplicate `syn` in `clippy.toml`, which explains itself.
