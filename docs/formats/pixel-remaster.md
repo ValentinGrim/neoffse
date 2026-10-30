@@ -1528,7 +1528,8 @@ FF VI ships no monster table yet, so monsters 521, 549 and 550 export no name.
 | monster | `monsterDefeats` keys | `monster.csv` [D] | 1 to 129 in the game [D]; 1 to 128 in the saves [M] |
 
 Items, key items and equipment share one `contentId` space.
-Key items are the content IDs 45 to 61, the rows of type 2 in `item.csv` [D], and every ID of `importantOwendItemList` falls in that range [M].
+In FF I, key items are the content IDs 45 to 61, the rows of type 2 in `item.csv` [D], and every ID of `importantOwendItemList` falls in that range [M].
+The key items of the FF II saves carry the content IDs 2, 3, 4, 6, 7, 9, 10 and 14 [M] ([Inventory](#inventory)).
 Spell content IDs (`abilityId + 208` in FF I, with one exception, [Abilities](#abilities)) sit above every item and equipment ID, and none appears in the inventory [M].
 
 - **Placeholders.**
@@ -1929,9 +1930,11 @@ FF II also uses `characterId` 0 for an empty seat.
   None of the 221 rows of `normalOwnedItemList` in the four measured FF I slots holds a content ID from 45 to 61 [M, 4 slots].
   NeoFFSE resolves the row keys of `inventory` in the item and equipment tables only, and the row keys of `key_items` in the key item table [I].
 - `importantOwendItemList`: same shape.
-  Every measured row holds `count` 1 [M].
+  Every measured row of FF I and FF II holds `count` 1 [M].
   In FF I it holds 9 or 10 entries, IDs 45 to 61, all in `ImportantItems` [M].
   In the game's data these IDs are the key items, `item.csv` `type_id` 2 [D].
+  In FF II, the 20 rows of the three game-written files (Quick Save 6, slot 1 7, Auto Save 7) and the 7 rows of the editor-written slot 2 hold the integer 1 [M].
+  Those rows carry the content IDs 2, 3, 4, 6, 7, 9, 10 and 14 and no others, so the saves say nothing of the other FF II key items.
   The game holds one of each key item and never shows a key-item `count` above 1 [I], so `MAX_ITEM` does not apply to this list.
   A format that edits the way the game does keeps every key-item `count` at 1 [I]: NeoFFSE's game interface refuses to set a key-item `count` and to insert a key item with another `count` [I].
 - **The inventory includes equipped items.**
@@ -2538,7 +2541,8 @@ FF I binds equipment slot 1 to a weapon and slot 2 to a shield, with a placehold
 Both rules fail in FF II:
 
 - On the three game files, equipment slot 2 holds 12 empty entries, 10 weapons and 1 shield (content 105, in the Quick Save). No measured equipment slot 1 holds a shield [M].
-- An empty hand holds 47 in either equipment slot. Content 208 stays a row with an inventory count of 5 and sits in no measured slot [M]. [Question 40](#open-questions) checks a hand that held a shield.
+- An empty hand holds 47 in either equipment slot. Content 208 stays a row with an inventory count of 5 and sits in no measured slot [M].
+  NeoFFSE's game interface refuses 208 in a hand [I]: no game file places it in a slot, and [question 40](#open-questions) leaves open what a hand that held a shield holds.
 - Equipment slots 1 and 2 can hold the same ID, for example 60 and 60, or 91 and 91. On all three game files, every held ID's inventory count covers the number of slots that hold it [M].
 - The equip floor of [Inventory](#inventory) holds on those files [M].
   The placeholder rows sit in the inventory of save slot 1 with counts 10, 5, 5, 11 and 11 for 47 and 208 to 211; their meaning is open.
