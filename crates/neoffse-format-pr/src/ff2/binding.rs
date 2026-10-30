@@ -26,6 +26,9 @@ pub(super) enum Part {
     Stat(Stat),
     /// `skillLevelTargets`, key 0 to 9.
     Skill(u32),
+    /// The level of the spell of one chain, read from the row of its
+    /// `abilityList` entry. It has no document path of its own.
+    Spell(u32),
     /// `contentId` of an equipment slot, 1 to 5.
     Slot(u32),
     /// `count` of an equipment slot, 1 to 5.
@@ -68,6 +71,12 @@ impl Binding {
         )
     }
 
+    /// True for the level of a spell, which reads a row and writes five
+    /// places (`docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`).
+    pub(super) fn is_spell(&self) -> bool {
+        matches!(self, Self::Character { part: Part::Spell(_), .. })
+    }
+
     /// True for the one text field, `name`.
     pub(super) fn is_text(&self) -> bool {
         matches!(self, Self::Character { part: Part::Name, .. })
@@ -94,6 +103,7 @@ impl Part {
             [Key::Name(names::SPIRIT)] => Some(Self::Stat(Stat::Spirit)),
             [Key::Name(names::MAGIC)] => Some(Self::Stat(Stat::Magic)),
             [Key::Name(names::SKILL), Key::Id(key)] if skill_ok(*key) => Some(Self::Skill(*key)),
+            [Key::Name(names::SPELL), Key::Id(chain)] => Some(Self::Spell(*chain)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot)] if slot_ok(*slot) => Some(Self::Slot(*slot)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot), Key::Name(names::COUNT)] if slot_ok(*slot) => Some(Self::SlotCount(*slot)),
             _ => None,

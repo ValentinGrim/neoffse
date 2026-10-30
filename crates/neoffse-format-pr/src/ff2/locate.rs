@@ -10,9 +10,11 @@ use crate::shared::read::{Located, character_part, count_path, entry_value, slot
 
 /// The path to the value of `binding`. `MissingRow` for an absent row,
 /// `UnknownField` for a dictionary without the key, `Format` for a read that
-/// fails, `ReadOnly` for a computed field, which has no path.
+/// fails, `ReadOnly` for a computed field or a spell level, which have no
+/// path: a raw `Set` of a level cannot return an exact inverse of the five
+/// places it would write.
 pub(super) fn locate(document: &mut Document, binding: &Binding, field: &FieldId) -> Result<Path, EditError> {
-    if binding.is_derived() {
+    if binding.is_derived() || binding.is_spell() {
         return Err(EditError::ReadOnly { field: field.clone() });
     }
     match *binding {
@@ -38,8 +40,8 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
             let dictionary = with(base, &[Segment::Key("skillLevelTargets"), Segment::Doc]);
             entry_value(document, dictionary, skill)?
         }
-        // `locate` refuses a computed field before it gets here.
-        Part::MaxHp | Part::MaxMp => return Err(Located::Absent),
+        // `locate` refuses a computed field and a spell level before it gets here.
+        Part::MaxHp | Part::MaxMp | Part::Spell(_) => return Err(Located::Absent),
         Part::Slot(slot) | Part::SlotCount(slot) => slot_path(document, base, slot, matches!(part, Part::SlotCount(_)))?,
     })
 }

@@ -59,12 +59,13 @@ fn the_committed_fixture_opens_through_the_codec() {
     let mut document = open(&files_of(&text, &Container::game()));
     assert_eq!(document.game(), Game::Ff2Pr);
     assert_eq!(document.capabilities(), CAPABILITIES);
-    assert_eq!(CAPABILITIES, [Capability::Party, Capability::Inventory]);
+    assert_eq!(CAPABILITIES, [Capability::Party, Capability::Inventory, Capability::Magic]);
     let summary = document.summary().unwrap();
     assert_eq!(summary.party, ["Ivo", "Mara", "Tane"]);
     assert_eq!(summary.slot, Some(SaveSlot::Numbered(1)));
     let view = document.view().unwrap();
-    assert_eq!(view.sections.len(), 2);
+    assert_eq!(view.sections.len(), 3);
+    assert_eq!(view.section(Capability::Magic).unwrap().entities.len(), 4);
     assert_eq!(view.section(Capability::Party).unwrap().entities.len(), 4);
     assert_eq!(
         view.section(Capability::Inventory).unwrap().entities.len(),

@@ -35,8 +35,7 @@ fn sections_follow_the_capabilities() {
     let (_, view) = view_of(&SlotData::standard());
     let found: Vec<Capability> = view.sections.iter().map(|section| section.capability).collect();
     assert_eq!(found, CAPABILITIES);
-    // FF II has no spell section yet: a Magic section would disprove the capability list.
-    assert!(view.section(Capability::Magic).is_none());
+    assert!(view.section(Capability::Magic).is_some());
 }
 
 #[test]

@@ -8,7 +8,7 @@ use neoffse_core::{FieldMeta, Shape, TableKind};
 use neoffse_data::GameTables;
 
 use super::binding::{Binding, Part};
-use crate::shared::meta::{count_meta, derived_meta, gil_meta, int};
+use crate::shared::meta::{STORAGE_MAX, count_meta, derived_meta, gil_meta, int};
 
 /// The slot labels and the tables each slot takes. Slots 1 and 2 take a
 /// weapon or a shield, slots 3 to 5 an armor, a helmet and gloves
@@ -95,6 +95,13 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
                 let mut meta = int(label, 0, None);
                 meta.cap = skill_cap(tables, key);
                 meta
+            }
+            Part::Spell(_) => {
+                // The top level is the length of a chain, `MAX_MAGICAL_LEVEL`
+                // (`docs/formats/pixel-remaster.md#bounds-in-ff-ii`). A game
+                // without the key falls back to the storage bound, as `int` does.
+                let top = tables.bound("MAX_MAGICAL_LEVEL").unwrap_or(STORAGE_MAX);
+                FieldMeta::new("Spell level", Shape::Int { min: 1, max: top })
             }
             Part::Slot(number) => {
                 let (label, kinds) = slot(number);

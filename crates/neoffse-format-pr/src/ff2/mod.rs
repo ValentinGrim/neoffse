@@ -15,7 +15,11 @@
 //!
 //! FF II has no level, experience or spell charge field, so those paths of
 //! the FF I vocabulary are unknown here
-//! (`docs/formats/pixel-remaster.md#character-growth-in-ff-ii`).
+//! (`docs/formats/pixel-remaster.md#character-growth-in-ff-ii`). A spell has
+//! one field, `character.<id>.spell.<chain>`, its level: the model reads it
+//! from the row of the spell's `abilityList` entry
+//! (`docs/formats/pixel-remaster.md#spells-in-ff-ii`) and a raw `Set` of it is
+//! `ReadOnly`.
 //!
 //! The model edits through two interfaces over the same `Edit`:
 //!
@@ -33,8 +37,8 @@
 //!
 //! [`Ff2Model::summary`] and [`Ff2Model::view`] read the slot for the Home
 //! screen and the editor: the first gives the slot, play time, place and
-//! party, the second a snapshot of every character, item row and gil. Both
-//! leave the document untouched.
+//! party, the second a snapshot of every character, item row, gil and spell
+//! level. Both leave the document untouched.
 //!
 //! [`Ff2Format`] implements `neoffse_core::SaveFormat` for the game: it
 //! detects a slot file by its name and opens it as an [`Ff2Document`], which
@@ -52,6 +56,7 @@ mod locate;
 mod meta;
 pub mod names;
 mod slot;
+mod spell;
 mod summary;
 mod view;
 
@@ -63,15 +68,15 @@ use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
 use crate::shared::{SlotDocument, SlotFormat};
-use binding::Binding;
+use binding::{Binding, Part};
 use locate::locate;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff2Pr;
 
-/// The capabilities of an FF II slot: the party and the inventory (gil sits
-/// under the inventory).
-pub const CAPABILITIES: [Capability; 2] = [Capability::Party, Capability::Inventory];
+/// The capabilities of an FF II slot: the party, the inventory (gil sits
+/// under the inventory) and the magic (the level of each spell).
+pub const CAPABILITIES: [Capability; 3] = [Capability::Party, Capability::Inventory, Capability::Magic];
 
 /// The FF II Pixel Remaster format of `neoffse-core`: detection by slot name
 /// and the typed open.
@@ -146,13 +151,15 @@ impl Ff2Model {
 
     /// The value of `field`. `max_hp` and `max_mp` are computed from the
     /// document and the tables: the base of the character's status row plus
-    /// the stored gain, held to the `MAX_HP` or `MAX_MP` cap.
+    /// the stored gain, held to the `MAX_HP` or `MAX_MP` cap. A spell level is
+    /// the level of the row of the first `abilityList` entry in its chain.
     ///
     /// # Errors
     ///
     /// `UnknownField` for an undeclared path (FF I's `level`, `exp`,
-    /// `charges` and `spell` among them), a dictionary without the key, or a
-    /// computed field whose key or table row is missing, `MissingRow` for an
+    /// `charges` and `spell.<level>.<slot>` among them), a dictionary without
+    /// the key, a spell chain the character owns no entry of, or a computed
+    /// field whose key or table row is missing, `MissingRow` for an
     /// absent character or item, `Format` when the document holds another
     /// shape: a float or an oversized integer where an integer belongs, a
     /// non-string name.
@@ -180,10 +187,13 @@ impl Ff2Model {
 /// shared summary can call it with the document it is walking.
 pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
     let binding = Binding::resolve(field)?;
-    if let Binding::Character { id, part } = binding
-        && binding.is_derived()
-    {
-        return derived::value(document, tables, id, part, field);
+    if let Binding::Character { id, part } = binding {
+        if let Part::Spell(chain) = part {
+            return spell::level(document, tables, id, chain, field);
+        }
+        if binding.is_derived() {
+            return derived::value(document, tables, id, part, field);
+        }
     }
     let path = locate(document, &binding, field)?;
     let read = if binding.is_text() {

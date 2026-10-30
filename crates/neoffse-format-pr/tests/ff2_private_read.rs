@@ -192,13 +192,15 @@ fn real_views_cover_every_row() {
         let Ok(view) = model.view(Language::En) else {
             panic!("{}: the view does not read", slot.label)
         };
-        assert!(view.sections.len() == 2, "{}: section count", slot.label);
+        assert!(view.sections.len() == 3, "{}: section count", slot.label);
         let characters = rows(model, names::CHARACTER, &slot.label).len();
         let items = rows(model, names::INVENTORY, &slot.label).len() + rows(model, names::KEY_ITEMS, &slot.label).len();
         let party = must_some(view.section(Capability::Party), &format!("{}: no Party section", slot.label));
         let inventory = must_some(view.section(Capability::Inventory), &format!("{}: no Inventory section", slot.label));
         assert!(party.entities.len() == characters, "{}: party entities", slot.label);
         assert!(inventory.entities.len() == 1 + items, "{}: inventory entities", slot.label);
+        let magic = must_some(view.section(Capability::Magic), &format!("{}: no Magic section", slot.label));
+        assert!(magic.entities.len() == characters, "{}: magic entities", slot.label);
         for entity in &party.entities {
             assert!(entity.fields.len() == 34, "{}: {} holds a field count other than 34", slot.label, entity.id);
         }
