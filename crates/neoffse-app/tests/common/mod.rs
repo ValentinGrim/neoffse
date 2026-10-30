@@ -24,6 +24,7 @@ use std::sync::Arc;
 
 use neoffse::Registry;
 use neoffse::data::Language;
+use neoffse::pr::ff1::Ff1Format;
 use neoffse_app::home::HomeViewModel;
 use neoffse_app::{GameRow, SlotRow};
 use slint::{Model, ModelRc};
@@ -65,8 +66,10 @@ pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
     }
 }
 
+/// FF I alone, not the shipped list: the tests that mean "FF I alone" (the
+/// unsupported traces on FF II) keep their meaning when a game registers.
 pub(crate) fn registry() -> Arc<Registry> {
-    Arc::new(Registry::new(Language::En))
+    Arc::new(Registry::from_formats(vec![Arc::new(Ff1Format::with_language(Language::En))]))
 }
 
 /// A view model over `site`, scanned to the end, filter on.
