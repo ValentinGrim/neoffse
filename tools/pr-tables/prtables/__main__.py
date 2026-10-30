@@ -11,7 +11,7 @@ commits its output.
 `--install` reads the bundles from the game's install folder and the Steam
 build id from the appmanifest next to it. `--bundles` takes a folder that
 holds the two bundle files directly, for a copy of them. The tool only reads
-the bundles. It writes the seven files under <out>/<game>/, and only when
+the bundles. It writes up to seven files under <out>/<game>/, and only when
 their bytes change.
 """
 
@@ -47,7 +47,8 @@ from .render import (  # noqa: E402
     render_arrays,
     render_table,
 )
-from .tables import GAMES, Game  # noqa: E402
+from .specs import Game  # noqa: E402
+from .tables import GAMES  # noqa: E402
 
 _MASTER_PREFIX = "master_assets_all_"
 _MESSAGE_PREFIX = "message_assets_all_"
@@ -119,7 +120,8 @@ def _array_output(
 def _render_all(
     game: Game, prov: Provenance, texts: Mapping[str, str], messages: Mapping[str, str]
 ) -> list[_Output]:
-    """Build and render the seven files, in order. Nothing touches the disk."""
+    """Build and render up to seven files, in order. A game without a monsters or
+    growth spec renders no file for it. Nothing touches the disk."""
     csvs = {
         csv: parse_csv(texts[game.master_dir + csv], name=game.master_dir + csv)
         for csv in game.csv_files()
@@ -146,24 +148,28 @@ def _render_all(
         outputs.append(
             _array_output(game, prov, named.file, named.array, rows, named.notes, [])
         )
-    spec = game.monsters
-    rows, dropped = build_monsters(spec, csvs, names)
-    notices = [
-        f"{game.id}: monster {gone} shares group {group} with monster {kept}, not exported"
-        for gone, kept, group in dropped
-    ]
-    outputs.append(_array_output(game, prov, spec.file, spec.array, rows, spec.notes, notices))
+    if game.monsters is not None:
+        spec = game.monsters
+        rows, dropped = build_monsters(spec, csvs, names)
+        notices = [
+            f"{game.id}: monster {gone} shares group {group} with monster {kept}, not exported"
+            for gone, kept, group in dropped
+        ]
+        outputs.append(
+            _array_output(game, prov, spec.file, spec.array, rows, spec.notes, notices)
+        )
     values = build_bounds(game.bounds, csvs)
     header = file_header(game, game.bounds.file, prov, game.bounds.notes)
     text = render_table(header, "bounds", values)
     check_roundtrip(text, {"bounds": values})
     outputs.append(_Output(game.bounds.file, text, len(values), []))
-    tables = build_growth(game.growth, csvs)
-    header = file_header(game, game.growth.file, prov, game.growth.notes)
-    text = render_arrays(header, list(tables.items()))
-    check_roundtrip(text, tables)
-    count = sum(1 if isinstance(rows, dict) else len(rows) for rows in tables.values())
-    outputs.append(_Output(game.growth.file, text, count, []))
+    if game.growth is not None:
+        tables = build_growth(game.growth, csvs, values.get(game.growth.level_cap_key))
+        header = file_header(game, game.growth.file, prov, game.growth.notes)
+        text = render_arrays(header, list(tables.items()))
+        check_roundtrip(text, tables)
+        count = sum(1 if isinstance(rows, dict) else len(rows) for rows in tables.values())
+        outputs.append(_Output(game.growth.file, text, count, []))
     return outputs
 
 

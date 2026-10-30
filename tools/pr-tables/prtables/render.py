@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from . import ExportError
 from .build import Row
-from .tables import Game
+from .specs import Game
 
 _FIELD_KEY = re.compile(r"[a-z][a-z0-9_]*")
 _TABLE_KEY = re.compile(r"[A-Z][A-Z0-9_]*")
