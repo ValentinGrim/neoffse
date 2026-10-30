@@ -22,6 +22,7 @@ pub mod names;
 pub(crate) mod open;
 pub(crate) mod paths;
 pub(crate) mod read;
+pub(crate) mod stat;
 pub(crate) mod summary;
 pub(crate) mod view;
 pub(crate) mod write;

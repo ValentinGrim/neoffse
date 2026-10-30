@@ -17,39 +17,21 @@
 
 use neoffse_core::{FieldId, Key};
 
-pub use crate::shared::names::{CHARACTER, COUNT, GIL, INVENTORY, KEY_ITEMS, NAME};
+pub use crate::shared::names::{
+    AGILITY, CHARACTER, COUNT, EQUIPMENT, EQUIPMENT_SLOTS, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT,
+    VITALITY,
+};
 
-/// Character job, `jobId`.
-pub const JOB: &str = "job";
 /// Character level, `parameter.addtionalLevel`.
 pub const LEVEL: &str = "level";
 /// Character experience, `currentExp`.
 pub const EXP: &str = "exp";
-/// Current HP, `parameter.currentHP`.
-pub const HP: &str = "hp";
-/// Maximum HP gain, `parameter.addtionalMaxHp`.
-pub const MAX_HP_GAIN: &str = "max_hp_gain";
-/// Maximum HP shown by the menu, computed. Read only
-/// (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`).
-pub const MAX_HP: &str = "max_hp";
 /// Experience to the next level shown by the menu, computed. Read only
 /// (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`,
 /// "Next-level figure").
 pub const NEXT_LEVEL: &str = "next_level";
-/// Power stat, `parameter.addtionalPower`.
-pub const POWER: &str = "power";
-/// Vitality stat, `parameter.addtionalVitality`.
-pub const VITALITY: &str = "vitality";
-/// Agility stat, `parameter.addtionalAgility`.
-pub const AGILITY: &str = "agility";
-/// Intelligence stat, `parameter.addtionalIntelligence`.
-pub const INTELLIGENCE: &str = "intelligence";
-/// Spirit stat, `parameter.addtionalSpirit`.
-pub const SPIRIT: &str = "spirit";
 /// Luck stat, `parameter.addtionalLuck`.
 pub const LUCK: &str = "luck";
-/// Magic stat, `parameter.addtionalMagic`.
-pub const MAGIC: &str = "magic";
 /// Accuracy growth, `parameter.addtionalAccuracyRate`.
 pub const ACCURACY_GAIN: &str = "accuracy_gain";
 /// Magic evasion growth, `parameter.addtionalAbilityEvasionRate`.
@@ -58,8 +40,6 @@ pub const MAGIC_EVASION_GAIN: &str = "magic_evasion_gain";
 pub const CHARGES: &str = "charges";
 /// Maximum spell charges gain per spell level, `parameter.addtionalMaxMpCountList`.
 pub const CHARGES_MAX_GAIN: &str = "charges_max_gain";
-/// Equipment slots, `equipmentList`; the slot is the key that follows.
-pub const EQUIPMENT: &str = "equipment";
 /// One spell slot, `abilitySlotDataList`; the spell level and the slot
 /// number are the two keys that follow. Read only.
 pub const SPELL: &str = "spell";
@@ -67,9 +47,6 @@ pub const SPELL: &str = "spell";
 /// `charges` and `charges_max_gain` take the spell level 1 to this value
 /// (`docs/formats/pixel-remaster.md#characters`: keys 1 to 8).
 pub const SPELL_LEVELS: u32 = 8;
-/// `equipment` takes the slot 1 to this value
-/// (`docs/formats/pixel-remaster.md#equipment-slots`: keys 1 to 5).
-pub const EQUIPMENT_SLOTS: u32 = 5;
 /// `spell` takes the slot 1 to this value in each spell level
 /// (`docs/formats/pixel-remaster.md#abilities`: `slotInfo` keys 1 to 3).
 pub const SPELL_SLOTS: u32 = 3;

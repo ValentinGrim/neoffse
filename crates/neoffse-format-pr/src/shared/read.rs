@@ -120,6 +120,15 @@ pub(crate) fn entry_value(document: &mut Document, dictionary: Path, key: u32) -
     Ok(with(dictionary, &[Segment::Key("values"), Segment::Index(index)]))
 }
 
+/// The path to the `contentId` (or, with `count`, the `count`) of the entry
+/// `slot` in the `equipmentList` dictionary of the character at `base`.
+pub(crate) fn slot_path(document: &mut Document, base: Path, slot: u32, count: bool) -> Result<Path, Located> {
+    let dictionary = with(base, &[Segment::Key("equipmentList"), Segment::Doc]);
+    let value = entry_value(document, dictionary, slot)?;
+    let name = if count { "count" } else { "contentId" };
+    Ok(with(value, &[Segment::Doc, Segment::Key(name)]))
+}
+
 /// The path to the `count` of the row `key` in `list`. `MissingRow` for an
 /// absent row, `Format` for a read that fails.
 pub(crate) fn count_path(document: &mut Document, list: List, key: u32, field: &FieldId) -> Result<Path, EditError> {

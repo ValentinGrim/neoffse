@@ -45,6 +45,22 @@ impl List {
             Segment::Key("target"),
         ]
     }
+
+    /// The list and the row key of an `inventory.<id>.count` or
+    /// `key_items.<id>.count` field, or `None` for any other keys.
+    pub(crate) fn of_count_field(keys: &[Key]) -> Option<(Self, u32)> {
+        match keys {
+            [Key::Name(section), Key::Id(key), Key::Name(names::COUNT)] => {
+                let list = match *section {
+                    names::INVENTORY => List::Inventory,
+                    names::KEY_ITEMS => List::KeyItems,
+                    _ => return None,
+                };
+                Some((list, *key))
+            }
+            _ => None,
+        }
+    }
 }
 
 /// A collection of the model, named by its section.

@@ -8,7 +8,7 @@ use super::binding::{Binding, Part};
 use super::names;
 use crate::document::{Document, DocumentError, Segment};
 use crate::shared::paths::{Collection, Path, characters_target, element, gil_path, with};
-use crate::shared::read::{Located, count_path, entry_value, find_row, format_error, missing_row, read_int, read_key, read_text, wrong_kind};
+use crate::shared::read::{Located, count_path, entry_value, find_row, format_error, missing_row, read_int, read_key, read_text, slot_path, wrong_kind};
 
 /// The path to the value of `binding`. `MissingRow` for an absent row,
 /// `UnknownField` for a dictionary without the key, `Format` for a read that
@@ -93,12 +93,7 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
             let dictionary = with(element(target, index), &[Segment::Key("slotInfo"), Segment::Doc]);
             entry_value(document, dictionary, slot)?
         }
-        Part::Slot(slot) | Part::SlotCount(slot) => {
-            let dictionary = with(base, &[Segment::Key("equipmentList"), Segment::Doc]);
-            let value = entry_value(document, dictionary, slot)?;
-            let name = if matches!(part, Part::Slot(_)) { "contentId" } else { "count" };
-            with(value, &[Segment::Doc, Segment::Key(name)])
-        }
+        Part::Slot(slot) | Part::SlotCount(slot) => slot_path(document, base, slot, matches!(part, Part::SlotCount(_)))?,
     })
 }
 

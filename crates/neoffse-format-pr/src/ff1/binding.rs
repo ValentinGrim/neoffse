@@ -6,18 +6,7 @@ use neoffse_core::{EditError, FieldId, Key};
 
 use super::names;
 use crate::shared::paths::List;
-
-/// The seven stat fields; each maps to one `addtional...` key of `parameter`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Stat {
-    Power,
-    Vitality,
-    Agility,
-    Intelligence,
-    Spirit,
-    Luck,
-    Magic,
-}
+use crate::shared::stat::Stat;
 
 /// A field of one character.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,15 +62,7 @@ impl Binding {
                 id: *id,
                 part: Part::declared(rest)?,
             }),
-            [Key::Name(section), Key::Id(key), Key::Name(names::COUNT)] => {
-                let list = match *section {
-                    names::INVENTORY => List::Inventory,
-                    names::KEY_ITEMS => List::KeyItems,
-                    _ => return None,
-                };
-                Some(Self::Count { list, key: *key })
-            }
-            _ => None,
+            _ => List::of_count_field(keys).map(|(list, key)| Self::Count { list, key }),
         }
     }
 
@@ -139,36 +120,6 @@ impl Part {
                 Some(Self::Spell { level: *level, slot: *slot })
             }
             _ => None,
-        }
-    }
-}
-
-impl Stat {
-    /// The `parameter` key of the stat (the game's spelling).
-    pub(super) fn document_key(self) -> &'static str {
-        match self {
-            Stat::Power => "addtionalPower",
-            Stat::Vitality => "addtionalVitality",
-            Stat::Agility => "addtionalAgility",
-            Stat::Intelligence => "addtionalIntelligence",
-            Stat::Spirit => "addtionalSpirit",
-            Stat::Luck => "addtionalLuck",
-            Stat::Magic => "addtionalMagic",
-        }
-    }
-
-    /// The `bounds.toml` key of the stat's game cap, spelled as the game
-    /// spells it (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`).
-    /// Magic has no cap.
-    pub(super) fn bound_key(self) -> Option<&'static str> {
-        match self {
-            Stat::Power => Some("MAX_STRNGTH"),
-            Stat::Vitality => Some("MAX_VITALITY"),
-            Stat::Agility => Some("MAX_AGILITY"),
-            Stat::Intelligence => Some("MAX_INTELIGENCE"),
-            Stat::Spirit => Some("MAX_SPRIT"),
-            Stat::Luck => Some("MAX_LUCK"),
-            Stat::Magic => None,
         }
     }
 }
