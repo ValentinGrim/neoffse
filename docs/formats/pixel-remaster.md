@@ -2230,6 +2230,8 @@ The saves agree: the status 6 character reads 20 on its untrained keys, and the 
 | `addionalWeight`, `addtionalLuck`, `addtionalAttack`, `addtionalDefense` and the rate and count fields | 0 on 31 states | [M]; `StatusUpProvider` writes none of them [B] |
 | `numberOfButtles` | Boost battle counter, 0 to 9 | rule below [B, M] |
 
+A character's base sits in the `hp`, `mp`, `strength`, `vitality`, `agility`, `intelligence`, `spirit`, `magic` and `luck` columns of `character_status.csv` [D]. Power reads `strength`: the `addtionalPower` gain caps at `MAX_STRNGTH` [I].
+
 `Serial.FF2.UI.KeyInput.StatusDetailsController::UpdateView` writes to `expText` and `nextExpText`.
 Both are null in `status_details.prefab`, so the status screen shows no level, experience or next-level row [B, D].
 The level text sits under an inactive object of that prefab, and `GetNextExp` returns 0 in FF II: it passes group 0, and `exp_table.csv` holds only group 1 [B, D].
