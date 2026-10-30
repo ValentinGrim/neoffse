@@ -3,6 +3,7 @@
 #![allow(dead_code, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod second_game;
 mod stand_in;
 
 use std::fs;
@@ -17,6 +18,8 @@ use neoffse::pr::ff1::names;
 use neoffse::pr::slots::SLOT_FILES;
 use tempfile::TempDir;
 
+#[allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
+pub(crate) use second_game::*;
 #[allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
 pub(crate) use stand_in::*;
 
@@ -72,19 +75,31 @@ pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
     }
 }
 
+/// Every file of the private saves of `game_dir` (`ff1` to `ff6`) as a name
+/// and the original path, in name order. Returns `None` after the testkit
+/// reports why when the folder is absent or empty. A test that writes uses
+/// [`private_slot_copies`].
+pub(crate) fn private_files_of(game_dir: &str) -> Option<Vec<(String, PathBuf)>> {
+    let paths = neoffse_testkit::private_saves(game_dir)?;
+    let files = paths
+        .into_iter()
+        .filter_map(|path| {
+            let name = path.file_name()?.to_str()?.to_owned();
+            Some((name, path))
+        })
+        .collect();
+    Some(files)
+}
+
 /// The name and path of each FF I slot file of the private saves, in name
 /// order. Returns `None` after reporting why when the saves hold no slot
 /// file (a folder with only `desktop.ini`, say), so the test returns early
 /// and says so. The paths are the originals: a test that writes uses
 /// [`private_slot_copies`].
 pub(crate) fn private_slot_paths() -> Option<Vec<(String, PathBuf)>> {
-    let paths = neoffse_testkit::private_saves("ff1")?;
-    let slots: Vec<(String, PathBuf)> = paths
+    let slots: Vec<(String, PathBuf)> = private_files_of("ff1")?
         .into_iter()
-        .filter_map(|path| {
-            let name = path.file_name()?.to_str()?.to_owned();
-            SLOT_FILES.iter().any(|file| file.name == name).then_some((name, path))
-        })
+        .filter(|(name, _)| SLOT_FILES.iter().any(|file| file.name == *name))
         .collect();
     if slots.is_empty() {
         neoffse_testkit::skip("no FF I slot file in the private saves");
