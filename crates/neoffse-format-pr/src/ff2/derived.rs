@@ -10,8 +10,14 @@ use neoffse_data::{BaseStats, GameTables};
 
 use super::binding::Part;
 use crate::document::{Document, Segment};
-use crate::shared::paths::with;
+use crate::shared::paths::{Path, with};
 use crate::shared::read::{character_part, read_stored};
+
+/// The `characterStatusId` of the character at `base`, `None` when the key is
+/// missing. Any other failure is the `Format` error of `field`.
+pub(super) fn status_id(document: &mut Document, base: &Path, field: &FieldId) -> Result<Option<i64>, EditError> {
+    read_stored(document, &with(base.clone(), &[Segment::Key("characterStatusId")]), field)
+}
 
 /// The value of the computed `part` of character `id`.
 ///
@@ -25,7 +31,7 @@ pub(super) fn value(document: &mut Document, tables: &GameTables, id: u32, part:
         Part::MaxMp => ("addtionalMaxMp", "MAX_MP", |stats| stats.mp),
         _ => return Err(EditError::UnknownField { field: field.clone() }),
     };
-    let status = read_stored(document, &with(base.clone(), &[Segment::Key("characterStatusId")]), field)?;
+    let status = status_id(document, &base, field)?;
     let parameter = with(base, &[Segment::Key("parameter"), Segment::Doc]);
     let gain = read_stored(document, &with(parameter, &[Segment::Key(gain_key)]), field)?;
     maximum(tables, status, gain, cap_key, base_of)

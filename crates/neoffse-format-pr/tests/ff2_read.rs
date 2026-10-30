@@ -5,7 +5,7 @@ mod common;
 
 use common::character_path;
 use common::ff2_save::{Character, SlotData, inventory, key_items, model, standard_model, tables};
-use neoffse_core::{EditError, FieldId, Value};
+use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
 use neoffse_format_pr::document::{Document, DocumentError, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};
 
@@ -159,6 +159,43 @@ fn ff1_vocabulary_is_unknown_on_an_ff2_slot() {
         assert!(matches!(model.get(&path), Err(EditError::UnknownField { field }) if field == path), "{path}");
         assert!(model.field_meta(&path).is_none(), "{path}");
     }
+}
+
+#[test]
+fn ff1_vocabulary_cannot_be_set_on_an_ff2_slot() {
+    let text = SlotData::standard().render();
+    let mut model = model(&text);
+    let paths = [
+        field(1, "level"),
+        field(1, "exp"),
+        field(1, "charges").with_id(1),
+        field(1, "spell").with_id(1).with_id(1),
+    ];
+    for path in paths {
+        for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
+            let result = model.apply(&Edit::set(path.clone(), int(5)), policy);
+            assert!(matches!(result, Err(EditError::UnknownField { field }) if field == path), "{path}");
+        }
+        let result = model.apply_game(&Edit::set(path.clone(), int(5)));
+        assert!(matches!(result, Err(EditError::UnknownField { field }) if field == path), "{path}");
+    }
+    assert_eq!(model.document().to_json(), text);
+}
+
+#[test]
+fn the_person_and_the_computed_fields_are_read_only() {
+    let text = SlotData::standard().render();
+    let mut model = model(&text);
+    for name in [names::JOB, names::MAX_HP, names::MAX_MP] {
+        let path = field(1, name);
+        for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
+            let result = model.apply(&Edit::set(path.clone(), int(3)), policy);
+            assert!(matches!(result, Err(EditError::ReadOnly { field }) if field == path), "{path}");
+        }
+        let result = model.apply_game(&Edit::set(path.clone(), int(3)));
+        assert!(matches!(result, Err(EditError::ReadOnly { field }) if field == path), "{path}");
+    }
+    assert_eq!(model.document().to_json(), text);
 }
 
 #[test]

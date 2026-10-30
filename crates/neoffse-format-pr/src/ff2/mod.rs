@@ -16,9 +16,25 @@
 //! FF II has no level, experience or spell charge field, so those paths of
 //! the FF I vocabulary are unknown here
 //! (`docs/formats/pixel-remaster.md#character-growth-in-ff-ii`).
+//!
+//! The model edits through two interfaces over the same `Edit`:
+//!
+//! - [`Ff2Model::apply`] is the raw interface. It checks the storage bounds
+//!   of the field and, under `CapPolicy::Enforce`, the game caps and the ID
+//!   tables, and it holds no game rule: a bare equipment id, a count below
+//!   the number of wearers, a gain past `cap - base` and a hand set to the
+//!   shield placeholder all pass when the value is in bounds.
+//!   `CapPolicy::StorageOnly` is the expert mode of an app.
+//! - [`Ff2Model::apply_game`] edits the way the game would. It enforces caps
+//!   and tables, expands an equipment `Set` into the slot, the inventory row
+//!   and the slot count, refuses the edits the game never makes, and returns
+//!   a `GameChange`. [`Ff2Model::row_locked`] and [`Ff2Model::field_locked`]
+//!   name the rows and fields it refuses whatever the value.
 
+mod apply;
 mod binding;
 mod derived;
+mod game;
 mod locate;
 mod meta;
 pub mod names;

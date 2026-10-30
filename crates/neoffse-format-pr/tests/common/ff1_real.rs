@@ -48,9 +48,9 @@ impl RealSlot {
     }
 }
 
-fn label(path: &Path) -> String {
+fn label(game: &str, path: &Path) -> String {
     let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-    format!("ff1 {}", name.chars().take(8).collect::<String>())
+    format!("{game} {}", name.chars().take(8).collect::<String>())
 }
 
 /// The FF I private files named in `SLOT_FILES` that hold a `userData` key.
@@ -58,10 +58,15 @@ fn label(path: &Path) -> String {
 /// `desktop.ini`) is left out unread; a slot file that does not decode panics.
 /// `None` after a skip report when no slot file is left.
 pub(crate) fn slots() -> Option<Vec<RealSlot>> {
-    let files = super::save_files("ff1")?;
+    slots_of("ff1")
+}
+
+/// [`slots`] for the private folder of `game` (`ff1`, `ff2`, ...).
+pub(crate) fn slots_of(game: &str) -> Option<Vec<RealSlot>> {
+    let files = super::save_files(game)?;
     let mut slots = Vec::new();
     for path in files {
-        let label = label(&path);
+        let label = label(game, &path);
         let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
         if !SLOT_FILES.iter().any(|slot| slot.name == name) {
             continue;
@@ -81,7 +86,7 @@ pub(crate) fn slots() -> Option<Vec<RealSlot>> {
         }
     }
     if slots.is_empty() {
-        neoffse_testkit::skip("ff1 holds no slot file");
+        neoffse_testkit::skip(&format!("{game} holds no slot file"));
         return None;
     }
     Some(slots)
@@ -103,7 +108,7 @@ pub(crate) fn files() -> Option<Vec<RealFile>> {
     let paths = super::save_files("ff1")?;
     let mut files = Vec::new();
     for path in paths {
-        let label = label(&path);
+        let label = label("ff1", &path);
         let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
         let Ok(bytes) = std::fs::read(&path) else { panic!("{label}: read failed") };
         files.push(RealFile { label, name, bytes });
