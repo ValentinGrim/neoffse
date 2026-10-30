@@ -6,6 +6,7 @@ use neoffse_core::{EditError, FieldId, FormatError, SaveSummary, Value};
 
 use super::{Ff1Model, GAME, names};
 use crate::document::{DocumentError, Scalar, Segment};
+use crate::shared::read::decode_error;
 use crate::slots::slot_for_id;
 
 /// The `target` array of `userData.corpsList`
@@ -17,10 +18,6 @@ const CORPS: [Segment<'static>; 5] = [
     Segment::Doc,
     Segment::Key("target"),
 ];
-
-pub(super) fn decode_error(source: impl std::error::Error + Send + Sync + 'static) -> FormatError {
-    FormatError::Decode { source: Box::new(source) }
-}
 
 /// A key the save lacks or holds in another shape gives an empty field.
 fn is_empty_field(error: &DocumentError) -> bool {

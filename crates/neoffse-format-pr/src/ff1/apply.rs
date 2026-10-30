@@ -8,10 +8,11 @@
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, FieldMeta, Value};
 
 use super::binding::Binding;
-use super::locate::{format_error, locate, read_int, read_text};
+use super::locate::locate;
 use super::meta;
 use super::{Ff1Model, Scalar};
 use crate::document::Segment;
+use crate::shared::read::{format_error, read_int, read_text};
 
 impl Ff1Model {
     /// Applies `edit` to the document and returns the edit that undoes it.

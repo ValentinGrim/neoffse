@@ -4,9 +4,9 @@
 use neoffse_core::{Capability, EditError, Entity, FieldId, FieldView, FormatError, RowId, SaveView, Section, Value};
 use neoffse_data::Language;
 
-use super::summary::decode_error;
 use super::{Ff1Model, names};
 use crate::document::DocumentError;
+use crate::shared::read::decode_error;
 
 /// True when the save does not hold the field: a dictionary without the key
 /// or a plain key that is absent.

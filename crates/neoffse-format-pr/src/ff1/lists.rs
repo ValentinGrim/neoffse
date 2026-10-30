@@ -10,10 +10,10 @@
 
 use neoffse_core::{CapPolicy, CollectionMeta, Edit, EditError, RowId, Value};
 
-use super::binding::{Collection, List};
-use super::locate::{find_row, format_error, read_text};
 use super::{Ff1Model, Scalar, names};
 use crate::document::{DocumentError, Segment, string_token};
+use crate::shared::paths::{Collection, List};
+use crate::shared::read::{find_row, format_error, read_text};
 
 /// The canonical text of a row.
 fn canonical(content_id: u32, count: i64) -> String {

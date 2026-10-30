@@ -6,12 +6,12 @@ use neoffse_core::{Detection, EditError, FieldId, FileProbe, FormatError, Game, 
 use neoffse_data::{GameTables, Language, tables_for};
 
 use super::save::Ff1Document;
-use super::summary::decode_error;
 use super::{Ff1Model, GAME, names};
 use crate::container::decode;
 use crate::document::Document;
 use crate::games::{check_markers, game_of_count};
 use crate::open_error::OpenError;
+use crate::shared::read::decode_error;
 use crate::slots;
 
 /// The FF I Pixel Remaster format of `neoffse-core`.

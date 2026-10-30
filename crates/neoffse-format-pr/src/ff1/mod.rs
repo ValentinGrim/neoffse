@@ -84,9 +84,11 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
-use binding::{Binding, Collection};
+use crate::shared::paths::Collection;
+use crate::shared::read::{format_error, read_int, read_text, row_keys};
+use binding::Binding;
 pub use format::Ff1Format;
-use locate::{format_error, locate, read_ability, read_int, read_text, row_keys};
+use locate::{locate, read_ability};
 pub use rolls::{Rolls, ThreadRolls};
 pub use save::Ff1Document;
 

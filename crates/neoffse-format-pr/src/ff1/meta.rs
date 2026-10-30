@@ -7,8 +7,9 @@
 use neoffse_core::{CollectionMeta, FieldId, FieldMeta, NamedValue, RowField, Shape, TableKind, Value};
 use neoffse_data::GameTables;
 
-use super::binding::{Binding, Collection, List, Part, Stat};
+use super::binding::{Binding, Part, Stat};
 use super::names;
+use crate::shared::paths::{Collection, List};
 
 /// Largest stored value of a number field. Neither the master data nor the
 /// saves state a bound for these fields: `i32::MAX` is the clamp of the Go
