@@ -82,6 +82,11 @@ impl Growth {
         self.status(status_id).map(|row| row.2)
     }
 
+    /// The number of levels in `exp_table`: the last level of the game.
+    pub(crate) fn level_count(&self) -> usize {
+        self.exp.len()
+    }
+
     /// The total experience to reach `level`; `None` for level 0 and above the last row.
     pub(crate) fn exp_to_reach(&self, level: u32) -> Option<u32> {
         let index = usize::try_from(level.checked_sub(1)?).ok()?;
@@ -114,6 +119,10 @@ pub(crate) fn parse_growth(text: &str) -> Result<Growth, DataError> {
         base.push((row.id, row.hp, row.vitality));
     }
     let exp = file.exp_table.total_exp;
+    // Level 1 holds 0, so any experience maps to a level (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`).
+    if exp.first() != Some(&0) {
+        return Err(rule("exp_table lv 1".to_string(), "total_exp of level 1 is not 0"));
+    }
     for (index, pair) in exp.windows(2).enumerate() {
         if pair.get(1) <= pair.first() {
             // `windows(2)` starts at level 1, so the second value is level index + 2.

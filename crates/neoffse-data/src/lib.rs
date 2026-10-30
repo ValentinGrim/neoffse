@@ -20,10 +20,11 @@
 //! [`DataError::Rule`]. `growth.toml` holds base HP and vitality per class, the
 //! total experience per level and the growth rows of the level-up rule, one
 //! array per column and growth group. It has its own rules: status ids rise
-//! from 1, `total_exp` rises strictly, group and job ids rise, every group
-//! starts at level 2 and covers every level of `exp_table` in each column,
-//! `hp_value1` is 0 or 1, every job names an existing group, and no table is
-//! empty.
+//! from 1, `total_exp` starts at 0 for level 1 and rises strictly, `exp_table`
+//! has `MAX_LV` rows when `bounds.toml` names that cap, group and job ids rise,
+//! every group starts at level 2 and covers every level of `exp_table` in each
+//! column, `hp_value1` is 0 or 1, every job names an existing group, and no
+//! table is empty.
 //!
 //! - [`embedded`]: the tables the crate ships, [`sources_for`] and [`tables_for`].
 //! - [`entry`]: the rows of a table, [`Entry`], its [`AbilityInfo`] and

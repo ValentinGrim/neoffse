@@ -80,7 +80,7 @@ fn bounds_are_read_by_key() {
     assert_eq!(tables.bound("MAX_GIL"), Some(999_999));
     assert_eq!(tables.bound("MAX_MP"), None);
     let pairs: Vec<_> = tables.bounds().collect();
-    assert_eq!(pairs, [("MAX_GIL", 999_999), ("MAX_HP", 999), ("MAX_LV", 99)]);
+    assert_eq!(pairs, [("MAX_GIL", 999_999), ("MAX_HP", 999), ("MAX_LV", 4)]);
 }
 
 #[test]

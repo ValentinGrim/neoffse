@@ -95,7 +95,15 @@ pub(crate) const BOUNDS: &str = r"# minimal/bounds.toml
 [bounds]
 MAX_GIL = 999999
 MAX_HP = 999
-MAX_LV = 99
+MAX_LV = 4
+";
+
+/// `BOUNDS` without the `MAX_LV` line: the level count is unchecked.
+pub(crate) const BOUNDS_NO_LEVEL: &str = r"# minimal/bounds.toml
+
+[bounds]
+MAX_GIL = 999999
+MAX_HP = 999
 ";
 
 pub(crate) const GROWTH: &str = r"# minimal/growth.toml
@@ -232,9 +240,17 @@ pub(crate) fn minimal() -> Sources<'static> {
     }
 }
 
-/// `GameTables::parse` over the minimal sources with `growth` replaced.
+/// `GameTables::parse` over the minimal sources with `growth` replaced and no
+/// `MAX_LV`, so the growth tests choose their own level count.
 pub(crate) fn parse_growth(growth: &str) -> Result<GameTables, DataError> {
-    GameTables::parse(Game::Ff1Pr, &Sources { growth, ..minimal() })
+    GameTables::parse(
+        Game::Ff1Pr,
+        &Sources {
+            growth,
+            bounds: BOUNDS_NO_LEVEL,
+            ..minimal()
+        },
+    )
 }
 
 /// The file of the `Toml` error a failed parse raises.

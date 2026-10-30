@@ -100,6 +100,7 @@ pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> 
     let bounds: BoundsFile = read("bounds.toml", sources.bounds)?;
     check_bounds(&bounds.bounds)?;
     let growth = parse_growth(sources.growth)?;
+    check_level_cap(&bounds.bounds, &growth)?;
     Ok(Parsed {
         tables,
         bounds: bounds.bounds,
@@ -122,6 +123,16 @@ fn check_bounds(bounds: &BTreeMap<String, i64>) -> Result<(), DataError> {
         }
     }
     Ok(())
+}
+
+/// `exp_table` holds one row per level up to `MAX_LV`, when `bounds` names it
+/// (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`). Without that key
+/// the check is skipped.
+fn check_level_cap(bounds: &BTreeMap<String, i64>, growth: &Growth) -> Result<(), DataError> {
+    match bounds.get("MAX_LV") {
+        Some(cap) if i64::try_from(growth.level_count()) != Ok(*cap) => Err(rule("growth.toml", "exp_table".to_string(), "row count differs from MAX_LV")),
+        _ => Ok(()),
+    }
 }
 
 /// The empty-slot flag of a content row: absent or `true`, only on an

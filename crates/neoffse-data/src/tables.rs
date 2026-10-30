@@ -65,8 +65,9 @@ impl GameTables {
     /// `content_id` of 0, a placeholder written as `false`, a placeholder
     /// outside the five equipment kinds or repeated in one kind, a cap key
     /// without the `MAX_` prefix, or a negative cap. `growth.toml` adds its
-    /// own rules: status ids rise from 1, `total_exp` rises strictly, job and
-    /// group ids rise, every group starts at level 2 and holds one value per
+    /// own rules: status ids rise from 1, `total_exp` starts at 0 and rises
+    /// strictly, `exp_table` has `MAX_LV` rows when `bounds.toml` holds that
+    /// cap, job and group ids rise, every group starts at level 2 and holds one value per
     /// level of `exp_table` in each column, `hp_value1` is 0 or 1, every job
     /// names a group that exists, and no table is empty.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
