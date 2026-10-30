@@ -15,6 +15,8 @@
 //! The parser checks the file contract, not only the types: ids start at 1
 //! and rise, a `kind` string is one of the known kinds, an ability `level` is
 //! 0 to 8, its `content_id`, when present, is not 0, its `type_id` is required,
+//! a content `kind` is one of `item`, `key_item`, `weapon`, `shield`, `armor`,
+//! `helmet`, `gloves`, `keyword`, `magic_stone` or `command_content`,
 //! a row has both names or neither (`name in one language only` otherwise), `placeholder` appears only as `true`,
 //! only on an equipment kind and once per kind, and every cap key starts with
 //! `MAX_` and holds no negative value. A row that breaks a value rule gives

@@ -24,7 +24,7 @@ const CONTENT_KINDS: [TableKind; 7] = [
 /// The text of the files of one game: seven, two of them optional.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sources<'a> {
-    /// `content.toml`: items, key items and equipment.
+    /// `content.toml`: items, key items, equipment, keywords, magic stones and command content rows.
     pub content: &'a str,
     /// `abilities.toml`.
     pub abilities: &'a str,
@@ -107,7 +107,10 @@ impl GameTables {
 
     /// The entry with that content id in any of the seven content tables
     /// (items, key items and the five equipment kinds). Ability content ids
-    /// are not in this space: see [`GameTables::ability_by_content`].
+    /// are not in this space: see [`GameTables::ability_by_content`]. The
+    /// keyword, magic stone and command content kinds are not looked up here
+    /// either, so a keyword ID never passes as an inventory item: read them
+    /// with [`GameTables::entry`].
     #[must_use]
     pub fn content(&self, id: u32) -> Option<&Entry> {
         CONTENT_KINDS.iter().find_map(|kind| self.entry(*kind, id))

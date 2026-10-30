@@ -120,6 +120,9 @@ pub(crate) fn content(file: &ContentFile, tables: &mut BTreeMap<TableKind, Vec<E
             "armor" => TableKind::Armor,
             "helmet" => TableKind::Helmet,
             "gloves" => TableKind::Gloves,
+            "keyword" => TableKind::Keyword,
+            "magic_stone" => TableKind::MagicStone,
+            "command_content" => TableKind::CommandContent,
             _ => {
                 return Err(DataError::UnknownKind {
                     file: NAME,

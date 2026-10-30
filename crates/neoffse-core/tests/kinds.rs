@@ -30,9 +30,12 @@ fn table_kinds_are_distinct_and_hashable() {
         TableKind::Command,
         TableKind::Map,
         TableKind::Monster,
+        TableKind::Keyword,
+        TableKind::MagicStone,
+        TableKind::CommandContent,
     ];
     let set: HashSet<TableKind> = kinds.into_iter().collect();
-    assert_eq!(set.len(), 12);
+    assert_eq!(set.len(), 15);
 }
 
 fn take(capability: Capability, table: TableKind, policy: CapPolicy) -> (Capability, TableKind, CapPolicy) {

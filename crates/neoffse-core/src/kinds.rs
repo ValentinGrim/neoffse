@@ -26,8 +26,10 @@ pub enum Capability {
     Bestiary,
 }
 
-/// An ID table a field can reference: one variant per table of
-/// `docs/formats/pixel-remaster.md#go-editor-tables`.
+/// An ID table a field can reference. The first twelve variants are the
+/// tables of `docs/formats/pixel-remaster.md#go-editor-tables`; `Keyword`,
+/// `MagicStone` and `CommandContent` hold the content types 6, 9 and 7
+/// (`docs/formats/pixel-remaster.md#content-types-5-to-9`).
 ///
 /// `neoffse-data` keys its tables by this type. Finer kinds inside a table (a
 /// spell against a monster ability) are entry kinds, not table kinds.
@@ -58,6 +60,13 @@ pub enum TableKind {
     Map,
     /// The `Bestiary` table.
     Monster,
+    /// The learned words of FF II (content type 6).
+    Keyword,
+    /// The espers of FF VI (content type 9).
+    MagicStone,
+    /// The content rows of type 7 (FF V and FF VI), keyed by content ID and
+    /// not by `command.csv` ID, so apart from [`TableKind::Command`].
+    CommandContent,
 }
 
 /// Whether an edit must respect the game's own caps.
