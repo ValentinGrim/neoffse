@@ -2379,6 +2379,11 @@ In `StatusUpProvider::ExecutionSkillUpMagic`, a `skillLevel` that reaches the ne
 It finds the type-4 content row, builds a new `OwnedAbility` with that ability, content and value, and swaps it in place in `abilityList`.
 It replaces the content ID in `additionOrderOwnedAbilityIds` and `sortOrderOwnedAbilityIds` in place, or appends it when absent, and swaps the entry in the dictionary list of every command that holds it.
 
+**Level in NeoFFSE.**
+NeoFFSE reads a spell's level from the row, by `(abilityId - 5) mod 16 + 1` [I], because the copy the Magic screen draws stays open ([question 36](#open-questions)).
+A Level edit writes the five changes listed in [Row and value in FF II](#row-and-value-in-ff-ii).
+On a pair whose row and `skillLevel` disagree, this reading differs from the level the game draws from `skillLevel`, as that section describes.
+
 #### Row and value in FF II
 
 **Row and value are two facts.**
