@@ -17,13 +17,13 @@ fn entry_finds_by_kind_and_id() {
     let entry = tables.entry(TableKind::Item, 5).unwrap();
     assert_eq!(entry.id, 5);
     assert_eq!(entry.kind, TableKind::Item);
-    assert_eq!(tables.entry(TableKind::Weapon, 8).unwrap().name_en, "Dagger");
-    assert_eq!(tables.entry(TableKind::Job, 2).unwrap().name_en, "Thief");
-    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name_en, "Defend");
-    assert_eq!(tables.entry(TableKind::Monster, 1).unwrap().name_en, "Goblin");
+    assert_eq!(tables.entry(TableKind::Weapon, 8).unwrap().name_en.as_deref(), Some("Dagger"));
+    assert_eq!(tables.entry(TableKind::Job, 2).unwrap().name_en.as_deref(), Some("Thief"));
+    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name_en.as_deref(), Some("Defend"));
+    assert_eq!(tables.entry(TableKind::Monster, 1).unwrap().name_en.as_deref(), Some("Goblin"));
     let cure = tables.entry(TableKind::Ability, 3).unwrap();
     let info = cure.ability.unwrap();
-    assert_eq!((info.content_id, info.kind, info.level), (400, AbilityKind::WhiteMagic, 1));
+    assert_eq!((info.content_id, info.kind, info.level), (Some(400), AbilityKind::WhiteMagic, 1));
     assert!(tables.entry(TableKind::Item, 5).unwrap().ability.is_none());
 }
 
@@ -68,10 +68,10 @@ fn table_is_ascending_and_keeps_placeholders() {
 fn names_per_language_and_accents() {
     let tables = tables();
     let ether = tables.entry(TableKind::Item, 5).unwrap();
-    assert_eq!(ether.name(Language::En), "Ether");
-    assert_eq!(ether.name(Language::Fr), "Éther");
+    assert_eq!(ether.name(Language::En), Some("Ether"));
+    assert_eq!(ether.name(Language::Fr), Some("Éther"));
     assert_ne!(ether.name(Language::En), ether.name(Language::Fr));
-    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name(Language::Fr), "Défense");
+    assert_eq!(tables.entry(TableKind::Command, 2).unwrap().name(Language::Fr), Some("Défense"));
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn bounds_are_read_by_key() {
     assert_eq!(tables.bound("MAX_GIL"), Some(999_999));
     assert_eq!(tables.bound("MAX_MP"), None);
     let pairs: Vec<_> = tables.bounds().collect();
-    assert_eq!(pairs, [("MAX_GIL", 999_999), ("MAX_HP", 999), ("MAX_LV", 99)]);
+    assert_eq!(pairs, [("MAX_GIL", 999_999), ("MAX_HP", 999), ("MAX_LV", 4)]);
 }
 
 #[test]
@@ -102,9 +102,9 @@ fn crlf_text_parses_the_same() {
         abilities: &crlf[1],
         jobs: &crlf[2],
         commands: &crlf[3],
-        monsters: &crlf[4],
+        monsters: Some(&crlf[4]),
         bounds: &crlf[5],
-        growth: &crlf[6],
+        growth: Some(&crlf[6]),
     };
     assert_eq!(GameTables::parse(Game::Ff1Pr, &sources).unwrap(), tables());
 }

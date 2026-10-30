@@ -4,7 +4,7 @@
 ///
 /// `file` is the name the tool writes: `content.toml`, `abilities.toml`,
 /// `jobs.toml`, `commands.toml`, `monsters.toml`, `bounds.toml` or
-/// `growth.toml`. `Display` never repeats `source`. The parser checks the file contract of
+/// `growth.toml`, the last two being optional inputs. `Display` never repeats `source`. The parser checks the file contract of
 /// `data/pr/ff1/` row by row: the types (`Toml`), the kinds
 /// (`UnknownKind`), the id order (`IdOrder`) and the value rules (`Rule`).
 #[derive(Debug, thiserror::Error)]

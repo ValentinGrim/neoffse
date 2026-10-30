@@ -199,8 +199,8 @@ fn the_language_reaches_the_view() {
         let inventory = view.section(Capability::Inventory).unwrap();
         inventory.entities.iter().find(|entity| &entity.id == id.id()).unwrap().label.clone()
     };
-    assert_eq!(label(Ff1Format::new()), entry.name(Language::En));
-    assert_eq!(label(Ff1Format::with_language(Language::Fr)), entry.name(Language::Fr));
+    assert_eq!(Some(label(Ff1Format::new()).as_str()), entry.name(Language::En));
+    assert_eq!(Some(label(Ff1Format::with_language(Language::Fr)).as_str()), entry.name(Language::Fr));
     assert_eq!(Ff1Format::new().language(), Language::En);
     assert_eq!(Ff1Format::with_language(Language::Fr).language(), Language::Fr);
     assert_eq!(Ff1Format::default().language(), Language::En);

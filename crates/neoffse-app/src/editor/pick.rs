@@ -31,7 +31,8 @@ pub fn picker_entries(tables: &GameTables, kinds: &[TableKind], language: Langua
                 continue;
             }
             let Ok(id) = i32::try_from(entry.id) else { continue };
-            let name = entry.name(language);
+            // A row without a name shows as "" and the UI prints "Entry {id}" for it.
+            let name = entry.name(language).unwrap_or_default();
             if wanted_id == Some(entry.id) || name.to_lowercase().contains(&needle) {
                 found.push(PickerEntry { id, name: name.into() });
             }
@@ -51,7 +52,7 @@ pub fn entry_name(tables: &GameTables, kinds: &[TableKind], language: Language, 
     kinds
         .iter()
         .find_map(|kind| tables.entry(*kind, id))
-        .map(|entry| entry.name(language).to_owned())
+        .map(|entry| entry.name(language).unwrap_or_default().to_owned())
 }
 
 /// The id a trimmed query of ASCII digits spells, `None` for anything else.

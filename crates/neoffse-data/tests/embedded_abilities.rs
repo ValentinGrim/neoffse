@@ -5,16 +5,18 @@
 
 mod common;
 
-use common::ff1;
-use neoffse_core::TableKind;
-use neoffse_data::AbilityKind;
+use std::collections::BTreeMap;
+
+use common::{ff1, kind_rule::kind_of};
+use neoffse_core::{Game, TableKind};
+use neoffse_data::{AbilityKind, Language, tables_for};
 
 fn ability(id: u32) -> &'static neoffse_data::Entry {
     ff1().entry(TableKind::Ability, id).unwrap()
 }
 
 fn name_en(kind: TableKind, id: u32) -> &'static str {
-    ff1().entry(kind, id).unwrap().name_en.as_str()
+    ff1().entry(kind, id).unwrap().name(Language::En).unwrap()
 }
 
 #[test]
@@ -22,8 +24,8 @@ fn ability_100_sits_at_content_310() {
     // Ability 100 breaks the rule content id = id + 208.
     let curaja = ability(100);
     let info = curaja.ability.unwrap();
-    assert_eq!((info.content_id, info.level, info.kind), (310, 7, AbilityKind::WhiteMagic));
-    assert_eq!((curaja.name_en.as_str(), curaja.name_fr.as_str()), ("Curaja", "Soin Max"));
+    assert_eq!((info.content_id, info.level, info.kind), (Some(310), 7, AbilityKind::WhiteMagic));
+    assert_eq!((curaja.name_en.as_deref(), curaja.name_fr.as_deref()), (Some("Curaja"), Some("Soin Max")));
     assert_eq!(ff1().ability_by_content(310).unwrap().id, 100);
     // Ability content ids are no content-table ids.
     assert!(ff1().content(310).is_none());
@@ -35,7 +37,7 @@ fn the_offset_rule_has_one_exception() {
     let abilities = ff1().table(TableKind::Ability).unwrap();
     let off_rule: Vec<u32> = abilities
         .iter()
-        .filter(|entry| entry.ability.unwrap().content_id != entry.id + 208)
+        .filter(|entry| entry.ability.unwrap().content_id != Some(entry.id + 208))
         .map(|entry| entry.id)
         .collect();
     assert_eq!(off_rule, [100]);
@@ -54,7 +56,7 @@ fn spell_level_and_school_follow_the_id() {
         assert_eq!(info.kind, school, "school of {id}");
     }
     for entry in ff1().table(TableKind::Ability).unwrap() {
-        let found = ff1().ability_by_content(entry.ability.unwrap().content_id).unwrap();
+        let found = ff1().ability_by_content(entry.ability.unwrap().content_id.unwrap()).unwrap();
         assert_eq!(found, entry);
     }
 }
@@ -62,10 +64,10 @@ fn spell_level_and_school_follow_the_id() {
 #[test]
 fn repeated_names_keep_every_id() {
     let (first, second) = (ability(53), ability(100));
-    assert_eq!((first.name_en.as_str(), second.name_en.as_str()), ("Curaja", "Curaja"));
+    assert_eq!((first.name_en.as_deref(), second.name_en.as_deref()), (Some("Curaja"), Some("Curaja")));
     assert_ne!(first.id, second.id);
     assert_ne!(first.ability.unwrap().content_id, second.ability.unwrap().content_id);
-    assert_eq!(second.name_fr, "Soin Max");
+    assert_eq!(second.name_fr.as_deref(), Some("Soin Max"));
     assert_eq!(name_en(TableKind::Monster, 120), "Lich");
     assert_eq!(name_en(TableKind::Monster, 121), "Lich");
     for (id, name) in [
@@ -102,5 +104,28 @@ fn monster_and_command_abilities_have_level_0() {
     assert_eq!(flat.len(), 31);
     for entry in flat {
         assert_eq!(entry.ability.unwrap().level, 0, "ability {}", entry.id);
+    }
+}
+
+#[test]
+fn the_ff1_type_ids_match_the_document() {
+    // docs/formats/pixel-remaster.md#master-data-per-game, "Abilities".
+    let mut histogram = BTreeMap::new();
+    for entry in ff1().table(TableKind::Ability).unwrap() {
+        *histogram.entry(entry.ability.unwrap().type_id).or_insert(0_usize) += 1;
+    }
+    let expected = BTreeMap::from([(1, 33), (2, 32), (3, 2), (4, 1), (5, 1), (6, 2), (8, 1), (13, 24)]);
+    assert_eq!(histogram, expected);
+    assert_eq!(histogram.values().sum::<usize>(), 96);
+}
+
+#[test]
+fn every_embedded_ability_follows_the_kind_rule() {
+    for game in Game::ALL {
+        let Some(tables) = tables_for(*game) else { continue };
+        for entry in tables.table(TableKind::Ability).unwrap_or_default() {
+            let info = entry.ability.unwrap();
+            assert_eq!(kind_of(info.type_id), Some(info.kind), "{game:?} ability {}", entry.id);
+        }
     }
 }

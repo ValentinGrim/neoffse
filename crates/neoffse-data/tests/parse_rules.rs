@@ -18,7 +18,7 @@ fn rule_of(sources: &Sources<'_>) -> (&'static str, String, &'static str) {
 }
 
 fn ability(id: u32, content_id: u32, level: u32) -> String {
-    format!("[[ability]]\nid = {id}\ncontent_id = {content_id}\nkind = \"white_magic\"\nlevel = {level}\nname_en = \"A\"\nname_fr = \"B\"\n")
+    format!("[[ability]]\nid = {id}\ncontent_id = {content_id}\ntype_id = 1\nkind = \"white_magic\"\nlevel = {level}\nname_en = \"A\"\nname_fr = \"B\"\n")
 }
 
 fn content(id: u32, kind: &str, placeholder: &str) -> String {

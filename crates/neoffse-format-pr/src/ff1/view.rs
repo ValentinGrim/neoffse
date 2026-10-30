@@ -120,7 +120,7 @@ impl Ff1Model {
                 let label = self
                     .tables
                     .content(key)
-                    .map(|entry| entry.name(language))
+                    .and_then(|entry| entry.name(language))
                     .filter(|name| !name.is_empty())
                     .map_or_else(|| format!("{fallback} {key}"), str::to_owned);
                 let fields = self.field_view(row.field(names::COUNT))?.into_iter().collect();

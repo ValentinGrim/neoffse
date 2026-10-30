@@ -11,7 +11,7 @@ commits its output.
 `--install` reads the bundles from the game's install folder and the Steam
 build id from the appmanifest next to it. `--bundles` takes a folder that
 holds the two bundle files directly, for a copy of them. The tool only reads
-the bundles. It writes the seven files under <out>/<game>/, and only when
+the bundles. It writes up to seven files under <out>/<game>/, and only when
 their bytes change.
 """
 
@@ -28,17 +28,16 @@ if sys.version_info < (3, 11):  # tomllib, used by the self-check, arrives in 3.
 
 from . import ExportError  # noqa: E402
 from .build import (  # noqa: E402
-    Row,
     build_abilities,
     build_bounds,
     build_content,
     build_monsters,
     build_named,
-    parse_csv,
-    parse_messages,
 )
 from .bundles import find_bundle, parse_build_id, read_assets, sha256_of  # noqa: E402
+from .csvtext import Row, parse_csv, parse_messages  # noqa: E402
 from .growth import build_growth  # noqa: E402
+from .names import Tally, check_story_tables, story_rows, tally_notices  # noqa: E402
 from .render import (  # noqa: E402
     Provenance,
     check_roundtrip,
@@ -47,7 +46,8 @@ from .render import (  # noqa: E402
     render_arrays,
     render_table,
 )
-from .tables import GAMES, Game  # noqa: E402
+from .specs import Game  # noqa: E402
+from .tables import GAMES  # noqa: E402
 
 _MASTER_PREFIX = "master_assets_all_"
 _MESSAGE_PREFIX = "message_assets_all_"
@@ -117,9 +117,15 @@ def _array_output(
 
 
 def _render_all(
-    game: Game, prov: Provenance, texts: Mapping[str, str], messages: Mapping[str, str]
+    game: Game,
+    prov: Provenance,
+    texts: Mapping[str, str],
+    messages: Mapping[str, str],
+    story_texts: Mapping[str, str],
 ) -> list[_Output]:
-    """Build and render the seven files, in order. Nothing touches the disk."""
+    """Build and render up to seven files, in order. A game without a monsters or
+    growth spec renders no file for it. Nothing touches the disk. `story_texts`
+    maps a language to its story file; it is empty for a game with no story list."""
     csvs = {
         csv: parse_csv(texts[game.master_dir + csv], name=game.master_dir + csv)
         for csv in game.csv_files()
@@ -128,42 +134,54 @@ def _render_all(
         lang: parse_messages(text, name=game.message_dir + game.message_file.format(lang=lang))
         for lang, text in messages.items()
     }
+    check_story_tables(game.story, game.named)
     outputs = []
     spec = game.content
-    rows = build_content(spec, csvs, names)
-    outputs.append(_array_output(game, prov, spec.file, "content", rows, spec.notes, []))
+    tally = Tally()
+    rows = build_content(spec, csvs, names, tally)
+    notices = tally_notices(game.id, spec.file, tally)
+    outputs.append(_array_output(game, prov, spec.file, "content", rows, spec.notes, notices))
     spec = game.abilities
-    rows, unlinked = build_abilities(spec, csvs, names)
+    tally = Tally()
+    rows, unlinked = build_abilities(spec, csvs, names, tally)
     notices = []
     if unlinked:
         notices.append(
             f"{game.id}: {unlinked} type-{spec.content_type} content rows "
             "link to no ability, not exported"
         )
+    notices.extend(tally_notices(game.id, spec.file, tally))
     outputs.append(_array_output(game, prov, spec.file, "ability", rows, spec.notes, notices))
     for named in game.named:
-        rows = build_named(named, csvs, names)
+        tally = Tally()
+        story = story_rows(game.story, named, csvs, story_texts)
+        rows = build_named(named, csvs, names, tally, story)
+        notices = tally_notices(game.id, named.file, tally)
         outputs.append(
-            _array_output(game, prov, named.file, named.array, rows, named.notes, [])
+            _array_output(game, prov, named.file, named.array, rows, named.notes, notices)
         )
-    spec = game.monsters
-    rows, dropped = build_monsters(spec, csvs, names)
-    notices = [
-        f"{game.id}: monster {gone} shares group {group} with monster {kept}, not exported"
-        for gone, kept, group in dropped
-    ]
-    outputs.append(_array_output(game, prov, spec.file, spec.array, rows, spec.notes, notices))
+    if game.monsters is not None:
+        spec = game.monsters
+        rows, dropped = build_monsters(spec, csvs, names)
+        notices = [
+            f"{game.id}: monster {gone} shares group {group} with monster {kept}, not exported"
+            for gone, kept, group in dropped
+        ]
+        outputs.append(
+            _array_output(game, prov, spec.file, spec.array, rows, spec.notes, notices)
+        )
     values = build_bounds(game.bounds, csvs)
     header = file_header(game, game.bounds.file, prov, game.bounds.notes)
     text = render_table(header, "bounds", values)
     check_roundtrip(text, {"bounds": values})
     outputs.append(_Output(game.bounds.file, text, len(values), []))
-    tables = build_growth(game.growth, csvs)
-    header = file_header(game, game.growth.file, prov, game.growth.notes)
-    text = render_arrays(header, list(tables.items()))
-    check_roundtrip(text, tables)
-    count = sum(1 if isinstance(rows, dict) else len(rows) for rows in tables.values())
-    outputs.append(_Output(game.growth.file, text, count, []))
+    if game.growth is not None:
+        tables = build_growth(game.growth, csvs, values.get(game.growth.level_cap_key))
+        header = file_header(game, game.growth.file, prov, game.growth.notes)
+        text = render_arrays(header, list(tables.items()))
+        check_roundtrip(text, tables)
+        count = sum(1 if isinstance(rows, dict) else len(rows) for rows in tables.values())
+        outputs.append(_Output(game.growth.file, text, count, []))
     return outputs
 
 
@@ -224,7 +242,12 @@ def _run(args: argparse.Namespace) -> int:
     for lang in game.languages:
         path = game.message_dir + game.message_file.format(lang=lang)
         messages[lang] = read_assets(message, {path})[path]
-    outputs = _render_all(game, prov, texts, messages)
+    story_texts = {}
+    if game.story is not None:
+        for lang in game.languages:
+            path = game.message_dir + game.story.file.format(lang=lang)
+            story_texts[lang] = read_assets(message, {path})[path]
+    outputs = _render_all(game, prov, texts, messages, story_texts)
     print("\n".join(_write_all(game, out_dir, outputs)))
     return 0
 

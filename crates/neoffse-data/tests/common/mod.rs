@@ -1,12 +1,22 @@
 //! Helpers shared by the test files of `neoffse-data`.
 #![allow(dead_code, reason = "each test file uses a different part of these helpers")]
 
+pub(crate) mod kind_rule;
+
 use neoffse_core::Game;
 use neoffse_data::{DataError, GameTables, Sources, tables_for};
 
 /// The cached tables of FF I.
 pub(crate) fn ff1() -> &'static GameTables {
     tables_for(Game::Ff1Pr).unwrap()
+}
+
+/// The games with embedded data: FF I and each game part appends its own.
+pub(crate) const EMBEDDED: &[Game] = &[Game::Ff1Pr, Game::Ff2Pr, Game::Ff3Pr, Game::Ff4Pr, Game::Ff5Pr, Game::Ff6Pr];
+
+/// The cached tables of an embedded game.
+pub(crate) fn game_tables(game: Game) -> &'static GameTables {
+    tables_for(game).unwrap()
 }
 
 pub(crate) const CONTENT: &str = r#"# minimal/content.toml
@@ -37,6 +47,7 @@ pub(crate) const ABILITIES: &str = r#"# minimal/abilities.toml
 [[ability]]
 id = 1
 content_id = 209
+type_id = 4
 kind = "command"
 level = 0
 name_en = "Attack"
@@ -45,6 +56,7 @@ name_fr = "Attaque"
 [[ability]]
 id = 3
 content_id = 400
+type_id = 1
 kind = "white_magic"
 level = 1
 name_en = "Cure"
@@ -95,7 +107,15 @@ pub(crate) const BOUNDS: &str = r"# minimal/bounds.toml
 [bounds]
 MAX_GIL = 999999
 MAX_HP = 999
-MAX_LV = 99
+MAX_LV = 4
+";
+
+/// `BOUNDS` without the `MAX_LV` line: the level count is unchecked.
+pub(crate) const BOUNDS_NO_LEVEL: &str = r"# minimal/bounds.toml
+
+[bounds]
+MAX_GIL = 999999
+MAX_HP = 999
 ";
 
 pub(crate) const GROWTH: &str = r"# minimal/growth.toml
@@ -218,7 +238,7 @@ pub(crate) fn curve_text(groups: &[u32], last: u32) -> String {
     job_text(&jobs) + &groups.iter().map(|g| group_text(*g, last)).collect::<String>()
 }
 
-/// Seven small valid texts: two rows per array file (three in `content`) and
+/// Seven small valid texts, optional ones included: two rows per array file (three in `content`) and
 /// three caps.
 pub(crate) fn minimal() -> Sources<'static> {
     Sources {
@@ -226,15 +246,23 @@ pub(crate) fn minimal() -> Sources<'static> {
         abilities: ABILITIES,
         jobs: JOBS,
         commands: COMMANDS,
-        monsters: MONSTERS,
+        monsters: Some(MONSTERS),
         bounds: BOUNDS,
-        growth: GROWTH,
+        growth: Some(GROWTH),
     }
 }
 
-/// `GameTables::parse` over the minimal sources with `growth` replaced.
+/// `GameTables::parse` over the minimal sources with `growth` replaced and no
+/// `MAX_LV`, so the growth tests choose their own level count.
 pub(crate) fn parse_growth(growth: &str) -> Result<GameTables, DataError> {
-    GameTables::parse(Game::Ff1Pr, &Sources { growth, ..minimal() })
+    GameTables::parse(
+        Game::Ff1Pr,
+        &Sources {
+            growth: Some(growth),
+            bounds: BOUNDS_NO_LEVEL,
+            ..minimal()
+        },
+    )
 }
 
 /// The file of the `Toml` error a failed parse raises.

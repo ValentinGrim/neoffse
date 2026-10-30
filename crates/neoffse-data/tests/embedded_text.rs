@@ -34,7 +34,7 @@ fn all_names() -> Vec<(TableKind, u32, &'static str, &'static str)> {
                 .table(*kind)
                 .unwrap()
                 .iter()
-                .map(|entry| (*kind, entry.id, entry.name_en.as_str(), entry.name_fr.as_str()))
+                .map(|entry| (*kind, entry.id, entry.name_en.as_deref().unwrap(), entry.name_fr.as_deref().unwrap()))
         })
         .collect()
 }
@@ -67,7 +67,7 @@ fn embedded_text_has_no_bom_and_no_carriage_return() {
         ("abilities", sources.abilities),
         ("jobs", sources.jobs),
         ("commands", sources.commands),
-        ("monsters", sources.monsters),
+        ("monsters", sources.monsters.unwrap()),
         ("bounds", sources.bounds),
     ] {
         assert!(!text.starts_with('\u{feff}'), "{file}");

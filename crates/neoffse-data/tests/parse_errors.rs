@@ -5,7 +5,7 @@ mod common;
 
 use std::error::Error;
 
-use common::{id_order, minimal, toml_file};
+use common::{id_order, minimal, rule, toml_file};
 use neoffse_core::Game;
 use neoffse_data::{DataError, GameTables, Sources};
 
@@ -62,12 +62,12 @@ fn a_missing_top_level_key_is_refused() {
 }
 
 #[test]
-fn a_missing_name_is_refused() {
+fn a_name_in_one_language_is_a_rule_error() {
     let sources = Sources {
         content: "[[content]]\nid = 1\nkind = \"item\"\nname_en = \"A\"\n",
         ..minimal()
     };
-    assert_eq!(toml_file(parse(&sources)), "content.toml");
+    assert_eq!(rule(parse(&sources)), ("content.toml", "id 1".to_string(), "name in one language only"));
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn an_unknown_content_kind_is_refused() {
 
 #[test]
 fn an_unknown_ability_kind_is_refused() {
-    let abilities = "[[ability]]\nid = 1\ncontent_id = 209\nkind = \"spell\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n";
+    let abilities = "[[ability]]\nid = 1\ncontent_id = 209\ntype_id = 4\nkind = \"spell\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n";
     let sources = Sources { abilities, ..minimal() };
     assert!(matches!(
         parse(&sources).unwrap_err(),
@@ -122,7 +122,7 @@ fn content_row(id: u32) -> String {
 }
 
 fn ability_row(id: u32) -> String {
-    format!("[[ability]]\nid = {id}\ncontent_id = 300\nkind = \"monster\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n\n")
+    format!("[[ability]]\nid = {id}\ncontent_id = 300\ntype_id = 3\nkind = \"monster\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n\n")
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn id_zero_is_refused() {
     );
     assert_eq!(
         id_order(parse(&Sources {
-            monsters: &monsters,
+            monsters: Some(&monsters),
             ..minimal()
         })),
         ("monsters.toml", 0)
@@ -174,7 +174,7 @@ fn a_repeated_id_is_refused() {
     );
     assert_eq!(
         id_order(parse(&Sources {
-            monsters: &monsters,
+            monsters: Some(&monsters),
             ..minimal()
         })),
         ("monsters.toml", 4)
@@ -202,7 +202,7 @@ fn a_descending_id_is_refused() {
     );
     assert_eq!(
         id_order(parse(&Sources {
-            monsters: &monsters,
+            monsters: Some(&monsters),
             ..minimal()
         })),
         ("monsters.toml", 5)

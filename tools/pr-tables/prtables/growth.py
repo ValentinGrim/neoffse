@@ -10,7 +10,7 @@ strictly from 0 at level 1. curve.py holds the job and growth rows.
 from . import ExportError
 from .build import Csvs, Row, _index, _int
 from .curve import build_curve
-from .tables import GrowthSpec
+from .specs import GrowthSpec
 
 
 def _status_rows(spec: GrowthSpec, csvs: Csvs) -> list[Row]:
@@ -81,11 +81,17 @@ def _exp_rows(spec: GrowthSpec, csvs: Csvs) -> list[Row]:
     return [{"lv": level, "total_exp": totals[level]} for level in levels]
 
 
-def build_growth(spec: GrowthSpec, csvs: Csvs) -> dict[str, list[Row] | Row]:
+def build_growth(
+    spec: GrowthSpec, csvs: Csvs, level_cap: int | None
+) -> dict[str, list[Row] | Row]:
     """The sections of growth.toml by name, in file order.
 
-    exp_table is one table whose total_exp list is indexed by level - 1."""
+    exp_table is one table whose total_exp list is indexed by level - 1. Its
+    row count equals level_cap, the value of spec.level_cap_key; None skips the
+    check, as the data crate does when bounds lack the key."""
     exp = _exp_rows(spec, csvs)
+    if level_cap is not None and len(exp) != level_cap:
+        raise ExportError(f"{spec.exp_csv}: {len(exp)} levels, {spec.level_cap_key} is {level_cap}")
     jobs, steps = build_curve(spec, csvs, int(exp[-1]["lv"]))
     return {
         "character_status": _status_rows(spec, csvs),
