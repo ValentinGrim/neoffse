@@ -37,8 +37,10 @@
 //! [`Ff1Format`] implements `neoffse_core::SaveFormat` for the game: it
 //! detects a slot file by its name and opens it as an [`Ff1Document`], which
 //! implements `neoffse_core::SaveDocument` over the model, the container
-//! facts of the opened file and its name. [`OpenError`] says why a file is no
-//! slot of this game.
+//! facts of the opened file and its name. Both are aliases of the generic
+//! [`SlotFormat`] and [`SlotDocument`] of [`crate::shared`], instantiated
+//! with [`Ff1Model`]; the impl of `SlotModel` for the model lives in this
+//! module. [`OpenError`] says why a file is no slot of this game.
 //!
 //! Open a slot, change the gil the way the game would, and encode the file:
 //!
@@ -65,7 +67,6 @@
 mod apply;
 mod binding;
 mod derived;
-mod format;
 mod game;
 mod growth;
 mod level;
@@ -84,12 +85,11 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
-use crate::shared::SlotDocument;
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
+use crate::shared::{SlotDocument, SlotFormat};
 use binding::Binding;
-pub use format::Ff1Format;
 use locate::{locate, read_ability};
 pub use rolls::{Rolls, ThreadRolls};
 
@@ -99,6 +99,14 @@ pub const GAME: Game = Game::Ff1Pr;
 /// The capabilities of an FF I slot: the party, the inventory (gil sits under
 /// the inventory) and the magic (the spell slots, read only).
 pub const CAPABILITIES: [Capability; 3] = [Capability::Party, Capability::Inventory, Capability::Magic];
+
+/// The FF I Pixel Remaster format of `neoffse-core`: detection by slot name
+/// and the typed open.
+///
+/// It holds the ID tables and the language of the view labels, fixed for
+/// every document it opens: a language switch builds a new format. It is an
+/// alias of the generic [`SlotFormat`] of the shared layer.
+pub type Ff1Format = SlotFormat<Ff1Model>;
 
 /// An FF I slot opened by [`Ff1Format`].
 ///
@@ -121,7 +129,7 @@ impl Ff1Model {
     /// fails when a field reads it.
     ///
     /// A lookup by `id` or `contentId` takes the first row with that key.
-    /// [`Ff1Format::open_document`](Ff1Format::open_document) refuses a
+    /// [`SlotFormat::open_document`] refuses a
     /// document that repeats a key; a model built here accepts it.
     #[must_use]
     pub fn new(document: Document, tables: &'static GameTables) -> Self {
