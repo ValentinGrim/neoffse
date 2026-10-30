@@ -23,6 +23,8 @@ pub(crate) mod ff1_real;
 pub(crate) mod ff1_render;
 pub(crate) mod ff1_rules;
 pub(crate) mod ff1_save;
+pub(crate) mod ff2_render;
+pub(crate) mod ff2_save;
 pub(crate) mod growth_oracle;
 pub(crate) mod json_diff;
 mod json_scan;

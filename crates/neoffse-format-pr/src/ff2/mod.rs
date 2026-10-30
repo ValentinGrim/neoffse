@@ -1,0 +1,143 @@
+//! The FF II Pixel Remaster slot as the domain model of `neoffse-core`.
+//!
+//! [`Ff2Model`] maps the lossless [`Document`] of a slot onto the field
+//! vocabulary of [`names`]: characters (name, person, HP, MP, the gains of
+//! maximum HP, maximum MP and the six stats, the ten skill values, five
+//! equipment slots, and the two computed read-only fields `max_hp` and
+//! `max_mp`), the two item lists and gil
+//! (`docs/formats/pixel-remaster.md#characters`,
+//! `docs/formats/pixel-remaster.md#skill-levels-in-ff-ii`,
+//! `docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`,
+//! `docs/formats/pixel-remaster.md#inventory`). A read finds a character by
+//! its `id`, an item by its `contentId` and a dictionary entry by its key,
+//! never by position. The model keeps no state beside the document: every
+//! key it does not map stays as read.
+//!
+//! FF II has no level, experience or spell charge field, so those paths of
+//! the FF I vocabulary are unknown here
+//! (`docs/formats/pixel-remaster.md#character-growth-in-ff-ii`).
+
+mod binding;
+mod derived;
+mod locate;
+mod meta;
+pub mod names;
+
+use neoffse_core::{CollectionMeta, EditError, FieldId, FieldMeta, Game, Value};
+use neoffse_data::GameTables;
+
+use crate::document::{Document, DocumentError, Scalar, Segment};
+use crate::shared::meta::collection_meta;
+use crate::shared::paths::Collection;
+use crate::shared::read::{format_error, read_int, read_text, row_keys};
+use binding::Binding;
+use locate::locate;
+
+/// The game of this module.
+pub const GAME: Game = Game::Ff2Pr;
+
+/// An FF II slot document with its ID tables.
+///
+/// `Debug` prints save content (names): callers must not log it.
+#[derive(Debug, Clone)]
+pub struct Ff2Model {
+    document: Document,
+    tables: &'static GameTables,
+}
+
+impl Ff2Model {
+    /// Wraps `document`. Nothing is validated: a document of another shape
+    /// fails when a field reads it.
+    ///
+    /// A lookup by `id` or `contentId` takes the first row with that key.
+    /// The shared open pipeline refuses a document that repeats a key; a
+    /// model built here accepts it.
+    #[must_use]
+    pub fn new(document: Document, tables: &'static GameTables) -> Self {
+        Self { document, tables }
+    }
+
+    /// The document, for `to_json`.
+    #[must_use]
+    pub fn document(&self) -> &Document {
+        &self.document
+    }
+
+    /// The document, consumed.
+    #[must_use]
+    pub fn into_document(self) -> Document {
+        self.document
+    }
+
+    /// Reads any path of the document without writing. It reaches the keys
+    /// the model does not map, such as `id` and `userData.playTime`.
+    ///
+    /// # Errors
+    ///
+    /// The `DocumentError` of [`Document::get`].
+    pub fn read(&mut self, path: &[Segment<'_>]) -> Result<Scalar, DocumentError> {
+        self.document.get(path)
+    }
+
+    /// The row keys of `collection` in document order: the `id` of each
+    /// character, or the `contentId` of each row of `inventory` or
+    /// `key_items`.
+    ///
+    /// # Errors
+    ///
+    /// `NotACollection` when `collection` is none of the three, `Format` when
+    /// the document does not hold the list or a key.
+    pub fn rows(&mut self, collection: &FieldId) -> Result<Vec<u32>, EditError> {
+        let kind = Collection::of(collection).ok_or_else(|| EditError::NotACollection { field: collection.clone() })?;
+        row_keys(&mut self.document, kind).map_err(|source| format_error(collection, source))
+    }
+
+    /// The value of `field`. `max_hp` and `max_mp` are computed from the
+    /// document and the tables: the base of the character's status row plus
+    /// the stored gain, held to the `MAX_HP` or `MAX_MP` cap.
+    ///
+    /// # Errors
+    ///
+    /// `UnknownField` for an undeclared path (FF I's `level`, `exp`,
+    /// `charges` and `spell` among them), a dictionary without the key, or a
+    /// computed field whose key or table row is missing, `MissingRow` for an
+    /// absent character or item, `Format` when the document holds another
+    /// shape: a float or an oversized integer where an integer belongs, a
+    /// non-string name.
+    pub fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
+        get_in(&mut self.document, self.tables, field)
+    }
+
+    /// The metadata of `field`, or `None` for an undeclared path. It reads
+    /// no document: a path that names an absent row still has a meta.
+    #[must_use]
+    pub fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
+        let binding = Binding::resolve(field).ok()?;
+        Some(meta::field_meta(&binding, self.tables))
+    }
+
+    /// The metadata of `character`, `inventory` or `key_items`, `None` for
+    /// any other path.
+    #[must_use]
+    pub fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
+        Some(collection_meta(Collection::of(collection)?, self.tables))
+    }
+}
+
+/// The body of [`Ff2Model::get`], over the parts of the model so that the
+/// shared summary can call it with the document it is walking.
+pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
+    let binding = Binding::resolve(field)?;
+    if let Binding::Character { id, part } = binding
+        && binding.is_derived()
+    {
+        return derived::value(document, tables, id, part, field);
+    }
+    let path = locate(document, &binding, field)?;
+    let read = if binding.is_text() {
+        read_text(document, &path).map(Value::Text)
+    } else {
+        read_int(document, &path).map(Value::Int)
+    };
+    read.map_err(|source| format_error(field, source))
+}

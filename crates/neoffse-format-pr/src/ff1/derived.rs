@@ -10,9 +10,9 @@ use neoffse_data::GameTables;
 
 use super::binding::Part;
 use super::names;
-use crate::document::{Document, DocumentError, Segment};
+use crate::document::{Document, Segment};
 use crate::shared::paths::{Collection, characters_target, element, with};
-use crate::shared::read::{find_row, format_error, missing_row, read_int};
+use crate::shared::read::{find_row, format_error, missing_row, read_stored};
 
 /// The value of the computed `part` of character `id`.
 ///
@@ -41,15 +41,6 @@ pub(super) fn value(document: &mut Document, tables: &GameTables, id: u32, part:
         _ => None,
     };
     figure.map(Value::Int).ok_or_else(absent)
-}
-
-/// An integer of the character, `None` when its key is missing.
-fn read_stored(document: &mut Document, path: &[Segment<'_>], field: &FieldId) -> Result<Option<i64>, EditError> {
-    match read_int(document, path) {
-        Ok(number) => Ok(Some(number)),
-        Err(DocumentError::MissingKey { .. }) => Ok(None),
-        Err(source) => Err(format_error(field, source)),
-    }
 }
 
 /// The base HP of the status row plus the stored gain, saturated and held to

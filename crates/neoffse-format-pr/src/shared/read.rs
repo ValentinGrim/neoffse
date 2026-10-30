@@ -34,6 +34,16 @@ pub(crate) fn read_int(document: &mut Document, path: &[Segment<'_>]) -> Result<
     }
 }
 
+/// An integer of a character, `None` when its key is missing. Any other
+/// failure is the `Format` error of `field`.
+pub(crate) fn read_stored(document: &mut Document, path: &[Segment<'_>], field: &FieldId) -> Result<Option<i64>, EditError> {
+    match read_int(document, path) {
+        Ok(number) => Ok(Some(number)),
+        Err(DocumentError::MissingKey { .. }) => Ok(None),
+        Err(source) => Err(format_error(field, source)),
+    }
+}
+
 /// The scalar at `path` as text; any other kind is `WrongKind { expected: "string" }`.
 pub(crate) fn read_text(document: &mut Document, path: &[Segment<'_>]) -> Result<String, DocumentError> {
     match document.get(path)? {

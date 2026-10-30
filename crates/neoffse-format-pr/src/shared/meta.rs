@@ -37,6 +37,13 @@ pub(crate) fn int(label: impl Into<String>, min: i64, bound: Option<(&GameTables
     meta
 }
 
+/// A computed field: an integer the editor shows and never sets.
+pub(crate) fn derived_meta(label: &'static str, bound: Option<(&GameTables, &str)>) -> FieldMeta {
+    let mut meta = int(label, 0, bound);
+    meta.read_only = true;
+    meta
+}
+
 /// The gil: 0 to the storage bound, capped by `MAX_GIL`.
 pub(crate) fn gil_meta(tables: &GameTables) -> FieldMeta {
     int("Gil", 0, Some((tables, "MAX_GIL")))

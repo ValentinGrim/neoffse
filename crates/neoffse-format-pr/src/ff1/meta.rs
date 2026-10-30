@@ -8,7 +8,7 @@ use neoffse_core::{FieldMeta, NamedValue, Shape, TableKind};
 use neoffse_data::GameTables;
 
 use super::binding::{Binding, Part};
-use crate::shared::meta::{count_meta, gil_meta, int};
+use crate::shared::meta::{count_meta, derived_meta, gil_meta, int};
 
 /// The slot labels and their equipment tables, slot 1 to 5. The table of a
 /// slot follows `parts_group_id` of the game's `armor.csv`
@@ -35,13 +35,6 @@ fn level_meta(tables: &GameTables) -> FieldMeta {
     if let Some(max) = meta.cap {
         meta.shape = Shape::Int { min: 0, max };
     }
-    meta
-}
-
-/// A computed field: an integer the editor shows and never sets.
-fn derived_meta(label: &'static str, bound: Option<(&GameTables, &str)>) -> FieldMeta {
-    let mut meta = int(label, 0, bound);
-    meta.read_only = true;
     meta
 }
 
