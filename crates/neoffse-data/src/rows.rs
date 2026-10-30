@@ -39,7 +39,8 @@ pub(crate) struct AbilityFile {
 #[serde(deny_unknown_fields)]
 struct AbilityRow {
     id: u32,
-    content_id: u32,
+    content_id: Option<u32>,
+    type_id: u32,
     kind: String,
     level: u8,
     name_en: Option<String>,
@@ -151,6 +152,18 @@ pub(crate) fn abilities(file: &AbilityFile, tables: &mut BTreeMap<TableKind, Vec
             "black_magic" => AbilityKind::BlackMagic,
             "monster" => AbilityKind::Monster,
             "command" => AbilityKind::Command,
+            "summon" => AbilityKind::Summon,
+            "ninjutsu" => AbilityKind::Ninjutsu,
+            "other" => AbilityKind::Other,
+            "time_magic" => AbilityKind::TimeMagic,
+            "magic_sword" => AbilityKind::MagicSword,
+            "blue_magic" => AbilityKind::BlueMagic,
+            "hissatsu" => AbilityKind::Hissatsu,
+            "special_ability" => AbilityKind::SpecialAbility,
+            "dance" => AbilityKind::Dance,
+            "madou" => AbilityKind::Madou,
+            "rampage" => AbilityKind::Rampage,
+            "internal" => AbilityKind::Internal,
             _ => {
                 return Err(DataError::UnknownKind {
                     file: NAME,
@@ -162,7 +175,7 @@ pub(crate) fn abilities(file: &AbilityFile, tables: &mut BTreeMap<TableKind, Vec
         if row.level > 8 {
             return Err(rule(NAME, format!("id {}", row.id), "level above 8"));
         }
-        if row.content_id == 0 {
+        if row.content_id == Some(0) {
             return Err(rule(NAME, format!("id {}", row.id), "content_id 0"));
         }
         let (name_en, name_fr) = name_pair(NAME, row.id, row.name_en.as_deref(), row.name_fr.as_deref())?;
@@ -174,6 +187,7 @@ pub(crate) fn abilities(file: &AbilityFile, tables: &mut BTreeMap<TableKind, Vec
             name_fr,
             ability: Some(AbilityInfo {
                 content_id: row.content_id,
+                type_id: row.type_id,
                 kind,
                 level: row.level,
             }),

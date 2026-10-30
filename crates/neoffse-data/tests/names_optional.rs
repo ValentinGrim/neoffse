@@ -21,7 +21,7 @@ fn cases(names: &str) -> Vec<(&'static str, TableKind, String)> {
         (
             "abilities.toml",
             TableKind::Ability,
-            row("ability", "content_id = 9\nkind = \"command\"\nlevel = 0\n"),
+            row("ability", "content_id = 9\ntype_id = 4\nkind = \"command\"\nlevel = 0\n"),
         ),
         ("jobs.toml", TableKind::Job, row("job", "")),
         ("commands.toml", TableKind::Command, row("command", "")),

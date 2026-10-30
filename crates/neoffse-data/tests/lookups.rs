@@ -23,7 +23,7 @@ fn entry_finds_by_kind_and_id() {
     assert_eq!(tables.entry(TableKind::Monster, 1).unwrap().name_en.as_deref(), Some("Goblin"));
     let cure = tables.entry(TableKind::Ability, 3).unwrap();
     let info = cure.ability.unwrap();
-    assert_eq!((info.content_id, info.kind, info.level), (400, AbilityKind::WhiteMagic, 1));
+    assert_eq!((info.content_id, info.kind, info.level), (Some(400), AbilityKind::WhiteMagic, 1));
     assert!(tables.entry(TableKind::Item, 5).unwrap().ability.is_none());
 }
 

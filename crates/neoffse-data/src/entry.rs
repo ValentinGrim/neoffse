@@ -17,9 +17,10 @@ impl Language {
     pub const ALL: &[Language] = &[Language::En, Language::Fr];
 }
 
-/// The school of an ability row
-/// (`docs/formats/pixel-remaster.md#ability-job-and-command-tables`). The
-/// game names no school: the tool derives it from the row.
+/// The kind of an ability row, one reading of its `type_id` for the six
+/// games (`docs/formats/pixel-remaster.md#ability-types`). The game names no
+/// kind: the tool derives it from the row. A kind is a label of the tool, so
+/// read [`AbilityInfo::type_id`] where the exact game value matters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum AbilityKind {
@@ -27,10 +28,35 @@ pub enum AbilityKind {
     WhiteMagic,
     /// A black magic spell.
     BlackMagic,
-    /// An ability only monsters use.
+    /// `type_id` 3 and 13. FF I names them monster abilities; the label misleads
+    /// in FF V and FF VI (`docs/formats/pixel-remaster.md#ability-types`).
     Monster,
     /// A command ability.
     Command,
+    /// A summon spell.
+    Summon,
+    /// A ninjutsu spell.
+    Ninjutsu,
+    /// An ability of the game's `Other` type (`type_id` 11).
+    Other,
+    /// A time magic spell.
+    TimeMagic,
+    /// A magic sword spell.
+    MagicSword,
+    /// A blue magic spell.
+    BlueMagic,
+    /// A hissatsu technique.
+    Hissatsu,
+    /// A special ability.
+    SpecialAbility,
+    /// A dance.
+    Dance,
+    /// A madou spell.
+    Madou,
+    /// A rampage.
+    Rampage,
+    /// An ability the game runs by itself, never from a menu.
+    Internal,
 }
 
 /// What an ability row adds to an [`Entry`].
@@ -41,9 +67,13 @@ pub enum AbilityKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct AbilityInfo {
-    /// The ability's content id.
-    pub content_id: u32,
-    /// The ability's school.
+    /// The ability's content id; `None` for an ability the game has no content
+    /// row for (`docs/formats/pixel-remaster.md#rows-without-a-name`). Never 0.
+    pub content_id: Option<u32>,
+    /// `ability.csv` `type_id` as the game stores it: a value of the game's
+    /// `AbilityType` enum (`docs/formats/pixel-remaster.md#ability-types`).
+    pub type_id: u32,
+    /// The ability's kind.
     pub kind: AbilityKind,
     /// The spell level, 0 to 8; 0 for rows that are no spell.
     pub level: u8,

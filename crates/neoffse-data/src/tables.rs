@@ -64,8 +64,8 @@ impl GameTables {
     /// not know, an id that is below 1 or does not rise above the id before
     /// it in its file, or a row that breaks a rule of the file contract
     /// ([`DataError::Rule`]): an ability level above 8, an ability
-    /// `content_id` of 0, a row with one name field and not the other, a
-    /// placeholder written as `false`, a placeholder
+    /// `content_id` of 0 (an absent one is valid), a row with one name field
+    /// and not the other, a placeholder written as `false`, a placeholder
     /// outside the five equipment kinds or repeated in one kind, a cap key
     /// without the `MAX_` prefix, or a negative cap. `growth.toml` adds its
     /// own rules: status ids rise from 1, `total_exp` starts at 0 and rises
@@ -120,12 +120,13 @@ impl GameTables {
     }
 
     /// The first ability, in id order, whose `content_id` matches
-    /// (`docs/formats/pixel-remaster.md#abilities`).
+    /// (`docs/formats/pixel-remaster.md#abilities`). An ability without a
+    /// content id is never found.
     #[must_use]
     pub fn ability_by_content(&self, content_id: u32) -> Option<&Entry> {
         self.table(TableKind::Ability)?
             .iter()
-            .find(|entry| entry.ability.is_some_and(|info| info.content_id == content_id))
+            .find(|entry| entry.ability.is_some_and(|info| info.content_id == Some(content_id)))
     }
 
     /// The game's cap under its own spelling (`"MAX_GIL"`, `"MAX_STRNGTH"`).

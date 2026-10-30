@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 """The FF I row of the table list (docs/formats/pixel-remaster.md)."""
 
+from ..kinds import ABILITY_KINDS, ABILITY_NOTES
 from ..specs import (
     AbilitySpec,
     BoundsSpec,
@@ -56,27 +57,8 @@ GAME: Game = Game(
         csv="ability.csv",
         content_csv="content.csv",
         content_type=4,
-        # pixel-remaster.md#ability-job-and-command-tables
-        kinds={
-            1: "white_magic",
-            2: "black_magic",
-            3: "monster",
-            13: "monster",
-            4: "command",
-            5: "command",
-            6: "command",
-            8: "command",
-        },
-        notes=(
-            "One row per ability.csv row. content_id is the contentId of the ability "
-            "object: the content.csv row of type 4 whose type_value is the id.",
-            "kind reads ability.csv type_id: white_magic (1), black_magic (2), "
-            "monster (3, 13), command (4, 5, 6, 8).",
-            "The game names none of these kinds "
-            "(docs/formats/pixel-remaster.md#ability-job-and-command-tables).",
-            "level is ability_lv: 1 to 8 for a spell, 0 for any other ability. "
-            "Names repeat: look an entry up by id.",
-        ),
+        kinds=ABILITY_KINDS,
+        notes=ABILITY_NOTES,
     ),
     named=(
         NamedSpec(

@@ -105,7 +105,7 @@ fn an_unknown_content_kind_is_refused() {
 
 #[test]
 fn an_unknown_ability_kind_is_refused() {
-    let abilities = "[[ability]]\nid = 1\ncontent_id = 209\nkind = \"spell\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n";
+    let abilities = "[[ability]]\nid = 1\ncontent_id = 209\ntype_id = 4\nkind = \"spell\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n";
     let sources = Sources { abilities, ..minimal() };
     assert!(matches!(
         parse(&sources).unwrap_err(),
@@ -122,7 +122,7 @@ fn content_row(id: u32) -> String {
 }
 
 fn ability_row(id: u32) -> String {
-    format!("[[ability]]\nid = {id}\ncontent_id = 300\nkind = \"monster\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n\n")
+    format!("[[ability]]\nid = {id}\ncontent_id = 300\ntype_id = 3\nkind = \"monster\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n\n")
 }
 
 #[test]

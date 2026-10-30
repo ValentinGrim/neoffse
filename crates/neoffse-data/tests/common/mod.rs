@@ -1,6 +1,8 @@
 //! Helpers shared by the test files of `neoffse-data`.
 #![allow(dead_code, reason = "each test file uses a different part of these helpers")]
 
+pub(crate) mod kind_rule;
+
 use neoffse_core::Game;
 use neoffse_data::{DataError, GameTables, Sources, tables_for};
 
@@ -37,6 +39,7 @@ pub(crate) const ABILITIES: &str = r#"# minimal/abilities.toml
 [[ability]]
 id = 1
 content_id = 209
+type_id = 4
 kind = "command"
 level = 0
 name_en = "Attack"
@@ -45,6 +48,7 @@ name_fr = "Attaque"
 [[ability]]
 id = 3
 content_id = 400
+type_id = 1
 kind = "white_magic"
 level = 1
 name_en = "Cure"

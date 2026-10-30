@@ -204,6 +204,7 @@ def build_abilities(spec: AbilitySpec, csvs: Csvs, names: Names) -> tuple[list[R
         entry: Row = {
             "id": aid,
             "content_id": _int(content_row, "id", where=spec.content_csv),
+            "type_id": type_id,
             "kind": kind,
             "level": _int(row, "ability_lv", where=where),
         }
