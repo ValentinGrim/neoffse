@@ -52,15 +52,15 @@ NeoFFSE edits the saves of Final Fantasy I to XVI, XI and XIV excepted, and star
 
 Every crate follows five rules.
 
-1. **Never lose data.** The format layer keeps the original document and applies targeted edits to it, 
+1. **Never lose data.** The format layer keeps the original document and applies targeted edits to it,
    so a field the editor does not know survives a save untouched.  
    KiameV's Go editor shows the risk:  
    it rebuilt the JSON from its own structs, which had no field for `mapData.minimapEnable`, and reset that flag on every save in FF I and FF II.
 
-2. **Never write without a safety net.** A bug in an encoder must cost the player nothing. 
-   Before it replaces a file, the editor backs it up with a manifest, writes to a temporary file in the same folder, 
+2. **Never write without a safety net.** A bug in an encoder must cost the player nothing.
+   Before it replaces a file, the editor backs it up with a manifest, writes to a temporary file in the same folder,
    decodes that file and compares it to the in-memory document, then renames.  
-   It also warns when the game is running. 
+   It also warns when the game is running.
    The user restores any backup from the Restore page and can undo the restore. [Save safety](#save-safety) lists the steps.
    
 3. **Edit concepts through dedicated widgets, and keep the raw value in reach.**  
@@ -260,7 +260,6 @@ Every `apply` returns the inverse edit, and redo applies the original edit again
 ### Technology stack
 
 Each dependency's version requirement sits in a `Cargo.toml`, and the committed `Cargo.lock` fixes the resolved versions.
-This table gives the reason for each choice.
 `binrw` is not in the workspace yet.
 
 | Need | Crate | Why |
@@ -328,7 +327,7 @@ A library crate returns errors and does not panic on anything read from a file.
 
 - **Tests live in `tests/`.** No source file holds test code, in any crate.
   A crate's tests sit in its `tests/` directory as integration tests and use the public API.
-  An internal stage that needs tests, such as a codec step or the cipher, is exposed in a documented public module.
+  A crate exposes an internal stage that needs tests, such as a codec step or the cipher, in a documented public module.
   Helpers that several test files share sit in `tests/common/mod.rs`.
 - **Round trip on every fixture.** Decode, encode, decode again: the two decoded documents and their containers must match.
   The game's deflate encoder and `flate2` choose different streams for the same input, so a PR save never re-encodes to the game's bytes, and PR round trips compare the inflated JSON text byte for byte.
@@ -348,7 +347,7 @@ A library crate returns errors and does not panic on anything read from a file.
   The repository commits that file, and the Rust port must reproduce every vector.
   The output depends on the pinned library version and a fixed seed alone.
   To regenerate it, run `go run . -o ../../crates/neoffse-format-pr/tests/data/rijndael256-vectors.txt` from `tools/cipher-vectors/`.
-- **Fixtures.** Synthetic fixtures are committed under `fixtures/`, and `neoffse-testkit` locates and reads them.
+- **Fixtures.** The repository commits synthetic fixtures under `fixtures/`, and `neoffse-testkit` locates and reads them.
   A test fails when a committed fixture differs from what its generator writes, for example after a compression update changes the deflate stream.
   The test headers give the regeneration command, which sets `NEOFFSE_WRITE_FIXTURES=1`.
   The FF I slot holds invented values that obey the game's rules, so the proof runs against a consistent save.

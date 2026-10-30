@@ -1,8 +1,8 @@
 # NeoFFSE roadmap
 
-NeoFFSE should reaches its first release, v0.7.0, in six milestones and a release stage:  
+NeoFFSE should reach its first release, v0.7.0, in six milestones and a release stage:  
 foundations, the PR codec, file safety, the PR domain, the app on FF I, FF II to VI, then the release.  
-A step closes when its exit checks pass, and the next one opens after that.
+A step closes when its exit checks pass, and the next one opens after it.
 [Layers and milestone boundaries](architecture.md#layers-and-milestone-boundaries)
 lists the crates each milestone closes.
 
@@ -98,7 +98,7 @@ sections, the change review, save, the Restore page, the About dialog
 Magic section lists the learned spells and stays read only at first;
 writing spells waits for research on the spell slot rules
 ([Abilities](formats/pixel-remaster.md#abilities)). Portraits use
-the silhouettes. Local extraction (see
+six original class sprites. Local extraction (see
 [Visual assets](architecture.md#visual-assets)) waits for research on
 the Unity asset bundles.
 
