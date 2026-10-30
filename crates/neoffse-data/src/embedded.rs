@@ -42,6 +42,19 @@ static FF2: Embedded = Embedded {
     tables: OnceLock::new(),
 };
 
+static FF3: Embedded = Embedded {
+    sources: Sources {
+        content: include_str!("../../../data/pr/ff3/content.toml"),
+        abilities: include_str!("../../../data/pr/ff3/abilities.toml"),
+        jobs: include_str!("../../../data/pr/ff3/jobs.toml"),
+        commands: include_str!("../../../data/pr/ff3/commands.toml"),
+        monsters: None,
+        bounds: include_str!("../../../data/pr/ff3/bounds.toml"),
+        growth: None,
+    },
+    tables: OnceLock::new(),
+};
+
 static FF4: Embedded = Embedded {
     sources: Sources {
         content: include_str!("../../../data/pr/ff4/content.toml"),
@@ -59,6 +72,7 @@ fn embedded(game: Game) -> Option<&'static Embedded> {
     match game {
         Game::Ff1Pr => Some(&FF1),
         Game::Ff2Pr => Some(&FF2),
+        Game::Ff3Pr => Some(&FF3),
         Game::Ff4Pr => Some(&FF4),
         _ => None,
     }
