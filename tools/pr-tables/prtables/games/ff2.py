@@ -10,6 +10,7 @@ from ..specs import (
     Game,
     NamedSpec,
     NamePolicy,
+    SkillsSpec,
     SourceSpec,
 )
 
@@ -99,4 +100,28 @@ GAME: Game = Game(
         ),
     ),
     growth=None,
+    skills=SkillsSpec(
+        file="skills.toml",
+        status_csv="character_status.csv",
+        exp_csv="exp_table.csv",
+        ability_csv="ability.csv",
+        # pixel-remaster.md#spells-in-ff-ii: the chain table, 640 pairs of 40 chains of 16 rows
+        misc_asset="serial_misc_assets.json",
+        chain_table="magic_level_acquisition_table",
+        first_ability_id=5,
+        chains=40,
+        chain_length=16,
+        # pixel-remaster.md#skill-levels-in-ff-ii: the curve length is the highest level
+        magical_cap_key="MAX_MAGICAL_LEVEL",
+        weapon_cap_key="MAX_WEAPON_LEVEL",
+        notes=(
+            "status: the base of each character_status.csv row; power reads the column strength "
+            "(docs/formats/pixel-remaster.md#character-growth-in-ff-ii).",
+            "skill_curve.total_exp: the proficiency needed for each skill level, level 1 first "
+            "(docs/formats/pixel-remaster.md#skill-levels-in-ff-ii).",
+            "spell_chains: the first ability id of each chain and the rows per chain; the "
+            "level of an ability is its id minus the first id of its chain, plus 1 "
+            "(docs/formats/pixel-remaster.md#spells-in-ff-ii).",
+        ),
+    ),
 )

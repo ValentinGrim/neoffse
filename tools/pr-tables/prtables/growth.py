@@ -7,6 +7,8 @@ experience curve, levels 1 to N without a gap, total experience rising
 strictly from 0 at level 1. curve.py holds the job and growth rows.
 """
 
+from typing import NamedTuple
+
 from . import ExportError
 from .build import Csvs, Row, _index, _int
 from .curve import build_curve
@@ -43,42 +45,50 @@ def _curve_group(spec: GrowthSpec, csvs: Csvs) -> set[int]:
     }
 
 
-def _exp_rows(spec: GrowthSpec, csvs: Csvs) -> list[Row]:
-    exp_rows = csvs[spec.exp_csv]
+class ExpCurve(NamedTuple):
+    group: int  # the one group_id of the table
+    rows: list[Row]  # {"lv", "total_exp"}, level 1 first
+
+
+def exp_curve(csv_name: str, exp_rows: list[dict[str, str]]) -> ExpCurve:
+    """The one experience curve of an exp_table CSV: one type_id, one group_id, levels
+    1 to N without a gap, total_exp 0 at level 1 and rising strictly."""
     if not exp_rows:
-        raise ExportError(f"{spec.exp_csv}: no row")
+        raise ExportError(f"{csv_name}: no row")
     types: set[int] = set()
     groups: set[int] = set()
     totals: dict[int, int] = {}
     for number, row in enumerate(exp_rows, start=1):
-        where = f"{spec.exp_csv}, row {number}"
+        where = f"{csv_name}, row {number}"
         types.add(_int(row, "type_id", where=where))
         groups.add(_int(row, "group_id", where=where))
         level = _int(row, "lv", where=where)
         if level in totals:
-            raise ExportError(f"{spec.exp_csv}: level {level} repeats")
-        totals[level] = _int(row, "total_exp", where=f"{spec.exp_csv}, level {level}")
+            raise ExportError(f"{csv_name}: level {level} repeats")
+        totals[level] = _int(row, "total_exp", where=f"{csv_name}, level {level}")
     if len(types) > 1:
-        raise ExportError(
-            f"{spec.exp_csv}: {len(types)} distinct type_id values, one curve expected"
-        )
+        raise ExportError(f"{csv_name}: {len(types)} distinct type_id values, one curve expected")
     if len(groups) > 1:
-        raise ExportError(
-            f"{spec.exp_csv}: {len(groups)} distinct group_id values, one curve expected"
-        )
-    if _curve_group(spec, csvs) != groups:
+        raise ExportError(f"{csv_name}: {len(groups)} distinct group_id values, one curve expected")
+    levels = sorted(totals)
+    if levels != list(range(1, len(levels) + 1)):
+        raise ExportError(f"{csv_name}: levels do not run 1 to {len(levels)} without a gap")
+    if totals[1] != 0:
+        raise ExportError(f"{csv_name}: level 1 does not hold 0 experience")
+    for level in levels[1:]:
+        if totals[level] <= totals[level - 1]:
+            raise ExportError(f"{csv_name}: total_exp does not rise at level {level}")
+    rows: list[Row] = [{"lv": level, "total_exp": totals[level]} for level in levels]
+    return ExpCurve(groups.pop(), rows)
+
+
+def _exp_rows(spec: GrowthSpec, csvs: Csvs) -> list[Row]:
+    curve = exp_curve(spec.exp_csv, csvs[spec.exp_csv])
+    if _curve_group(spec, csvs) != {curve.group}:
         raise ExportError(
             f"{spec.curve_csv}: exp_table_group_id does not name the one group of {spec.exp_csv}"
         )
-    levels = sorted(totals)
-    if levels != list(range(1, len(levels) + 1)):
-        raise ExportError(f"{spec.exp_csv}: levels do not run 1 to {len(levels)} without a gap")
-    if totals[1] != 0:
-        raise ExportError(f"{spec.exp_csv}: level 1 does not hold 0 experience")
-    for level in levels[1:]:
-        if totals[level] <= totals[level - 1]:
-            raise ExportError(f"{spec.exp_csv}: total_exp does not rise at level {level}")
-    return [{"lv": level, "total_exp": totals[level]} for level in levels]
+    return curve.rows
 
 
 def build_growth(
