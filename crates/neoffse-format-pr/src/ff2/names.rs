@@ -42,6 +42,46 @@ pub fn spell_field(id: u32, chain: u32) -> FieldId {
     FieldId::new(CHARACTER).with_id(id).with_name(SPELL).with_id(chain)
 }
 
+/// The entity id of the raw spell places of a character,
+/// `character.<id>.raw_spells`: the expert page of the Magic section.
+pub const RAW_SPELLS: &str = "raw_spells";
+/// A place of an `abilityList` entry,
+/// `character.<id>.ability.<position>.<part>`. The position is the index in
+/// the list, counted from 0, never the ability id: an edit of the id keeps
+/// the field (`docs/formats/pixel-remaster.md#abilities`).
+pub const ABILITY: &str = "ability";
+/// A place of an entry of the Magic command's copy in `abilityDictionary`,
+/// `character.<id>.dictionary.<position>.<part>`, addressed like [`ABILITY`].
+pub const DICTIONARY: &str = "dictionary";
+/// A content id of `additionOrderOwnedAbilityIds`,
+/// `character.<id>.addition_order.<position>`.
+pub const ADDITION_ORDER: &str = "addition_order";
+/// A content id of `sortOrderOwnedAbilityIds`,
+/// `character.<id>.sort_order.<position>`.
+pub const SORT_ORDER: &str = "sort_order";
+/// The part of an entry that holds `abilityId`.
+pub const ABILITY_ID: &str = "ability_id";
+/// The part of an entry that holds `contentId`.
+pub const CONTENT_ID: &str = "content_id";
+/// The part of an entry that holds `skillLevel`, the proficiency total
+/// (`docs/formats/pixel-remaster.md#skill-levels-in-ff-ii`).
+pub const PROFICIENCY: &str = "proficiency";
+
+/// The field id of one part of an entry: `group` is [`ABILITY`] or
+/// [`DICTIONARY`], `part` one of [`ABILITY_ID`], [`CONTENT_ID`] and
+/// [`PROFICIENCY`].
+#[must_use]
+pub fn place(id: u32, group: &'static str, position: u32, part: &'static str) -> FieldId {
+    FieldId::new(CHARACTER).with_id(id).with_name(group).with_id(position).with_name(part)
+}
+
+/// The field id of one position of an order list: `order` is
+/// [`ADDITION_ORDER`] or [`SORT_ORDER`].
+#[must_use]
+pub fn order_place(id: u32, order: &'static str, position: u32) -> FieldId {
+    FieldId::new(CHARACTER).with_id(id).with_name(order).with_id(position)
+}
+
 /// The stored field ids of one character, in display order: `name`, `job`,
 /// `hp`, `max_hp_gain`, `mp`, `max_mp_gain`, the six stat gains, `skill.0` to
 /// `skill.9`, then for each slot 1 to 5 the pair `equipment.<S>` and

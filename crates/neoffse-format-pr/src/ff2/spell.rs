@@ -13,7 +13,8 @@ use neoffse_data::{GameTables, Language};
 
 use super::binding::{Binding, Part};
 use super::meta;
-use crate::document::{Document, DocumentError, Segment};
+use super::places::{Group, entries_of};
+use crate::document::{Document, Segment};
 use crate::shared::paths::{Path, element, with};
 use crate::shared::read::{character_part, format_error, read_int};
 
@@ -34,13 +35,10 @@ pub(super) struct Owned {
 ///
 /// `Format` for an entry without an `abilityId` or with a non-integer one.
 fn owned(document: &mut Document, tables: &GameTables, base: &Path, field: &FieldId) -> Result<Vec<Owned>, EditError> {
-    let target = with(base.clone(), &[Segment::Key("abilityList"), Segment::Doc, Segment::Key("target")]);
-    let len = match document.array_len(&target) {
-        Ok(len) => len,
-        // A character without the list owns no spell: the field is absent
-        // (`docs/formats/pixel-remaster.md#abilities`).
-        Err(DocumentError::MissingKey { .. }) => return Ok(Vec::new()),
-        Err(source) => return Err(format_error(field, source)),
+    // A character without the list owns no spell: the field is absent
+    // (`docs/formats/pixel-remaster.md#abilities`).
+    let Some((target, len)) = entries_of(document, base, Group::Ability, field)? else {
+        return Ok(Vec::new());
     };
     let mut spells: Vec<Owned> = Vec::new();
     for index in 0..len {
@@ -76,7 +74,7 @@ pub(super) fn level(document: &mut Document, tables: &GameTables, id: u32, chain
 
 /// The name of ability `id` in `language`, `Entry <id>` when its row has no
 /// name (`docs/formats/pixel-remaster.md#rows-without-a-name`).
-fn ability_label(tables: &GameTables, language: Language, id: u32) -> String {
+pub(super) fn ability_label(tables: &GameTables, language: Language, id: u32) -> String {
     tables
         .entry(TableKind::Ability, id)
         .and_then(|entry| entry.name(language))

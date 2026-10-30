@@ -3,7 +3,7 @@
 use neoffse_core::{Capability, Entity, FieldId, FormatError, SaveView, Section};
 use neoffse_data::Language;
 
-use super::{Ff2Model, names, spell};
+use super::{Ff2Model, names, places, spell};
 use crate::shared::read::decode_error;
 use crate::shared::view::{character_label, field_view, inventory_section, rows_of};
 
@@ -20,6 +20,14 @@ impl Ff2Model {
     /// in `language`, `Entry <id>` of the chain's first ability when the row
     /// has none. Ability 711 and any other entry outside the 40 chains have
     /// no field (`docs/formats/pixel-remaster.md#spells-in-ff-ii`).
+    ///
+    /// After the Level entities, the section holds one raw page per character
+    /// that has a stored place, id `character.<id>.raw_spells` and label
+    /// `<name>, raw spells`: the `abilityList` entries (three fields each),
+    /// the dictionary entries (three each), the addition order, the sort
+    /// order. Each label names the entry by its current ability, for example
+    /// `List 1, Entry 711, row` or `Copy 2, Fire, value`. A character holds
+    /// up to 8 fields per spell plus 4, so 132 for 16 spells.
     ///
     /// Only the item names of the row entities and the spell labels follow
     /// `language`; the other field labels stay English. A row the tables list without a name is labelled
@@ -59,13 +67,24 @@ impl Ff2Model {
     fn magic_section(&mut self, language: Language) -> Result<Section, FormatError> {
         let character = FieldId::new(names::CHARACTER);
         let mut entities = Vec::new();
+        let mut raw = Vec::new();
         for id in rows_of(self, &character)? {
             let entity_id = character.clone().with_id(id);
             let name = field_view(self, entity_id.clone().with_name(names::NAME))?;
             let label = character_label(id, name.as_slice());
             let fields = spell::fields(&mut self.document, self.tables, id, language).map_err(decode_error)?;
+            let places = places::fields(&mut self.document, self.tables, id, language).map_err(decode_error)?;
+            // An entity with no place is left out.
+            if !places.is_empty() {
+                raw.push(Entity::new(
+                    entity_id.clone().with_name(names::RAW_SPELLS),
+                    format!("{label}, raw spells"),
+                    places,
+                ));
+            }
             entities.push(Entity::new(entity_id, label, fields));
         }
+        entities.extend(raw);
         Ok(Section::new(Capability::Magic, entities))
     }
 }

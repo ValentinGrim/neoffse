@@ -8,6 +8,7 @@ use neoffse_core::{FieldMeta, Shape, TableKind};
 use neoffse_data::GameTables;
 
 use super::binding::{Binding, Part};
+use super::places;
 use crate::shared::meta::{STORAGE_MAX, count_meta, derived_meta, gil_meta, int};
 
 /// The slot labels and the tables each slot takes. Slots 1 and 2 take a
@@ -46,17 +47,25 @@ fn slot(number: u32) -> (&'static str, &'static [TableKind]) {
     index.and_then(|index| SLOTS.get(index)).copied().unwrap_or(("Slot", &[TableKind::Item]))
 }
 
+/// The proficiency total of the level that the bound `name` holds: the top
+/// value of a spell or weapon skill. `None` when the tables lack the bound
+/// or the curve, which leaves the field uncapped.
+pub(super) fn level_total(tables: &GameTables, name: &str) -> Option<i64> {
+    let level = u32::try_from(tables.bound(name)?).ok()?;
+    tables.skill_total(level).map(i64::from)
+}
+
 /// The top value of a skill: weapons, shields and bare hands stop at the total
 /// of `MAX_WEAPON_LEVEL`; evasion and magic evasion at 100 times their top
 /// level minus 1, which is 1 500 in the shipped data
 /// (`docs/formats/pixel-remaster.md#skill-levels-in-ff-ii`, "Top value"; the
 /// evasion figure is derived from the code, not measured).
 fn skill_cap(tables: &GameTables, key: u32) -> Option<i64> {
+    if key < FIRST_EVASION_KEY {
+        return level_total(tables, "MAX_WEAPON_LEVEL");
+    }
     // A cap key the tables lack, or a negative one, leaves the skill uncapped.
     let level = |name: &str| tables.bound(name).and_then(|level| u32::try_from(level).ok());
-    if key < FIRST_EVASION_KEY {
-        return tables.skill_total(level("MAX_WEAPON_LEVEL")?).map(i64::from);
-    }
     let name = if key == FIRST_EVASION_KEY {
         "MAX_EVASION_TIMES_LEVEL"
     } else {
@@ -110,6 +119,7 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
                 meta
             }
             Part::SlotCount(number) => int(format!("Count in slot {number}"), 0, None),
+            Part::Place(place) => places::meta(place, tables),
         },
     }
 }

@@ -65,7 +65,8 @@ fn the_committed_fixture_opens_through_the_codec() {
     assert_eq!(summary.slot, Some(SaveSlot::Numbered(1)));
     let view = document.view().unwrap();
     assert_eq!(view.sections.len(), 3);
-    assert_eq!(view.section(Capability::Magic).unwrap().entities.len(), 4);
+    // Four Level entities, then the four raw spell pages.
+    assert_eq!(view.section(Capability::Magic).unwrap().entities.len(), 8);
     assert_eq!(view.section(Capability::Party).unwrap().entities.len(), 4);
     assert_eq!(
         view.section(Capability::Inventory).unwrap().entities.len(),

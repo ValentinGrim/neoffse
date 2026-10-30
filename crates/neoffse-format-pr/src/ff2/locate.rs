@@ -4,6 +4,7 @@
 use neoffse_core::{EditError, FieldId};
 
 use super::binding::{Binding, Part};
+use super::places;
 use crate::document::{Document, Segment};
 use crate::shared::paths::{Path, gil_path, with};
 use crate::shared::read::{Located, character_part, count_path, entry_value, slot_path};
@@ -42,6 +43,7 @@ fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, 
         }
         // `locate` refuses a computed field and a spell level before it gets here.
         Part::MaxHp | Part::MaxMp | Part::Spell(_) => return Err(Located::Absent),
+        Part::Place(place) => places::path(document, &base, place)?,
         Part::Slot(slot) | Part::SlotCount(slot) => slot_path(document, base, slot, matches!(part, Part::SlotCount(_)))?,
     })
 }

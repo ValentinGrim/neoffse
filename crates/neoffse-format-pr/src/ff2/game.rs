@@ -78,10 +78,12 @@ impl Ff2Model {
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
     /// value: a computed or read-only field (`max_hp`, `max_mp`, `job`), the
     /// `count` of an equipment slot, the `count` of a placeholder row of
-    /// `inventory`, present in the list or not, and the `count` of any key
+    /// `inventory`, present in the list or not, the `count` of any key
     /// item (the game holds one of each,
-    /// `docs/formats/pixel-remaster.md#inventory`). A count that only refuses
-    /// values below the wearers is unlocked.
+    /// `docs/formats/pixel-remaster.md#inventory`) and every stored place of
+    /// a spell: the game interface changes a spell through its level only,
+    /// and the raw interface edits a place in expert mode. A count that only
+    /// refuses values below the wearers is unlocked.
     ///
     /// It resolves the field and reads the tables, not the document.
     ///
@@ -91,7 +93,7 @@ impl Ff2Model {
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
             Binding::Character {
-                part: Part::SlotCount(_) | Part::MaxHp | Part::MaxMp | Part::Job,
+                part: Part::SlotCount(_) | Part::MaxHp | Part::MaxMp | Part::Job | Part::Place(_),
                 ..
             } => true,
             Binding::Count { list, key } => list == List::KeyItems || is_placeholder(self.tables, list, key),

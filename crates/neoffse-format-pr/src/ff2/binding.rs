@@ -5,6 +5,7 @@
 use neoffse_core::{EditError, FieldId, Key};
 
 use super::names;
+use super::places::Place;
 use crate::shared::paths::List;
 use crate::shared::stat::Stat;
 
@@ -33,6 +34,8 @@ pub(super) enum Part {
     Slot(u32),
     /// `count` of an equipment slot, 1 to 5.
     SlotCount(u32),
+    /// A stored place of a spell, by position in its list (expert pages).
+    Place(Place),
 }
 
 /// What a [`FieldId`] names.
@@ -106,7 +109,7 @@ impl Part {
             [Key::Name(names::SPELL), Key::Id(chain)] => Some(Self::Spell(*chain)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot)] if slot_ok(*slot) => Some(Self::Slot(*slot)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot), Key::Name(names::COUNT)] if slot_ok(*slot) => Some(Self::SlotCount(*slot)),
-            _ => None,
+            _ => Place::declared(keys).map(Self::Place),
         }
     }
 }

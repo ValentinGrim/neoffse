@@ -200,7 +200,9 @@ fn real_views_cover_every_row() {
         assert!(party.entities.len() == characters, "{}: party entities", slot.label);
         assert!(inventory.entities.len() == 1 + items, "{}: inventory entities", slot.label);
         let magic = must_some(view.section(Capability::Magic), &format!("{}: no Magic section", slot.label));
-        assert!(magic.entities.len() == characters, "{}: magic entities", slot.label);
+        // A Level entity has the id `character.<id>`; the raw pages follow it.
+        let levels = magic.entities.iter().filter(|entity| entity.id.keys().len() == 2).count();
+        assert!(levels == characters, "{}: magic entities", slot.label);
         for entity in &party.entities {
             assert!(entity.fields.len() == 34, "{}: {} holds a field count other than 34", slot.label, entity.id);
         }

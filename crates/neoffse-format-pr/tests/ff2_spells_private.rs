@@ -115,10 +115,11 @@ fn real_levels_equal_the_row_law() {
 fn real_magic_sections_list_the_owned_spells() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let (mut document, mut model, _) = open(&slot);
+        let (mut document, mut model, ids) = open(&slot);
         let view = must(model.view(Language::En), &format!("{}: the view does not build", slot.label));
         let section = must_some(view.section(Capability::Magic), &format!("{}: no Magic section", slot.label));
-        for (position, entity) in section.entities.iter().enumerate() {
+        // The Level entities come first, one per character; the raw pages follow.
+        for (position, entity) in section.entities.iter().take(ids.len()).enumerate() {
             let owned = first_of_each_chain(&mut document, position, &slot.label).len();
             assert!(
                 entity.fields.len() == owned,

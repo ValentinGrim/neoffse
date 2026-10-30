@@ -19,7 +19,11 @@
 //! one field, `character.<id>.spell.<chain>`, its level: the model reads it
 //! from the row of the spell's `abilityList` entry
 //! (`docs/formats/pixel-remaster.md#spells-in-ff-ii`) and a raw `Set` of it is
-//! `ReadOnly`.
+//! `ReadOnly`. Each stored place of a spell is a field of its own, addressed
+//! by its position in its list (`character.<id>.ability.<i>.<part>`,
+//! `dictionary.<j>.<part>`, `addition_order.<k>`, `sort_order.<k>`): the raw
+//! interface edits it with an exact inverse, and the game interface refuses it
+//! as a locked field.
 //!
 //! The model edits through two interfaces over the same `Edit`:
 //!
@@ -55,6 +59,7 @@ mod game;
 mod locate;
 mod meta;
 pub mod names;
+mod places;
 mod slot;
 mod spell;
 mod summary;
@@ -158,7 +163,8 @@ impl Ff2Model {
     ///
     /// `UnknownField` for an undeclared path (FF I's `level`, `exp`,
     /// `charges` and `spell.<level>.<slot>` among them), a dictionary without
-    /// the key, a spell chain the character owns no entry of, or a computed
+    /// the key, a spell chain the character owns no entry of, a spell place past
+    /// the end of its list, or a computed
     /// field whose key or table row is missing, `MissingRow` for an
     /// absent character or item, `Format` when the document holds another
     /// shape: a float or an oversized integer where an integer belongs, a

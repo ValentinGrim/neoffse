@@ -129,7 +129,8 @@ fn a_character_without_a_spell_list_owns_no_spell() {
     assert!(matches!(level(&mut model, 2, 3), Err(EditError::UnknownField { .. })));
     let view = model.view(Language::En).unwrap();
     let entities = &view.section(Capability::Magic).unwrap().entities;
-    assert_eq!(entities.len(), 4);
+    // Four Level entities, then four raw pages: the raw page of character 2 still holds its dictionary and orders.
+    assert_eq!(entities.len(), 8);
     assert_eq!(entities[1].fields, []);
     assert_eq!(entities[0].fields.len(), 3);
 }
@@ -156,8 +157,10 @@ fn the_magic_section_holds_one_entity_per_character() {
     let section = view.section(Capability::Magic).unwrap();
     let ids: Vec<FieldId> = section.entities.iter().map(|entity| entity.id.clone()).collect();
     let expected: Vec<FieldId> = [4, 3, 2, 1].map(|id| FieldId::new(names::CHARACTER).with_id(id)).to_vec();
-    assert_eq!(ids, expected);
-    let labels: Vec<&str> = section.entities.iter().map(|entity| entity.label.as_str()).collect();
+    // The raw pages follow the four Level entities, in the same order.
+    assert_eq!(ids[..4], expected);
+    assert_eq!(ids[4..], expected.iter().map(|id| id.clone().with_name(names::RAW_SPELLS)).collect::<Vec<_>>());
+    let labels: Vec<&str> = section.entities.iter().take(4).map(|entity| entity.label.as_str()).collect();
     assert_eq!(labels, ["Élan", "Tane", "Character 2", "Ivo"]);
     // Character 2 holds chains 3, 4, 5, 6 in this list order.
     let fields = &section.entities[2].fields;
