@@ -5,8 +5,7 @@ use std::collections::HashSet;
 use neoffse_core::{Detection, EditError, FieldId, FileProbe, FormatError, Game, RowId, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_data::{GameTables, Language, tables_for};
 
-use super::save::Ff1Document;
-use super::{Ff1Model, GAME, names};
+use super::{Ff1Document, Ff1Model, GAME, names};
 use crate::container::decode;
 use crate::document::Document;
 use crate::games::{check_markers, game_of_count};

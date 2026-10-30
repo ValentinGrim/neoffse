@@ -74,7 +74,7 @@ mod locate;
 mod meta;
 pub mod names;
 mod rolls;
-mod save;
+mod slot;
 mod summary;
 mod view;
 
@@ -84,6 +84,7 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
+use crate::shared::SlotDocument;
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
@@ -91,7 +92,6 @@ use binding::Binding;
 pub use format::Ff1Format;
 use locate::{locate, read_ability};
 pub use rolls::{Rolls, ThreadRolls};
-pub use save::Ff1Document;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff1Pr;
@@ -99,6 +99,13 @@ pub const GAME: Game = Game::Ff1Pr;
 /// The capabilities of an FF I slot: the party, the inventory (gil sits under
 /// the inventory) and the magic (the spell slots, read only).
 pub const CAPABILITIES: [Capability; 3] = [Capability::Party, Capability::Inventory, Capability::Magic];
+
+/// An FF I slot opened by [`Ff1Format`].
+///
+/// It keeps the BOM and the exact trailer of the opened file and the file
+/// name, so `encode` writes the file back as it came. Its `Debug` is written
+/// by hand and prints the file name only, and it has no `Clone`.
+pub type Ff1Document = SlotDocument<Ff1Model>;
 
 /// An FF I slot document with its ID tables.
 ///
