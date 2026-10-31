@@ -13,6 +13,7 @@ mod keys;
 mod manual;
 mod open;
 mod permissions;
+mod portraits;
 mod refusing;
 mod restoring;
 mod rig;
@@ -43,6 +44,7 @@ pub(crate) use manual::Manual;
 pub(crate) use open::{FixedPicker, Flow, Outcomes, PrivateSlot, private_slot_copies};
 #[cfg(unix)]
 pub(crate) use permissions::{Locked, lock};
+pub(crate) use portraits::{jobs, party, pixels, size_of};
 pub(crate) use refusing::{Refusing, registry_with};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
 pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe, session_in};

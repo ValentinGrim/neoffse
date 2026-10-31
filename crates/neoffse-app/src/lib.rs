@@ -27,7 +27,7 @@ mod generated {
     slint::include_modules!();
 }
 
-pub use assets::{AssetProvider, OriginalSprites, PortraitClass, ProviderChain, default_provider};
+pub use assets::{AssetProvider, OriginalSprites, PortraitClass, PortraitPerson, ProviderChain, default_provider};
 pub use connect::editor::{connect_editor, refresh_editor};
 pub use connect::guard::{connect_close, connect_expert};
 pub use connect::history::connect_history;

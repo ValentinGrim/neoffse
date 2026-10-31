@@ -37,7 +37,8 @@ use crate::{CharacterCard, Overview};
 /// An FF I card has a level (`has_level`), charges and no `mp`. An FF II card
 /// has `mp` and `mp_max` in place of the charges and no level: `has_level` is
 /// false, and `level`, `exp`, `next_exp`, `job` and `charges` stay empty. It
-/// carries no portrait yet, so the frame draws the initial.
+/// carries the portrait of its `job` field, the person it names, and the
+/// empty image when the person has no sprite.
 ///
 /// The result holds names and numbers from the save: never log it. Builds
 /// Slint models and images: UI thread only.
@@ -45,7 +46,7 @@ use crate::{CharacterCard, Overview};
 pub fn overview(view: &SaveView, game: Game, language: Language, assets: &dyn AssetProvider) -> Overview {
     match game {
         Game::Ff1Pr => overview_of(view, ff1::names::GIL, |entity, index| ff1_card(entity, index, game, language, assets)),
-        Game::Ff2Pr => overview_of(view, ff2::names::GIL, ff2_card),
+        Game::Ff2Pr => overview_of(view, ff2::names::GIL, |entity, index| ff2_card(entity, index, game, assets)),
         _ => Overview::default(),
     }
 }
@@ -122,12 +123,11 @@ fn ff1_card(entity: &Entity, index: usize, game: Game, language: Language, asset
     let charges: Vec<SharedString> = (1..=ff1::names::SPELL_LEVELS)
         .map(|level| number(find(entity, &entity.id.clone().with_name(ff1::names::CHARGES).with_id(level))).into())
         .collect();
-    let portrait = job_id(field(ff1::names::JOB)).and_then(|id| assets.portrait(game, id)).unwrap_or_default();
     CharacterCard {
         page: page_of(index),
         name: entity.label.as_str().into(),
         initial: initial(&entity.label).into(),
-        portrait,
+        portrait: portrait(field(ff1::names::JOB), game, assets),
         job: job(field(ff1::names::JOB), game, language).into(),
         level: number(field(ff1::names::LEVEL)).into(),
         hp: number(field(ff1::names::HP)).into(),
@@ -141,16 +141,19 @@ fn ff1_card(entity: &Entity, index: usize, game: Game, language: Language, asset
     }
 }
 
-/// The FF II card of the entity at `index`: name, HP and MP. FF II stores no
-/// level, experience or charges the editor shows
+/// The FF II card of the entity at `index`: name, portrait, HP and MP. FF II
+/// stores no level, experience or charges the editor shows
 /// (`docs/formats/pixel-remaster.md#character-growth-in-ff-ii`), so those
-/// entries stay empty and `has_level` is false.
-fn ff2_card(entity: &Entity, index: usize) -> CharacterCard {
+/// entries stay empty and `has_level` is false. The portrait follows the job
+/// id, which names the person
+/// (`docs/formats/pixel-remaster.md#people-and-party-in-ff-ii`), never `index`.
+fn ff2_card(entity: &Entity, index: usize, game: Game, assets: &dyn AssetProvider) -> CharacterCard {
     let field = |name: &'static str| find(entity, &entity.id.clone().with_name(name));
     CharacterCard {
         page: page_of(index),
         name: entity.label.as_str().into(),
         initial: initial(&entity.label).into(),
+        portrait: portrait(field(ff2::names::JOB), game, assets),
         hp: number(field(ff2::names::HP)).into(),
         hp_max: number(field(ff2::names::MAX_HP)).into(),
         mp: number(field(ff2::names::MP)).into(),
@@ -190,6 +193,13 @@ fn job_id(field: Option<&FieldView>) -> Option<u32> {
         Value::Int(id) => u32::try_from(id).ok(),
         _ => None,
     }
+}
+
+/// The portrait of the job field's id, the empty image when the id is
+/// missing, negative, oversized or unknown to the provider (the frame then
+/// draws the initial).
+fn portrait(field: Option<&FieldView>, game: Game, assets: &dyn AssetProvider) -> slint::Image {
+    job_id(field).and_then(|id| assets.portrait(game, id)).unwrap_or_default()
 }
 
 /// The first letter of `label`, upper case. `""` for an empty label.

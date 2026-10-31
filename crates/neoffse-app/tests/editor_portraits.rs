@@ -9,9 +9,9 @@ mod common;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use common::{Editing, Part, Ui, editing, editing_site, field, items, open_editor};
+use common::{Editing, Part, Ui, editing, editing_site, field, items, jobs, open_editor, party, pixels, size_of};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use neoffse::core::{Capability, Entity, FieldId, FieldMeta, FieldView, Game, SaveView, Section, Shape, Value};
+use neoffse::core::{FieldId, Game, SaveView, Value};
 use neoffse::data::Language;
 use neoffse::pr::ff1::names;
 use neoffse_app::editor::{Input, overview};
@@ -51,46 +51,12 @@ fn cards(ed: &Editing) -> Vec<CharacterCard> {
     items(&ed.editor().overview().cards)
 }
 
-/// The size and the bytes of the pixels, `None` for an empty image.
-fn pixels(image: &Image) -> Option<(u32, u32, Vec<u8>)> {
-    image.to_rgba8().map(|buffer| (buffer.width(), buffer.height(), buffer.as_bytes().to_vec()))
-}
-
 fn sprite(job: u32) -> Option<(u32, u32, Vec<u8>)> {
     pixels(&OriginalSprites.portrait(Game::Ff1Pr, job).expect("a sprite"))
 }
 
-fn size_of(image: &Image) -> (u32, u32) {
-    let size = image.size();
-    (size.width, size.height)
-}
-
 fn character(id: u32) -> FieldId {
     FieldId::new(names::CHARACTER).with_id(id)
-}
-
-fn job_field(id: &FieldId, value: Value) -> FieldView {
-    FieldView::new(id.clone().with_name(names::JOB), FieldMeta::new("Job", Shape::Int { min: 0, max: 99 }), value)
-}
-
-/// A view of characters named `labels`, character ids from 1, each holding
-/// the job in `jobs` at its position, `None` for no job field.
-fn party(labels: &[&str], jobs: &[Option<Value>]) -> SaveView {
-    let entities = labels
-        .iter()
-        .zip(jobs)
-        .enumerate()
-        .map(|(index, (label, job))| {
-            let id = character(u32::try_from(index + 1).unwrap());
-            let fields = job.iter().map(|value| job_field(&id, value.clone())).collect();
-            Entity::new(id, *label, fields)
-        })
-        .collect();
-    SaveView::new(vec![Section::new(Capability::Party, entities)])
-}
-
-fn jobs(ids: &[i64]) -> Vec<Option<Value>> {
-    ids.iter().map(|id| Some(Value::Int(*id))).collect()
 }
 
 /// The portraits of the cards `view` gives, in order.

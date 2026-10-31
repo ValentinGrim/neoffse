@@ -10,7 +10,7 @@ use neoffse::core::{Capability, Entity, FieldId, FieldMeta, FieldView, Game, Sav
 use neoffse::data::Language;
 use neoffse::pr::ff2::names;
 use neoffse_app::editor::{Input, overview};
-use neoffse_app::{CharacterCard, OriginalSprites};
+use neoffse_app::{CharacterCard, OriginalSprites, ProviderChain};
 
 const NAMES: [&str; 4] = ["Ivo", "Mara", "Tane", "Élan"];
 
@@ -94,6 +94,7 @@ fn editing_hp_updates_the_card() {
 fn the_portrait_stays_empty_until_the_provider_has_one() {
     let site = ff2_site();
     let ed = ff2_editing(&site);
+    ed.editor().set_assets(std::sync::Arc::new(ProviderChain::new(Vec::new())));
     for card in cards(&ed) {
         assert_eq!(card.portrait.size().width, 0, "{}", card.name);
         assert!(!card.initial.is_empty(), "{}", card.name);
