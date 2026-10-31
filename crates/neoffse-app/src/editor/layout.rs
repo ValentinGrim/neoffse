@@ -69,13 +69,14 @@ pub struct Built {
 
 /// Builds the editor data from `view`.
 ///
-/// The three sections follow the capabilities Party, Inventory and Magic; a
-/// section the view lacks is absent, and a section of another capability is
-/// ignored. `expert` lifts the locks the game interface sets and shows the
-/// pages only it can edit: a page of fields that are all locked and none read
-/// only stays out of the default mode, except in the Party section, whose
-/// cards open pages by position. UI thread only: the result holds Slint
-/// models.
+/// The four sections follow the capabilities Party, Inventory and Magic, and
+/// the expert-only pages of Magic; a section the view lacks is absent, and a
+/// section of another capability is ignored. `expert` lifts the locks the
+/// game interface sets and shows the pages only it can edit: a page of fields
+/// that are all locked and none read only stays out of the default mode,
+/// except in the Party section, whose cards open pages by position. In expert
+/// mode the expert-only pages of Magic form a section of their own,
+/// `raw_magic`. UI thread only: the result holds Slint models.
 #[must_use]
 pub fn build(view: &SaveView, game: Game, language: Language, expert: bool, locks: &mut dyn Locks) -> Built {
     let mut builder = Builder {
@@ -90,10 +91,17 @@ pub fn build(view: &SaveView, game: Game, language: Language, expert: bool, lock
             ..Layout::default()
         },
     };
+    let party = builder.section(view.section(Capability::Party)).main;
+    let inventory = builder.section(view.section(Capability::Inventory)).main;
+    let Sections {
+        main: magic,
+        expert: raw_magic,
+    } = builder.section(view.section(Capability::Magic));
     let data = EditorData {
-        party: builder.section(view.section(Capability::Party)),
-        inventory: builder.section(view.section(Capability::Inventory)),
-        magic: builder.section(view.section(Capability::Magic)),
+        party,
+        inventory,
+        magic,
+        raw_magic,
     };
     Built { data, layout: builder.layout }
 }
@@ -118,10 +126,26 @@ struct Builder<'a> {
     layout: Layout,
 }
 
+/// The data of one view section: the section itself and, in expert mode, the
+/// pages split off it.
+struct Sections {
+    main: SectionData,
+    expert: SectionData,
+}
+
+/// Where a shown page goes.
+enum Place {
+    Main,
+    Expert,
+}
+
 impl Builder<'_> {
-    fn section(&mut self, section: Option<&Section>) -> SectionData {
+    fn section(&mut self, section: Option<&Section>) -> Sections {
         let Some(section) = section else {
-            return SectionData::default();
+            return Sections {
+                main: SectionData::default(),
+                expert: SectionData::default(),
+            };
         };
         let collections = row_collections(section);
         let mut pages: Vec<&Entity> = Vec::new();
@@ -134,36 +158,76 @@ impl Builder<'_> {
         }
         let mut every = section.entities.iter().flat_map(|entity| &entity.fields).peekable();
         let read_only = every.peek().is_some() && every.all(|view| view.meta.read_only);
-        let hide = hides_expert_only(section.capability);
-        let pages: Vec<EntityPage> = pages.into_iter().filter_map(|entity| self.page(entity, hide)).collect();
+        let mut main = Vec::new();
+        let mut expert = Vec::new();
+        for &entity in &pages {
+            let Some((place, mut page)) = self.page(entity, section.capability) else {
+                continue;
+            };
+            match place {
+                Place::Main => main.push(page),
+                Place::Expert => {
+                    // The raw page of a character reads the character's name.
+                    let parent_id = entity.id.parent();
+                    if let Some(parent) = pages.iter().find(|parent| parent_id.as_ref() == Some(&parent.id)) {
+                        page.label = parent.label.as_str().into();
+                    }
+                    expert.push(page);
+                }
+            }
+        }
         let lists: Vec<ItemList> = collections.into_iter().zip(rows).map(|(meta, entities)| self.list(meta, &entities)).collect();
-        SectionData {
-            present: true,
-            read_only,
-            pages: model_of(pages),
-            lists: model_of(lists),
+        Sections {
+            main: SectionData {
+                present: true,
+                read_only,
+                pages: model_of(main),
+                lists: model_of(lists),
+            },
+            expert: SectionData {
+                present: !expert.is_empty(),
+                read_only: false,
+                pages: model_of(expert),
+                lists: model_of(Vec::new()),
+            },
         }
     }
 
-    /// The page of `entity`, `None` when only expert mode edits it, `hide`
-    /// holds and expert mode is off: no key is issued for a page the screen
-    /// never shows.
-    fn page(&mut self, entity: &Entity, hide: bool) -> Option<EntityPage> {
+    /// Where a page goes, `None` when it is dropped. A page that holds
+    /// something the default mode edits stays in the section; so does an
+    /// expert-only page of a section that cannot hide it. The other
+    /// expert-only pages are dropped in default mode and, in expert mode, go
+    /// to the section of their own when the capability splits, else stay.
+    fn place(&self, capability: Capability, expert_only: bool) -> Option<Place> {
+        if !expert_only || !hides_expert_only(capability) {
+            Some(Place::Main)
+        } else if !self.context.expert {
+            None
+        } else if splits_expert_only(capability) {
+            Some(Place::Expert)
+        } else {
+            Some(Place::Main)
+        }
+    }
+
+    /// The page of `entity` and where it goes, `None` when only expert mode
+    /// edits it and expert mode is off: no key is issued for a page the
+    /// screen never shows.
+    fn page(&mut self, entity: &Entity, capability: Capability) -> Option<(Place, EntityPage)> {
         let locked: Vec<bool> = entity.fields.iter().map(|view| self.locks.field_locked(&view.id)).collect();
         let expert_only = expert_only(entity, &locked);
-        if hide && expert_only && !self.context.expert {
-            return None;
-        }
+        let place = self.place(capability, expert_only)?;
         let fields = entity
             .fields
             .iter()
             .zip(locked)
             .map(|(view, locked)| self.field(view, &view.meta.label, locked, expert_only))
             .collect::<Vec<_>>();
-        Some(EntityPage {
+        let page = EntityPage {
             label: entity.label.as_str().into(),
             fields: model_of(fields),
-        })
+        };
+        Some((place, page))
     }
 
     fn list(&mut self, meta: &CollectionMeta, entities: &[&Entity]) -> ItemList {
@@ -247,6 +311,13 @@ fn expert_only(entity: &Entity, locked: &[bool]) -> bool {
 /// shift every later card onto the wrong character.
 fn hides_expert_only(capability: Capability) -> bool {
     capability != Capability::Party
+}
+
+/// Whether the expert-only pages of a section form a section of their own in
+/// expert mode. A capability that splits gives them one; the others keep them
+/// in the section.
+fn splits_expert_only(capability: Capability) -> bool {
+    capability == Capability::Magic
 }
 
 /// `changes` without the rows of the pages only expert mode edits, judged on

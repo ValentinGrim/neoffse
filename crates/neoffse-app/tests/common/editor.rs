@@ -12,12 +12,13 @@ use neoffse_app::{EditorData, EditorViewModel, EntityPage, FieldRow, ItemList, I
 
 use super::{Flow, ID_1, Outcomes, Site, items, registry, slot_bytes, slot_file, steam_slot};
 
-/// The three sections of the editor.
+/// The four sections of the editor.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Part {
     Party,
     Inventory,
     Magic,
+    RawMagic,
 }
 
 /// A site with the synthetic FF I slot 1 in a Proton save folder.
@@ -94,6 +95,7 @@ pub(crate) fn section(data: &EditorData, part: Part) -> SectionData {
         Part::Party => data.party.clone(),
         Part::Inventory => data.inventory.clone(),
         Part::Magic => data.magic.clone(),
+        Part::RawMagic => data.raw_magic.clone(),
     }
 }
 
@@ -117,7 +119,7 @@ pub(crate) fn rows(list: &ItemList) -> Vec<ItemRow> {
 /// the rows of each list.
 pub(crate) fn all_fields(data: &EditorData) -> Vec<FieldRow> {
     let mut out = Vec::new();
-    for part in [Part::Party, Part::Inventory, Part::Magic] {
+    for part in [Part::Party, Part::Inventory, Part::Magic, Part::RawMagic] {
         let section = section(data, part);
         for page in pages(&section) {
             out.extend(fields(&page));

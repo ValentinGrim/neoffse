@@ -91,8 +91,8 @@ component ReadOnlyNote inherits LookText {
     text: @tr("Read only");
 }
 
-// Magic: one button per character above the selected character's read-only
-// slots.
+// Magic and Raw spells: one button per character above the selected
+// character's page.
 export component CharacterPage inherits VerticalLayout {
     in property <Look> look: Theme.look;
     in property <[EntityPage]> pages;

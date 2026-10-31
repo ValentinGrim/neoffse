@@ -26,8 +26,9 @@ component CommandRow inherits PressRow {
     }
 }
 
-// The framed list of commands: Party, Items and Magic. A choice calls
-// `chosen`; the page decides what a choice changes.
+// The framed list of commands: Party, Items and Magic, then Raw spells when
+// the data holds that section (expert mode). A choice calls `chosen`; the page
+// decides what a choice changes.
 export component CommandList inherits Frame {
     callback chosen(EditorCommand);
 
@@ -48,6 +49,12 @@ export component CommandList inherits Frame {
         current: EditorBridge.command == EditorCommand.magic;
         enabled: EditorBridge.data.magic.present && !EditorBridge.blocked;
         activated => { root.chosen(EditorCommand.magic); }
+    }
+    if EditorBridge.data.raw-magic.present: CommandRow {
+        text: @tr("Raw spells");
+        current: EditorBridge.command == EditorCommand.raw-magic;
+        enabled: !EditorBridge.blocked;
+        activated => { root.chosen(EditorCommand.raw-magic); }
     }
 }
 

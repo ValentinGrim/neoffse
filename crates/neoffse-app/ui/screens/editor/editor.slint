@@ -37,6 +37,8 @@ export component EditorPage inherits FocusScope {
     private property <int> pages: EditorBridge.data.party.pages.length;
     // The Party command shows a character page.
     private property <bool> on-character: EditorBridge.command == EditorCommand.party && EditorBridge.character >= 0 && EditorBridge.character < root.pages;
+    // The Raw spells row exists. When it leaves, the focused row goes with it.
+    private property <bool> raw-shown: EditorBridge.data.raw-magic.present;
     // The Party command shows its cards, not a character page.
     private property <bool> on-cards: EditorBridge.command == EditorCommand.party && EditorBridge.data.party.present && !root.on-character;
 
@@ -46,6 +48,12 @@ export component EditorPage inherits FocusScope {
     // A dialog's buttons vanish with it, and the focus would go with them.
     changed covered => {
         if !root.covered {
+            self.focus();
+        }
+    }
+    // The Raw spells row leaves with expert mode and may hold the focus.
+    changed raw-shown => {
+        if !root.raw-shown {
             self.focus();
         }
     }
@@ -181,6 +189,10 @@ export component EditorPage inherits FocusScope {
                     if EditorBridge.command == EditorCommand.magic && EditorBridge.data.magic.present: CharacterPage {
                         pages: EditorBridge.data.magic.pages;
                         read-only: EditorBridge.data.magic.read-only;
+                    }
+                    if EditorBridge.command == EditorCommand.raw-magic && EditorBridge.data.raw-magic.present: CharacterPage {
+                        pages: EditorBridge.data.raw-magic.pages;
+                        read-only: EditorBridge.data.raw-magic.read-only;
                     }
                 }
             }

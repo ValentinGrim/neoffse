@@ -8,26 +8,26 @@
 mod common;
 
 use common::{
-    Editing, FakeLocks, ID_1, Part, editing, editing_site, ff2_editing, ff2_site, ff2_ui, field, fields, page, pages, saving_over, section, slot_file,
+    Editing, FakeLocks, ID_1, Part, editing, editing_site, ff2_editing, ff2_site, field, fields, lists, page, pages, saving_over, section, slot_file,
     steam_folder,
 };
-use i_slint_backend_testing::AccessibleRole::{Button, TextInput};
 use neoffse::Running;
 use neoffse::core::{Capability, Entity, FieldId, FieldMeta, FieldView, Game, SaveView, Section, Shape, Value};
 use neoffse::data::Language;
 use neoffse_app::editor::{Input, build};
-use neoffse_app::{EditorCommand, ReviewKind, ReviewRow};
-use slint::Model;
+use neoffse_app::{ReviewKind, ReviewRow};
 
 const NAMES: [&str; 4] = ["Ivo", "Mara", "Tane", "Élan"];
 /// Places per character of the fixture: three per list entry, three per
 /// dictionary entry, then the two order lists.
 const PLACES: [usize; 4] = [28, 36, 12, 132];
 
-fn labels(ed: &Editing) -> Vec<String> {
-    pages(&ed.data().magic).iter().map(|page| page.label.to_string()).collect()
+fn labels(ed: &Editing, part: Part) -> Vec<String> {
+    pages(&section(&ed.data(), part)).iter().map(|page| page.label.to_string()).collect()
 }
 
+/// The entity label of a raw page, which the review headings print. The
+/// button of the page reads the name alone.
 fn raw_label(name: &str) -> String {
     format!("{name}, raw spells")
 }
@@ -44,20 +44,25 @@ fn field_rows(rows: &[ReviewRow]) -> usize {
 fn default_mode_has_no_raw_page() {
     let site = ff2_site();
     let ed = ff2_editing(&site);
-    assert_eq!(labels(&ed), NAMES);
+    assert_eq!(labels(&ed, Part::Magic), NAMES);
+    let data = ed.data();
+    assert!(!data.raw_magic.present);
+    assert_eq!(pages(&data.raw_magic).len(), 0);
 }
 
 #[test]
-fn expert_mode_shows_the_raw_pages() {
+fn expert_mode_moves_the_raw_pages_to_their_own_section() {
     let site = ff2_site();
     let ed = ff2_editing(&site);
     ed.editor().set_expert(true);
-    let found = labels(&ed);
-    let expected: Vec<String> = NAMES.iter().map(ToString::to_string).chain(NAMES.iter().map(|name| raw_label(name))).collect();
-    assert_eq!(found, expected);
+    assert_eq!(labels(&ed, Part::Magic), NAMES);
+    assert_eq!(labels(&ed, Part::RawMagic), NAMES);
     let data = ed.data();
+    assert!(data.raw_magic.present);
+    assert!(!data.raw_magic.read_only);
+    assert_eq!(lists(&data.raw_magic).len(), 0);
     for (name, places) in NAMES.iter().zip(PLACES) {
-        let rows = fields(&page(&data, Part::Magic, &raw_label(name)));
+        let rows = fields(&page(&data, Part::RawMagic, name));
         assert_eq!(rows.len(), places, "{name}");
         assert!(
             rows.iter().all(|row| row.editable && row.locked),
@@ -67,11 +72,21 @@ fn expert_mode_shows_the_raw_pages() {
 }
 
 #[test]
+fn the_raw_buttons_read_the_character_names() {
+    let site = ff2_site();
+    let ed = ff2_editing(&site);
+    ed.editor().set_expert(true);
+    let found = labels(&ed, Part::RawMagic);
+    assert_eq!(found, NAMES);
+    assert!(found.iter().all(|label| !label.contains("raw")));
+}
+
+#[test]
 fn the_711_entry_is_a_listed_picker_without_a_name() {
     let site = ff2_site();
     let ed = ff2_editing(&site);
     ed.editor().set_expert(true);
-    let row = field(&ed.data(), Part::Magic, &raw_label("Ivo"), "List 1, Entry 711, row");
+    let row = field(&ed.data(), Part::RawMagic, "Ivo", "List 1, Entry 711, row");
     assert_eq!(row.kind, neoffse_app::FieldKind::Picker);
     assert_eq!(row.text, "711");
     assert!(row.known, "the table lists row 711");
@@ -85,11 +100,11 @@ fn a_one_sided_proficiency_commit_then_undo_restores_every_byte() {
     let ed = ff2_editing(&site);
     ed.editor().set_expert(true);
     let before = ed.with_session(|session| session.view().unwrap());
-    let place = field(&ed.data(), Part::Magic, &raw_label("Ivo"), "List 2, Fire, value");
+    let place = field(&ed.data(), Part::RawMagic, "Ivo", "List 2, Fire, value");
     assert_ne!(place.text, "456");
 
     assert!(ed.editor().commit(place.key, Input::Text("456".to_owned())).is_none());
-    let place = field(&ed.data(), Part::Magic, &raw_label("Ivo"), "List 2, Fire, value");
+    let place = field(&ed.data(), Part::RawMagic, "Ivo", "List 2, Fire, value");
     assert_eq!(place.text, "456");
     assert_eq!(field(&ed.data(), Part::Magic, "Ivo", "Fire").text, "5", "the Level field still reads the row");
     assert_eq!(ed.pending(), 1);
@@ -102,36 +117,17 @@ fn a_one_sided_proficiency_commit_then_undo_restores_every_byte() {
 }
 
 #[test]
-fn turning_expert_off_with_a_raw_page_open_leaves_a_valid_selection() {
-    let site = ff2_site();
-    let ui = ff2_ui(&site);
-    let bridge = ui.bridge();
-    bridge.invoke_expert_toggle_requested();
-    bridge.invoke_expert_warning_confirmed();
-    ui.navigate(EditorCommand::Magic, -1);
-    ui.element(&raw_label("Élan"), Button).invoke_accessible_default_action();
-    assert!(ui.has_element("List 2, Fire, value", TextInput), "the raw page shows");
-    // The nameless row 711 reads `Entry 711` on the picker button.
-    assert!(ui.has_element("List 1, Entry 711, row: Entry 711", Button));
-
-    bridge.invoke_expert_toggle_requested();
-    assert!(!ui.app.editor.expert());
-    assert_eq!(bridge.get_data().magic.pages.row_count(), 4);
-    assert!(!ui.has_element(&raw_label("Élan"), Button));
-    // The page that shows is one of the Level pages: its first field is a spell.
-    assert!(ui.has_element("Fire", TextInput));
-    assert!(!ui.has_element("List 2, Fire, value", TextInput));
-}
-
-#[test]
 fn ff1_magic_pages_show_in_default_mode() {
     let site = editing_site();
     let ed = editing(&site);
     let data = ed.data();
     assert_eq!(pages(&section(&data, Part::Magic)).len(), 4);
     assert!(data.magic.read_only);
+    assert!(!data.raw_magic.present);
     ed.editor().set_expert(true);
-    assert_eq!(pages(&ed.data().magic).len(), 4);
+    let data = ed.data();
+    assert_eq!(pages(&data.magic).len(), 4);
+    assert!(!data.raw_magic.present);
 }
 
 fn ints(page: &str, read_only: bool, count: u32) -> Entity {
@@ -150,23 +146,66 @@ fn magic_view(entities: Vec<Entity>) -> SaveView {
     SaveView::new(vec![Section::new(Capability::Magic, entities)])
 }
 
-fn page_labels(view: &SaveView, expert: bool, locks: &mut FakeLocks) -> Vec<String> {
+/// The labels of the Magic pages and of the Raw spells pages.
+type LabelPair = (Vec<String>, Vec<String>);
+
+fn page_labels(view: &SaveView, expert: bool, locks: &mut dyn neoffse_app::editor::Locks) -> LabelPair {
     let built = build(view, Game::Ff2Pr, Language::En, expert, locks);
-    pages(&built.data.magic).iter().map(|page| page.label.to_string()).collect()
+    let of = |section: &neoffse_app::SectionData| pages(section).iter().map(|page| page.label.to_string()).collect();
+    (of(&built.data.magic), of(&built.data.raw_magic))
+}
+
+fn strings(labels: &[&str]) -> Vec<String> {
+    labels.iter().map(ToString::to_string).collect()
 }
 
 #[test]
 fn a_page_of_locked_editable_fields_is_expert_only() {
     let view = magic_view(vec![ints("Raw", false, 2)]);
-    assert_eq!(page_labels(&view, false, &mut FakeLocks::answering(true)).len(), 0);
-    assert_eq!(page_labels(&view, true, &mut FakeLocks::answering(true)), ["Raw"]);
-    assert_eq!(page_labels(&view, false, &mut FakeLocks::answering(false)), ["Raw"]);
+    assert_eq!(page_labels(&view, false, &mut FakeLocks::answering(true)), (vec![], vec![]));
+    assert_eq!(page_labels(&view, true, &mut FakeLocks::answering(true)), (vec![], strings(&["Raw"])));
+    assert_eq!(page_labels(&view, false, &mut FakeLocks::answering(false)), (strings(&["Raw"]), vec![]));
 }
 
 #[test]
 fn a_read_only_page_and_an_empty_page_stay() {
     let view = magic_view(vec![ints("Reads", true, 2), ints("Empty", false, 0)]);
-    assert_eq!(page_labels(&view, false, &mut FakeLocks::answering(true)), ["Reads", "Empty"]);
+    assert_eq!(
+        page_labels(&view, false, &mut FakeLocks::answering(true)),
+        (strings(&["Reads", "Empty"]), vec![])
+    );
+}
+
+/// Locks the fields whose id starts with one of the prefixes.
+struct Under(Vec<FieldId>);
+impl neoffse_app::editor::Locks for Under {
+    fn field_locked(&mut self, field: &FieldId) -> bool {
+        self.0.iter().any(|prefix| field.starts_with(prefix))
+    }
+
+    fn row_locked(&mut self, _: &neoffse::core::RowId) -> bool {
+        false
+    }
+}
+
+fn sheet(id: FieldId, label: &str) -> Entity {
+    let meta = FieldMeta::new("Value", Shape::Int { min: 0, max: 9 });
+    Entity::new(id.clone(), label, vec![FieldView::new(id.with_id(0), meta, Value::Int(0))])
+}
+
+#[test]
+fn an_expert_page_without_a_parent_page_keeps_its_label() {
+    let hero = FieldId::new("sheet").with_id(1);
+    let loose = FieldId::new("sheet").with_id(7);
+    let view = magic_view(vec![
+        sheet(hero.clone(), "Hero"),
+        sheet(hero.clone().with_name("raw"), "Hero, raw"),
+        sheet(loose.clone().with_name("raw"), "Loose"),
+    ]);
+    let mut locks = Under(vec![hero.with_name("raw"), loose.with_name("raw")]);
+    let (magic, raw) = page_labels(&view, true, &mut locks);
+    assert_eq!(magic, ["Hero"]);
+    assert_eq!(raw, ["Hero", "Loose"]);
 }
 
 /// Locks one field and every row.
@@ -206,7 +245,7 @@ fn level_edit(ed: &Editing) {
 fn proficiency_edit(ed: &Editing) {
     let was = ed.editor().expert();
     ed.editor().set_expert(true);
-    let key = field(&ed.data(), Part::Magic, &raw_label("Ivo"), "List 2, Fire, value").key;
+    let key = field(&ed.data(), Part::RawMagic, "Ivo", "List 2, Fire, value").key;
     assert!(ed.editor().commit(key, Input::Text("456".to_owned())).is_none());
     ed.editor().set_expert(was);
 }
@@ -314,4 +353,17 @@ fn a_new_file_starts_without_the_flag() {
     let reopened = ff2_editing(&site);
     level_edit(&reopened);
     assert_eq!(field_rows(&reopened.editor().review().unwrap()), 1);
+}
+
+#[test]
+fn the_review_keeps_the_capability_and_the_headings_of_a_raw_edit() {
+    let site = ff2_site();
+    let ed = ff2_editing(&site);
+    level_edit(&ed);
+    ed.editor().set_expert(true);
+    let changes = ed.with_session(|session| session.changes(Language::En).unwrap());
+    assert_eq!(changes.len(), 9);
+    assert!(changes.iter().all(|change| change.capability == Capability::Magic));
+    assert_eq!(changes.iter().filter(|change| change.entity_label == "Ivo").count(), 1);
+    assert_eq!(changes.iter().filter(|change| change.entity_label == raw_label("Ivo")).count(), 8);
 }
