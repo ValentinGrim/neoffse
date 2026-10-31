@@ -2381,7 +2381,9 @@ It replaces the content ID in `additionOrderOwnedAbilityIds` and `sortOrderOwned
 
 **Level in NeoFFSE.**
 NeoFFSE reads a spell's level from the row, by `(abilityId - 5) mod 16 + 1` [I], because the copy the Magic screen draws stays open ([question 36](#open-questions)).
+It pairs an `abilityList` entry with its `abilityDictionary` key 3 entry by chain and takes the first entry of the chain in each list [I].
 A Level edit writes the five changes listed in [Row and value in FF II](#row-and-value-in-ff-ii).
+When an order list lacks the old content ID, NeoFFSE leaves that list unchanged, where the game appends the new ID.
 On a pair whose row and `skillLevel` disagree, this reading differs from the level the game draws from `skillLevel`, as that section describes.
 
 #### Row and value in FF II
@@ -2414,6 +2416,7 @@ So the dictionary's value goes stale until the row changes.
 Measured on the three game files: the two copies hold the same IDs in the same order, minus 711, on every character.
 15 of the 16 spells of the status 4 character are equal, and the rest differ with the list at or above the dictionary, for example 251 against 227 and 83 against 70 [M].
 The dictionary row equals the level of its own value on all 96 game-file entries [M].
+On the four files, key 3 is absent when, and only when, a character holds no spell, and its entry count equals the character's spell count, ability 711 excluded, on all 31 character states [M].
 Which copy the Magic screen draws is open ([question 36](#open-questions)).
 
 **The Magic list.**
@@ -2438,6 +2441,10 @@ So a story event adds a keyword, and a debug item menu adds them all (`ItemDebug
 `AddKeyWord` is the only write method the metadata names, so no method removes a keyword [B, names].
 `game_constant_int.csv` `WORD_LEARN_MEMORY` is 15 [D], which reads as the target of an achievement [I].
 Whether a keyword added out of order opens dialogue before the story reaches it is open ([question 44](#open-questions)).
+
+NeoFFSE adds a keyword as `AddKeyWord` does: a type-6 row absent from the list, appended [I].
+It removes a keyword in expert mode only, through the raw interface [I].
+The game has no removal path, so the effect of a removal stays unproved: whether the game loads the file, what the Words list shows and how the story uses the word ([question 49](#open-questions)).
 
 #### People and party in FF II
 
@@ -2653,6 +2660,7 @@ Questions 26 to 34 need an in-game test, a save that uses the rows, or a read of
 Questions 35 to 45 are FF II in-game tests, each run on a copy of a save, edited and loaded in the game: character numbers are `id`s in FF II slot 1 ([FF II](#ff-ii)).
 Question 46 lists the FF II binary reads still open.
 Questions 47 and 48 are FF II in-game readings on the experience and level fields.
+Question 49 is an FF II in-game reading on a keyword removal.
 
 1. FF III to VI: slot names 2 to 20 and the Quick Save name (FF I and FF II: slot names 3 to 20), the ability offsets, FF VI espers and other parties, and how the game writes non-ASCII text in FF III, V and VI.
    The measured saves come from early game.
@@ -2778,3 +2786,7 @@ Questions 47 and 48 are FF II in-game readings on the experience and level field
 48. An edited FF II level.
     On a copy, set `addtionalLevel` to 50 for one character, play one battle and save.
     Expect damage, hit and menus unchanged and the file still holding 50 ([Character growth in FF II](#character-growth-in-ff-ii)).
+49. A removed keyword.
+    On a copy, remove one keyword in expert mode and load the file in the game.
+    Read the Words list, then read how the story uses the word: whether a dialogue that needs it still runs.
+    The reading shows whether the game loads the file and whether the removal leaves a trace ([Keywords in FF II](#keywords-in-ff-ii)).
