@@ -2555,9 +2555,16 @@ Both rules fail in FF II:
 - On the three game files, equipment slot 2 holds 12 empty entries, 10 weapons and 1 shield (content 105, in the Quick Save). No measured equipment slot 1 holds a shield [M].
 - An empty hand holds 47 in either equipment slot. Content 208 stays a row with an inventory count of 5 and sits in no measured slot [M].
   NeoFFSE's game interface refuses 208 in a hand [I]: no game file places it in a slot, and [question 40](#open-questions) leaves open what a hand that held a shield holds.
-- Equipment slots 1 and 2 can hold the same ID, for example 60 and 60, or 91 and 91. On all three game files, every held ID's inventory count covers the number of slots that hold it [M].
-- The equip floor of [Inventory](#inventory) holds on those files [M].
-  The placeholder rows sit in the inventory of save slot 1 with counts 10, 5, 5, 11 and 11 for 47 and 208 to 211; their meaning is open.
+- Equipment slots 1 and 2 can hold the same ID, for example 60 and 60, or 91 and 91. On all three game files, the inventory count of every held non-placeholder ID covers the number of slots that hold it [M].
+- The equip floor of [Inventory](#inventory) holds on those files for non-placeholder rows [M].
+  Placeholder counts do not follow the number of slots that hold the placeholder [M].
+  On the four measured slots (three game-written, one editor-written), row 47 counts 10 on all four while 10, 6, 8 and 8 hands hold it.
+  Row 208 counts 5 on all four and sits in no slot.
+  Rows 209 and 210 count 5 and 11 on all four, and row 211 counts 11 on three slots and 10 in the Quick Save, against 3 to 5 wearers of each.
+  No measured file holds more than 10 empty hands: the Auto Save has 8 characters and 10 hands that hold 47 [M].
+  The meaning of the placeholder counts is open.
+- NeoFFSE's game interface leaves the placeholder rows alone on an unequip, so an unequip can bring the hands that hold 47 past the count of row 47 [I].
+  Whether the game accepts that state is open ([question 50](#open-questions)).
 
 `weapon.csv` holds 7 rows with `category_type` 12 (bows), `two_handed_flag` 1 and `back_flag` 1 [D].
 `OwnedItemData::get_IsTwoHanded` and `get_IsBow` exist, and `OwnedCharacterClient::CorrectNotEquipTwoHandedShields` is the game's cleanup [B, names].
@@ -2661,6 +2668,7 @@ Questions 35 to 45 are FF II in-game tests, each run on a copy of a save, edited
 Question 46 lists the FF II binary reads still open.
 Questions 47 and 48 are FF II in-game readings on the experience and level fields.
 Question 49 is an FF II in-game reading on a keyword removal.
+Question 50 is an FF II in-game reading on the empty hands.
 
 1. FF III to VI: slot names 2 to 20 and the Quick Save name (FF I and FF II: slot names 3 to 20), the ability offsets, FF VI espers and other parties, and how the game writes non-ASCII text in FF III, V and VI.
    The measured saves come from early game.
@@ -2790,3 +2798,7 @@ Question 49 is an FF II in-game reading on a keyword removal.
     On a copy, remove one keyword in expert mode and load the file in the game.
     Read the Words list, then read how the story uses the word: whether a dialogue that needs it still runs.
     The reading shows whether the game loads the file and whether the removal leaves a trace ([Keywords in FF II](#keywords-in-ff-ii)).
+50. Eleven empty hands.
+    On a copy of the Auto Save, unequip one weapon with NeoFFSE's game interface: 11 hands then hold 47 while row 47 counts 10.
+    Load the file in the game and save.
+    Read whether the game loads it, and read the count of row 47 and the `contentId` of each hand in the saved file ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
