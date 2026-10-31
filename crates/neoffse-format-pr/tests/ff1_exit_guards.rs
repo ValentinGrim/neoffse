@@ -15,7 +15,7 @@ use common::json_diff::{added, diff, layout_chain, value};
 use common::json_tree::Tree;
 use neoffse_core::{Edit, EditError, FieldId, RowId, SaveDocument, Value};
 use neoffse_format_pr::container::{self, Container};
-use neoffse_format_pr::ff1::names;
+use neoffse_format_pr::ff1::{Ff1Format, names};
 
 const GIL: &str = "userData.owendGil";
 const PLAY_TIME: &str = "userData.playTime";
@@ -26,7 +26,7 @@ const PLAY_TIME_TEXT: &str = "13621.814333377138";
 type Refusal = (&'static str, Edit, fn(&EditError) -> bool);
 
 fn subject() -> Subject {
-    Subject::fixture(&SlotData::standard(), Container::game())
+    Subject::fixture(Ff1Format::new(), &SlotData::standard(), Container::game())
 }
 
 fn set_gil(number: i64) -> Edit {
@@ -160,7 +160,7 @@ fn each_container_survives_an_edit() {
         },
     ];
     for container in containers {
-        let subject = Subject::fixture(&SlotData::standard(), container);
+        let subject = Subject::fixture(Ff1Format::new(), &SlotData::standard(), container);
         let built = build(&subject);
         run(&subject, find(&built.cases, "gil"));
     }

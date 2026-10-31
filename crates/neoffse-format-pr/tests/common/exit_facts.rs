@@ -1,9 +1,11 @@
 //! What the edit matrix reads from a save, once: the view, the tree, the
-//! tables and the first rows `row_locked` leaves free.
+//! tables and the first rows `row_locked` leaves free. FF I and FF II share
+//! the item lists, the equipment dictionary and the party order, so both
+//! matrices read the same facts (`ff1::names` re-exports the shared names).
 
 use neoffse_core::{Capability, FieldId, Key, RowId, SaveDocument, SaveView, TableKind, Value};
 use neoffse_data::GameTables;
-use neoffse_format_pr::ff1::{GAME, names};
+use neoffse_format_pr::ff1::names;
 
 use super::edit_subject::Subject;
 use super::ff1_save::character_field;
@@ -64,8 +66,8 @@ impl<'a> Facts<'a> {
         let char_id = *char_id;
         let characters = party.entities.len();
         let (inv_rows, key_rows) = (rows_of(&view, names::INVENTORY), rows_of(&view, names::KEY_ITEMS));
-        let Some(tables) = neoffse_data::tables_for(GAME) else {
-            panic!("no FF I tables")
+        let Some(tables) = neoffse_data::tables_for(subject.game()) else {
+            panic!("{}: no tables for the game", subject.label)
         };
         Facts {
             subject,

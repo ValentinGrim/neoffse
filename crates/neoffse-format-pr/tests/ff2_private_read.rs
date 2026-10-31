@@ -9,8 +9,10 @@ mod common;
 use std::collections::HashSet;
 
 use common::ff1_real::{RealSlot, must, must_some};
+use common::ff2_ability_rules::ability_violations;
 use common::ff2_real::{model, slots};
-use common::ff2_rules::violations;
+use common::ff2_rules::{cap_violations, violations};
+use common::json_tree::Tree;
 use neoffse_core::{Capability, FieldId, SaveDocument, SaveFiles, Shape, TableKind, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, GAME, names};
@@ -87,6 +89,27 @@ fn real_slots_read_every_declared_field() {
                 assert!((min..=max).contains(&number), "{}: {field} is outside its storage bound", slot.label);
             }
         }
+    });
+}
+
+#[test]
+fn real_values_sit_inside_their_game_caps() {
+    for_each_slot(|slot, model| {
+        let found = cap_violations(model);
+        assert!(
+            found.is_empty(),
+            "{}: {} (the cap reading of pixel-remaster.md#character-growth-in-ff-ii may be wrong)",
+            slot.label,
+            found.join("; ")
+        );
+    });
+}
+
+#[test]
+fn real_slots_obey_the_ability_rules() {
+    for_each_slot(|slot, _| {
+        let found = ability_violations(&Tree::parse(&slot.json));
+        assert!(found.is_empty(), "{}: {}", slot.label, found.join("; "));
     });
 }
 

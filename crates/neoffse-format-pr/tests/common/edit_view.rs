@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 
 use neoffse_core::{FieldId, Key, RowId, SaveView, Value};
 use neoffse_format_pr::ff1::names::{self, CHARACTER, COUNT, EQUIPMENT, INVENTORY};
+use neoffse_format_pr::ff2::names::MAX_MP;
 
 /// What the view must show after an edit, relative to the view before.
 #[derive(Debug, Clone)]
@@ -15,6 +16,11 @@ pub(crate) enum ViewChange {
         row: RowId,
         position: usize,
         count: i64,
+    },
+    /// A row that holds no field, such as a keyword: only the entity order moves.
+    Listed {
+        row: RowId,
+        position: usize,
     },
     Remove(RowId),
 }
@@ -34,6 +40,10 @@ pub(super) fn mismatch(before: &SaveView, after: &SaveView, changes: &[ViewChang
             }
             ViewChange::Insert { row, position, count } => {
                 fields.insert(row.field(COUNT), Value::Int(*count));
+                let rows = order.entry(row.id().section()).or_default();
+                rows.insert((*position).min(rows.len()), row.id().clone());
+            }
+            ViewChange::Listed { row, position } => {
                 let rows = order.entry(row.id().section()).or_default();
                 rows.insert((*position).min(rows.len()), row.id().clone());
             }
@@ -101,9 +111,9 @@ pub(super) fn raises_worn_count(before: &SaveView, changes: &[ViewChange]) -> bo
 }
 
 /// Every stored field value by id, and the entity ids of each collection in
-/// order. The computed `max_hp` and `next_level` are left out: an edit of the
-/// level, the experience or the gain moves them, and the document check
-/// already proves the stored keys.
+/// order. The computed `max_hp`, `max_mp` and `next_level` are left out: an
+/// edit of the level, the experience or a gain moves them, and the document
+/// check already proves the stored keys.
 fn flatten(view: &SaveView) -> (Fields, Order) {
     let mut fields = Fields::new();
     let mut order = Order::new();
@@ -117,5 +127,5 @@ fn flatten(view: &SaveView) -> (Fields, Order) {
 }
 
 fn is_computed(id: &FieldId) -> bool {
-    matches!(id.keys().last(), Some(Key::Name(names::MAX_HP | names::NEXT_LEVEL)))
+    matches!(id.keys().last(), Some(Key::Name(names::MAX_HP | names::NEXT_LEVEL | MAX_MP)))
 }
