@@ -196,7 +196,7 @@ fn another_game_gets_no_cards() {
     let ed = editing(&site);
     let view = ed.with_session(|session| session.view().unwrap());
     let fake = Fake::new(5);
-    let built = overview(&view, Game::Ff2Pr, Language::En, fake.as_ref());
+    let built = overview(&view, Game::Ff3Pr, Language::En, fake.as_ref());
     assert!(!built.present);
     assert_eq!(items(&built.cards).len(), 0);
     assert_eq!(fake.calls(), 0);

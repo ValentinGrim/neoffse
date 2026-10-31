@@ -147,7 +147,7 @@ fn a_game_without_a_builder_gets_an_empty_overview() {
     let site = editing_site();
     let ed = editing(&site);
     let view = ed.with_session(|session| session.view().unwrap());
-    let built = overview(&view, Game::Ff2Pr, Language::En, &OriginalSprites);
+    let built = overview(&view, Game::Ff3Pr, Language::En, &OriginalSprites);
     assert!(!built.present);
     assert_eq!(items(&built.cards).len(), 0);
     assert_eq!(built.gil, "");

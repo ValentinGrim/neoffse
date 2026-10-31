@@ -30,7 +30,7 @@ fn failure_in(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -
 }
 
 /// The game of the session that opens `bytes` as `NAME`. The summary is not
-/// read: the FF II stand-in summarizes with FF I code.
+/// read: a file built from the FF I fixture is no valid FF II slot.
 #[track_caller]
 fn opened(registry: &Registry, bytes: &[u8], game: Option<Game>) -> Game {
     let dir = folder_with(&[(NAME, bytes)]);

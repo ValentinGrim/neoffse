@@ -9,7 +9,7 @@ use neoffse::core::{Game, SaveFormat};
 use neoffse::data::Language;
 
 /// One entry per game that `Registry::new` registers.
-const SHIPPED: [Game; 1] = [Game::Ff1Pr];
+const SHIPPED: [Game; 2] = [Game::Ff1Pr, Game::Ff2Pr];
 
 fn debug_of(games: &[Game]) -> String {
     let ids: Vec<String> = games.iter().map(|game| format!("{:?}", game.id())).collect();
