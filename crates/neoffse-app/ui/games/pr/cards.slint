@@ -3,8 +3,9 @@ import { CharacterCard, EntityPage, Overview } from "../../types/editor.slint";
 import { Frame, LookText, PortraitFrame, PressRow, RuleLine } from "../../widgets/frames.slint";
 
 // One character: a portrait frame with the sprite (the initial when there is
-// none), the job over the name, HP, the eight charges in two rows of four, the
-// level, and the experience or the next level. A click, Enter or Space opens
+// none), the job over the name, HP, the MP of a game that stores one (the
+// eight charges in two rows of four for a game that stores charges), the
+// level, and the experience or the next level, when the game has a level. A click, Enter or Space opens
 // the character's page.
 component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
@@ -76,6 +77,19 @@ component CharacterRow inherits PressRow {
                     overflow: elide;
                 }
             }
+            if root.card.mp != "": HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("MP");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.mp-max != "" ? root.card.mp + "/ " + root.card.mp-max : root.card.mp;
+                    overflow: elide;
+                }
+            }
             if root.card.charges.length >= 8: HorizontalLayout {
                 LookText {
                     look: root.look;
@@ -97,7 +111,7 @@ component CharacterRow inherits PressRow {
                     text: root.card.charges[4] + "/ " + root.card.charges[5] + "/ " + root.card.charges[6] + "/ " + root.card.charges[7];
                 }
             }
-            HorizontalLayout {
+            if root.card.has-level: HorizontalLayout {
                 LookText {
                     look: root.look;
                     width: root.label-width;

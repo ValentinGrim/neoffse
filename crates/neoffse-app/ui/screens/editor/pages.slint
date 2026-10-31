@@ -17,6 +17,8 @@ export component FieldList inherits ScrollView {
         padding: 8px;
         padding-right: 20px;
         spacing: 6px;
+        // A page with few fields keeps the natural height of its rows.
+        alignment: start;
 
         for field in root.fields: FieldLine {
             field: field;

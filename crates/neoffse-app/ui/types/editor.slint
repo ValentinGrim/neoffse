@@ -85,6 +85,13 @@ export struct CharacterCard {
     hp: string,
     // "": the view holds no maximum HP.
     hp-max: string,
+    // Current MP of a game that stores one number; "" when the game has
+    // none (the charges stand for it) or the view lacks it.
+    mp: string,
+    // "": the view holds no maximum MP.
+    mp-max: string,
+    // The game has a level: the card draws the Lv row.
+    has-level: bool,
     // Current charges, spell level 1 first; empty when the game has none.
     charges: [string],
     exp: string,

@@ -48,7 +48,7 @@ impl EditorViewModel {
         if value == slot.value {
             return None;
         }
-        self.send(&Edit::set(slot.id, value), &slot.label)
+        self.send(&Edit::set(slot.id, value), &slot.label, slot.expert_only)
     }
 
     /// Adds row `entry_id` to list `list`. The row takes the collection's
@@ -65,7 +65,7 @@ impl EditorViewModel {
             .tables
             .and_then(|tables| entry_name(tables, &collection.key.tables, self.shared.language, i64::from(entry_id)))
             .unwrap_or_default();
-        self.send(&Edit::insert(RowId::new(collection.id, key), None, Vec::new()), &label)
+        self.send(&Edit::insert(RowId::new(collection.id, key), None, Vec::new()), &label, false)
     }
 
     /// Removes row `row`.
@@ -73,14 +73,20 @@ impl EditorViewModel {
     pub fn remove_row(&self, row: i32) -> Option<EditNotice> {
         let slot = at(&self.layout().rows, row);
         match slot {
-            Some(slot) => self.send(&Edit::remove(slot.row), &slot.label),
+            Some(slot) => self.send(&Edit::remove(slot.row), &slot.label, false),
             None => Some(not_editable()),
         }
     }
 
-    /// Applies `edit` through the interface the mode picks.
-    fn send(&self, edit: &Edit, label: &str) -> Option<EditNotice> {
+    /// Applies `edit` through the interface the mode picks. `on_expert_page`
+    /// tells that the edit was committed on a page only expert mode edits:
+    /// the review then shows every row until the session is clean again.
+    fn send(&self, edit: &Edit, label: &str, on_expert_page: bool) -> Option<EditNotice> {
         let expert = self.expert();
-        self.on_session(label, |session| if expert { session.edit_expert(edit) } else { session.edit(edit) })
+        let notice = self.on_session(label, |session| if expert { session.edit_expert(edit) } else { session.edit(edit) });
+        if notice.is_none() {
+            self.shared.raw.committed(on_expert_page);
+        }
+        notice
     }
 }

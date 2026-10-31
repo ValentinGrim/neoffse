@@ -1,7 +1,9 @@
 //! Helpers for the editor page on a `MainWindow`: open the first synthetic
 //! save, read the bridge, count history entries.
 
-use std::sync::PoisonError;
+use std::sync::{Arc, PoisonError};
+
+use neoffse::Registry;
 
 use neoffse_app::{EditorBridge, EditorData, FieldRow};
 use slint::ComponentHandle;
@@ -11,6 +13,13 @@ use super::{Part, Site, Ui, field, fields, page};
 /// A window whose first slot is open on the editor page.
 pub(crate) fn open_editor(site: &Site) -> Ui {
     let ui = Ui::scanned(site, None);
+    ui.open_first_slot();
+    ui
+}
+
+/// Like `open_editor`, over `registry`.
+pub(crate) fn open_editor_in(site: &Site, registry: Arc<Registry>) -> Ui {
+    let ui = Ui::scanned_with(site, None, registry);
     ui.open_first_slot();
     ui
 }

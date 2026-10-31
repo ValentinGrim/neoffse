@@ -3,14 +3,14 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use neoffse::Session;
 use neoffse::core::{FieldId, Game, RowId, TableKind};
 use neoffse::data::{Language, tables_for};
+use neoffse::{Registry, Session};
 use neoffse_app::editor::{Input, Locks};
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{EditorData, EditorViewModel, EntityPage, FieldRow, ItemList, ItemRow, ReviewKind, ReviewRow, SectionData};
 
-use super::{Flow, ID_1, Outcomes, Site, items, slot_bytes, slot_file, steam_slot};
+use super::{Flow, ID_1, Outcomes, Site, items, registry, slot_bytes, slot_file, steam_slot};
 
 /// The three sections of the editor.
 #[derive(Debug, Clone, Copy)]
@@ -34,7 +34,12 @@ pub(crate) struct Editing {
 
 /// Opens slot 1 of `site`, run to the end.
 pub(crate) fn editing(site: &Site) -> Editing {
-    let flow = Flow::new(site, None);
+    editing_in(site, registry())
+}
+
+/// Opens slot 1 of `site` through `registry`, run to the end.
+pub(crate) fn editing_in(site: &Site, registry: Arc<Registry>) -> Editing {
+    let flow = Flow::with_registry(site, None, registry);
     let outcomes = Outcomes::new();
     flow.click(slot_file(1), &outcomes);
     flow.manual.run_all();

@@ -11,7 +11,8 @@
 //! changes and replays undo and redo, `save` runs the save pipeline on a
 //! worker thread. `leave` asks before a dirty session closes. `growth` adds
 //! the level-up notice to an edit that raised levels. `review` shapes the
-//! change list of the review dialog and the time of a backup. `overview`
+//! change list of the review dialog and the time of a backup; `raw` tells
+//! whether it shows the rows of the pages only expert mode edits. `overview`
 //! shapes the party cards; it is the one module
 //! that names game fields. The Slint side lives in
 //! `ui/types/editor.slint` and `ui/screens/editor/bridge.slint`.
@@ -28,6 +29,7 @@ mod model;
 mod notice;
 mod overview;
 mod pick;
+mod raw;
 mod review;
 mod save;
 

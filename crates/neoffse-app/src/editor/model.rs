@@ -14,6 +14,7 @@ use super::leave::Leave;
 use super::notice::problem_notice;
 use super::overview::overview;
 use super::pick::picker_entries;
+use super::raw::RawEdits;
 use crate::assets::{AssetProvider, default_provider};
 use crate::probe::ProbeSlot;
 use crate::state::AppState;
@@ -21,7 +22,7 @@ use crate::{EditNotice, EditProblem, EditorData, Overview, PickerEntry, SummaryR
 
 /// Answers the builder's lock questions from a session. A failed query
 /// counts as locked.
-struct SessionLocks<'a>(&'a mut Session);
+pub(super) struct SessionLocks<'a>(pub(super) &'a mut Session);
 
 impl Locks for SessionLocks<'_> {
     fn field_locked(&mut self, field: &FieldId) -> bool {
@@ -43,6 +44,8 @@ pub(super) struct Shared {
     /// Set from the call of `save` to its `done`: the worker holds the
     /// session lock for that time.
     pub(super) saving: AtomicBool,
+    /// Whether an edit committed on an expert-only page is pending.
+    pub(super) raw: RawEdits,
     pub(super) probe: ProbeSlot,
     /// Where the party cards ask for portraits.
     assets: Mutex<Arc<dyn AssetProvider>>,
@@ -94,6 +97,7 @@ impl EditorViewModel {
                 expert: AtomicBool::new(false),
                 pending: Mutex::new(None),
                 saving: AtomicBool::new(false),
+                raw: RawEdits::default(),
                 probe: ProbeSlot::new(),
                 assets: Mutex::new(default_provider()),
             }),
@@ -117,6 +121,7 @@ impl EditorViewModel {
     pub fn back(&self) {
         self.shared.state.close();
         *self.layout() = Layout::default();
+        self.shared.raw.reset();
         self.set_expert(false);
     }
 
@@ -229,7 +234,11 @@ impl EditorViewModel {
             return Some(not_editable());
         };
         let mut session = lock_session(&session);
-        let error = step(&mut session).err()?;
+        // A save, a discard or a new file left the session clean since the last action.
+        self.shared.raw.settle(session.pending_count(), session.can_redo());
+        let result = step(&mut session);
+        self.shared.raw.settle(session.pending_count(), session.can_redo());
+        let error = result.err()?;
         let (notice, lost) = settle(&mut session, &error, label);
         if lost {
             // The state closes its own handle; this call keeps its `Arc` and the lock until it returns.
