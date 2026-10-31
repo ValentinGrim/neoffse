@@ -44,8 +44,8 @@ The app draws its icons from one set. The files travel unmodified with the licen
 
 ## Portraits
 
-The editor shows one sprite per Final Fantasy I class. The sprites are original drawings.
+The editor shows one sprite per Final Fantasy I class and per Final Fantasy II person. The sprites are original drawings.
 
 | Files | Project and author | Source | License | Notice file | Status |
 |---|---|---|---|---|---|
-| `assets/portraits/ff1-pr/*.png` | NeoFFSE, original sprites | Drawn for the project | CC0 1.0 Universal, <https://creativecommons.org/publicdomain/zero/1.0/> | `assets/portraits/LICENSE` | Original work, public domain dedication |
+| `assets/portraits/ff1-pr/*.png`, `assets/portraits/ff2-pr/*.png` | NeoFFSE, original sprites | Drawn for the project | CC0 1.0 Universal, <https://creativecommons.org/publicdomain/zero/1.0/> | `assets/portraits/LICENSE` | Original work, public domain dedication |
