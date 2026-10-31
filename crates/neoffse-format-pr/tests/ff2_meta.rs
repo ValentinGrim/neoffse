@@ -154,9 +154,14 @@ fn the_view_lists_are_the_vocabulary_without_the_computed_fields() {
 #[test]
 fn collections_have_their_meta() {
     let model = standard_model();
-    for (id, label) in [(names::CHARACTER, "Characters"), (names::INVENTORY, "Items"), (names::KEY_ITEMS, "Key items")] {
+    for (id, label) in [
+        (names::CHARACTER, "Characters"),
+        (names::INVENTORY, "Items"),
+        (names::KEY_ITEMS, "Key items"),
+        (names::KEYWORDS, "Keywords"),
+    ] {
         assert_eq!(model.collection_meta(&FieldId::new(id)).unwrap().label, label, "{id}");
     }
     assert!(model.collection_meta(&FieldId::new(names::GIL)).is_none());
-    assert!(model.collection_meta(&FieldId::new("keywords")).is_none());
+    assert!(model.collection_meta(&FieldId::new("keyword")).is_none());
 }

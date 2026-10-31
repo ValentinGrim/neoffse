@@ -194,7 +194,10 @@ fn real_views_cover_every_row() {
         };
         assert!(view.sections.len() == 3, "{}: section count", slot.label);
         let characters = rows(model, names::CHARACTER, &slot.label).len();
-        let items = rows(model, names::INVENTORY, &slot.label).len() + rows(model, names::KEY_ITEMS, &slot.label).len();
+        let items = [names::INVENTORY, names::KEY_ITEMS, names::KEYWORDS]
+            .into_iter()
+            .map(|list| rows(model, list, &slot.label).len())
+            .sum::<usize>();
         let party = must_some(view.section(Capability::Party), &format!("{}: no Party section", slot.label));
         let inventory = must_some(view.section(Capability::Inventory), &format!("{}: no Inventory section", slot.label));
         assert!(party.entities.len() == characters, "{}: party entities", slot.label);

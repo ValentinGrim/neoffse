@@ -31,6 +31,11 @@ pub const SKILL: &str = "skill";
 /// `skill` takes the key 0 to this value minus 1.
 pub const SKILLS: u32 = 10;
 
+/// The collection of the keywords, `keywords.<contentId>`: the integers of
+/// `userData.ownedKeyWaordList.target`, each the content id of a type-6 row
+/// (`docs/formats/pixel-remaster.md#keywords-in-ff-ii`). A row has no field.
+pub const KEYWORDS: &str = "keywords";
+
 /// The level of one spell, `character.<id>.spell.<chain>`: the chain, 0 to 39,
 /// follows. The value is the level of the row the first `abilityList` entry
 /// of the chain holds (`docs/formats/pixel-remaster.md#spells-in-ff-ii`).

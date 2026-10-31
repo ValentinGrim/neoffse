@@ -1,18 +1,20 @@
 //! The view of a slot: the party and the inventory as the editor shows them.
 
-use neoffse_core::{Capability, Entity, FieldId, FormatError, SaveView, Section};
+use neoffse_core::{Capability, Entity, FieldId, FormatError, RowId, SaveView, Section, TableKind};
 use neoffse_data::Language;
 
 use super::{Ff2Model, names, places, spell};
 use crate::shared::read::decode_error;
-use crate::shared::view::{character_label, field_view, inventory_section, rows_of};
+use crate::shared::view::{character_label, field_view, inventory_section, row_label, rows_of};
 
 impl Ff2Model {
     /// A snapshot of the slot: a Party section with one entity per character
     /// in document order (34 fields each, `names::party_fields`: the 32
     /// stored fields plus the computed `max_hp` and `max_mp`), then an
     /// Inventory section with the gil entity, the rows of `inventory` and the
-    /// rows of `key_items`, then a Magic section.
+    /// rows of `key_items` and the keywords of `ownedKeyWaordList` (named by
+    /// the `Keyword` table, `Entry <id>` when it holds no name, `Keyword <id>`
+    /// when it lists none), then a Magic section.
     ///
     /// The Magic section holds one entity per character in the same order,
     /// labelled like the Party entity, with one Level field per owned spell
@@ -42,9 +44,23 @@ impl Ff2Model {
     /// failure, such as a float where an integer belongs.
     pub fn view(&mut self, language: Language) -> Result<SaveView, FormatError> {
         let party = self.party_section()?;
-        let inventory = inventory_section(self, language)?;
+        let inventory = self.inventory_with_keywords(language)?;
         let magic = self.magic_section(language)?;
         Ok(SaveView::new(vec![party, inventory, magic]))
+    }
+
+    /// The shared Inventory section, then one entity per keyword and the
+    /// `keywords` collection meta. A keyword row holds no field.
+    fn inventory_with_keywords(&mut self, language: Language) -> Result<Section, FormatError> {
+        let mut section = inventory_section(self, language)?;
+        let collection = FieldId::new(names::KEYWORDS);
+        for key in rows_of(self, &collection)? {
+            let row = RowId::new(collection.clone(), key);
+            let label = row_label(self.tables.entry(TableKind::Keyword, key), key, "Keyword", language);
+            section.entities.push(Entity::new(row.id().clone(), label, Vec::new()));
+        }
+        section.collections.extend(self.collection_meta(&collection));
+        Ok(section)
     }
 
     fn party_section(&mut self) -> Result<Section, FormatError> {

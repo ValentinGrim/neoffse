@@ -8,7 +8,8 @@
 //! (`docs/formats/pixel-remaster.md#characters`,
 //! `docs/formats/pixel-remaster.md#skill-levels-in-ff-ii`,
 //! `docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`,
-//! `docs/formats/pixel-remaster.md#inventory`). A read finds a character by
+//! `docs/formats/pixel-remaster.md#inventory`) and the keywords
+//! (`docs/formats/pixel-remaster.md#keywords-in-ff-ii`). A read finds a character by
 //! its `id`, an item by its `contentId` and a dictionary entry by its key,
 //! never by position. The model keeps no state beside the document: every
 //! key it does not map stays as read.
@@ -57,6 +58,7 @@ mod apply;
 mod binding;
 mod derived;
 mod game;
+mod keywords;
 mod locate;
 mod meta;
 pub mod names;
@@ -144,14 +146,17 @@ impl Ff2Model {
     }
 
     /// The row keys of `collection` in document order: the `id` of each
-    /// character, or the `contentId` of each row of `inventory` or
-    /// `key_items`.
+    /// character, the `contentId` of each row of `inventory` or `key_items`,
+    /// or each integer of `keywords`.
     ///
     /// # Errors
     ///
-    /// `NotACollection` when `collection` is none of the three, `Format` when
+    /// `NotACollection` when `collection` is none of the four, `Format` when
     /// the document does not hold the list or a key.
     pub fn rows(&mut self, collection: &FieldId) -> Result<Vec<u32>, EditError> {
+        if keywords::owns(collection) {
+            return keywords::rows(&mut self.document).map_err(|source| format_error(collection, source));
+        }
         let kind = Collection::of(collection).ok_or_else(|| EditError::NotACollection { field: collection.clone() })?;
         row_keys(&mut self.document, kind).map_err(|source| format_error(collection, source))
     }
@@ -183,10 +188,13 @@ impl Ff2Model {
         Some(meta::field_meta(&binding, self.tables))
     }
 
-    /// The metadata of `character`, `inventory` or `key_items`, `None` for
-    /// any other path.
+    /// The metadata of `character`, `inventory`, `key_items` or `keywords`,
+    /// `None` for any other path.
     #[must_use]
     pub fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
+        if keywords::owns(collection) {
+            return Some(keywords::meta());
+        }
         Some(collection_meta(Collection::of(collection)?, self.tables))
     }
 }

@@ -11,7 +11,7 @@ use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use super::Ff2Model;
 use super::binding::Binding;
 use super::locate::locate;
-use super::meta;
+use super::{keywords, meta};
 use crate::shared::items::Lists;
 use crate::shared::write::{Target, set_value};
 
@@ -34,9 +34,9 @@ impl Ff2Model {
     /// `dictionary.<j>.<part>`, `addition_order.<k>`, `sort_order.<k>`), and
     /// [`apply_game`](Self::apply_game) writes them together.
     ///
-    /// An `Insert` or `Remove` acts on a row of `inventory` or `key_items`
-    /// and returns the `Remove` or `Insert` that restores the row at its
-    /// place, bytes included. `Insert` checks the collection, the key bounds,
+    /// An `Insert` or `Remove` acts on a row of `inventory`, `key_items` or
+    /// `keywords` and returns the `Remove` or `Insert` that restores the row
+    /// at its place, bytes included. `Insert` checks the collection, the key bounds,
     /// the `count` value, under `Enforce` the ID tables of the list, then
     /// duplicates and the position. `Remove` refuses a row whose stored token
     /// is not the string token of the canonical `{"contentId":K,"count":N}`
@@ -44,6 +44,14 @@ impl Ff2Model {
     /// spacing or escape) and a row whose inverse would not apply. Neither
     /// holds a game rule: a placeholder row and a worn row go like any other.
     /// A `character` row is `ReadOnly`.
+    ///
+    /// A keyword is a bare integer of `ownedKeyWaordList.target` with no
+    /// field: `Insert` refuses a row value (`UnknownField`), a key below 1
+    /// (`OutOfRange`), under `Enforce` a key the `Keyword` table does not list
+    /// (`UnknownId`), a key already listed (`DuplicateRow`) and a position
+    /// past the end. `Remove` takes the integer out under either policy
+    /// (`MissingRow` for a key the list lacks) and returns an `Insert` at its
+    /// old index.
     ///
     /// # Errors
     ///
@@ -89,10 +97,16 @@ impl Ff2Model {
     }
 
     fn insert(&mut self, row: &RowId, position: Option<usize>, values: &[(&'static str, Value)], policy: CapPolicy) -> Result<Edit, EditError> {
+        if keywords::owns(&row.collection()) {
+            return keywords::insert(&mut self.document, self.tables, row, position, values, policy);
+        }
         self.lists().insert(row, position, values, policy)
     }
 
     fn remove(&mut self, row: &RowId) -> Result<Edit, EditError> {
+        if keywords::owns(&row.collection()) {
+            return keywords::remove(&mut self.document, row);
+        }
         self.lists().remove(row)
     }
 }

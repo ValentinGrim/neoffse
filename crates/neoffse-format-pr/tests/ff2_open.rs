@@ -7,7 +7,7 @@ mod common;
 use common::embed;
 use common::ff1_format::{one_file, sav, slot_name};
 use common::ff1_save;
-use common::ff2_save::{SlotData, inventory, key_items};
+use common::ff2_save::{SlotData, inventory, key_items, keywords};
 use neoffse_core::{Capability, FieldId, FileProbe, FormatError, Game, RowId, SaveDocument, SaveFiles, SaveFormat, SaveSlot};
 use neoffse_data::{Entry, Language};
 use neoffse_format_pr::OpenError;
@@ -70,7 +70,7 @@ fn the_committed_fixture_opens_through_the_codec() {
     assert_eq!(view.section(Capability::Party).unwrap().entities.len(), 4);
     assert_eq!(
         view.section(Capability::Inventory).unwrap().entities.len(),
-        1 + inventory().len() + key_items().len()
+        1 + inventory().len() + key_items().len() + keywords().len()
     );
 }
 

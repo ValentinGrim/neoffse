@@ -19,7 +19,7 @@ use neoffse_data::BaseStats;
 
 use super::binding::{Binding, Part};
 use super::derived::status_id;
-use super::{Ff2Model, meta, names};
+use super::{Ff2Model, keywords, meta, names};
 use crate::shared::paths::List;
 use crate::shared::plan::{Plan, run_plan};
 use crate::shared::read::character_part;
@@ -59,8 +59,12 @@ impl Ff2Model {
     /// `docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`), and the
     /// inverse restores each place to its exact old value, a mismatched pair
     /// included. A character with no copy of the spell in the key-3
-    /// dictionary gets `UnknownField` and no write. Every other edit is one
-    /// plain edit.
+    /// dictionary gets `UnknownField` and no write. An `Insert` into `keywords`
+    /// is the raw `Insert` under `Enforce` and appends, as `AddKeyWord` does
+    /// (`docs/formats/pixel-remaster.md#keywords-in-ff-ii`): a position other
+    /// than the end is `PositionOutOfRange`. A `Remove` of a keyword is
+    /// `ReadOnly`, because the game has no method that removes one. Every
+    /// other edit is one plain edit.
     ///
     /// The plan applies all or none: a failure at any step gives the document
     /// back byte for byte.
@@ -117,7 +121,8 @@ impl Ff2Model {
     /// row whose stored `count` leaves the storage bound of a count (0, a
     /// negative number or above `i32::MAX`). `Remove` refuses such a row on
     /// both interfaces, because its inverse `Insert` could not store the
-    /// count.
+    /// count. Every row of `keywords` is locked: the game has no method that
+    /// removes a keyword, and the raw interface removes one in expert mode.
     ///
     /// It reads the document and writes nothing.
     ///
@@ -127,6 +132,9 @@ impl Ff2Model {
     /// document does not hold (a character row included), `Format` when a read
     /// fails.
     pub fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
+        if keywords::owns(&row.collection()) {
+            return keywords::row_locked(&mut self.document, row);
+        }
         row_locked(&mut self.lists(), row, names::EQUIPMENT_SLOTS)
     }
 
@@ -134,10 +142,16 @@ impl Ff2Model {
     fn plan(&mut self, edit: &Edit) -> Result<Plan, EditError> {
         match edit {
             Edit::Set { field, value } => self.plan_set(edit, field, value),
+            Edit::Insert { row, position, .. } if keywords::owns(&row.collection()) => {
+                keywords::check_game_insert(&mut self.document, row, *position)?;
+                Ok(vec![edit.clone()].into())
+            }
             Edit::Insert { row, values, .. } => {
                 check_insert_rules(&mut self.document, self.tables, row, values, names::EQUIPMENT_SLOTS)?;
                 Ok(vec![edit.clone()].into())
             }
+            // No game path removes a keyword (`AddKeyWord` is the only write method).
+            Edit::Remove { row } if keywords::owns(&row.collection()) => Err(EditError::ReadOnly { field: row.id().clone() }),
             Edit::Remove { row } => {
                 check_remove(&mut self.document, self.tables, row, names::EQUIPMENT_SLOTS)?;
                 Ok(vec![edit.clone()].into())

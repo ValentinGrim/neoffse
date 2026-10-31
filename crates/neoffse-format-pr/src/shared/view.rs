@@ -2,7 +2,7 @@
 //! character and the inventory section (gil, item rows, key item rows).
 
 use neoffse_core::{Capability, EditError, Entity, FieldId, FieldView, FormatError, RowId, Section, Value};
-use neoffse_data::Language;
+use neoffse_data::{Entry, Language};
 
 use super::SlotModel;
 use super::names;
@@ -49,6 +49,20 @@ pub(crate) fn rows_of<M: SlotModel>(model: &mut M, collection: &FieldId) -> Resu
     model.rows(collection).map_err(decode_error)
 }
 
+/// The label of the row `key` whose table entry is `entry`: the name in
+/// `language`, `Entry <key>` for a listed row with no name
+/// (`docs/formats/pixel-remaster.md#rows-without-a-name`), `<fallback> <key>`
+/// for a key no table lists.
+pub(crate) fn row_label(entry: Option<&Entry>, key: u32, fallback: &str, language: Language) -> String {
+    match entry {
+        Some(entry) => match entry.name(language).filter(|name| !name.is_empty()) {
+            Some(name) => name.to_owned(),
+            None => format!("Entry {key}"),
+        },
+        None => format!("{fallback} {key}"),
+    }
+}
+
 /// The Inventory section: the gil entity when `owendGil` is present, then the
 /// rows of `inventory` and of `key_items`. Only the item names follow
 /// `language`. A row the tables list without a name is labelled `Entry <id>`
@@ -65,13 +79,7 @@ pub(crate) fn inventory_section<M: SlotModel>(model: &mut M, language: Language)
         let collection = FieldId::new(list);
         for key in rows_of(model, &collection)? {
             let row = RowId::new(collection.clone(), key);
-            let label = match model.tables().content(key) {
-                Some(entry) => match entry.name(language).filter(|name| !name.is_empty()) {
-                    Some(name) => name.to_owned(),
-                    None => format!("Entry {key}"),
-                },
-                None => format!("{fallback} {key}"),
-            };
+            let label = row_label(model.tables().content(key), key, fallback, language);
             let fields = field_view(model, row.field(names::COUNT))?.into_iter().collect();
             entities.push(Entity::new(row.id().clone(), label, fields));
         }

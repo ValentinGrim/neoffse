@@ -4,7 +4,7 @@
 mod common;
 
 use common::character_path;
-use common::ff2_save::{Row, SlotData, inventory, key_items, model, tables};
+use common::ff2_save::{Row, SlotData, inventory, key_items, keywords, model, tables};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, RowId, SaveView, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Segment};
@@ -95,10 +95,10 @@ fn an_empty_seat_does_not_shorten_the_roster() {
 }
 
 #[test]
-fn inventory_lists_gil_then_rows_then_key_items() {
+fn inventory_lists_gil_then_rows_then_key_items_then_keywords() {
     let (_, view) = view_of(&SlotData::standard());
     let entities = &view.section(Capability::Inventory).unwrap().entities;
-    assert_eq!(entities.len(), 1 + inventory().len() + key_items().len());
+    assert_eq!(entities.len(), 1 + inventory().len() + key_items().len() + keywords().len());
     let gil = &entities[0];
     assert_eq!(gil.id, FieldId::new(names::GIL));
     assert_eq!(gil.label, "Gil");
@@ -113,6 +113,12 @@ fn inventory_lists_gil_then_rows_then_key_items() {
         assert_eq!(entity.fields.len(), 1);
         assert_eq!(entity.fields[0].id, item(list, key).with_name(names::COUNT));
         assert_eq!(entity.fields[0].value, Value::Int(count));
+    }
+    // A keyword is a bare integer: its entity holds no field.
+    let first_keyword = 1 + inventory().len() + key_items().len();
+    for (entity, key) in entities[first_keyword..].iter().zip(keywords()) {
+        assert_eq!(entity.id, item(names::KEYWORDS, key));
+        assert_eq!(entity.fields.len(), 0);
     }
 }
 
@@ -152,7 +158,7 @@ fn collections_sit_in_their_sections() {
     assert_eq!(party.collections, [model.collection_meta(&character).unwrap()]);
     assert!(!party.collections[0].insertable && !party.collections[0].removable);
     let inventory = view.section(Capability::Inventory).unwrap();
-    let lists = [FieldId::new(names::INVENTORY), FieldId::new(names::KEY_ITEMS)];
+    let lists = [FieldId::new(names::INVENTORY), FieldId::new(names::KEY_ITEMS), FieldId::new(names::KEYWORDS)];
     let expected: Vec<_> = lists.iter().map(|list| model.collection_meta(list).unwrap()).collect();
     assert_eq!(inventory.collections, expected);
     for (list, meta) in lists.iter().zip(&expected) {
@@ -182,7 +188,7 @@ fn an_absent_key_leaves_the_field_out() {
     };
     let (_, view) = view_of(&slot);
     let entities = &view.section(Capability::Inventory).unwrap().entities;
-    assert_eq!(entities.len(), inventory().len() + key_items().len());
+    assert_eq!(entities.len(), inventory().len() + key_items().len() + keywords().len());
     assert!(entities.iter().all(|entity| entity.id != FieldId::new(names::GIL)));
 }
 
@@ -239,7 +245,7 @@ fn an_insert_shows_at_its_position() {
     let view = model.view(Language::En).unwrap();
     let entities = &view.section(Capability::Inventory).unwrap().entities;
     assert_eq!(entities[1 + 3].id, *row.id());
-    assert_eq!(entities.len(), 1 + inventory().len() + 1 + key_items().len());
+    assert_eq!(entities.len(), 1 + inventory().len() + 1 + key_items().len() + keywords().len());
 }
 
 #[test]
