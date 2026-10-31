@@ -23,6 +23,17 @@ pub(super) fn settle(session: &mut Session, error: &EditError, label: &str) -> (
     (notice, lost)
 }
 
+/// How a commit reaches the session.
+#[derive(Default, Clone, Copy)]
+struct Route {
+    /// The edit was committed on a page only expert mode edits: the review
+    /// then shows every row until the session is clean again.
+    on_expert_page: bool,
+    /// The field is edited through the game interface in every mode
+    /// (`FieldMeta::game_edit`).
+    game: bool,
+}
+
 impl EditorViewModel {
     /// Sends the edit one commit means.
     ///
@@ -48,7 +59,14 @@ impl EditorViewModel {
         if value == slot.value {
             return None;
         }
-        self.send(&Edit::set(slot.id, value), &slot.label, slot.expert_only)
+        self.send(
+            &Edit::set(slot.id, value),
+            &slot.label,
+            Route {
+                on_expert_page: slot.expert_only,
+                game: slot.meta.game_edit,
+            },
+        )
     }
 
     /// Adds row `entry_id` to list `list`. The row takes the collection's
@@ -65,7 +83,7 @@ impl EditorViewModel {
             .tables
             .and_then(|tables| entry_name(tables, &collection.key.tables, self.shared.language, i64::from(entry_id)))
             .unwrap_or_default();
-        self.send(&Edit::insert(RowId::new(collection.id, key), None, Vec::new()), &label, false)
+        self.send(&Edit::insert(RowId::new(collection.id, key), None, Vec::new()), &label, Route::default())
     }
 
     /// Removes row `row`.
@@ -73,19 +91,17 @@ impl EditorViewModel {
     pub fn remove_row(&self, row: i32) -> Option<EditNotice> {
         let slot = at(&self.layout().rows, row);
         match slot {
-            Some(slot) => self.send(&Edit::remove(slot.row), &slot.label, false),
+            Some(slot) => self.send(&Edit::remove(slot.row), &slot.label, Route::default()),
             None => Some(not_editable()),
         }
     }
 
-    /// Applies `edit` through the interface the mode picks. `on_expert_page`
-    /// tells that the edit was committed on a page only expert mode edits:
-    /// the review then shows every row until the session is clean again.
-    fn send(&self, edit: &Edit, label: &str, on_expert_page: bool) -> Option<EditNotice> {
-        let expert = self.expert();
+    /// Applies `edit` through the interface `route` and the mode pick.
+    fn send(&self, edit: &Edit, label: &str, route: Route) -> Option<EditNotice> {
+        let expert = self.expert() && !route.game;
         let notice = self.on_session(label, |session| if expert { session.edit_expert(edit) } else { session.edit(edit) });
         if notice.is_none() {
-            self.shared.raw.committed(on_expert_page);
+            self.shared.raw.committed(route.on_expert_page);
         }
         notice
     }

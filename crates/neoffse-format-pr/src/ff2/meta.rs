@@ -110,7 +110,12 @@ pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
                 // (`docs/formats/pixel-remaster.md#bounds-in-ff-ii`). A game
                 // without the key falls back to the storage bound, as `int` does.
                 let top = tables.bound("MAX_MAGICAL_LEVEL").unwrap_or(STORAGE_MAX);
-                FieldMeta::new("Spell level", Shape::Int { min: 1, max: top })
+                let mut meta = FieldMeta::new("Spell level", Shape::Int { min: 1, max: top });
+                // One level change rewrites several stored places, so every mode
+                // edits it through the game interface
+                // (`docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`).
+                meta.game_edit = true;
+                meta
             }
             Part::Slot(number) => {
                 let (label, kinds) = slot(number);

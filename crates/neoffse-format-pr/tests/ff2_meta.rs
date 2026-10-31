@@ -165,3 +165,19 @@ fn collections_have_their_meta() {
     assert!(model.collection_meta(&FieldId::new(names::GIL)).is_none());
     assert!(model.collection_meta(&FieldId::new("keyword")).is_none());
 }
+
+#[test]
+fn only_the_spell_level_is_edited_through_the_game_interface_in_every_mode() {
+    let model = standard_model();
+    let level = model.field_meta(&names::spell_field(1, 0)).unwrap();
+    assert!(level.game_edit && !level.read_only);
+    let mut others = names::party_fields(1);
+    others.push(FieldId::new(names::GIL));
+    others.push(FieldId::new(names::INVENTORY).with_id(60).with_name(names::COUNT));
+    others.push(names::place(1, names::ABILITY, 0, names::ABILITY_ID));
+    others.push(names::order_place(1, names::ADDITION_ORDER, 0));
+    others.push(names::order_place(1, names::SORT_ORDER, 0));
+    for field in others {
+        assert!(!model.field_meta(&field).unwrap().game_edit, "{field}");
+    }
+}
