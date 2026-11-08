@@ -46,9 +46,6 @@ pub(super) enum Part {
     },
 }
 
-/// What a [`FieldId`] names in an FF I slot.
-pub(super) type Binding = crate::shared::bind::Binding<Part>;
-
 impl CharacterPart for Part {
     fn declared(keys: &[Key]) -> Option<Self> {
         let level_ok = |level: u32| (1..=names::SPELL_LEVELS).contains(&level);

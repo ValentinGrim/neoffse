@@ -10,13 +10,13 @@
 //! other (`docs/formats/pixel-remaster.md#level-up-in-ff-i`); every other
 //! edit passes as one.
 
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, Value};
+use neoffse_core::{Edit, EditError, FieldId, GameChange, Value};
 
-use super::binding::{Binding, Part};
+use super::binding::Part;
 use super::{Ff1Model, Rolls, ThreadRolls, names};
 use crate::shared::access;
-use crate::shared::plan::{Plan, run_plan};
-use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, wearers_of};
+use crate::shared::plan::{Head, Plan, item_plan, plan_head, run_game};
+use crate::shared::rules::{equip_plan, slot_content_id};
 
 impl Ff1Model {
     /// Applies `edit` the way the game would and returns the plain edits it
@@ -75,16 +75,7 @@ impl Ff1Model {
     /// The errors of `apply_game`.
     pub fn apply_game_with(&mut self, edit: &Edit, rolls: &mut dyn Rolls) -> Result<GameChange, EditError> {
         let plan = self.plan(edit, rolls)?;
-        // A step that rolls back leaves its levels rewritten compact; the
-        // snapshot gives a failed plan back byte for byte.
-        let snapshot = (plan.edits.len() > 1).then(|| self.document.clone());
-        let result = run_plan(plan, |step, policy| self.apply(step, policy));
-        if result.is_err()
-            && let Some(document) = snapshot
-        {
-            self.document = document;
-        }
-        result
+        run_game(self, plan)
     }
 
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
@@ -106,42 +97,28 @@ impl Ff1Model {
     fn plan(&mut self, edit: &Edit, rolls: &mut dyn Rolls) -> Result<Plan, EditError> {
         match edit {
             Edit::Set { field, value } => self.plan_set(edit, field, value, rolls),
-            Edit::Insert { row, values, .. } => {
-                check_insert_rules(&mut self.document, self.tables, row, values, names::EQUIPMENT_SLOTS)?;
-                Ok(vec![edit.clone()].into())
-            }
-            Edit::Remove { row } => {
-                check_remove(&mut self.document, self.tables, row, names::EQUIPMENT_SLOTS)?;
-                Ok(vec![edit.clone()].into())
-            }
-            _ => Ok(vec![edit.clone()].into()),
+            _ => item_plan(&mut self.document, self.tables, edit, names::EQUIPMENT_SLOTS),
         }
     }
 
     fn plan_set(&mut self, edit: &Edit, field: &FieldId, value: &Value, rolls: &mut dyn Rolls) -> Result<Plan, EditError> {
-        if self.field_locked(field)? {
-            return Err(EditError::ReadOnly { field: field.clone() });
-        }
-        let binding = Binding::resolve(field)?;
-        let field_meta = binding.meta(self.tables);
-        field_meta.check(field, value, CapPolicy::Enforce)?;
-        let Value::Int(number) = *value else {
-            return Ok(vec![edit.clone()].into());
-        };
-        match binding {
-            Binding::Count { key, .. } => {
-                let worn = wearers_of(&mut self.document, key, names::EQUIPMENT_SLOTS, field)?;
-                check_floor(field, number, worn, &field_meta)?;
-                Ok(vec![edit.clone()].into())
+        match plan_head::<Part>(&mut self.document, self.tables, field, value, names::EQUIPMENT_SLOTS)? {
+            Head::Character {
+                id, part: Part::Level, number, ..
+            } => self.level_plan(id, number, rolls),
+            Head::Character {
+                id, part: Part::Exp, number, ..
+            } => self.exp_plan(id, number, rolls),
+            Head::Character {
+                id,
+                part: Part::Slot(slot),
+                number,
+                meta,
+            } => {
+                let content_id = slot_content_id(field, number, &meta)?;
+                equip_plan(&mut self.document, self.tables, field, (id, slot), content_id, names::EQUIPMENT_SLOTS).map(Plan::from)
             }
-            Binding::Character { id, part: Part::Level } => self.level_plan(id, number, rolls),
-            Binding::Character { id, part: Part::Exp } => self.exp_plan(id, number, rolls),
-            Binding::Character { id, part: Part::Slot(slot) } => match u32::try_from(number) {
-                Ok(content_id) => equip_plan(&mut self.document, self.tables, field, (id, slot), content_id, names::EQUIPMENT_SLOTS).map(Plan::from),
-                // check() above holds the number to 0..=STORAGE_MAX, so this arm never runs; apply checks the value again.
-                Err(_) => Ok(vec![edit.clone()].into()),
-            },
-            _ => Ok(vec![edit.clone()].into()),
+            _ => Ok(Plan::single(edit)),
         }
     }
 }

@@ -64,6 +64,18 @@ pub(crate) fn storage_max(meta: &FieldMeta) -> i64 {
     }
 }
 
+/// The content id of a slot `Set`. `OutOfRange` for a number that does not fit
+/// a `u32`: `FieldMeta::check` holds it to `0..=STORAGE_MAX` first, so no
+/// input reaches the refusal, and a value outside the range is never stored.
+pub(crate) fn slot_content_id(field: &FieldId, number: i64, meta: &FieldMeta) -> Result<u32, EditError> {
+    u32::try_from(number).map_err(|_| EditError::OutOfRange {
+        field: field.clone(),
+        value: number,
+        min: 0,
+        max: storage_max(meta),
+    })
+}
+
 /// `OutOfRange { min: worn }` for a count below the wearers.
 pub(crate) fn check_floor(field: &FieldId, count: i64, worn: usize, count_meta: &FieldMeta) -> Result<(), EditError> {
     let min = i64::try_from(worn).unwrap_or(i64::MAX);

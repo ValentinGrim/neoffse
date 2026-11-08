@@ -14,17 +14,17 @@
 
 use std::ops::RangeInclusive;
 
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, RowId, TableKind, Value};
+use neoffse_core::{Edit, EditError, FieldId, GameChange, RowId, TableKind, Value};
 use neoffse_data::BaseStats;
 
-use super::binding::{Binding, Part};
+use super::binding::Part;
 use super::{Ff2Model, keywords, names};
 use crate::shared::access;
 use crate::shared::derived::status_id;
 use crate::shared::items::Lists;
-use crate::shared::plan::{Plan, run_plan};
+use crate::shared::plan::{Head, Plan, item_plan, plan_head, run_game};
 use crate::shared::read::character_part;
-use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, row_locked, storage_max, wearers_of};
+use crate::shared::rules::{equip_plan, row_locked, slot_content_id};
 use crate::shared::stat::Stat;
 
 /// The equipment slots that hold a hand: each takes a weapon or a shield
@@ -76,16 +76,7 @@ impl Ff2Model {
     /// rules above.
     pub fn apply_game(&mut self, edit: &Edit) -> Result<GameChange, EditError> {
         let plan = self.plan(edit)?;
-        // A step that rolls back can leave a rewritten string document
-        // compact; the snapshot gives a failed plan back byte for byte.
-        let snapshot = (plan.edits.len() > 1).then(|| self.document.clone());
-        let result = run_plan(plan, |step, policy| self.apply(step, policy));
-        if result.is_err()
-            && let Some(document) = snapshot
-        {
-            self.document = document;
-        }
-        result
+        run_game(self, plan)
     }
 
     /// True when `apply_game` refuses every `Set` of `field`, whatever the
@@ -138,58 +129,45 @@ impl Ff2Model {
             Edit::Set { field, value } => self.plan_set(edit, field, value),
             Edit::Insert { row, position, .. } if keywords::owns(&row.collection()) => {
                 keywords::check_game_insert(&mut self.document, row, *position)?;
-                Ok(vec![edit.clone()].into())
-            }
-            Edit::Insert { row, values, .. } => {
-                check_insert_rules(&mut self.document, self.tables, row, values, names::EQUIPMENT_SLOTS)?;
-                Ok(vec![edit.clone()].into())
+                Ok(Plan::single(edit))
             }
             // No game path removes a keyword (`AddKeyWord` is the only write method).
             Edit::Remove { row } if keywords::owns(&row.collection()) => Err(EditError::ReadOnly { field: row.id().clone() }),
-            Edit::Remove { row } => {
-                check_remove(&mut self.document, self.tables, row, names::EQUIPMENT_SLOTS)?;
-                Ok(vec![edit.clone()].into())
-            }
-            _ => Ok(vec![edit.clone()].into()),
+            _ => item_plan(&mut self.document, self.tables, edit, names::EQUIPMENT_SLOTS),
         }
     }
 
     fn plan_set(&mut self, edit: &Edit, field: &FieldId, value: &Value) -> Result<Plan, EditError> {
-        if self.field_locked(field)? {
-            return Err(EditError::ReadOnly { field: field.clone() });
-        }
-        let binding = Binding::resolve(field)?;
-        let field_meta = binding.meta(self.tables);
-        field_meta.check(field, value, CapPolicy::Enforce)?;
-        let Value::Int(number) = *value else {
-            return Ok(vec![edit.clone()].into());
-        };
-        match binding {
-            Binding::Count { key, .. } => {
-                let worn = wearers_of(&mut self.document, key, names::EQUIPMENT_SLOTS, field)?;
-                check_floor(field, number, worn, &field_meta)?;
-            }
-            Binding::Character { id, part: Part::Slot(slot) } => {
-                // `check` above holds the number to 0..=STORAGE_MAX, which fits a `u32`.
-                let content_id = u32::try_from(number).map_err(|_| EditError::OutOfRange {
-                    field: field.clone(),
-                    value: number,
-                    min: 0,
-                    max: storage_max(&field_meta),
-                })?;
+        match plan_head::<Part>(&mut self.document, self.tables, field, value, names::EQUIPMENT_SLOTS)? {
+            Head::Character {
+                id,
+                part: Part::Slot(slot),
+                number,
+                meta,
+            } => {
+                let content_id = slot_content_id(field, number, &meta)?;
                 self.check_hand(field, slot, content_id)?;
                 let plan = equip_plan(&mut self.document, self.tables, field, (id, slot), content_id, names::EQUIPMENT_SLOTS)?;
-                return Ok(plan.into());
+                Ok(plan.into())
             }
-            Binding::Character { id, part: Part::Spell(chain) } => return self.spell_plan(field, id, chain, number),
-            Binding::Character {
+            Head::Character {
+                id,
+                part: Part::Spell(chain),
+                number,
+                ..
+            } => self.spell_plan(field, id, chain, number),
+            Head::Character {
                 id,
                 part: part @ (Part::MaxHpGain | Part::MaxMpGain | Part::Stat(_)),
-            } => self.check_gain(field, id, part, number)?,
+                number,
+                ..
+            } => {
+                self.check_gain(field, id, part, number)?;
+                Ok(Plan::single(edit))
+            }
             // Every other edit passes as one plain edit.
-            _ => {}
+            _ => Ok(Plan::single(edit)),
         }
-        Ok(vec![edit.clone()].into())
     }
 
     /// `UnknownId` for the shield placeholder in a hand: no game file places
