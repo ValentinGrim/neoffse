@@ -14,6 +14,7 @@ use common::exit_cases::{Case, FIXTURE_SKIPS, build, run};
 use common::ff1_save::SlotData;
 use common::json_diff::{added, diff, layout_chain, value};
 use common::json_tree::Tree;
+use common::pr_files::containers;
 use neoffse_core::{Edit, EditError, FieldId, RowId, SaveDocument, Value};
 use neoffse_format_pr::container::{self, Container};
 use neoffse_format_pr::ff1::{Ff1Format, names};
@@ -152,15 +153,7 @@ fn a_non_shortest_float_survives_every_edit() {
 
 #[test]
 fn each_container_survives_an_edit() {
-    let containers = [
-        Container::game(),
-        Container { bom: true, trailer: vec![] },
-        Container {
-            bom: false,
-            trailer: b" \r\n\t".to_vec(),
-        },
-    ];
-    for container in containers {
+    for container in containers() {
         let subject = Subject::fixture(Ff1Format::new(), &SlotData::standard(), container);
         let built = build(&subject);
         run(&subject, find(&built.cases, "gil"));

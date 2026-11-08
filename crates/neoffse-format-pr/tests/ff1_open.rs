@@ -7,36 +7,14 @@ mod common;
 use common::embed;
 use common::ff1_format::{one_file, open, sav, slot_name, standard_files};
 use common::ff1_save::{INVENTORY, KEY_ITEMS, SlotData};
-use neoffse_core::{Capability, FileProbe, FormatError, Game, SaveDocument, SaveFiles, SaveFormat, SaveSlot};
+use common::pr_files::{containers, open_error, source_of};
+use neoffse_core::{Capability, FileProbe, Game, SaveDocument, SaveFiles, SaveFormat, SaveSlot};
 use neoffse_data::{Entry, Language};
 use neoffse_format_pr::container::{CodecError, Container};
 use neoffse_format_pr::document::DocumentError;
 use neoffse_format_pr::ff1::{CAPABILITIES, Ff1Document, Ff1Format, OpenError};
 use neoffse_format_pr::games::GAMES;
 use neoffse_format_pr::slots;
-
-fn source_of<T>(result: Result<T, FormatError>) -> Box<dyn std::error::Error + Send + Sync> {
-    match result {
-        Err(FormatError::Decode { source }) => source,
-        Err(other) => panic!("expected Decode, got {other:?}"),
-        Ok(_) => panic!("expected an error"),
-    }
-}
-
-fn open_error<T>(result: Result<T, FormatError>) -> OpenError {
-    *source_of(result).downcast::<OpenError>().expect("the source is an OpenError")
-}
-
-fn containers() -> [Container; 3] {
-    [
-        Container::game(),
-        Container { bom: true, trailer: vec![] },
-        Container {
-            bom: false,
-            trailer: b" \r\n\t".to_vec(),
-        },
-    ]
-}
 
 #[test]
 fn the_committed_fixture_opens_through_the_codec() {

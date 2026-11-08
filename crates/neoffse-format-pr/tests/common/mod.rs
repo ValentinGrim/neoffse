@@ -35,6 +35,7 @@ pub(crate) mod growth_oracle;
 pub(crate) mod json_diff;
 mod json_scan;
 pub(crate) mod json_tree;
+pub(crate) mod pr_files;
 pub(crate) mod rolls;
 pub(crate) mod slot_model;
 mod slot_rules;

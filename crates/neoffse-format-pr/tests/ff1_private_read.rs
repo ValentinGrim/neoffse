@@ -124,7 +124,7 @@ fn real_equipment_resolves_in_the_slot_tables() {
     for_each_slot(|slot, model| {
         for id in rows(model, names::CHARACTER, &slot.label) {
             for (number, kind) in (1..).zip(kinds) {
-                let field = FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(number);
+                let field = common::slot(id, number);
                 let content = u32::try_from(int(model, &slot.label, &field)).unwrap_or(0);
                 assert!(tables().entry(kind, content).is_some(), "{}: {field} is no entry of its slot table", slot.label);
             }

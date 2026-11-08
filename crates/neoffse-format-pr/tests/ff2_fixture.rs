@@ -10,8 +10,9 @@ use std::collections::HashMap;
 
 use common::ff1_save::keys;
 use common::ff2_save::{SlotData, ids, standard_model, tables};
+use common::pr_files::{assert_fixture_matches, text_at, unique};
 use common::slot_model::int;
-use common::{VEHICLES, character_path};
+use common::{VEHICLES, character_path, slot};
 use neoffse_core::{FieldId, TableKind, Value};
 use neoffse_data::GameTables;
 use neoffse_format_pr::document::{Document, Scalar, Segment};
@@ -21,36 +22,12 @@ const FILE: &str = "pr/ff2-slot.json";
 
 #[test]
 fn the_committed_slot_matches_the_generator() {
-    let committed = neoffse_testkit::read_fixture(FILE).unwrap();
-    assert!(
-        committed == SlotData::standard().render().into_bytes(),
-        "{FILE} differs from the generator: regenerate it"
-    );
+    assert_fixture_matches(FILE, &SlotData::standard().render());
 }
 
 #[test]
 fn write_fixture() {
-    if std::env::var_os("NEOFFSE_WRITE_FIXTURES").is_none() {
-        return;
-    }
-    let path = neoffse_testkit::fixture_path(FILE);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, SlotData::standard().render()).unwrap();
-}
-
-fn unique(keys: &[String]) -> bool {
-    keys.iter().collect::<std::collections::HashSet<_>>().len() == keys.len()
-}
-
-fn text_at(document: &mut Document, path: &[Segment<'_>]) -> String {
-    let Scalar::Text(text) = document.get(path).unwrap() else {
-        panic!("no string at the path")
-    };
-    text
-}
-
-fn slot_field(id: u32, slot: u32) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(slot)
+    common::pr_files::write_fixture(FILE, &SlotData::standard().render());
 }
 
 #[test]
@@ -84,8 +61,8 @@ fn the_fixture_is_game_style_and_covers_the_cases() {
     assert_eq!(name, Value::Text("Élan".to_owned()));
     assert!(!"Élan".is_ascii());
     // The hands of the first character hold the same weapon, the third has an empty hand.
-    assert_eq!((int(&mut model, &slot_field(1, 1)), int(&mut model, &slot_field(1, 2))), (60, 60));
-    assert_eq!(int(&mut model, &slot_field(3, 2)), 47);
+    assert_eq!((int(&mut model, &slot(1, 1)), int(&mut model, &slot(1, 2))), (60, 60));
+    assert_eq!(int(&mut model, &slot(3, 2)), 47);
     assert_eq!(model.rows(&FieldId::new(names::CHARACTER)).unwrap(), [1, 2, 3, 4]);
     assert_eq!(model.rows(&FieldId::new(names::KEY_ITEMS)).unwrap().len(), 8);
 }
@@ -177,8 +154,8 @@ fn equipment_violations(model: &mut Ff2Model) -> Vec<String> {
     let mut wearers: HashMap<i64, i64> = HashMap::new();
     let mut worn = Vec::new();
     for id in model.rows(&FieldId::new(names::CHARACTER)).unwrap() {
-        for slot in 1..=names::EQUIPMENT_SLOTS {
-            let field = slot_field(id, slot);
+        for number in 1..=names::EQUIPMENT_SLOTS {
+            let field = slot(id, number);
             let content = int(model, &field);
             let count = int(model, &field.clone().with_name(names::COUNT));
             *wearers.entry(content).or_default() += 1;

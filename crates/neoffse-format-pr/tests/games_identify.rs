@@ -9,6 +9,7 @@ mod common;
 use common::embed;
 use common::ff1_format::{one_file, open, sav, slot_name, standard_files};
 use common::ff1_save::SlotData;
+use common::pr_files::open_error;
 use common::{VEHICLE, VEHICLES};
 use neoffse_core::{FormatError, Game};
 use neoffse_format_pr::container::Container;
@@ -38,13 +39,6 @@ fn replaced(text: &str, from: &str, to: &str) -> String {
 fn open_text(text: &str) -> Result<neoffse_format_pr::ff1::Ff1Document, FormatError> {
     let files = one_file(slot_name(1), sav(text, &Container::game()));
     Ff1Format::new().open_document(&files)
-}
-
-fn open_error(result: Result<neoffse_format_pr::ff1::Ff1Document, FormatError>) -> OpenError {
-    let Err(FormatError::Decode { source }) = result else {
-        panic!("expected a Decode error")
-    };
-    *source.downcast::<OpenError>().expect("the source is an OpenError")
 }
 
 fn identified(text: &str) -> Result<Game, OpenError> {

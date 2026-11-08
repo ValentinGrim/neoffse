@@ -12,10 +12,6 @@ use neoffse_core::{Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
-fn slot_field(id: u32, number: u32) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(number)
-}
-
 fn int(model: &mut Ff1Model, field: &FieldId, label: &str) -> i64 {
     match model.get(field) {
         Ok(Value::Int(value)) => value,
@@ -72,8 +68,8 @@ fn real_equip_keeps_the_game_rules() {
         let mut model = slot.model();
         let (first, second) = first_two(&mut model, label);
         assert_rules(&mut model, label);
-        let wanted = int(&mut model, &slot_field(second, 1), label);
-        let edit = Edit::set(slot_field(first, 1), Value::Int(wanted));
+        let wanted = int(&mut model, &common::slot(second, 1), label);
+        let edit = Edit::set(common::slot(first, 1), Value::Int(wanted));
         let Ok(change) = model.apply_game(&edit) else {
             panic!("{label}: the equip is refused")
         };
@@ -82,7 +78,7 @@ fn real_equip_keeps_the_game_rules() {
             .with_id(u32::try_from(wanted).unwrap_or(0))
             .with_name(names::COUNT);
         if let Ok(Value::Int(inventory_count)) = model.get(&held) {
-            let slot_count = int(&mut model, &slot_field(first, 1).with_name(names::COUNT), label);
+            let slot_count = int(&mut model, &common::slot(first, 1).with_name(names::COUNT), label);
             assert!(
                 slot_count == inventory_count,
                 "{label}: the slot count differs from the inventory count after the equip"
@@ -117,7 +113,7 @@ fn real_unequip_and_re_equip_restore_the_text() {
         let label = &slot.label;
         let mut model = slot.model();
         let (first, _) = first_two(&mut model, label);
-        let old = int(&mut model, &slot_field(first, 1), label);
+        let old = int(&mut model, &common::slot(first, 1), label);
         let Some(placeholder) = tables.placeholder(neoffse_core::TableKind::Weapon) else {
             panic!("{label}: no weapon placeholder")
         };
@@ -126,8 +122,8 @@ fn real_unequip_and_re_equip_restore_the_text() {
             continue;
         }
         let before = snapshot(&mut model, label);
-        let out = Edit::set(slot_field(first, 1), Value::Int(i64::from(placeholder.id)));
-        let back = Edit::set(slot_field(first, 1), Value::Int(old));
+        let out = Edit::set(common::slot(first, 1), Value::Int(i64::from(placeholder.id)));
+        let back = Edit::set(common::slot(first, 1), Value::Int(old));
         let Ok(unequip) = model.apply_game(&out) else {
             panic!("{label}: the unequip is refused")
         };
@@ -155,7 +151,7 @@ fn real_worn_and_placeholder_rows_refuse_removal() {
         let mut worn = Vec::new();
         for character in rows(&mut model, names::CHARACTER, label) {
             for number in 1..=names::EQUIPMENT_SLOTS {
-                worn.push(int(&mut model, &slot_field(character, number), label));
+                worn.push(int(&mut model, &common::slot(character, number), label));
             }
         }
         for key in held {

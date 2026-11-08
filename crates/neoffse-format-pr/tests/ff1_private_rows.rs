@@ -140,7 +140,7 @@ fn real_placeholder_and_worn_rows_are_locked() {
         let characters = must(model.rows(&FieldId::new(names::CHARACTER)), &format!("{label}: character rows do not read"));
         for character in characters {
             for number in 1..=names::EQUIPMENT_SLOTS {
-                let field = FieldId::new(names::CHARACTER).with_id(character).with_name(names::EQUIPMENT).with_id(number);
+                let field = common::slot(character, number);
                 let Ok(Value::Int(content)) = model.get(&field) else { continue };
                 let Ok(content) = u32::try_from(content) else { continue };
                 if rows.contains(&content) {
