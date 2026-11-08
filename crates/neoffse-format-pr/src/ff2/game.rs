@@ -18,8 +18,8 @@ use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, RowId, Table
 use neoffse_data::BaseStats;
 
 use super::binding::{Binding, Part};
-use super::derived::status_id;
 use super::{Ff2Model, keywords, meta, names};
+use crate::shared::derived::status_id;
 use crate::shared::paths::List;
 use crate::shared::plan::{Plan, run_plan};
 use crate::shared::read::character_part;
