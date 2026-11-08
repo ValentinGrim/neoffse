@@ -35,3 +35,4 @@ pub(crate) mod write;
 pub use document::SlotDocument;
 pub use format::SlotFormat;
 pub use model::SlotModel;
+pub(crate) use model::impl_slot_model;
