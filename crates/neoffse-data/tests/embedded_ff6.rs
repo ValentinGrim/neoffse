@@ -7,38 +7,14 @@ mod common;
 
 use std::collections::BTreeMap;
 
-use common::{game_tables, kind_rule::kind_of};
+use common::{CONTENT_KINDS, EQUIPMENT, game_tables, ids, kind_rule::kind_of, nameless, table};
 use neoffse_core::{Game, TableKind};
-use neoffse_data::{Entry, GameTables, Language, sources_for};
+use neoffse_data::{GameTables, Language, sources_for};
 
-/// The seven content tables FF I has, in the order of the figures of the document.
-const CONTENT: [TableKind; 7] = [
-    TableKind::Item,
-    TableKind::KeyItem,
-    TableKind::Weapon,
-    TableKind::Shield,
-    TableKind::Armor,
-    TableKind::Helmet,
-    TableKind::Gloves,
-];
-
-/// The five equipment tables: `CONTENT` without the items.
-const EQUIPMENT: [TableKind; 5] = [CONTENT[2], CONTENT[3], CONTENT[4], CONTENT[5], CONTENT[6]];
+const GAME: Game = Game::Ff6Pr;
 
 fn ff6() -> &'static GameTables {
-    game_tables(Game::Ff6Pr)
-}
-
-fn table(kind: TableKind) -> &'static [Entry] {
-    ff6().table(kind).unwrap()
-}
-
-fn ids(kind: TableKind) -> Vec<u32> {
-    table(kind).iter().map(|entry| entry.id).collect()
-}
-
-fn nameless(kind: TableKind) -> Vec<u32> {
-    table(kind).iter().filter(|entry| entry.name_en.is_none()).map(|entry| entry.id).collect()
+    game_tables(GAME)
 }
 
 #[test]
@@ -63,12 +39,12 @@ fn counts_per_table() {
         (TableKind::MagicStone, 27),
     ];
     for (kind, count) in content {
-        assert_eq!(table(kind).len(), count, "{kind:?}");
+        assert_eq!(table(GAME, kind).len(), count, "{kind:?}");
     }
     assert_eq!(content.iter().map(|(_, count)| count).sum::<usize>(), 333);
-    assert_eq!(table(TableKind::Ability).len(), 1631);
-    assert_eq!(table(TableKind::Job).len(), 22);
-    assert_eq!(table(TableKind::Command).len(), 696);
+    assert_eq!(table(GAME, TableKind::Ability).len(), 1631);
+    assert_eq!(table(GAME, TableKind::Job).len(), 22);
+    assert_eq!(table(GAME, TableKind::Command).len(), 696);
 }
 
 #[test]
@@ -88,8 +64,8 @@ fn ids_rise_inside_every_table() {
         TableKind::Job,
         TableKind::Command,
     ];
-    for kind in CONTENT.into_iter().chain(others) {
-        let list = ids(kind);
+    for kind in CONTENT_KINDS.into_iter().chain(others) {
+        let list = ids(GAME, kind);
         assert!(list.windows(2).all(|pair| pair[0] < pair[1]), "{kind:?}");
     }
 }
@@ -98,8 +74,8 @@ fn ids_rise_inside_every_table() {
 fn documented_id_ranges() {
     // Inventory note, "Jobs and commands": job IDs 1-22. `#content-types-5-to-9`: espers are
     // contents 62 to 88.
-    assert_eq!(ids(TableKind::Job), (1..=22).collect::<Vec<_>>());
-    assert_eq!(ids(TableKind::MagicStone), (62..=88).collect::<Vec<_>>());
+    assert_eq!(ids(GAME, TableKind::Job), (1..=22).collect::<Vec<_>>());
+    assert_eq!(ids(GAME, TableKind::MagicStone), (62..=88).collect::<Vec<_>>());
     // Not in a note: measured in the bundle (build 20265119) through the tool's output, and for
     // CommandContent, Command, Ability and Job also in content.csv, command.csv, ability.csv
     // and job.csv. Content 1 is gil, not listed.
@@ -116,7 +92,7 @@ fn documented_id_ranges() {
         (TableKind::Ability, 1, 5917, 1631),
     ];
     for (kind, first, last, count) in measured {
-        let list = ids(kind);
+        let list = ids(GAME, kind);
         assert_eq!((list.first(), list.last(), list.len()), (Some(&first), Some(&last), count), "{kind:?}");
     }
 }
@@ -137,20 +113,20 @@ fn the_empty_slot_rows() {
     }
     let mut marked: Vec<u32> = EQUIPMENT
         .iter()
-        .flat_map(|kind| table(*kind).iter().filter(|entry| entry.placeholder).map(|entry| entry.id))
+        .flat_map(|kind| table(GAME, *kind).iter().filter(|entry| entry.placeholder).map(|entry| entry.id))
         .collect();
     marked.sort_unstable();
     assert_eq!(marked, [93, 197, 198, 199, 200]);
     for kind in [TableKind::Item, TableKind::KeyItem, TableKind::CommandContent, TableKind::MagicStone] {
         assert!(ff6().placeholder(kind).is_none(), "{kind:?}");
-        assert!(table(kind).iter().all(|entry| !entry.placeholder), "{kind:?}");
+        assert!(table(GAME, kind).iter().all(|entry| !entry.placeholder), "{kind:?}");
     }
 }
 
 #[test]
 fn espers_are_magic_stones_read_by_entry() {
     // `#content-types-5-to-9`: 27 espers, all with `MSG_MAGIC_NAME_*` keys, so all named.
-    assert_eq!(nameless(TableKind::MagicStone), Vec::<u32>::new());
+    assert_eq!(nameless(GAME, TableKind::MagicStone), Vec::<u32>::new());
     let entry = ff6().entry(TableKind::MagicStone, 62).unwrap();
     assert_eq!((entry.kind, entry.ability), (TableKind::MagicStone, None));
     // The generic content lookup keeps its seven kinds.
@@ -172,12 +148,15 @@ fn command_content_rows_are_keyed_by_content_id() {
 fn one_command_content_has_no_name() {
     // `#rows-without-a-name`: content 1289 has key None and points to command 4, which has no
     // name either. The 32 other type-7 rows are named.
-    assert_eq!(nameless(TableKind::CommandContent), [1289]);
+    assert_eq!(nameless(GAME, TableKind::CommandContent), [1289]);
     let entry = ff6().entry(TableKind::CommandContent, 1289).unwrap();
     assert_eq!((entry.name(Language::En), entry.name(Language::Fr)), (None, None));
-    assert_eq!(table(TableKind::CommandContent).iter().filter(|entry| entry.name_en.is_some()).count(), 32);
-    for kind in CONTENT {
-        assert!(nameless(kind).is_empty(), "{kind:?}");
+    assert_eq!(
+        table(GAME, TableKind::CommandContent).iter().filter(|entry| entry.name_en.is_some()).count(),
+        32
+    );
+    for kind in CONTENT_KINDS {
+        assert!(nameless(GAME, kind).is_empty(), "{kind:?}");
     }
 }
 
@@ -185,7 +164,7 @@ fn one_command_content_has_no_name() {
 fn the_ability_type_ids_match_the_document() {
     // `#master-data-per-game`, "Abilities": 48 values.
     let mut histogram = BTreeMap::new();
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         *histogram.entry(entry.ability.unwrap().type_id).or_insert(0_usize) += 1;
     }
     // Pairs of (type_id, rows).
@@ -203,7 +182,7 @@ fn the_ability_type_ids_match_the_document() {
 #[test]
 fn the_ability_kinds_match_the_document() {
     let mut kinds = BTreeMap::new();
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         let info = entry.ability.unwrap();
         assert_eq!(kind_of(info.type_id), Some(info.kind), "ability {}", entry.id);
         *kinds.entry(format!("{:?}", info.kind)).or_insert(0_usize) += 1;
@@ -217,7 +196,7 @@ fn the_ability_kinds_match_the_document() {
 #[test]
 fn every_ability_has_level_0() {
     // `#master-data-per-game`, "Abilities": `ability_lv` is 0 on every row, spells included.
-    assert!(table(TableKind::Ability).iter().all(|entry| entry.ability.unwrap().level == 0));
+    assert!(table(GAME, TableKind::Ability).iter().all(|entry| entry.ability.unwrap().level == 0));
 }
 
 #[test]
@@ -250,4 +229,11 @@ fn there_are_no_growth_tables() {
     assert_eq!(ff6().base_vitality(1), None);
     assert_eq!(ff6().exp_to_reach(1), None);
     assert_eq!(ff6().growth_step(1, 2), None);
+}
+
+#[test]
+fn a_content_id_is_no_ability_id() {
+    // 23 is an item, and no ability has that id.
+    assert!(ff6().entry(TableKind::Ability, 23).is_none());
+    assert!(ff6().content(23).is_some());
 }

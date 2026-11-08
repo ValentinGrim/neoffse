@@ -3,8 +3,8 @@
 
 pub(crate) mod kind_rule;
 
-use neoffse_core::Game;
-use neoffse_data::{DataError, GameTables, Sources, tables_for};
+use neoffse_core::{Game, TableKind};
+use neoffse_data::{DataError, Entry, GameTables, Sources, tables_for};
 
 /// The cached tables of FF I.
 pub(crate) fn ff1() -> &'static GameTables {
@@ -18,6 +18,50 @@ pub(crate) const EMBEDDED: &[Game] = &[Game::Ff1Pr, Game::Ff2Pr, Game::Ff3Pr, Ga
 pub(crate) fn game_tables(game: Game) -> &'static GameTables {
     tables_for(game).unwrap()
 }
+
+/// The rows of a table of an embedded game.
+pub(crate) fn table(game: Game, kind: TableKind) -> &'static [Entry] {
+    game_tables(game).table(kind).unwrap()
+}
+
+/// The IDs of a table of an embedded game, in file order.
+pub(crate) fn ids(game: Game, kind: TableKind) -> Vec<u32> {
+    table(game, kind).iter().map(|entry| entry.id).collect()
+}
+
+/// The IDs of the rows of a table that carry no English name.
+pub(crate) fn nameless(game: Game, kind: TableKind) -> Vec<u32> {
+    table(game, kind).iter().filter(|entry| entry.name_en.is_none()).map(|entry| entry.id).collect()
+}
+
+/// The seven content tables FF I has, in the order of the figures of `docs/formats/pixel-remaster.md`.
+pub(crate) const CONTENT_KINDS: [TableKind; 7] = [
+    TableKind::Item,
+    TableKind::KeyItem,
+    TableKind::Weapon,
+    TableKind::Shield,
+    TableKind::Armor,
+    TableKind::Helmet,
+    TableKind::Gloves,
+];
+
+/// The five equipment tables: `CONTENT_KINDS` without the items.
+pub(crate) const EQUIPMENT: [TableKind; 5] = [CONTENT_KINDS[2], CONTENT_KINDS[3], CONTENT_KINDS[4], CONTENT_KINDS[5], CONTENT_KINDS[6]];
+
+/// The seven content tables and the four named tables of FF I.
+pub(crate) const ALL_KINDS: [TableKind; 11] = [
+    TableKind::Item,
+    TableKind::KeyItem,
+    TableKind::Weapon,
+    TableKind::Shield,
+    TableKind::Armor,
+    TableKind::Helmet,
+    TableKind::Gloves,
+    TableKind::Ability,
+    TableKind::Job,
+    TableKind::Command,
+    TableKind::Monster,
+];
 
 pub(crate) const CONTENT: &str = r#"# minimal/content.toml
 # Written by hand for the tests: two kinds of content and a placeholder.

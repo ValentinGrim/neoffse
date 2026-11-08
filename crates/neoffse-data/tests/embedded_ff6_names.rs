@@ -7,20 +7,14 @@ mod common;
 
 use std::collections::BTreeMap;
 
-use common::game_tables;
+use common::{game_tables, nameless, table};
 use neoffse_core::{Game, TableKind};
-use neoffse_data::{AbilityKind, Entry, GameTables, Language};
+use neoffse_data::{AbilityKind, GameTables, Language};
+
+const GAME: Game = Game::Ff6Pr;
 
 fn ff6() -> &'static GameTables {
-    game_tables(Game::Ff6Pr)
-}
-
-fn table(kind: TableKind) -> &'static [Entry] {
-    ff6().table(kind).unwrap()
-}
-
-fn nameless(kind: TableKind) -> Vec<u32> {
-    table(kind).iter().filter(|entry| entry.name_en.is_none()).map(|entry| entry.id).collect()
+    game_tables(GAME)
 }
 
 /// The 89 ability rows whose name key sits in a story file (`#rows-without-a-name`), as pairs of
@@ -46,10 +40,10 @@ fn contentless_ids() -> Vec<u32> {
 fn the_three_causes_of_a_nameless_ability() {
     // `#rows-without-a-name`: 313 rows with key None, 90 with a key in no `system_*` file (431
     // and the 89 story-key rows), 149 with no content row. The three sets are disjoint.
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         assert_eq!(entry.name_en.is_none(), entry.name_fr.is_none(), "ability {}", entry.id);
     }
-    let none = nameless(TableKind::Ability);
+    let none = nameless(GAME, TableKind::Ability);
     assert_eq!(none.len(), 313 + 90 + 149);
     let contentless = contentless_ids();
     assert_eq!(contentless.len(), 149);
@@ -66,7 +60,7 @@ fn the_three_causes_of_a_nameless_ability() {
     // The rest of the nameless rows are the 313 with key None.
     let rest = none.iter().filter(|id| !contentless.contains(id) && !story.contains(id));
     assert_eq!(rest.count(), 313);
-    let named = table(TableKind::Ability).iter().filter(|entry| entry.name_en.is_some()).count();
+    let named = table(GAME, TableKind::Ability).iter().filter(|entry| entry.name_en.is_some()).count();
     assert_eq!(named, 1631 - 552);
 }
 
@@ -105,7 +99,7 @@ fn the_last_row_of_a_repeated_content_id_wins() {
 #[test]
 fn jobs_20_and_22_are_named_from_the_story_file() {
     // Kinds note, section 4: one word of 6 and 7 characters in English; every job is named.
-    assert_eq!(nameless(TableKind::Job), Vec::<u32>::new());
+    assert_eq!(nameless(GAME, TableKind::Job), Vec::<u32>::new());
     for (id, length) in [(20, 6), (22, 7)] {
         let entry = ff6().entry(TableKind::Job, id).unwrap();
         let en = entry.name(Language::En).unwrap();
@@ -113,7 +107,7 @@ fn jobs_20_and_22_are_named_from_the_story_file() {
         assert!(!en.contains(' ') && !en.ends_with(|c: char| !c.is_alphanumeric()), "job {id}");
         assert!(entry.name(Language::Fr).is_some_and(|fr| !fr.is_empty()), "job {id}");
     }
-    for entry in table(TableKind::Job).iter().chain(table(TableKind::Command)) {
+    for entry in table(GAME, TableKind::Job).iter().chain(table(GAME, TableKind::Command)) {
         assert_eq!(entry.name_en.is_none(), entry.name_fr.is_none(), "{:?} {}", entry.kind, entry.id);
     }
 }
@@ -121,13 +115,13 @@ fn jobs_20_and_22_are_named_from_the_story_file() {
 #[test]
 fn command_4_has_no_name() {
     // Saves hold command 4 in `commandList`; the 695 others are named.
-    assert_eq!(nameless(TableKind::Command), [4]);
+    assert_eq!(nameless(GAME, TableKind::Command), [4]);
 }
 
 #[test]
 fn every_content_id_is_unique() {
     let mut seen = BTreeMap::new();
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         let Some(content_id) = entry.ability.unwrap().content_id else { continue };
         assert_ne!(content_id, 0);
         assert_eq!(seen.insert(content_id, entry.id), None, "content {content_id}");

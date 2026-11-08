@@ -6,33 +6,9 @@ mod common;
 
 use std::collections::HashSet;
 
-use common::ff1;
+use common::{ALL_KINDS, CONTENT_KINDS, ff1};
 use neoffse_core::{Game, TableKind};
 use neoffse_data::{AbilityKind, GameTables, sources_for, tables_for};
-
-const CONTENT_KINDS: [TableKind; 7] = [
-    TableKind::Item,
-    TableKind::KeyItem,
-    TableKind::Weapon,
-    TableKind::Shield,
-    TableKind::Armor,
-    TableKind::Helmet,
-    TableKind::Gloves,
-];
-
-const ALL_KINDS: [TableKind; 11] = [
-    TableKind::Item,
-    TableKind::KeyItem,
-    TableKind::Weapon,
-    TableKind::Shield,
-    TableKind::Armor,
-    TableKind::Helmet,
-    TableKind::Gloves,
-    TableKind::Ability,
-    TableKind::Job,
-    TableKind::Command,
-    TableKind::Monster,
-];
 
 fn len(kind: TableKind) -> usize {
     ff1().table(kind).unwrap().len()
