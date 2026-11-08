@@ -6,7 +6,8 @@ import { Frame, LookText, PortraitFrame, PressRow, RuleLine } from "../../widget
 // none), the job over the name, HP, the MP of a game that stores one (the
 // eight charges in two rows of four for a game that stores charges), the
 // level, and the experience or the next level, when the game has a level. A click, Enter or Space opens
-// the character's page.
+// the character's page. Every card is as high as the stats column of an FF I
+// card, whatever rows its game shows.
 component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
     in property <bool> last;
@@ -18,12 +19,19 @@ component CharacterRow inherits PressRow {
     private property <length> frame: root.side + 2 * portrait-frame.inset;
     // The label column of the stats: wide enough for "HP", "MP" and "Lv".
     private property <length> label-width: root.look.font-body * 2.5;
+    // HP, the two charges rows, Lv: the stats column of the tallest PR card.
+    // Every card keeps room for that many lines so the pitch between
+    // portraits is the same in every game.
+    private property <int> stat-rows: 4;
+    // The height of those lines in the card's own font, plus the padding.
+    private property <length> rows-height: root.stat-rows * hp-row.preferred-height + 2 * root.look.padding;
 
     name: root.card.name;
-    // The card keeps the height of its rows (the portrait is twice the sprite
-    // and the four text rows decide the height), whatever room the panel has.
-    min-height: body.min-height;
-    preferred-height: body.preferred-height;
+    // The card keeps the height of an FF I stats column (the portrait is
+    // twice the sprite and the text rows decide the height), whatever rows
+    // the game shows and whatever room the panel has.
+    min-height: max(body.min-height, root.rows-height);
+    preferred-height: max(body.preferred-height, root.rows-height);
 
     body := HorizontalLayout {
         padding: root.look.padding;
@@ -64,7 +72,7 @@ component CharacterRow inherits PressRow {
             horizontal-stretch: 1;
             alignment: center;
 
-            HorizontalLayout {
+            hp-row := HorizontalLayout {
                 LookText {
                     look: root.look;
                     width: root.label-width;
