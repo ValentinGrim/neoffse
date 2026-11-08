@@ -8,9 +8,8 @@
 //! inventory, key items are ids of 45 to 61 with `count` 1. The public
 //! fields let a test twist one value; numbers a test breaks are raw text.
 
-use neoffse_core::FieldId;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
+use neoffse_format_pr::ff1::{Ff1Model, GAME};
 
 /// One entry of `equipmentList`.
 #[derive(Debug, Clone)]
@@ -218,11 +217,6 @@ pub(crate) fn model_with_escaped_row(canonical_key: u32, escaped_key: u32) -> (F
 /// A model over the standard slot.
 pub(crate) fn standard_model() -> Ff1Model {
     model(&SlotData::standard().render())
-}
-
-/// The id of a field of a character.
-pub(crate) fn character_field(id: u32, name: &'static str) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(name)
 }
 
 /// The keys of the JSON object `text`, in order, repeats included.

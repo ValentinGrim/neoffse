@@ -8,18 +8,14 @@ mod common;
 
 use common::ff1_format::one_file;
 use common::ff1_real::{files, must, must_some, slots};
-use common::{GAMES, save_files};
-use neoffse_core::{CapPolicy, Confidence, Edit, FieldId, FileProbe, FormatError, SaveDocument, Value};
+use common::{GAMES, gil, save_files};
+use neoffse_core::{CapPolicy, Confidence, Edit, FileProbe, FormatError, SaveDocument, Value};
 use neoffse_format_pr::container::decode;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Format, OpenError, names};
+use neoffse_format_pr::ff1::{Ff1Format, OpenError};
 use neoffse_format_pr::games::identify;
 use neoffse_format_pr::slots::slot_for_name;
 use neoffse_testkit::report;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
 
 fn holds_user_data(json: &str, label: &str) -> bool {
     must(Document::parse(json), &format!("{label}: parse failed"))

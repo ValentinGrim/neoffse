@@ -7,10 +7,11 @@
 
 mod common;
 
+use common::character_field;
 use common::edit_paths::{shown, spaced_levels};
 use common::edit_proof::{How, Proof, Subject, prove};
 use common::exit_cases::{Case, FIXTURE_SKIPS, build, run};
-use common::ff1_save::{SlotData, character_field};
+use common::ff1_save::SlotData;
 use common::json_diff::{added, diff, layout_chain, value};
 use common::json_tree::Tree;
 use neoffse_core::{Edit, EditError, FieldId, RowId, SaveDocument, Value};

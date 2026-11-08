@@ -5,8 +5,9 @@
 
 mod common;
 
+use common::character_field;
 use common::character_path;
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::ff1_save::{SlotData, model, standard_model};
 use neoffse_core::{Capability, EditError, FormatError, SaveView, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Scalar, Segment};

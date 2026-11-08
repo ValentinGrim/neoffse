@@ -36,9 +36,15 @@ pub(crate) mod json_diff;
 mod json_scan;
 pub(crate) mod json_tree;
 pub(crate) mod rolls;
+pub(crate) mod slot_model;
 mod slot_rules;
 
-use neoffse_format_pr::document::Segment;
+use ff1_format::{one_file, sav};
+use ff1_save::Row;
+use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, RowId, SaveFormat, SaveSlot, Value};
+use neoffse_format_pr::container::Container;
+use neoffse_format_pr::document::{DocumentError, Segment};
+use neoffse_format_pr::shared::names;
 
 /// The six game folders under the saves root, one per game of
 /// `docs/formats/pixel-remaster.md#games`.
@@ -139,4 +145,137 @@ pub(crate) fn changed_span<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
         suffix -= 1;
     }
     (&a[..a.len() - suffix], &b[..b.len() - suffix])
+}
+
+/// `Enforce` and `StorageOnly` as the raw-interface tests name them.
+pub(crate) const ENFORCE: CapPolicy = CapPolicy::Enforce;
+pub(crate) const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
+
+/// The storage bound of a number field: `i32::MAX`
+/// (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`).
+pub(crate) const STORAGE_MAX: i64 = 2_147_483_647;
+
+/// The id of a field of a character.
+pub(crate) fn character_field(id: u32, name: &'static str) -> FieldId {
+    FieldId::new(names::CHARACTER).with_id(id).with_name(name)
+}
+
+/// The character `id` as an entity.
+pub(crate) fn character(id: u32) -> FieldId {
+    FieldId::new(names::CHARACTER).with_id(id)
+}
+
+/// The row `key` of the item list `list`.
+pub(crate) fn item(list: &'static str, key: u32) -> FieldId {
+    FieldId::new(list).with_id(key)
+}
+
+/// The equipment slot `slot` of character `id`.
+pub(crate) fn slot(id: u32, slot: u32) -> FieldId {
+    character_field(id, names::EQUIPMENT).with_id(slot)
+}
+
+/// The `count` of that slot.
+pub(crate) fn slot_count(id: u32, slot_number: u32) -> FieldId {
+    slot(id, slot_number).with_name(names::COUNT)
+}
+
+/// The `count` of the row `key` of `list`.
+pub(crate) fn count(list: &'static str, key: u32) -> FieldId {
+    item(list, key).with_name(names::COUNT)
+}
+
+pub(crate) fn row(list: &'static str, key: u32) -> RowId {
+    RowId::new(FieldId::new(list), key)
+}
+
+pub(crate) fn gil() -> FieldId {
+    FieldId::new(names::GIL)
+}
+
+/// Sets slot `slot_number` of character `id` to the content `content`.
+pub(crate) fn equip(id: u32, slot_number: u32, content: u32) -> Edit {
+    Edit::set(slot(id, slot_number), Value::Int(i64::from(content)))
+}
+
+/// The forward and inverse edits of `change`.
+pub(crate) fn plain(change: &GameChange) -> (&[Edit], &[Edit]) {
+    (change.forward.edits(), change.inverse.edits())
+}
+
+/// Sets the count of the row `key` of `rows` to `new_count`.
+pub(crate) fn with_count(rows: &mut [Row], key: u32, new_count: u32) {
+    let text = format!("{{\"contentId\":{key},\"count\":");
+    let index = rows.iter().position(|row| row.text.starts_with(&text)).unwrap();
+    rows[index] = Row::new(key, new_count);
+}
+
+/// Drops the five placeholder rows that open the standard inventory.
+pub(crate) fn without_placeholders(rows: &mut Vec<Row>) {
+    rows.drain(..5);
+}
+
+/// The document error under the `Format` error of `result`.
+pub(crate) fn assert_document_error(result: Result<Value, EditError>) -> DocumentError {
+    let Err(EditError::Format { source, .. }) = result else {
+        panic!("no Format error")
+    };
+    *source.downcast::<DocumentError>().expect("the source is a DocumentError")
+}
+
+/// `userData.playTime`, `userData.currentLocation` and the corps list of
+/// the user data.
+pub(crate) const PLAY_TIME: [Segment<'static>; 3] = [Segment::Key("userData"), Segment::Doc, Segment::Key("playTime")];
+pub(crate) const LOCATION: [Segment<'static>; 3] = [Segment::Key("userData"), Segment::Doc, Segment::Key("currentLocation")];
+pub(crate) const CORPS: [Segment<'static>; 5] = [
+    Segment::Key("userData"),
+    Segment::Doc,
+    Segment::Key("corpsList"),
+    Segment::Doc,
+    Segment::Key("target"),
+];
+
+/// The path to the `characterId` of the corps row `index`.
+pub(crate) fn corps_id(index: usize) -> [Segment<'static>; 8] {
+    let [user, doc, list, list_doc, target] = CORPS;
+    [
+        user,
+        doc,
+        list,
+        list_doc,
+        target,
+        Segment::Index(index),
+        Segment::Doc,
+        Segment::Key("characterId"),
+    ]
+}
+
+/// The list of vehicles in the user data.
+pub(crate) const VEHICLES: [Segment<'static>; 5] = [
+    Segment::Key("userData"),
+    Segment::Doc,
+    Segment::Key("ownedTransportationList"),
+    Segment::Doc,
+    Segment::Key("target"),
+];
+
+/// One vehicle row as the synthetic slots write it.
+pub(crate) const VEHICLE: &str = r#"{"position":{"x":1000.0,"y":1000.0,"z":-1000.0},"direction":0,"id":1,"mapId":-1,"enable":false,"timeStampTicks":0}"#;
+
+/// The `id` pair that opens a synthetic slot text.
+const ID_PAIR: &str = "\"id\":1,";
+
+/// The slot `text` with its `id` pair removed, or set to 99.
+pub(crate) fn id_variants(text: &str) -> [(&'static str, String); 2] {
+    assert!(text.starts_with(&format!("{{{ID_PAIR}")), "the id is the first pair");
+    [
+        ("absent", text.replacen(ID_PAIR, "", 1)),
+        ("out of range", text.replacen(ID_PAIR, "\"id\":99,", 1)),
+    ]
+}
+
+/// The slot that `format` reports for `text` stored under the file name `name`.
+pub(crate) fn slot_under(format: &impl SaveFormat, name: &str, text: &str) -> Option<SaveSlot> {
+    let files = one_file(name, sav(text, &Container::game()));
+    format.open(&files).unwrap().summary().unwrap().slot
 }

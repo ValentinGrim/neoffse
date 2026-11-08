@@ -3,6 +3,7 @@
 
 mod common;
 
+use common::assert_document_error;
 use common::character_path;
 use common::ff2_save::{Character, SlotData, inventory, key_items, model, standard_model, tables};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
@@ -261,13 +262,6 @@ fn rows_of_another_path_are_not_a_collection() {
     assert!(matches!(model.rows(&gil), Err(EditError::NotACollection { field }) if field == gil));
     let row = FieldId::new(names::CHARACTER).with_id(1);
     assert!(matches!(model.rows(&row), Err(EditError::NotACollection { .. })));
-}
-
-fn assert_document_error(result: Result<Value, EditError>) -> DocumentError {
-    let Err(EditError::Format { source, .. }) = result else {
-        panic!("no Format error")
-    };
-    *source.downcast::<DocumentError>().expect("a DocumentError")
 }
 
 #[test]

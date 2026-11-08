@@ -5,9 +5,9 @@
 //! ability keys follow `docs/formats/pixel-remaster.md#abilities` and
 //! `docs/formats/pixel-remaster.md#spells-in-ff-ii`.
 
-use super::embed;
 use super::ff1_render::{CHEAT, config_data, data_storage, dict, list, map_data, numbers, object};
 use super::ff2_save::{Character, Row, SlotData, Spell};
+use super::{VEHICLE, embed};
 
 /// Ability 711, first in every `abilityList`: the two-sword permission, with
 /// content row 937 (`docs/formats/pixel-remaster.md#nameless-rows-in-ff-ii`).
@@ -45,7 +45,6 @@ fn user_data(slot: &SlotData) -> String {
     let rows = |rows: &[Row]| embed(&list(&rows.iter().map(|row| embed(&row.text)).collect::<Vec<_>>()));
     let empty = || embed(&list(&[]));
     let numbers_list = |ids: &[u32]| embed(&list(&ids.iter().map(ToString::to_string).collect::<Vec<_>>()));
-    let vehicle = r#"{"position":{"x":1000.0,"y":1000.0,"z":-1000.0},"direction":0,"id":1,"mapId":-1,"enable":false,"timeStampTicks":0}"#;
     let mut pairs: Vec<(&str, String)> = vec![
         ("corpsList", embed(&corps_list)),
         ("corpsSlots", embed(&dict(&["0", "1", "2"].map(String::from), &vec![embed(&corps_list); 3]))),
@@ -62,7 +61,7 @@ fn user_data(slot: &SlotData) -> String {
         ("normalOwnedItemSortIdList", numbers_list(&slot.sort_ids)),
         ("currentArea", "\"Invented Plains\"".to_owned()),
         ("currentLocation", "\"\"".to_owned()),
-        ("ownedTransportationList", embed(&list(&vec![embed(vehicle); slot.vehicles]))),
+        ("ownedTransportationList", embed(&list(&vec![embed(VEHICLE); slot.vehicles]))),
         ("owendCrystalFlags", embed(&list(&["false"; 4].map(String::from)))),
         ("configData", "\"\"".to_owned()),
         ("warehouseItemList", empty()),

@@ -6,12 +6,10 @@
 mod common;
 
 use common::ff1_real::{RealSlot, must, slots};
-use neoffse_core::{CapPolicy, Edit, FieldId, RowId, TableKind, Value};
+use common::{ENFORCE, STORAGE_ONLY};
+use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{GAME, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
 
 fn inventory() -> FieldId {
     FieldId::new(names::INVENTORY)

@@ -155,9 +155,7 @@ fn real_refused_edits_write_nothing() {
         let Some([_, Key::Id(character)]) = party.entities.first().map(|entity| entity.id.keys()) else {
             panic!("{}: no character", subject.label)
         };
-        let count = common::ff1_save::character_field(*character, names::EQUIPMENT)
-            .with_id(1)
-            .with_name(names::COUNT);
+        let count = common::character_field(*character, names::EQUIPMENT).with_id(1).with_name(names::COUNT);
         refuses(&subject, "set a slot count", &Edit::set(count, Value::Int(1)));
     }
 }

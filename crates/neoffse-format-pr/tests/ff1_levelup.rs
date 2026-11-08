@@ -6,8 +6,10 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::ff1_save::{SlotData, model, standard_model};
 use common::rolls::Script;
+use common::slot_model::int;
 use neoffse_core::{Edit, FieldId, Value};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
@@ -22,13 +24,6 @@ fn field(id: u32, name: &'static str) -> FieldId {
 /// `charges_max_gain.<level>` of character `id`.
 fn charge(id: u32, level: u32) -> FieldId {
     field(id, names::CHARGES_MAX_GAIN).with_id(level)
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 /// `Set level` of character `id` under `script`; returns the forward edits.

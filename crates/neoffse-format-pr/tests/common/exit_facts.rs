@@ -7,8 +7,8 @@ use neoffse_core::{Capability, FieldId, Key, RowId, SaveDocument, SaveView, Tabl
 use neoffse_data::GameTables;
 use neoffse_format_pr::ff1::names;
 
+use super::character_field;
 use super::edit_subject::Subject;
-use super::ff1_save::character_field;
 
 pub(crate) const CHARS: &str = "userData.ownedCharacterList.target";
 pub(crate) const INV: &str = "userData.normalOwnedItemList.target";

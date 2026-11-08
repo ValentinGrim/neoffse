@@ -5,13 +5,12 @@
 
 mod common;
 
+use common::STORAGE_ONLY;
 use common::ff1_real::{RealSlot, must, slots};
 use common::ff1_rules::violations;
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
+use neoffse_core::{Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
-
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
 
 fn slot_field(id: u32, number: u32) -> FieldId {
     FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(number)

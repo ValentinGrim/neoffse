@@ -12,19 +12,13 @@ use common::character_path;
 use common::ff2_save::{SlotData, Spell, content_of, model, standard_model, tables};
 use common::ff2_spell::{History, Where, level_edit, replay};
 use common::json_diff::{Kind, assert_changes, diff};
+use common::slot_model::int;
 use neoffse_core::{Edit, EditError, FieldId, Game, Value};
 use neoffse_data::{GameTables, Sources};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};
 
 const PARTS: [&str; 3] = ["abilityId", "contentId", "skillLevel"];
-
-fn int(model: &mut Ff2Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
-}
 
 /// The three stored values of the entry `position` of `group`.
 fn entry(model: &mut Ff2Model, id: u32, group: &'static str, position: u32) -> [i64; 3] {

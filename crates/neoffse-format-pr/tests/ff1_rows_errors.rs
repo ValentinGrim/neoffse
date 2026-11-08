@@ -5,11 +5,9 @@
 mod common;
 
 use common::ff1_save::{Row, SlotData, model, model_with_escaped_row, standard_model};
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
+use common::{ENFORCE, STORAGE_ONLY};
+use neoffse_core::{Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::{Ff1Model, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
 
 fn item(key: u32) -> RowId {
     RowId::new(FieldId::new(names::INVENTORY), key)

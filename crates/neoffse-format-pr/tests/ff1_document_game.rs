@@ -4,20 +4,11 @@
 mod common;
 
 use common::ff1_format::{one_file, sav, slot_name};
-use common::ff1_save::{SlotData, character_field, standard_model};
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, SaveDocument, SaveFormat, Value};
+use common::ff1_save::{SlotData, standard_model};
+use common::{STORAGE_ONLY, character_field, equip, slot};
+use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, SaveDocument, SaveFormat};
 use neoffse_format_pr::container::{Container, decode};
 use neoffse_format_pr::ff1::{Ff1Format, names};
-
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-
-fn slot(id: u32, number: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(number)
-}
-
-fn equip(id: u32, number: u32, content: i64) -> Edit {
-    Edit::set(slot(id, number), Value::Int(content))
-}
 
 fn item(key: u32) -> RowId {
     RowId::new(FieldId::new(names::INVENTORY), key)

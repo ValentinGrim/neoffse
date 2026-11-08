@@ -6,9 +6,9 @@
 
 mod common;
 
+use common::character_field;
 use common::character_path;
 use common::ff1_real::{RealSlot, must, must_some, slots};
-use common::ff1_save::character_field;
 use common::growth_oracle::{Stored, grow};
 use common::rolls::Script;
 use neoffse_core::{CapPolicy, ChangeSet, Edit, FieldId, Value};

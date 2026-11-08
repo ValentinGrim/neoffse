@@ -173,7 +173,7 @@ fn real_refused_edits_write_nothing() {
         let Some([_, Key::Id(character)]) = party.entities.first().map(|entity| entity.id.keys()) else {
             panic!("{}: no character", subject.label)
         };
-        let field = |name| common::ff2_save::character_field(*character, name);
+        let field = |name| common::character_field(*character, name);
         let hand = field(names::EQUIPMENT).with_id(1);
         refuses(
             &subject,

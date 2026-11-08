@@ -5,8 +5,8 @@
 
 use neoffse_format_pr::ff1::GAME;
 
-use super::embed;
 use super::ff1_save::{Character, Row, SlotData};
+use super::{VEHICLE, embed};
 
 /// The whole slot, top level included.
 pub(super) fn slot(slot: &SlotData) -> String {
@@ -40,7 +40,6 @@ pub(super) fn user_data(slot: &SlotData) -> String {
     let rows = |rows: &[Row]| embed(&list(&rows.iter().map(|row| embed(&row.text)).collect::<Vec<_>>()));
     let empty = || embed(&list(&[]));
     let sort_ids: Vec<String> = slot.sort_ids.iter().map(ToString::to_string).collect();
-    let vehicle = r#"{"position":{"x":1000.0,"y":1000.0,"z":-1000.0},"direction":0,"id":1,"mapId":-1,"enable":false,"timeStampTicks":0}"#;
     let released: Vec<String> = (1..=12).map(|job| job.to_string()).collect();
     let learned = learned_ids(slot).iter().map(ToString::to_string).collect::<Vec<_>>();
     let mut pairs: Vec<(&str, String)> = vec![
@@ -59,7 +58,7 @@ pub(super) fn user_data(slot: &SlotData) -> String {
         ("normalOwnedItemSortIdList", embed(&list(&sort_ids))),
         ("currentArea", "\"Invented Plains\"".to_owned()),
         ("currentLocation", "\"\"".to_owned()),
-        ("ownedTransportationList", embed(&list(&vec![embed(vehicle); 4]))),
+        ("ownedTransportationList", embed(&list(&vec![embed(VEHICLE); 4]))),
         ("owendCrystalFlags", embed(&list(&["true"; 4].map(String::from)))),
         ("configData", "\"\"".to_owned()),
         ("warehouseItemList", empty()),

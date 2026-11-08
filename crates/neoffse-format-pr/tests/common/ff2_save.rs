@@ -10,10 +10,10 @@
 //! every gain keeps its base plus gain under the cap. The public fields let a
 //! test twist one value; numbers a test breaks are raw text or `i64`.
 
-use neoffse_core::{FieldId, TableKind};
+use neoffse_core::TableKind;
 use neoffse_data::GameTables;
 use neoffse_format_pr::document::Document;
-use neoffse_format_pr::ff2::{Ff2Model, GAME, names};
+use neoffse_format_pr::ff2::{Ff2Model, GAME};
 
 pub(crate) use super::ff1_save::Row;
 
@@ -281,9 +281,4 @@ pub(crate) fn model(text: &str) -> Ff2Model {
 /// A model over the standard slot.
 pub(crate) fn standard_model() -> Ff2Model {
     model(&SlotData::standard().render())
-}
-
-/// The id of a field of a character.
-pub(crate) fn character_field(id: u32, name: &'static str) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(name)
 }

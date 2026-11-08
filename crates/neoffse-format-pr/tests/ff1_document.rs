@@ -6,16 +6,10 @@ mod common;
 
 use common::ff1_format::{one_file, open, sav, slot_name, standard_files};
 use common::ff1_save::SlotData;
-use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, FormatError, RowId, SaveDocument, SaveFiles, Value};
+use common::{ENFORCE, STORAGE_ONLY, gil};
+use neoffse_core::{ChangeSet, Edit, EditError, FieldId, FormatError, RowId, SaveDocument, SaveFiles, Value};
 use neoffse_format_pr::container::{CodecError, Container, MAX_PAYLOAD_LEN, decode};
 use neoffse_format_pr::ff1::{Ff1Document, Ff1Format, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
 
 fn set_gil(value: i64) -> Edit {
     Edit::set(gil(), Value::Int(value))

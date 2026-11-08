@@ -5,17 +5,12 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::ff1_save::{SlotData, model, standard_model};
+use common::slot_model::int;
+use common::{slot, slot_count};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, TableKind, Value};
-use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
-
-fn slot(id: u32, number: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(number)
-}
-
-fn slot_count(id: u32, number: u32) -> FieldId {
-    slot(id, number).with_name(names::COUNT)
-}
+use neoffse_format_pr::ff1::{GAME, names};
 
 fn row(key: u32) -> RowId {
     RowId::new(FieldId::new(names::INVENTORY), key)
@@ -23,13 +18,6 @@ fn row(key: u32) -> RowId {
 
 fn count(key: u32) -> FieldId {
     row(key).field(names::COUNT)
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 fn placeholder(kind: TableKind) -> u32 {

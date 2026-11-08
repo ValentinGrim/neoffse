@@ -4,17 +4,10 @@
 
 mod common;
 
-use common::ff1_save::{Row, SlotData, character_field, model, standard_model};
+use common::ff1_save::{Row, SlotData, model, standard_model};
+use common::{ENFORCE, STORAGE_MAX, STORAGE_ONLY, character_field, slot};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::{Ff1Model, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-const STORAGE_MAX: i64 = 2_147_483_647;
-
-fn slot(id: u32, number: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(number)
-}
 
 fn count(key: u32) -> FieldId {
     FieldId::new(names::INVENTORY).with_id(key).with_name(names::COUNT)

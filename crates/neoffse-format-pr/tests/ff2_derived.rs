@@ -4,8 +4,9 @@
 
 mod common;
 
+use common::character_field;
 use common::character_path;
-use common::ff2_save::{SlotData, character_field, model, standard_model, tables};
+use common::ff2_save::{SlotData, model, standard_model, tables};
 use neoffse_core::{EditError, Value};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};

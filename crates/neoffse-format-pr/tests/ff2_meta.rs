@@ -4,11 +4,10 @@
 
 mod common;
 
-use common::ff2_save::{character_field, standard_model};
+use common::ff2_save::standard_model;
+use common::{STORAGE_MAX, character_field};
 use neoffse_core::{FieldId, Shape, TableKind};
 use neoffse_format_pr::ff2::names;
-
-const STORAGE_MAX: i64 = 2_147_483_647;
 
 #[test]
 fn every_character_field_has_its_label() {

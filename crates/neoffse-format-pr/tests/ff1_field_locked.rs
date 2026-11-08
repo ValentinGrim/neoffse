@@ -4,13 +4,11 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::count;
+use common::ff1_save::{SlotData, model, standard_model};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
 use neoffse_format_pr::ff1::names;
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
 
 #[test]
 fn slot_counts_are_locked() {

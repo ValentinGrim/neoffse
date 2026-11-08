@@ -8,9 +8,10 @@ mod common;
 
 use std::collections::HashMap;
 
-use common::character_path;
 use common::ff1_save::keys;
 use common::ff2_save::{SlotData, ids, standard_model, tables};
+use common::slot_model::int;
+use common::{VEHICLES, character_path};
 use neoffse_core::{FieldId, TableKind, Value};
 use neoffse_data::GameTables;
 use neoffse_format_pr::document::{Document, Scalar, Segment};
@@ -48,13 +49,6 @@ fn text_at(document: &mut Document, path: &[Segment<'_>]) -> String {
     text
 }
 
-fn int(model: &mut Ff2Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(number) => number,
-        other => panic!("{field}: {other:?}"),
-    }
-}
-
 fn slot_field(id: u32, slot: u32) -> FieldId {
     FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(slot)
 }
@@ -83,14 +77,7 @@ fn the_fixture_is_game_style_and_covers_the_cases() {
     for index in 0..4 {
         assert!(unique(&keys(&text_at(&mut document, &character_path(index, &[])))));
     }
-    let transportation = [
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedTransportationList"),
-        Segment::Doc,
-        Segment::Key("target"),
-    ];
-    assert_eq!(document.array_len(&transportation).unwrap(), 7);
+    assert_eq!(document.array_len(&VEHICLES).unwrap(), 7);
 
     let mut model = standard_model();
     let name = model.get(&FieldId::new(names::CHARACTER).with_id(4).with_name(names::NAME)).unwrap();

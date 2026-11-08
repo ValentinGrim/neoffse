@@ -6,12 +6,10 @@
 
 mod common;
 
-use common::ff2_save::{SlotData, character_field, model, standard_model, tables};
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
+use common::ff2_save::{SlotData, model, standard_model, tables};
+use common::{ENFORCE, STORAGE_ONLY, character_field, slot};
+use neoffse_core::{Edit, EditError, Value};
 use neoffse_format_pr::ff2::names;
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
 
 /// The eight gains with the cap key of each, in the order of
 /// `docs/formats/pixel-remaster.md#character-growth-in-ff-ii`.
@@ -176,10 +174,6 @@ fn the_rule_follows_the_status_not_the_id_of_the_character() {
         model.apply_game(&set(1, names::MAX_HP_GAIN, 9_825)),
         Err(EditError::AboveCap { cap: 9_824, .. })
     ));
-}
-
-fn slot(id: u32, number: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(number)
 }
 
 #[test]

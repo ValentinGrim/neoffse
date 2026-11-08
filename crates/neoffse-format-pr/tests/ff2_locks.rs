@@ -5,20 +5,14 @@
 
 mod common;
 
+use common::character_field;
 use common::ff2_real;
-use common::ff2_save::{SlotData, character_field, ids, key_items, standard_model};
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, TableKind, Value};
+use common::ff2_save::{SlotData, ids, key_items, standard_model};
+use common::{count, row};
+use neoffse_core::{CapPolicy, Edit, EditError, FieldId, TableKind, Value};
 use neoffse_format_pr::ff2::{Ff2Model, names};
 
 const PLACEHOLDERS: [u32; 5] = [47, 208, 209, 210, 211];
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
-
-fn row(list: &'static str, key: u32) -> RowId {
-    RowId::new(FieldId::new(list), key)
-}
 
 fn locked(field: &FieldId) -> bool {
     standard_model().field_locked(field).unwrap()

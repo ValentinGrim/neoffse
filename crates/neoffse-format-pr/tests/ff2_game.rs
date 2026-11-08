@@ -5,72 +5,13 @@
 
 mod common;
 
+use common::character_field;
 use common::ff2_rules::assert_game_rules;
-use common::ff2_save::{Row, SlotData, character_field, ids, key_items, model, standard_model};
-use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, GameChange, RowId, TableKind, Value};
-use neoffse_format_pr::ff2::{Ff2Model, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-
-fn slot(id: u32, slot: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(slot)
-}
-
-fn slot_count(id: u32, slot_number: u32) -> FieldId {
-    slot(id, slot_number).with_name(names::COUNT)
-}
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
-
-fn row(list: &'static str, key: u32) -> RowId {
-    RowId::new(FieldId::new(list), key)
-}
-
-fn equip(id: u32, slot_number: u32, content: u32) -> Edit {
-    Edit::set(slot(id, slot_number), Value::Int(i64::from(content)))
-}
-
-fn int(model: &mut Ff2Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
-}
-
-/// Every inventory row with its count, in document order.
-fn inventory(model: &mut Ff2Model) -> Vec<(u32, i64)> {
-    let list = FieldId::new(names::INVENTORY);
-    model
-        .rows(&list)
-        .unwrap()
-        .into_iter()
-        .map(|key| (key, int(model, &count(names::INVENTORY, key))))
-        .collect()
-}
-
-/// Every slot `contentId` and `count` of the four characters.
-fn slots(model: &mut Ff2Model) -> Vec<(u32, u32, i64, i64)> {
-    let mut found = Vec::new();
-    for id in 1..=4 {
-        for number in 1..=names::EQUIPMENT_SLOTS {
-            found.push((id, number, int(model, &slot(id, number)), int(model, &slot_count(id, number))));
-        }
-    }
-    found
-}
-
-fn with_count(data: &mut SlotData, key: u32, new_count: u32) {
-    let text = format!("{{\"contentId\":{key},\"count\":");
-    let index = data.inventory.iter().position(|row| row.text.starts_with(&text)).unwrap();
-    data.inventory[index] = Row::new(key, new_count);
-}
-
-fn without_placeholders(data: &mut SlotData) {
-    data.inventory.drain(..5);
-}
+use common::ff2_save::{SlotData, ids, key_items, model, standard_model};
+use common::slot_model::{int, inventory, run, slots};
+use common::{ENFORCE, STORAGE_ONLY, count, equip, plain, row, slot, slot_count, with_count, without_placeholders};
+use neoffse_core::{Edit, EditError, FieldId, TableKind, Value};
+use neoffse_format_pr::ff2::names;
 
 /// A weapon with a row in the Weapon table and none in the standard inventory.
 fn unowned_weapon() -> u32 {
@@ -88,6 +29,7 @@ fn equip_an_owned_unworn_item() {
     let mut model = standard_model();
     let before = inventory(&mut model);
     let other = slots(&mut model);
+    assert_eq!(other.len(), 4 * names::EQUIPMENT_SLOTS as usize, "four characters, every slot");
     let weapon = unworn_weapon();
     let change = model.apply_game(&equip(1, 1, weapon)).unwrap();
     let want = [equip(1, 1, weapon), Edit::set(slot_count(1, 1), Value::Int(1))];
@@ -142,7 +84,7 @@ fn the_same_item_in_both_hands_raises_the_row_to_two() {
 fn the_wearer_count_counts_slots_not_characters() {
     // Character 1 holds 60 in both hands: two wearers, one character.
     let mut data = SlotData::standard();
-    with_count(&mut data, 60, 2);
+    with_count(&mut data.inventory, 60, 2);
     let mut model = model(&data.render());
     let change = model.apply_game(&equip(3, 2, 60)).unwrap();
     let want = [
@@ -199,7 +141,7 @@ fn unequip_an_armor_piece_writes_its_placeholder() {
 #[test]
 fn unequip_without_the_placeholder_row_leaves_the_count() {
     let mut data = SlotData::standard();
-    without_placeholders(&mut data);
+    without_placeholders(&mut data.inventory);
     let mut bare = model(&data.render());
     let change = bare.apply_game(&equip(1, 1, 47)).unwrap();
     assert_eq!(change.forward.edits(), [equip(1, 1, 47)]);
@@ -210,9 +152,9 @@ fn unequip_without_the_placeholder_row_leaves_the_count() {
 fn cases() -> Vec<(String, Edit)> {
     let standard = SlotData::standard().render();
     let mut two = SlotData::standard();
-    with_count(&mut two, 60, 2);
+    with_count(&mut two.inventory, 60, 2);
     let mut bare = SlotData::standard();
-    without_placeholders(&mut bare);
+    without_placeholders(&mut bare.inventory);
     vec![
         (standard.clone(), equip(1, 1, unworn_weapon())),
         (standard.clone(), equip(2, 2, unowned_weapon())),
@@ -228,10 +170,6 @@ fn cases() -> Vec<(String, Edit)> {
     ]
 }
 
-fn run(model: &mut Ff2Model, set: &ChangeSet, policy: CapPolicy) -> ChangeSet {
-    set.apply_with(policy, |edit, policy| model.apply(edit, policy)).unwrap()
-}
-
 #[test]
 fn undo_and_redo_restore_the_bytes() {
     for (index, (text, edit)) in cases().into_iter().enumerate() {
@@ -243,10 +181,6 @@ fn undo_and_redo_restore_the_bytes() {
         run(&mut model, &change.forward, STORAGE_ONLY);
         assert_eq!(model.document().to_json(), applied, "redo of case {index}");
     }
-}
-
-fn plain(change: &GameChange) -> (&[Edit], &[Edit]) {
-    (change.forward.edits(), change.inverse.edits())
 }
 
 #[test]
