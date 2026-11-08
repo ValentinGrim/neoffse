@@ -15,6 +15,7 @@ use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Format, OpenError, names};
 use neoffse_format_pr::games::identify;
 use neoffse_format_pr::slots::slot_for_name;
+use neoffse_testkit::report;
 
 fn gil() -> FieldId {
     FieldId::new(names::GIL)
@@ -24,11 +25,6 @@ fn holds_user_data(json: &str, label: &str) -> bool {
     must(Document::parse(json), &format!("{label}: parse failed"))
         .raw(&[Segment::Key("userData")])
         .is_ok()
-}
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
 }
 
 #[test]

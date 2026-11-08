@@ -25,11 +25,7 @@ use neoffse::pr::ff1::names;
 use neoffse::{Registry, Running};
 use neoffse_app::editor::{Input, SaveOutcome};
 use neoffse_app::home::OpenOutcome;
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
+use neoffse_testkit::report;
 
 fn int_of(view: &SaveView, field: &FieldId, what: &str) -> i64 {
     let (_, view) = must_some(view.find(field), what);

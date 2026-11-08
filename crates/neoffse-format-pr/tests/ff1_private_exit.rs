@@ -16,16 +16,12 @@ use common::ff1_real::{must, must_some, slots};
 use neoffse_core::{Capability, Edit, EditError, FieldId, Key, RowId, SaveDocument, Value};
 use neoffse_format_pr::container;
 use neoffse_format_pr::ff1::{Ff1Format, GAME, names};
+use neoffse_testkit::report;
 
 const CHARS: &str = "userData.ownedCharacterList.target";
 const INV: &str = "userData.normalOwnedItemList.target";
 const KEYS: &str = "userData.importantOwendItemList.target";
 const SORT_LIST: &str = "userData.normalOwnedItemSortIdList.target";
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
 
 /// The root, `userData`, both item list documents and their `target` arrays
 /// carry no whitespace of their own.

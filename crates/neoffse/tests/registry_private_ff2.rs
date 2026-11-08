@@ -12,15 +12,11 @@ use neoffse::core::Game;
 use neoffse::data::Language;
 use neoffse::pr::slots::SLOT_FILES;
 use neoffse::{Error, Registry};
+use neoffse_testkit::report;
 
 /// The game folders `ff3` to `ff6`, which the shipped registry has no format
 /// for.
 const UNSUPPORTED: [&str; 4] = ["ff3", "ff4", "ff5", "ff6"];
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
 
 fn is_slot_name(name: &str) -> bool {
     SLOT_FILES.iter().any(|file| file.name == name)

@@ -21,14 +21,10 @@ use common::json_tree::Tree;
 use neoffse_core::{CapPolicy, Capability, ChangeSet, Edit, EditError, FieldId, Key, RowId, SaveDocument, Value};
 use neoffse_format_pr::container;
 use neoffse_format_pr::ff2::{Ff2Format, GAME, names};
+use neoffse_testkit::report;
 
 const CHARS: &str = "userData.ownedCharacterList.target";
 const INV: &str = "userData.normalOwnedItemList.target";
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
 
 fn skipped_line(skipped: &BTreeMap<&'static str, usize>) -> String {
     if skipped.is_empty() {
