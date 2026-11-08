@@ -6,14 +6,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, ThreadId};
 
+use neoffse::Registry;
 use neoffse::data::Language;
 use neoffse::pr::slots::SLOT_FILES;
 use neoffse_app::EditorViewModel;
 use neoffse_app::FilePicker;
 use neoffse_app::home::{HomeViewModel, OpenOutcome, OpenViewModel, SlotTarget};
 use neoffse_app::state::AppState;
-
-use neoffse::Registry;
 
 use super::{ID_1, Manual, Site, registry, scanned_with, steam_folder};
 

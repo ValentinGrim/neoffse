@@ -1,8 +1,11 @@
 //! Checks the icon files under `assets/icons/material-symbols/` and their
 //! licence. Reads repository files only.
 
-use std::fs;
 use std::path::PathBuf;
+
+mod asset_files;
+
+use asset_files::read_text;
 
 /// The icons the screens draw, as file stems.
 const ICONS: [&str; 12] = [
@@ -26,10 +29,6 @@ fn icon_path(name: &str) -> PathBuf {
         .join("icons")
         .join("material-symbols")
         .join(name)
-}
-
-fn read_text(path: &PathBuf) -> String {
-    fs::read_to_string(path).unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()))
 }
 
 #[test]
