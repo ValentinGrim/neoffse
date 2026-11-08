@@ -11,16 +11,16 @@ use neoffse_data::{BaseStats, GameTables};
 use super::binding::Part;
 use crate::document::{Document, Segment};
 use crate::shared::derived::{held_to_cap, status_base, status_id};
-use crate::shared::paths::with;
-use crate::shared::read::{character_part, read_stored};
+use crate::shared::paths::{Path, with};
+use crate::shared::read::read_stored;
 
-/// The value of the computed `part` of character `id`.
+/// The value of the computed `part` of a character, whose element sits at
+/// `base`.
 ///
 /// `UnknownField` when the character lacks a key the figure reads, or when a
 /// table finds no row: a status id outside `character_status`, no cap key.
 /// `Format` when a key holds a value of another kind.
-pub(super) fn value(document: &mut Document, tables: &GameTables, id: u32, part: Part, field: &FieldId) -> Result<Value, EditError> {
-    let base = character_part(document, id, field, |_, base| Ok(base))?;
+pub(super) fn value(document: &mut Document, tables: &GameTables, part: Part, field: &FieldId, base: Path) -> Result<Value, EditError> {
     let (gain_key, cap_key, base_of): (_, _, fn(&BaseStats) -> u32) = match part {
         Part::MaxHp => ("addtionalMaxHp", "MAX_HP", |stats| stats.hp),
         Part::MaxMp => ("addtionalMaxMp", "MAX_MP", |stats| stats.mp),

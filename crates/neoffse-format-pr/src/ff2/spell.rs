@@ -73,11 +73,10 @@ pub(super) fn spell_of(document: &mut Document, tables: &GameTables, base: &Path
         .ok_or_else(|| EditError::UnknownField { field: field.clone() })
 }
 
-/// The level of spell `chain` of character `id`, as a `Value`.
+/// The level of spell `chain` of the character at `base`, as a `Value`.
 /// `UnknownField` when the character owns no entry of that chain.
-pub(super) fn level(document: &mut Document, tables: &GameTables, id: u32, chain: u32, field: &FieldId) -> Result<Value, EditError> {
-    let base = character_part(document, id, field, |_, base| Ok(base))?;
-    let spell = spell_of(document, tables, &base, Group::Ability, chain, field)?;
+pub(super) fn level(document: &mut Document, tables: &GameTables, base: &Path, chain: u32, field: &FieldId) -> Result<Value, EditError> {
+    let spell = spell_of(document, tables, base, Group::Ability, chain, field)?;
     Ok(Value::Int(i64::from(spell.level)))
 }
 

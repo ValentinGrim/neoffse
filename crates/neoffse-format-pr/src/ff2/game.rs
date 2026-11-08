@@ -19,12 +19,12 @@ use neoffse_data::BaseStats;
 
 use super::binding::{Binding, Part};
 use super::{Ff2Model, keywords, names};
-use crate::shared::bind::CharacterPart;
+use crate::shared::access;
 use crate::shared::derived::status_id;
-use crate::shared::paths::List;
+use crate::shared::items::Lists;
 use crate::shared::plan::{Plan, run_plan};
 use crate::shared::read::character_part;
-use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, is_placeholder, row_locked, storage_max, wearers_of};
+use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, row_locked, storage_max, wearers_of};
 use crate::shared::stat::Stat;
 
 /// The equipment slots that hold a hand: each takes a weapon or a shield
@@ -104,11 +104,7 @@ impl Ff2Model {
     ///
     /// `UnknownField` for a path that names no declared field.
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
-        Ok(match Binding::resolve(field)? {
-            Binding::Character { part, .. } => part.is_locked(),
-            Binding::Count { list, key } => list == List::KeyItems || is_placeholder(self.tables, list, key),
-            Binding::Gil => false,
-        })
+        access::field_locked::<Part>(self.tables, field)
     }
 
     /// True when the game interface refuses to remove `row` whatever the
@@ -133,7 +129,7 @@ impl Ff2Model {
         if keywords::owns(&row.collection()) {
             return keywords::row_locked(&mut self.document, row);
         }
-        row_locked(&mut self.lists(), row, names::EQUIPMENT_SLOTS)
+        row_locked(&mut Lists::new(&mut self.document, self.tables), row, names::EQUIPMENT_SLOTS)
     }
 
     /// The plain edits of `edit`, after the game rules; no write happens.

@@ -14,10 +14,9 @@ use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, Value};
 
 use super::binding::{Binding, Part};
 use super::{Ff1Model, Rolls, ThreadRolls, names};
-use crate::shared::bind::CharacterPart;
-use crate::shared::paths::List;
+use crate::shared::access;
 use crate::shared::plan::{Plan, run_plan};
-use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, is_placeholder, wearers_of};
+use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, wearers_of};
 
 impl Ff1Model {
     /// Applies `edit` the way the game would and returns the plain edits it
@@ -100,11 +99,7 @@ impl Ff1Model {
     ///
     /// `UnknownField` for a path that names no declared field.
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
-        Ok(match Binding::resolve(field)? {
-            Binding::Character { part, .. } => part.is_locked(),
-            Binding::Count { list, key } => list == List::KeyItems || is_placeholder(self.tables, list, key),
-            Binding::Gil => false,
-        })
+        access::field_locked::<Part>(self.tables, field)
     }
 
     /// The plain edits of `edit`, after the game rules; no write happens.

@@ -2,7 +2,9 @@
 
 use neoffse_core::{FieldId, FormatError, SaveSummary};
 
-use super::{Ff2Model, GAME, get_in, names};
+use super::binding::Part;
+use super::{Ff2Model, GAME, names};
+use crate::shared::access;
 use crate::shared::summary::summary;
 
 impl Ff2Model {
@@ -34,7 +36,7 @@ impl Ff2Model {
     pub fn summary(&mut self) -> Result<SaveSummary, FormatError> {
         let tables = self.tables;
         summary(&mut self.document, GAME, |document, id| {
-            get_in(document, tables, &FieldId::new(names::CHARACTER).with_id(id).with_name(names::NAME))
+            access::get_in::<Part>(document, tables, &FieldId::new(names::CHARACTER).with_id(id).with_name(names::NAME))
         })
     }
 }

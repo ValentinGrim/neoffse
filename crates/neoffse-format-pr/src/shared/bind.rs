@@ -36,8 +36,9 @@ pub(crate) trait CharacterPart: Copy {
     fn is_locked(self) -> bool;
 
     /// A read that bypasses [`locate`](Self::locate): a computed field, or a
-    /// value that sits inside a JSON string. `None` for the generic read.
-    fn computed(self, document: &mut Document, tables: &GameTables, id: u32, field: &FieldId) -> Option<Result<Value, EditError>>;
+    /// value that sits inside a JSON string. `base` is the path of the
+    /// character, already located. `None` for the generic read.
+    fn computed(self, document: &mut Document, tables: &GameTables, id: u32, field: &FieldId, base: Path) -> Option<Result<Value, EditError>>;
 }
 
 /// What a [`FieldId`] names.

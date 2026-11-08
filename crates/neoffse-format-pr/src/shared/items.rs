@@ -41,7 +41,12 @@ pub(crate) struct Lists<'a> {
     pub(crate) tables: &'static GameTables,
 }
 
-impl Lists<'_> {
+impl<'a> Lists<'a> {
+    /// The item-list view of `document` and the ID tables of the game.
+    pub(crate) fn new(document: &'a mut Document, tables: &'static GameTables) -> Self {
+        Self { document, tables }
+    }
+
     /// The meta and the list kind of the collection of `row`: `NotACollection`
     /// for a path that is none of the three collections.
     pub(crate) fn row_collection(&self, row: &RowId) -> Result<(CollectionMeta, Collection), EditError> {

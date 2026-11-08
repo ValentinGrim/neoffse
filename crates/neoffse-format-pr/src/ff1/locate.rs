@@ -7,7 +7,7 @@ use neoffse_core::{EditError, FieldId, Value};
 use super::binding::Part;
 use crate::document::{Document, DocumentError, Segment};
 use crate::shared::paths::{Path, element, with};
-use crate::shared::read::{Located, character_part, entry_value, format_error, read_int, read_key, read_text, slot_path, wrong_kind};
+use crate::shared::read::{Located, entry_value, format_error, read_int, read_key, read_text, slot_path, wrong_kind};
 
 /// Index of the element of the `abilitySlotDataList` array `target` whose
 /// `level` is `wanted`, by value (`docs/formats/pixel-remaster.md#abilities`,
@@ -38,9 +38,10 @@ fn read_ability(document: &mut Document, path: &[Segment<'_>]) -> Result<u32, Do
     }
 }
 
-/// The ability id in the spell slot `part` of character `id`, as a number.
-pub(super) fn spell_ability(document: &mut Document, id: u32, part: Part, field: &FieldId) -> Result<Value, EditError> {
-    let path = character_part(document, id, field, |document, base| locate_part(document, base, part))?;
+/// The ability id in the spell slot `part` of the character at `base`, as a
+/// number.
+pub(super) fn spell_ability(document: &mut Document, part: Part, field: &FieldId, base: Path) -> Result<Value, EditError> {
+    let path = locate_part(document, base, part).map_err(|error| error.into_error(field))?;
     read_ability(document, &path)
         .map(|ability| Value::Int(i64::from(ability)))
         .map_err(|source| format_error(field, source))

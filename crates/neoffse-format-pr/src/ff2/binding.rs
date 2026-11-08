@@ -93,10 +93,10 @@ impl CharacterPart for Part {
         matches!(self, Self::SlotCount(_) | Self::MaxHp | Self::MaxMp | Self::Job | Self::Place(_))
     }
 
-    fn computed(self, document: &mut Document, tables: &GameTables, id: u32, field: &FieldId) -> Option<Result<Value, EditError>> {
+    fn computed(self, document: &mut Document, tables: &GameTables, _id: u32, field: &FieldId, base: Path) -> Option<Result<Value, EditError>> {
         match self {
-            Self::Spell(chain) => Some(spell::level(document, tables, id, chain, field)),
-            Self::MaxHp | Self::MaxMp => Some(derived::value(document, tables, id, self, field)),
+            Self::Spell(chain) => Some(spell::level(document, tables, &base, chain, field)),
+            Self::MaxHp | Self::MaxMp => Some(derived::value(document, tables, self, field, base)),
             _ => None,
         }
     }
