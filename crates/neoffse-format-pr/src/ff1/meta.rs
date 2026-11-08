@@ -7,8 +7,8 @@
 use neoffse_core::{FieldMeta, NamedValue, Shape, TableKind};
 use neoffse_data::GameTables;
 
-use super::binding::{Binding, Part};
-use crate::shared::meta::{count_meta, derived_meta, gil_meta, int};
+use super::binding::Part;
+use crate::shared::meta::{derived_meta, int};
 
 /// The slot labels and their equipment tables, slot 1 to 5. The table of a
 /// slot follows `parts_group_id` of the game's `armor.csv`
@@ -38,39 +38,35 @@ fn level_meta(tables: &GameTables) -> FieldMeta {
     meta
 }
 
-/// The meta of the field that `binding` names.
-pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
+/// The meta of the character part `part`.
+pub(super) fn part_meta(part: Part, tables: &GameTables) -> FieldMeta {
     let capped = |key| Some((tables, key));
-    match *binding {
-        Binding::Gil => gil_meta(tables),
-        Binding::Count { list, .. } => count_meta(list, tables),
-        Binding::Character { part, .. } => match part {
-            Part::Name => FieldMeta::new("Name", Shape::Text),
-            Part::Job => {
-                let mut meta = int("Job", 0, None);
-                meta.tables = vec![TableKind::Job];
-                meta
-            }
-            Part::Level => level_meta(tables),
-            Part::Exp => int("Experience", 0, capped("MAX_EXP")),
-            Part::Hp => int("HP", 0, capped("MAX_HP")),
-            Part::MaxHpGain => int("Max HP gain", 0, None),
-            Part::AccuracyGain => int("Accuracy gain", 0, None),
-            Part::MagicEvasionGain => int("Magic evasion gain", 0, None),
-            Part::MaxHp => derived_meta("Max HP", capped("MAX_HP")),
-            Part::NextLevel => derived_meta("Next level", None),
-            Part::Stat(stat) => int(stat.label(), 0, capped(stat.bound_key())),
-            Part::Charges(level) => int(format!("Charges, level {level}"), 0, capped("MAX_MAGICAL_TIMES")),
-            Part::ChargesMaxGain(level) => int(format!("Max charges gain, level {level}"), 0, None),
-            Part::Slot(number) => {
-                let (label, table) = slot(number);
-                let mut meta = int(label, 0, None);
-                meta.tables = vec![table];
-                meta
-            }
-            Part::SlotCount(number) => int(format!("Count in slot {number}"), 0, None),
-            Part::Spell { level, slot } => spell_meta(level, slot),
-        },
+    match part {
+        Part::Name => FieldMeta::new("Name", Shape::Text),
+        Part::Job => {
+            let mut meta = int("Job", 0, None);
+            meta.tables = vec![TableKind::Job];
+            meta
+        }
+        Part::Level => level_meta(tables),
+        Part::Exp => int("Experience", 0, capped("MAX_EXP")),
+        Part::Hp => int("HP", 0, capped("MAX_HP")),
+        Part::MaxHpGain => int("Max HP gain", 0, None),
+        Part::AccuracyGain => int("Accuracy gain", 0, None),
+        Part::MagicEvasionGain => int("Magic evasion gain", 0, None),
+        Part::MaxHp => derived_meta("Max HP", capped("MAX_HP")),
+        Part::NextLevel => derived_meta("Next level", None),
+        Part::Stat(stat) => int(stat.label(), 0, capped(stat.bound_key())),
+        Part::Charges(level) => int(format!("Charges, level {level}"), 0, capped("MAX_MAGICAL_TIMES")),
+        Part::ChargesMaxGain(level) => int(format!("Max charges gain, level {level}"), 0, None),
+        Part::Slot(number) => {
+            let (label, table) = slot(number);
+            let mut meta = int(label, 0, None);
+            meta.tables = vec![table];
+            meta
+        }
+        Part::SlotCount(number) => int(format!("Count in slot {number}"), 0, None),
+        Part::Spell { level, slot } => spell_meta(level, slot),
     }
 }
 

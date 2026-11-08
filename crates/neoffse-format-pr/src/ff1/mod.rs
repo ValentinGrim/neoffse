@@ -87,10 +87,8 @@ use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
-use crate::shared::read::{format_error, read_int, read_text, row_keys};
-use crate::shared::{SlotDocument, SlotFormat};
-use binding::Binding;
-use locate::{locate, read_ability};
+use crate::shared::{SlotDocument, SlotFormat, access};
+use binding::Part;
 pub use rolls::{Rolls, ThreadRolls};
 
 /// The game of this module.
@@ -167,8 +165,7 @@ impl Ff1Model {
     /// `NotACollection` when `collection` is none of the three, `Format` when
     /// the document does not hold the list or a key.
     pub fn rows(&mut self, collection: &FieldId) -> Result<Vec<u32>, EditError> {
-        let kind = Collection::of(collection).ok_or_else(|| EditError::NotACollection { field: collection.clone() })?;
-        row_keys(&mut self.document, kind).map_err(|source| format_error(collection, source))
+        access::rows(&mut self.document, collection)
     }
 
     /// The value of `field`. `max_hp` and `next_level` are computed from the
@@ -185,15 +182,14 @@ impl Ff1Model {
     /// document holds another shape: a float or an oversized integer where
     /// an integer belongs, a non-string name.
     pub fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
-        get_in(&mut self.document, self.tables, field)
+        access::get_in::<Part>(&mut self.document, self.tables, field)
     }
 
     /// The metadata of `field`, or `None` for an undeclared path. It reads
     /// no document: a path that names an absent row still has a meta.
     #[must_use]
     pub fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
-        let binding = Binding::resolve(field).ok()?;
-        Some(meta::field_meta(&binding, self.tables))
+        access::field_meta::<Part>(self.tables, field)
     }
 
     /// The metadata of `character`, `inventory` or `key_items`, `None` for
@@ -202,24 +198,4 @@ impl Ff1Model {
     pub fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
         Some(collection_meta(Collection::of(collection)?, self.tables))
     }
-}
-
-/// The body of [`Ff1Model::get`], over the parts of the model so that the
-/// shared summary can call it with the document it is walking.
-pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
-    let binding = Binding::resolve(field)?;
-    if let Binding::Character { id, part } = binding
-        && binding.is_derived()
-    {
-        return derived::value(document, tables, id, part, field);
-    }
-    let path = locate(document, &binding, field)?;
-    let read = if binding.is_text() {
-        read_text(document, &path).map(Value::Text)
-    } else if binding.is_spell() {
-        read_ability(document, &path).map(|id| Value::Int(i64::from(id)))
-    } else {
-        read_int(document, &path).map(Value::Int)
-    };
-    read.map_err(|source| format_error(field, source))
 }

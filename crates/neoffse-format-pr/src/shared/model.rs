@@ -107,3 +107,68 @@ pub trait SlotModel: Clone + Send + 'static {
     /// `UnknownField` for an undeclared path.
     fn field_locked(&self, field: &FieldId) -> Result<bool, EditError>;
 }
+
+/// Expands to the `impl SlotModel` of a game model, each method calling the inherent method of the same name, so a game states its constants and writes no delegating body.
+macro_rules! impl_slot_model {
+    ($model:ty, game: $game:expr, capabilities: $capabilities:expr, document: $document:literal) => {
+        impl $crate::shared::SlotModel for $model {
+            const GAME: ::neoffse_core::Game = $game;
+            const CAPABILITIES: &'static [::neoffse_core::Capability] = &$capabilities;
+            const DOCUMENT: &'static str = $document;
+
+            fn new(document: $crate::document::Document, tables: &'static ::neoffse_data::GameTables) -> Self {
+                <$model>::new(document, tables)
+            }
+
+            fn document(&self) -> &$crate::document::Document {
+                <$model>::document(self)
+            }
+
+            fn tables(&self) -> &'static ::neoffse_data::GameTables {
+                self.tables
+            }
+
+            fn rows(&mut self, collection: &::neoffse_core::FieldId) -> Result<Vec<u32>, ::neoffse_core::EditError> {
+                <$model>::rows(self, collection)
+            }
+
+            fn get(&mut self, field: &::neoffse_core::FieldId) -> Result<::neoffse_core::Value, ::neoffse_core::EditError> {
+                <$model>::get(self, field)
+            }
+
+            fn field_meta(&self, field: &::neoffse_core::FieldId) -> Option<::neoffse_core::FieldMeta> {
+                <$model>::field_meta(self, field)
+            }
+
+            fn collection_meta(&self, collection: &::neoffse_core::FieldId) -> Option<::neoffse_core::CollectionMeta> {
+                <$model>::collection_meta(self, collection)
+            }
+
+            fn summary(&mut self) -> Result<::neoffse_core::SaveSummary, ::neoffse_core::FormatError> {
+                <$model>::summary(self)
+            }
+
+            fn view(&mut self, language: ::neoffse_data::Language) -> Result<::neoffse_core::SaveView, ::neoffse_core::FormatError> {
+                <$model>::view(self, language)
+            }
+
+            fn apply(&mut self, edit: &::neoffse_core::Edit, policy: ::neoffse_core::CapPolicy) -> Result<::neoffse_core::Edit, ::neoffse_core::EditError> {
+                <$model>::apply(self, edit, policy)
+            }
+
+            fn apply_game(&mut self, edit: &::neoffse_core::Edit) -> Result<::neoffse_core::GameChange, ::neoffse_core::EditError> {
+                <$model>::apply_game(self, edit)
+            }
+
+            fn row_locked(&mut self, row: &::neoffse_core::RowId) -> Result<bool, ::neoffse_core::EditError> {
+                <$model>::row_locked(self, row)
+            }
+
+            fn field_locked(&self, field: &::neoffse_core::FieldId) -> Result<bool, ::neoffse_core::EditError> {
+                <$model>::field_locked(self, field)
+            }
+        }
+    };
+}
+
+pub(crate) use impl_slot_model;

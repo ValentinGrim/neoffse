@@ -5,7 +5,7 @@ use neoffse_data::Language;
 
 use super::{Ff2Model, names, places, spell};
 use crate::shared::read::decode_error;
-use crate::shared::view::{character_label, field_view, inventory_section, row_label, rows_of};
+use crate::shared::view::{inventory_section, magic_entity, party_section, row_label, rows_of};
 
 impl Ff2Model {
     /// A snapshot of the slot: a Party section with one entity per character
@@ -43,7 +43,7 @@ impl Ff2Model {
     /// `FormatError::Decode` with the `EditError` source for any other
     /// failure, such as a float where an integer belongs.
     pub fn view(&mut self, language: Language) -> Result<SaveView, FormatError> {
-        let party = self.party_section()?;
+        let party = party_section(self, names::party_fields)?;
         let inventory = self.inventory_with_keywords(language)?;
         let magic = self.magic_section(language)?;
         Ok(SaveView::new(vec![party, inventory, magic]))
@@ -63,31 +63,12 @@ impl Ff2Model {
         Ok(section)
     }
 
-    fn party_section(&mut self) -> Result<Section, FormatError> {
-        let character = FieldId::new(names::CHARACTER);
-        let mut entities = Vec::new();
-        for id in rows_of(self, &character)? {
-            let entity_id = character.clone().with_id(id);
-            let mut fields = Vec::new();
-            for field in names::party_fields(id) {
-                fields.extend(field_view(self, field)?);
-            }
-            let label = character_label(id, &fields);
-            entities.push(Entity::new(entity_id, label, fields));
-        }
-        let mut section = Section::new(Capability::Party, entities);
-        section.collections = self.collection_meta(&character).into_iter().collect();
-        Ok(section)
-    }
-
     fn magic_section(&mut self, language: Language) -> Result<Section, FormatError> {
         let character = FieldId::new(names::CHARACTER);
         let mut entities = Vec::new();
         let mut raw = Vec::new();
         for id in rows_of(self, &character)? {
-            let entity_id = character.clone().with_id(id);
-            let name = field_view(self, entity_id.clone().with_name(names::NAME))?;
-            let label = character_label(id, name.as_slice());
+            let (entity_id, label) = magic_entity(self, id)?;
             let fields = spell::fields(&mut self.document, self.tables, id, language).map_err(decode_error)?;
             let places = places::fields(&mut self.document, self.tables, id, language).map_err(decode_error)?;
             // An entity with no place is left out.

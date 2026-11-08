@@ -6,14 +6,12 @@
 //! `cap - base` and an edit of a placeholder row all pass when the value sits
 //! inside the bounds of the policy.
 
-use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
+use neoffse_core::{CapPolicy, Edit, EditError};
 
 use super::Ff2Model;
-use super::binding::Binding;
-use super::locate::locate;
-use super::{keywords, meta};
-use crate::shared::items::Lists;
-use crate::shared::write::{Target, set_value};
+use super::binding::Part;
+use super::keywords;
+use crate::shared::access;
 
 impl Ff2Model {
     /// Applies `edit` to the document and returns the edit that undoes it.
@@ -62,51 +60,13 @@ impl Ff2Model {
     /// field, a row that cannot be restored byte for byte), and `Format` for
     /// a document of another shape or a stored value that is no integer.
     pub fn apply(&mut self, edit: &Edit, policy: CapPolicy) -> Result<Edit, EditError> {
-        match edit {
-            Edit::Set { field, value } => self.set(field, value, policy),
-            Edit::Insert { row, position, values } => self.insert(row, *position, values, policy),
-            Edit::Remove { row } => self.remove(row),
-            _ => Err(EditError::ReadOnly { field: edit.target().clone() }),
-        }
-    }
-
-    fn set(&mut self, field: &FieldId, value: &Value, policy: CapPolicy) -> Result<Edit, EditError> {
-        let binding = Binding::resolve(field)?;
-        let meta = meta::field_meta(&binding, self.tables);
-        // A read-only field refuses before any document read, so a slot of
-        // another shape still answers `ReadOnly`.
-        if meta.read_only {
-            return Err(EditError::ReadOnly { field: field.clone() });
-        }
-        let path = locate(&mut self.document, &binding, field)?;
-        let target = Target {
-            field,
-            meta: &meta,
-            path: &path,
-            text: binding.is_text(),
-        };
-        set_value(&mut self.document, self.tables, &target, value, policy)
-    }
-
-    /// The item-list view of the model: the document and the tables.
-    pub(super) fn lists(&mut self) -> Lists<'_> {
-        Lists {
-            document: &mut self.document,
-            tables: self.tables,
-        }
-    }
-
-    fn insert(&mut self, row: &RowId, position: Option<usize>, values: &[(&'static str, Value)], policy: CapPolicy) -> Result<Edit, EditError> {
-        if keywords::owns(&row.collection()) {
-            return keywords::insert(&mut self.document, self.tables, row, position, values, policy);
-        }
-        self.lists().insert(row, position, values, policy)
-    }
-
-    fn remove(&mut self, row: &RowId) -> Result<Edit, EditError> {
-        if keywords::owns(&row.collection()) {
-            return keywords::remove(&mut self.document, row);
-        }
-        self.lists().remove(row)
+        let tables = self.tables;
+        access::apply_raw::<Part, _>(&mut self.document, tables, edit, policy, |document, edit| match edit {
+            Edit::Insert { row, position, values } if keywords::owns(&row.collection()) => {
+                Some(keywords::insert(document, tables, row, *position, values, policy))
+            }
+            Edit::Remove { row } if keywords::owns(&row.collection()) => Some(keywords::remove(document, row)),
+            _ => None,
+        })
     }
 }

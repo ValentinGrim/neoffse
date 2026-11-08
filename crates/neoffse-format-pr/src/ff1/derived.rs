@@ -9,27 +9,23 @@ use neoffse_core::{EditError, FieldId, Value};
 use neoffse_data::GameTables;
 
 use super::binding::Part;
-use super::names;
 use crate::document::{Document, Segment};
-use crate::shared::paths::{Collection, characters_target, element, with};
-use crate::shared::read::{find_row, format_error, missing_row, read_stored};
+use crate::shared::derived::{held_to_cap, status_base, status_id};
+use crate::shared::paths::{Path, with};
+use crate::shared::read::read_stored;
 
-/// The value of the computed `part` of character `id`.
+/// The value of the computed `part` of a character, whose element sits at
+/// `base`.
 ///
 /// `UnknownField` when the character lacks a key the figure reads, or when a
 /// table finds no row: a status id outside `character_status`, no `MAX_HP`
 /// cap, an experience with no next level row. `Format` when a key holds a
 /// value of another kind.
-pub(super) fn value(document: &mut Document, tables: &GameTables, id: u32, part: Part, field: &FieldId) -> Result<Value, EditError> {
-    let failed = |source| format_error(field, source);
-    let index = find_row(document, Collection::Character, id)
-        .map_err(failed)?
-        .ok_or_else(|| missing_row(names::CHARACTER, id))?;
-    let base = element(characters_target(), index);
+pub(super) fn value(document: &mut Document, tables: &GameTables, part: Part, field: &FieldId, base: Path) -> Result<Value, EditError> {
     let absent = || EditError::UnknownField { field: field.clone() };
     let figure = match part {
         Part::MaxHp => {
-            let status = read_stored(document, &with(base.clone(), &[Segment::Key("characterStatusId")]), field)?;
+            let status = status_id(document, &base, field)?;
             let parameter = with(base, &[Segment::Key("parameter"), Segment::Doc]);
             let gain = read_stored(document, &with(parameter, &[Segment::Key("addtionalMaxHp")]), field)?;
             max_hp(tables, status, gain)
@@ -48,9 +44,8 @@ pub(super) fn value(document: &mut Document, tables: &GameTables, id: u32, part:
 /// (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`). The lower
 /// bound only guards a hand-edited negative gain.
 fn max_hp(tables: &GameTables, status: Option<i64>, gain: Option<i64>) -> Option<i64> {
-    let base = tables.base_hp(u32::try_from(status?).ok()?)?;
-    let cap = tables.bound("MAX_HP")?.max(0);
-    Some(i64::from(base).saturating_add(gain?).clamp(0, cap))
+    let base = status_base(tables, status, GameTables::base_hp)?;
+    Some(held_to_cap(base, gain?, tables.bound("MAX_HP")?))
 }
 
 /// The highest level whose total experience is at most `exp`, found in the

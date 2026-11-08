@@ -12,7 +12,6 @@ use neoffse_core::{EditError, FieldId, FieldView, TableKind, Value};
 use neoffse_data::{GameTables, Language};
 
 use super::binding::{Binding, Part};
-use super::meta;
 use super::places::{Group, entries_of};
 use crate::document::{Document, Segment};
 use crate::shared::paths::{Path, element, with};
@@ -74,11 +73,10 @@ pub(super) fn spell_of(document: &mut Document, tables: &GameTables, base: &Path
         .ok_or_else(|| EditError::UnknownField { field: field.clone() })
 }
 
-/// The level of spell `chain` of character `id`, as a `Value`.
+/// The level of spell `chain` of the character at `base`, as a `Value`.
 /// `UnknownField` when the character owns no entry of that chain.
-pub(super) fn level(document: &mut Document, tables: &GameTables, id: u32, chain: u32, field: &FieldId) -> Result<Value, EditError> {
-    let base = character_part(document, id, field, |_, base| Ok(base))?;
-    let spell = spell_of(document, tables, &base, Group::Ability, chain, field)?;
+pub(super) fn level(document: &mut Document, tables: &GameTables, base: &Path, chain: u32, field: &FieldId) -> Result<Value, EditError> {
+    let spell = spell_of(document, tables, base, Group::Ability, chain, field)?;
     Ok(Value::Int(i64::from(spell.level)))
 }
 
@@ -102,13 +100,11 @@ pub(super) fn fields(document: &mut Document, tables: &GameTables, id: u32, lang
     Ok(spells
         .into_iter()
         .map(|spell| {
-            let mut meta = meta::field_meta(
-                &Binding::Character {
-                    id,
-                    part: Part::Spell(spell.chain),
-                },
-                tables,
-            );
+            let mut meta = Binding::Character {
+                id,
+                part: Part::Spell(spell.chain),
+            }
+            .meta(tables);
             meta.label = ability_label(tables, language, spell.first);
             FieldView::new(super::names::spell_field(id, spell.chain), meta, Value::Int(i64::from(spell.level)))
         })

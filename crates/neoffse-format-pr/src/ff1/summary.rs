@@ -1,9 +1,10 @@
 //! The summary of a slot: what the Home screen shows without a view.
 
-use neoffse_core::{FieldId, FormatError, SaveSummary};
+use neoffse_core::{FormatError, SaveSummary};
 
-use super::{Ff1Model, GAME, get_in, names};
-use crate::shared::summary::summary;
+use super::binding::Part;
+use super::{Ff1Model, GAME};
+use crate::shared::summary::summary_of;
 
 impl Ff1Model {
     /// What the Home screen shows of the slot: the slot, the time played, the
@@ -32,9 +33,6 @@ impl Ff1Model {
     /// for any other failure, such as a `userData` that is an empty string or
     /// a character name that is not text.
     pub fn summary(&mut self) -> Result<SaveSummary, FormatError> {
-        let tables = self.tables;
-        summary(&mut self.document, GAME, |document, id| {
-            get_in(document, tables, &FieldId::new(names::CHARACTER).with_id(id).with_name(names::NAME))
-        })
+        summary_of::<Part>(&mut self.document, self.tables, GAME)
     }
 }

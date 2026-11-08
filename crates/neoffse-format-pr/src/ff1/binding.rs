@@ -1,11 +1,16 @@
-//! From a [`FieldId`] to what it names: gil, a part of a character, or the
-//! count of an item row. [`locate`](super::locate) turns a binding into a
-//! path into the document.
+//! The character fields of an FF I slot. The shared
+//! [`Binding`](crate::shared::bind::Binding) turns a [`FieldId`] into gil, a
+//! part of a character or the count of an item row, and calls `Part` for the
+//! character vocabulary.
 
-use neoffse_core::{EditError, FieldId, Key};
+use neoffse_core::{EditError, FieldId, FieldMeta, Key, Value};
+use neoffse_data::GameTables;
 
-use super::names;
-use crate::shared::paths::List;
+use super::{derived, locate, meta, names};
+use crate::document::Document;
+use crate::shared::bind::CharacterPart;
+use crate::shared::paths::Path;
+use crate::shared::read::Located;
 use crate::shared::stat::Stat;
 
 /// A field of one character.
@@ -41,55 +46,7 @@ pub(super) enum Part {
     },
 }
 
-/// What a [`FieldId`] names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Binding {
-    Gil,
-    Character { id: u32, part: Part },
-    Count { list: List, key: u32 },
-}
-
-impl Binding {
-    /// Resolves `field`, or `UnknownField` when it matches no declared field.
-    pub(super) fn resolve(field: &FieldId) -> Result<Self, EditError> {
-        Self::declared(field.keys()).ok_or_else(|| EditError::UnknownField { field: field.clone() })
-    }
-
-    fn declared(keys: &[Key]) -> Option<Self> {
-        match keys {
-            [Key::Name(names::GIL)] => Some(Self::Gil),
-            [Key::Name(names::CHARACTER), Key::Id(id), rest @ ..] => Some(Self::Character {
-                id: *id,
-                part: Part::declared(rest)?,
-            }),
-            _ => List::of_count_field(keys).map(|(list, key)| Self::Count { list, key }),
-        }
-    }
-
-    /// True for the ability id of a spell slot, a value that sits inside a
-    /// JSON string.
-    pub(super) fn is_spell(&self) -> bool {
-        matches!(self, Self::Character { part: Part::Spell { .. }, .. })
-    }
-
-    /// True for a computed field, which has no document path.
-    pub(super) fn is_derived(&self) -> bool {
-        matches!(
-            self,
-            Self::Character {
-                part: Part::MaxHp | Part::NextLevel,
-                ..
-            }
-        )
-    }
-
-    /// True for the one text field, `name`.
-    pub(super) fn is_text(&self) -> bool {
-        matches!(self, Self::Character { part: Part::Name, .. })
-    }
-}
-
-impl Part {
+impl CharacterPart for Part {
     fn declared(keys: &[Key]) -> Option<Self> {
         let level_ok = |level: u32| (1..=names::SPELL_LEVELS).contains(&level);
         let slot_ok = |slot: u32| (1..=names::EQUIPMENT_SLOTS).contains(&slot);
@@ -119,6 +76,34 @@ impl Part {
             [Key::Name(names::SPELL), Key::Id(level), Key::Id(slot)] if level_ok(*level) && spell_slot_ok(*slot) => {
                 Some(Self::Spell { level: *level, slot: *slot })
             }
+            _ => None,
+        }
+    }
+
+    fn meta(self, tables: &GameTables) -> FieldMeta {
+        meta::part_meta(self, tables)
+    }
+
+    fn locate(self, document: &mut Document, base: Path) -> Result<Path, Located> {
+        locate::locate_part(document, base, self)
+    }
+
+    fn is_text(self) -> bool {
+        self == Self::Name
+    }
+
+    fn is_pathless(self) -> bool {
+        matches!(self, Self::MaxHp | Self::NextLevel)
+    }
+
+    fn is_locked(self) -> bool {
+        matches!(self, Self::SlotCount(_) | Self::Spell { .. } | Self::MaxHp | Self::NextLevel)
+    }
+
+    fn computed(self, document: &mut Document, tables: &GameTables, _id: u32, field: &FieldId, base: Path) -> Option<Result<Value, EditError>> {
+        match self {
+            Self::MaxHp | Self::NextLevel => Some(derived::value(document, tables, self, field, base)),
+            Self::Spell { .. } => Some(locate::spell_ability(document, self, field, base)),
             _ => None,
         }
     }

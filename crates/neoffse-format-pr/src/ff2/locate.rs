@@ -1,31 +1,13 @@
-//! The path that reaches the value of a binding. Row and dictionary lookups
-//! live in [`crate::shared::read`].
+//! The path to each FF II character part. Row and dictionary lookups live in
+//! [`crate::shared::read`].
 
-use neoffse_core::{EditError, FieldId};
-
-use super::binding::{Binding, Part};
+use super::binding::Part;
 use super::places;
 use crate::document::{Document, Segment};
-use crate::shared::paths::{Path, gil_path, with};
-use crate::shared::read::{Located, character_part, count_path, entry_value, slot_path};
+use crate::shared::paths::{Path, with};
+use crate::shared::read::{Located, entry_value, slot_path};
 
-/// The path to the value of `binding`. `MissingRow` for an absent row,
-/// `UnknownField` for a dictionary without the key, `Format` for a read that
-/// fails, `ReadOnly` for a computed field or a spell level, which have no
-/// path: a raw `Set` of a level cannot return an exact inverse of the five
-/// places it would write.
-pub(super) fn locate(document: &mut Document, binding: &Binding, field: &FieldId) -> Result<Path, EditError> {
-    if binding.is_derived() || binding.is_spell() {
-        return Err(EditError::ReadOnly { field: field.clone() });
-    }
-    match *binding {
-        Binding::Gil => Ok(gil_path()),
-        Binding::Count { list, key } => count_path(document, list, key, field),
-        Binding::Character { id, part } => character_part(document, id, field, |document, base| locate_part(document, base, part)),
-    }
-}
-
-fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, Located> {
+pub(super) fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, Located> {
     let parameter = [Segment::Key("parameter"), Segment::Doc];
     let key = |name| [Segment::Key(name)];
     Ok(match part {

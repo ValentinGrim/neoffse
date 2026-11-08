@@ -12,7 +12,9 @@
 //! the maximum HP and MP and the weapon skills are the stored gains and
 //! values of `docs/formats/pixel-remaster.md#character-growth-in-ff-ii`.
 
-use neoffse_core::{FieldId, Key};
+use neoffse_core::FieldId;
+
+use crate::shared::names::{computed_fields, equipment_fields, with_computed};
 
 pub use crate::shared::names::{
     AGILITY, CHARACTER, COUNT, EQUIPMENT, EQUIPMENT_SLOTS, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT,
@@ -110,11 +112,7 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
         MAGIC,
     ]);
     fields.extend((0..SKILLS).map(|key| character().with_name(SKILL).with_id(key)));
-    for slot in 1..=EQUIPMENT_SLOTS {
-        let slot_field = character().with_name(EQUIPMENT).with_id(slot);
-        fields.push(slot_field.clone());
-        fields.push(slot_field.with_name(COUNT));
-    }
+    fields.extend(equipment_fields(id));
     fields
 }
 
@@ -122,26 +120,12 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
 /// Neither has a document path.
 #[must_use]
 pub fn derived_fields(id: u32) -> Vec<FieldId> {
-    [MAX_HP, MAX_MP]
-        .iter()
-        .map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name))
-        .collect()
+    computed_fields(id, [MAX_HP, MAX_MP])
 }
 
 /// The 34 field ids of the Party entity of one character, in view order:
 /// [`character_fields`] with `max_hp` after `hp` and `max_mp` after `mp`.
 #[must_use]
 pub fn party_fields(id: u32) -> Vec<FieldId> {
-    let computed = |name| FieldId::new(CHARACTER).with_id(id).with_name(name);
-    let mut fields = Vec::with_capacity(34);
-    for field in character_fields(id) {
-        let derived = match field.keys().last() {
-            Some(Key::Name(HP)) => Some(computed(MAX_HP)),
-            Some(Key::Name(MP)) => Some(computed(MAX_MP)),
-            _ => None,
-        };
-        fields.push(field);
-        fields.extend(derived);
-    }
-    fields
+    with_computed(character_fields(id), id, &[(HP, MAX_HP), (MP, MAX_MP)])
 }

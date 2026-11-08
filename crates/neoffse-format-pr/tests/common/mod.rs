@@ -36,6 +36,7 @@ pub(crate) mod json_diff;
 mod json_scan;
 pub(crate) mod json_tree;
 pub(crate) mod rolls;
+mod slot_rules;
 
 use neoffse_format_pr::document::Segment;
 

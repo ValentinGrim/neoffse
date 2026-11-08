@@ -1,30 +1,12 @@
-//! The lock that tells which rows the game interface refuses to remove, and
-//! the `Insert` and `Remove` entry points over the shared item-list code
-//! (`crate::shared::items`).
+//! The lock that tells which rows the game interface refuses to remove.
 
-use neoffse_core::{CapPolicy, Edit, EditError, RowId, Value};
+use neoffse_core::{EditError, RowId};
 
 use super::{Ff1Model, names};
 use crate::shared::items::Lists;
 use crate::shared::rules;
 
 impl Ff1Model {
-    /// The item-list view of the model: the document and the tables.
-    fn lists(&mut self) -> Lists<'_> {
-        Lists {
-            document: &mut self.document,
-            tables: self.tables,
-        }
-    }
-
-    pub(super) fn insert(&mut self, row: &RowId, position: Option<usize>, values: &[(&'static str, Value)], policy: CapPolicy) -> Result<Edit, EditError> {
-        self.lists().insert(row, position, values, policy)
-    }
-
-    pub(super) fn remove(&mut self, row: &RowId) -> Result<Edit, EditError> {
-        self.lists().remove(row)
-    }
-
     /// True when the game interface refuses to remove `row` whatever the
     /// values are: a `character` row (the collection is not removable), a
     /// placeholder row of `inventory`, a row whose id a character wears, or a
@@ -43,6 +25,6 @@ impl Ff1Model {
     /// document does not hold (a character row included), `Format` when a read
     /// fails.
     pub fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
-        rules::row_locked(&mut self.lists(), row, names::EQUIPMENT_SLOTS)
+        rules::row_locked(&mut Lists::new(&mut self.document, self.tables), row, names::EQUIPMENT_SLOTS)
     }
 }

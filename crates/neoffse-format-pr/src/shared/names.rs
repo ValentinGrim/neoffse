@@ -1,5 +1,8 @@
 //! The section names every Pixel Remaster slot uses, the ones that build the
-//! first key of a `FieldId`.
+//! first key of a `FieldId`, and the builders of the field lists both games
+//! share.
+
+use neoffse_core::{FieldId, Key};
 
 /// Section of the gil counter, `userData.owendGil`.
 pub const GIL: &str = "gil";
@@ -39,3 +42,36 @@ pub const EQUIPMENT: &str = "equipment";
 /// `equipment` takes the slot 1 to this value
 /// (`docs/formats/pixel-remaster.md#equipment-slots`: keys 1 to 5).
 pub const EQUIPMENT_SLOTS: u32 = 5;
+
+/// The equipment fields of one character: for each slot 1 to
+/// [`EQUIPMENT_SLOTS`] the pair `equipment.<S>` then `equipment.<S>.count`.
+pub(crate) fn equipment_fields(id: u32) -> Vec<FieldId> {
+    let mut fields = Vec::with_capacity(2 * EQUIPMENT_SLOTS as usize);
+    for slot in 1..=EQUIPMENT_SLOTS {
+        let slot_field = FieldId::new(CHARACTER).with_id(id).with_name(EQUIPMENT).with_id(slot);
+        fields.push(slot_field.clone());
+        fields.push(slot_field.with_name(COUNT));
+    }
+    fields
+}
+
+/// The computed field ids of one character, one per name, in the order given.
+pub(crate) fn computed_fields(id: u32, names: [&'static str; 2]) -> Vec<FieldId> {
+    names.iter().map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name)).collect()
+}
+
+/// `stored` with each computed field placed right after its stored field:
+/// `computed` lists `(after, computed)` name pairs, and a stored field whose
+/// last key is `after` is followed by `character.<id>.<computed>`.
+pub(crate) fn with_computed(stored: Vec<FieldId>, id: u32, computed: &[(&'static str, &'static str)]) -> Vec<FieldId> {
+    let mut fields = Vec::with_capacity(stored.len() + computed.len());
+    for field in stored {
+        let after = match field.keys().last() {
+            Some(Key::Name(name)) => computed.iter().find(|(after, _)| after == name).map(|(_, name)| *name),
+            _ => None,
+        };
+        fields.push(field);
+        fields.extend(after.map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name)));
+    }
+    fields
+}

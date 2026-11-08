@@ -1,81 +1,24 @@
-//! The game's rules for an FF I slot, checked through the public model.
+//! The game's rules for an FF I slot, checked through the public model: the
+//! shared core of `slot_rules` with FF I's cap list.
 //!
 //! A message carries the field path and never a value or an error text: the
 //! callers also run it on private saves.
 
-use std::collections::HashMap;
-
 use neoffse_core::{FieldId, Value};
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
-fn int(model: &mut Ff1Model, field: &FieldId) -> Result<i64, String> {
-    match model.get(field) {
-        Ok(Value::Int(value)) => Ok(value),
-        Ok(_) => Err(format!("{field}: not an integer")),
-        Err(_) => Err(format!("{field}: does not read")),
-    }
-}
+use super::slot_rules::{self, Rules};
 
-fn slot_field(id: u32, slot: u32) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(slot)
-}
+const RULES: Rules<Ff1Model> = Rules {
+    exempt_placeholder: false,
+    worn: |_, _, _| None,
+    caps: cap_violations,
+};
 
-/// Every breach of the rules, each message starting with its kind:
-/// `read:` for a field that fails to read, `inventory:` for an equipped id
-/// with no row or a count below its wearers
-/// (`docs/formats/pixel-remaster.md#inventory`), `copy:` for a slot `count`
-/// that differs from the inventory count
-/// (`docs/formats/pixel-remaster.md#equipment-slots`, checked when
-/// `copy_counts`), `cap:` for a capped field above its cap.
+/// Every breach of the rules; see [`slot_rules::violations`]. FF I exempts no
+/// placeholder row and has no hand rule.
 pub(crate) fn violations(model: &mut Ff1Model, copy_counts: bool) -> Vec<String> {
-    let mut found = Vec::new();
-    let mut note = |kind: &str, text: String| found.push(format!("{kind}: {text}"));
-    let inventory_id = FieldId::new(names::INVENTORY);
-    let Ok(keys) = model.rows(&inventory_id) else {
-        return vec![format!("read: {inventory_id}: rows do not read")];
-    };
-    let mut counts = HashMap::new();
-    for key in keys {
-        let field = inventory_id.clone().with_id(key).with_name(names::COUNT);
-        match int(model, &field) {
-            Ok(count) => {
-                counts.insert(i64::from(key), count);
-            }
-            Err(text) => note("read", text),
-        }
-    }
-    let Ok(characters) = model.rows(&FieldId::new(names::CHARACTER)) else {
-        note("read", names::CHARACTER.to_owned());
-        return found;
-    };
-    let mut wearers: HashMap<i64, i64> = HashMap::new();
-    let mut worn = Vec::new();
-    for id in characters {
-        for slot in 1..=names::EQUIPMENT_SLOTS {
-            let field = slot_field(id, slot);
-            match (int(model, &field), int(model, &field.clone().with_name(names::COUNT))) {
-                (Ok(content), Ok(count)) => {
-                    *wearers.entry(content).or_default() += 1;
-                    worn.push((field, content, count));
-                }
-                (first, second) => {
-                    for text in [first.err(), second.err()].into_iter().flatten() {
-                        note("read", text);
-                    }
-                }
-            }
-        }
-    }
-    for (field, content, count) in worn {
-        match counts.get(&content) {
-            None => note("inventory", format!("{field} has no inventory row")),
-            Some(owned) if *owned < wearers[&content] => note("inventory", format!("{field} is worn more often than owned")),
-            Some(owned) if copy_counts && *owned != count => note("copy", format!("{field}.count differs from the inventory")),
-            Some(_) => {}
-        }
-    }
-    found.extend(cap_violations(model));
-    found
+    slot_rules::violations(model, copy_counts, &RULES)
 }
 
 /// Capped fields above their cap, as `cap:` messages.
@@ -105,6 +48,5 @@ pub(crate) fn cap_violations(model: &mut Ff1Model) -> Vec<String> {
 
 /// Asserts that `model` obeys the game's rules; see [`violations`].
 pub(crate) fn assert_game_rules(model: &mut Ff1Model, copy_counts: bool) {
-    let found = violations(model, copy_counts);
-    assert!(found.is_empty(), "{}", found.join("; "));
+    slot_rules::assert_rules(model, copy_counts, &RULES);
 }

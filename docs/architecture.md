@@ -175,7 +175,8 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   The codec turns a file into JSON text and back, and keeps the BOM, the trailing bytes and the zero padding so that `encode` writes the file as the game did.
   The lossless document reads and edits that text by path and leaves every value it does not touch as written.
   The `ff1` and `ff2` modules map an FF I and an FF II slot onto the domain of `neoffse-core`, and each knows only its own game.
-  Both fill the generic open pipeline and document of the `shared` module with their own slot model.
+  The `shared` module holds the generic open pipeline and document, and the character-field machinery: field bindings, reads, raw and game edits, the slot summary and the party view.
+  A game supplies its `Part` enum of character fields, its tables and its rules, and plugs into that machinery with its slot model.
   `Ff1Format` and `Ff2Format` refuse a file that is no slot, or a slot of another game ([Telling the games apart](formats/pixel-remaster.md#telling-the-games-apart)).
   `Ff1Document` and `Ff2Document` read and write by field path, never by position, and report the capabilities `Party`, `Inventory` and `Magic`.
   In FF I the spell slots of the Magic section are read only: writing spells waits for research on the slot rules ([Roadmap](roadmap.md#m4-app-ff-i-end-to-end)).

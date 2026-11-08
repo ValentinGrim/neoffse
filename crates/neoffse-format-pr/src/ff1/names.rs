@@ -15,7 +15,9 @@
 //! [`MAGIC_EVASION_GAIN`] and [`CHARGES_MAX_GAIN`], one growth step per level
 //! gained (`docs/formats/pixel-remaster.md#level-up-in-ff-i`).
 
-use neoffse_core::{FieldId, Key};
+use neoffse_core::FieldId;
+
+use crate::shared::names::{computed_fields, equipment_fields, with_computed};
 
 pub use crate::shared::names::{
     AGILITY, CHARACTER, COUNT, EQUIPMENT, EQUIPMENT_SLOTS, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT,
@@ -81,11 +83,7 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
     for name in [CHARGES, CHARGES_MAX_GAIN] {
         fields.extend((1..=SPELL_LEVELS).map(|level| character().with_name(name).with_id(level)));
     }
-    for slot in 1..=EQUIPMENT_SLOTS {
-        let slot_field = character().with_name(EQUIPMENT).with_id(slot);
-        fields.push(slot_field.clone());
-        fields.push(slot_field.with_name(COUNT));
-    }
+    fields.extend(equipment_fields(id));
     fields
 }
 
@@ -93,28 +91,14 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
 /// Neither has a document path.
 #[must_use]
 pub fn derived_fields(id: u32) -> Vec<FieldId> {
-    [MAX_HP, NEXT_LEVEL]
-        .iter()
-        .map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name))
-        .collect()
+    computed_fields(id, [MAX_HP, NEXT_LEVEL])
 }
 
 /// The 43 field ids of the Party entity of one character, in view order:
 /// [`character_fields`] with `next_level` after `exp` and `max_hp` after `hp`.
 #[must_use]
 pub fn party_fields(id: u32) -> Vec<FieldId> {
-    let [max_hp, next_level] = [MAX_HP, NEXT_LEVEL].map(|name| FieldId::new(CHARACTER).with_id(id).with_name(name));
-    let mut fields = Vec::with_capacity(43);
-    for field in character_fields(id) {
-        let derived = match field.keys().last() {
-            Some(Key::Name(EXP)) => Some(next_level.clone()),
-            Some(Key::Name(HP)) => Some(max_hp.clone()),
-            _ => None,
-        };
-        fields.push(field);
-        fields.extend(derived);
-    }
-    fields
+    with_computed(character_fields(id), id, &[(EXP, NEXT_LEVEL), (HP, MAX_HP)])
 }
 
 /// The 24 spell slot ids of one character: spell level 1 slot 1 first, then

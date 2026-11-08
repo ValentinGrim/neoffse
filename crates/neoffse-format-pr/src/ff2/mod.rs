@@ -75,10 +75,9 @@ use neoffse_data::GameTables;
 use crate::document::{Document, DocumentError, Scalar, Segment};
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
-use crate::shared::read::{format_error, read_int, read_text, row_keys};
-use crate::shared::{SlotDocument, SlotFormat};
-use binding::{Binding, Part};
-use locate::locate;
+use crate::shared::read::format_error;
+use crate::shared::{SlotDocument, SlotFormat, access};
+use binding::Part;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff2Pr;
@@ -157,8 +156,7 @@ impl Ff2Model {
         if keywords::owns(collection) {
             return keywords::rows(&mut self.document).map_err(|source| format_error(collection, source));
         }
-        let kind = Collection::of(collection).ok_or_else(|| EditError::NotACollection { field: collection.clone() })?;
-        row_keys(&mut self.document, kind).map_err(|source| format_error(collection, source))
+        access::rows(&mut self.document, collection)
     }
 
     /// The value of `field`. `max_hp` and `max_mp` are computed from the
@@ -177,15 +175,14 @@ impl Ff2Model {
     /// shape: a float or an oversized integer where an integer belongs, a
     /// non-string name.
     pub fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
-        get_in(&mut self.document, self.tables, field)
+        access::get_in::<Part>(&mut self.document, self.tables, field)
     }
 
     /// The metadata of `field`, or `None` for an undeclared path. It reads
     /// no document: a path that names an absent row still has a meta.
     #[must_use]
     pub fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
-        let binding = Binding::resolve(field).ok()?;
-        Some(meta::field_meta(&binding, self.tables))
+        access::field_meta::<Part>(self.tables, field)
     }
 
     /// The metadata of `character`, `inventory`, `key_items` or `keywords`,
@@ -197,25 +194,4 @@ impl Ff2Model {
         }
         Some(collection_meta(Collection::of(collection)?, self.tables))
     }
-}
-
-/// The body of [`Ff2Model::get`], over the parts of the model so that the
-/// shared summary can call it with the document it is walking.
-pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
-    let binding = Binding::resolve(field)?;
-    if let Binding::Character { id, part } = binding {
-        if let Part::Spell(chain) = part {
-            return spell::level(document, tables, id, chain, field);
-        }
-        if binding.is_derived() {
-            return derived::value(document, tables, id, part, field);
-        }
-    }
-    let path = locate(document, &binding, field)?;
-    let read = if binding.is_text() {
-        read_text(document, &path).map(Value::Text)
-    } else {
-        read_int(document, &path).map(Value::Int)
-    };
-    read.map_err(|source| format_error(field, source))
 }
