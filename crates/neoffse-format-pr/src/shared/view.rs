@@ -1,5 +1,6 @@
 //! The parts of a view that every game builds the same way: the label of a
-//! character and the inventory section (gil, item rows, key item rows).
+//! character, the party section, the head of a magic entity and the inventory
+//! section (gil, item rows, key item rows).
 
 use neoffse_core::{Capability, EditError, Entity, FieldId, FieldView, FormatError, RowId, Section, Value};
 use neoffse_data::{Entry, Language};
@@ -89,4 +90,33 @@ pub(crate) fn inventory_section<M: SlotModel>(model: &mut M, language: Language)
         section.collections.extend(model.collection_meta(&FieldId::new(list)));
     }
     Ok(section)
+}
+
+/// The Party section: one entity per character in document order, holding the
+/// views of `party_fields(id)` and labelled by [`character_label`], then the
+/// collection meta of `character`.
+pub(crate) fn party_section<M: SlotModel>(model: &mut M, party_fields: fn(u32) -> Vec<FieldId>) -> Result<Section, FormatError> {
+    let character = FieldId::new(names::CHARACTER);
+    let mut entities = Vec::new();
+    for id in rows_of(model, &character)? {
+        let entity_id = character.clone().with_id(id);
+        let mut fields = Vec::new();
+        for field in party_fields(id) {
+            fields.extend(field_view(model, field)?);
+        }
+        let label = character_label(id, &fields);
+        entities.push(Entity::new(entity_id, label, fields));
+    }
+    let mut section = Section::new(Capability::Party, entities);
+    section.collections = model.collection_meta(&character).into_iter().collect();
+    Ok(section)
+}
+
+/// The head of a Magic entity: the id of character `id` and its label, which
+/// follows the Party rule ([`character_label`]) and reads only the name field.
+pub(crate) fn magic_entity<M: SlotModel>(model: &mut M, id: u32) -> Result<(FieldId, String), FormatError> {
+    let entity_id = FieldId::new(names::CHARACTER).with_id(id);
+    let name = field_view(model, entity_id.clone().with_name(names::NAME))?;
+    let label = character_label(id, name.as_slice());
+    Ok((entity_id, label))
 }

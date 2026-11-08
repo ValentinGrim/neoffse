@@ -2,8 +2,12 @@
 
 use std::time::Duration;
 
-use neoffse_core::{EditError, FormatError, Game, SaveSummary, Value};
+use neoffse_core::{EditError, FieldId, FormatError, Game, SaveSummary, Value};
+use neoffse_data::GameTables;
 
+use super::access::get_in;
+use super::bind::CharacterPart;
+use super::names;
 use super::read::decode_error;
 use crate::document::{Document, DocumentError, Scalar, Segment};
 use crate::slots::slot_for_id;
@@ -21,6 +25,19 @@ const CORPS: [Segment<'static>; 5] = [
 /// A key the save lacks or holds in another shape gives an empty field.
 fn is_empty_field(error: &DocumentError) -> bool {
     matches!(error, DocumentError::MissingKey { .. } | DocumentError::WrongKind { .. })
+}
+
+/// What the Home screen shows of the slot of `game`, the name of a party
+/// member read through [`get_in`] with the character parts of `P`. See
+/// [`summary`] for the fields and the order of the reads.
+///
+/// # Errors
+///
+/// As [`summary`].
+pub(crate) fn summary_of<P: CharacterPart>(document: &mut Document, tables: &GameTables, game: Game) -> Result<SaveSummary, FormatError> {
+    summary(document, game, |document, id| {
+        get_in::<P>(document, tables, &FieldId::new(names::CHARACTER).with_id(id).with_name(names::NAME))
+    })
 }
 
 /// What the Home screen shows of the slot of `game`: the slot, the time
@@ -48,7 +65,7 @@ fn is_empty_field(error: &DocumentError) -> bool {
 /// `FormatError::Decode` with the `DocumentError` or `EditError` source for
 /// any other failure, such as a `userData` that is an empty string or a
 /// character name that is not text.
-pub(crate) fn summary<N>(document: &mut Document, game: Game, mut name_of: N) -> Result<SaveSummary, FormatError>
+fn summary<N>(document: &mut Document, game: Game, mut name_of: N) -> Result<SaveSummary, FormatError>
 where
     N: FnMut(&mut Document, u32) -> Result<Value, EditError>,
 {
