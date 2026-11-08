@@ -9,13 +9,17 @@ NeoFFSE might read a console save once you have extracted and decrypted it with 
 ## Status
 
 Pre-alpha.
-The app opens, edits and saves Final Fantasy I Pixel Remaster slots.  
+The app opens, edits and saves Final Fantasy I and Final Fantasy II Pixel Remaster slots.  
 Home lists the saves that Steam discovery finds for the six Pixel Remaster games, and "Open a file..." takes any file.
-Only FF I has a format so far, and the other five games read "Not supported yet".  
+FF I and FF II have a format so far, and the other four games read "Not supported yet".  
 The editor has three pages.
 Party shows one card per character and opens a page with the name, job, level, experience, HP, stats, spell charges and equipment.
 Items lists gil, items and key items.
 Magic lists the spell slots and stays read only.  
+FF II has no character level or experience.
+Its Party page edits the name, HP, MP, the gains of HP, MP and the six stats, equipment and the ten skill values.
+Its Items page also lists the keywords, which you add by default and remove in expert mode.
+Its Magic page edits the Level of each spell, and expert mode adds a Raw spells page for the places a spell is stored in.  
 A Level or Experience edit sets the other field too.
 A higher level also adds the stats the game gives for each level gained, with random rolls like the game's.  
 Undo, redo and a review of the net changes come before every save.
@@ -24,15 +28,16 @@ The Restore page lists the backups of a game and restores one.
 View > Expert mode switches to raw edits behind a warning.  
 A few in-game checks of the level and experience rules are still open ([Open questions](docs/formats/pixel-remaster.md#open-questions)).  
 `neoffse` re-exports the crates below and adds a `Registry` that scans and opens saves, a `Session` with the edit history and the save pipeline, the list of changes for a review, and the backup listing and restore.
-`Ff1Format` in `neoffse-format-pr` opens a slot file and refuses a file of another game or a file that is no slot.
-Its document lists the party, the items, the key items and the gil, edits them, and encodes the file back.
+`Ff1Format` and `Ff2Format` in `neoffse-format-pr` open a slot file and refuse a file of another game or a file that is no slot.
+Their documents list the party, the items, the key items and the gil, edit them, and encode the file back.
 The tests show that an edit followed by encode and decode changes the intended values and nothing else.  
 A document offers two ways to edit.
 `apply_game` edits the way the game does: equipping an item also updates the inventory and the slot count, and it refuses a value above the game's cap.
 `apply` with `CapPolicy::StorageOnly` writes any value the save can hold, for an expert mode.  
-`neoffse-data` embeds the FF I tables: items, equipment, abilities, jobs, commands, monsters, the game's caps and the level-up growth tables, with English and French names.  
+`neoffse-data` embeds the ID tables of the six games: items, equipment, abilities, jobs, commands, the game's caps and the keywords of FF II, with English and French names.  
+FF I adds the monsters and the level-up growth tables, and FF II adds the base stats, the skill curve and the spell chains.  
 `neoffse-format-pr` decodes and encodes the Pixel Remaster save files of the six games and edits their JSON text by path, without rewriting the values it does not touch.
-Only FF I has a domain mapping so far.  
+Only FF I and FF II have a domain mapping so far.  
 `neoffse-io` finds the Steam save folders of the games it is given, replaces a file only after a check passes on the written copy, keeps timestamped backups with a restore, and scans for a running game.  
 The game scan is best effort: a process the system hides stays invisible, so an empty result proves nothing.  
 The first target is Final Fantasy I to VI Pixel Remaster on Steam PC (Windows and Linux, Proton included).  
@@ -54,9 +59,9 @@ The reason behind each one sits in [Principles](docs/architecture.md#principles)
 |:-------------------:|:--------------------------------------------------------------------------------------------:|
 | `neoffse`           | public facade, the crate other projects depend on: registry, session, save pipeline, restore |
 | `neoffse-core`      | domain model and format traits: games, field paths, edits, field metadata                    |
-| `neoffse-data`      | FF I ID tables, caps and growth tables, embedded from `data/pr/ff1/*.toml`                   |
+| `neoffse-data`      | ID tables, caps and growth tables of the six games, embedded from `data/pr/<game>/*.toml`    |
 | `neoffse-io`        | save discovery, backups, restore, verified atomic writes, game check                         |
-| `neoffse-format-pr` | FF I to VI Pixel Remaster: codec, lossless document, game list; FF I format                  |
+| `neoffse-format-pr` | FF I to VI Pixel Remaster: codec, lossless document, game list; FF I and FF II formats       |
 | `neoffse-app`       | Slint desktop app                                                                            |
 | `neoffse-testkit`   | locates fixtures and private saves for tests                                                 |
 
@@ -94,7 +99,7 @@ sudo apt-get install libfontconfig-dev libxkbcommon-dev libxcb-shape0-dev libxcb
 
 ## ID tables
 
-The tables in `data/pr/ff1/` come from the game's own master data and message files.  
+The tables in `data/pr/<game>/`, one folder per game, come from the game's own master data and message files.  
 The repository commits the generated files, so a build and a test run never need the game.  
 To regenerate them, install the game and run `tools/pr-tables/` by hand, in a Python 3.11 or later environment with `requirements.txt` installed:
 
@@ -103,7 +108,8 @@ cd tools/pr-tables
 python3 -m prtables --game ff1 --install "<library>/steamapps/common/FINAL FANTASY PR"
 ```
 
-The tool only reads your install, and it writes the seven TOML files under `data/pr/ff1/` when their content changes.  
+The tool only reads your install, and `--game` takes `ff1` to `ff6`.  
+It writes up to eight TOML files per game under `data/pr/<game>/` when their content changes: seven for FF I, six for FF II and five for FF III to VI.  
 It refuses an output folder that lies inside a source folder, and a source folder that lies inside the output folder.  
 The tables hold facts the editor needs: IDs, names, kinds and the game's caps.  
 They hold no dialogue, no graphic, no audio and no extracted file.
