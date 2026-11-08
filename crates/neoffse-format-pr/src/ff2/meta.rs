@@ -7,9 +7,9 @@
 use neoffse_core::{FieldMeta, Shape, TableKind};
 use neoffse_data::GameTables;
 
-use super::binding::{Binding, Part};
+use super::binding::Part;
 use super::places;
-use crate::shared::meta::{STORAGE_MAX, count_meta, derived_meta, gil_meta, int};
+use crate::shared::meta::{STORAGE_MAX, derived_meta, int};
 
 /// The slot labels and the tables each slot takes. Slots 1 and 2 take a
 /// weapon or a shield, slots 3 to 5 an armor, a helmet and gloves
@@ -74,57 +74,53 @@ fn skill_cap(tables: &GameTables, key: u32) -> Option<i64> {
     Some(100 * (i64::from(level(name)?) - 1))
 }
 
-/// The meta of the field that `binding` names.
-pub(super) fn field_meta(binding: &Binding, tables: &GameTables) -> FieldMeta {
+/// The meta of the character part `part`.
+pub(super) fn part_meta(part: Part, tables: &GameTables) -> FieldMeta {
     let capped = |key| Some((tables, key));
-    match *binding {
-        Binding::Gil => gil_meta(tables),
-        Binding::Count { list, .. } => count_meta(list, tables),
-        Binding::Character { part, .. } => match part {
-            Part::Name => FieldMeta::new("Name", Shape::Text),
-            // `jobId` names the person here, and no edit moves it
-            // (`docs/formats/pixel-remaster.md#people-and-party-in-ff-ii`).
-            Part::Job => {
-                let mut meta = int("Person", 0, None);
-                meta.read_only = true;
-                meta.tables = vec![TableKind::Job];
-                meta
-            }
-            Part::Hp => int("HP", 0, capped("MAX_HP")),
-            Part::Mp => int("MP", 0, capped("MAX_MP")),
-            Part::MaxHpGain => int("Max HP gain", 0, None),
-            Part::MaxMpGain => int("Max MP gain", 0, None),
-            Part::MaxHp => derived_meta("Max HP", capped("MAX_HP")),
-            Part::MaxMp => derived_meta("Max MP", capped("MAX_MP")),
-            // The cap of a stat gain is per character: the base is part of it.
-            Part::Stat(stat) => int(format!("{} gain", stat.label()), 0, None),
-            Part::Skill(key) => {
-                // The binding admits the keys 0 to 9 only, so "Skill" never shows.
-                let label = usize::try_from(key).ok().and_then(|key| SKILLS.get(key)).copied().unwrap_or("Skill");
-                let mut meta = int(label, 0, None);
-                meta.cap = skill_cap(tables, key);
-                meta
-            }
-            Part::Spell(_) => {
-                // The top level is the length of a chain, `MAX_MAGICAL_LEVEL`
-                // (`docs/formats/pixel-remaster.md#bounds-in-ff-ii`). A game
-                // without the key falls back to the storage bound, as `int` does.
-                let top = tables.bound("MAX_MAGICAL_LEVEL").unwrap_or(STORAGE_MAX);
-                let mut meta = FieldMeta::new("Spell level", Shape::Int { min: 1, max: top });
-                // One level change rewrites several stored places, so every mode
-                // edits it through the game interface
-                // (`docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`).
-                meta.game_edit = true;
-                meta
-            }
-            Part::Slot(number) => {
-                let (label, kinds) = slot(number);
-                let mut meta = int(label, 0, None);
-                meta.tables = kinds.to_vec();
-                meta
-            }
-            Part::SlotCount(number) => int(format!("Count in slot {number}"), 0, None),
-            Part::Place(place) => places::meta(place, tables),
-        },
+    match part {
+        Part::Name => FieldMeta::new("Name", Shape::Text),
+        // `jobId` names the person here, and no edit moves it
+        // (`docs/formats/pixel-remaster.md#people-and-party-in-ff-ii`).
+        Part::Job => {
+            let mut meta = int("Person", 0, None);
+            meta.read_only = true;
+            meta.tables = vec![TableKind::Job];
+            meta
+        }
+        Part::Hp => int("HP", 0, capped("MAX_HP")),
+        Part::Mp => int("MP", 0, capped("MAX_MP")),
+        Part::MaxHpGain => int("Max HP gain", 0, None),
+        Part::MaxMpGain => int("Max MP gain", 0, None),
+        Part::MaxHp => derived_meta("Max HP", capped("MAX_HP")),
+        Part::MaxMp => derived_meta("Max MP", capped("MAX_MP")),
+        // The cap of a stat gain is per character: the base is part of it.
+        Part::Stat(stat) => int(format!("{} gain", stat.label()), 0, None),
+        Part::Skill(key) => {
+            // The binding admits the keys 0 to 9 only, so "Skill" never shows.
+            let label = usize::try_from(key).ok().and_then(|key| SKILLS.get(key)).copied().unwrap_or("Skill");
+            let mut meta = int(label, 0, None);
+            meta.cap = skill_cap(tables, key);
+            meta
+        }
+        Part::Spell(_) => {
+            // The top level is the length of a chain, `MAX_MAGICAL_LEVEL`
+            // (`docs/formats/pixel-remaster.md#bounds-in-ff-ii`). A game
+            // without the key falls back to the storage bound, as `int` does.
+            let top = tables.bound("MAX_MAGICAL_LEVEL").unwrap_or(STORAGE_MAX);
+            let mut meta = FieldMeta::new("Spell level", Shape::Int { min: 1, max: top });
+            // One level change rewrites several stored places, so every mode
+            // edits it through the game interface
+            // (`docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`).
+            meta.game_edit = true;
+            meta
+        }
+        Part::Slot(number) => {
+            let (label, kinds) = slot(number);
+            let mut meta = int(label, 0, None);
+            meta.tables = kinds.to_vec();
+            meta
+        }
+        Part::SlotCount(number) => int(format!("Count in slot {number}"), 0, None),
+        Part::Place(place) => places::meta(place, tables),
     }
 }

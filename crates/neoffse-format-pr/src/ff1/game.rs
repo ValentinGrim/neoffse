@@ -13,7 +13,8 @@
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, Value};
 
 use super::binding::{Binding, Part};
-use super::{Ff1Model, Rolls, ThreadRolls, meta, names};
+use super::{Ff1Model, Rolls, ThreadRolls, names};
+use crate::shared::bind::CharacterPart;
 use crate::shared::paths::List;
 use crate::shared::plan::{Plan, run_plan};
 use crate::shared::rules::{check_floor, check_insert_rules, check_remove, equip_plan, is_placeholder, wearers_of};
@@ -100,12 +101,9 @@ impl Ff1Model {
     /// `UnknownField` for a path that names no declared field.
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
-            Binding::Character {
-                part: Part::SlotCount(_) | Part::Spell { .. } | Part::MaxHp | Part::NextLevel,
-                ..
-            } => true,
+            Binding::Character { part, .. } => part.is_locked(),
             Binding::Count { list, key } => list == List::KeyItems || is_placeholder(self.tables, list, key),
-            _ => false,
+            Binding::Gil => false,
         })
     }
 
@@ -130,7 +128,7 @@ impl Ff1Model {
             return Err(EditError::ReadOnly { field: field.clone() });
         }
         let binding = Binding::resolve(field)?;
-        let field_meta = meta::field_meta(&binding, self.tables);
+        let field_meta = binding.meta(self.tables);
         field_meta.check(field, value, CapPolicy::Enforce)?;
         let Value::Int(number) = *value else {
             return Ok(vec![edit.clone()].into());

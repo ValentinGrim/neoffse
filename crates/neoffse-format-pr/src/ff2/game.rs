@@ -18,7 +18,8 @@ use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, RowId, Table
 use neoffse_data::BaseStats;
 
 use super::binding::{Binding, Part};
-use super::{Ff2Model, keywords, meta, names};
+use super::{Ff2Model, keywords, names};
+use crate::shared::bind::CharacterPart;
 use crate::shared::derived::status_id;
 use crate::shared::paths::List;
 use crate::shared::plan::{Plan, run_plan};
@@ -104,12 +105,9 @@ impl Ff2Model {
     /// `UnknownField` for a path that names no declared field.
     pub fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
         Ok(match Binding::resolve(field)? {
-            Binding::Character {
-                part: Part::SlotCount(_) | Part::MaxHp | Part::MaxMp | Part::Job | Part::Place(_),
-                ..
-            } => true,
+            Binding::Character { part, .. } => part.is_locked(),
             Binding::Count { list, key } => list == List::KeyItems || is_placeholder(self.tables, list, key),
-            _ => false,
+            Binding::Gil => false,
         })
     }
 
@@ -165,7 +163,7 @@ impl Ff2Model {
             return Err(EditError::ReadOnly { field: field.clone() });
         }
         let binding = Binding::resolve(field)?;
-        let field_meta = meta::field_meta(&binding, self.tables);
+        let field_meta = binding.meta(self.tables);
         field_meta.check(field, value, CapPolicy::Enforce)?;
         let Value::Int(number) = *value else {
             return Ok(vec![edit.clone()].into());

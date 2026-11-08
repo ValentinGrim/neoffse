@@ -13,6 +13,7 @@
 //! checks the shape. The summary of a slot and the inventory section of its
 //! view are the same for every game.
 
+pub(crate) mod bind;
 pub(crate) mod derived;
 mod document;
 mod format;

@@ -85,12 +85,12 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
+use crate::shared::bind::CharacterPart;
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
 use crate::shared::{SlotDocument, SlotFormat};
 use binding::Binding;
-use locate::{locate, read_ability};
 pub use rolls::{Rolls, ThreadRolls};
 
 /// The game of this module.
@@ -193,7 +193,7 @@ impl Ff1Model {
     #[must_use]
     pub fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
         let binding = Binding::resolve(field).ok()?;
-        Some(meta::field_meta(&binding, self.tables))
+        Some(binding.meta(self.tables))
     }
 
     /// The metadata of `character`, `inventory` or `key_items`, `None` for
@@ -209,15 +209,13 @@ impl Ff1Model {
 pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
     let binding = Binding::resolve(field)?;
     if let Binding::Character { id, part } = binding
-        && binding.is_derived()
+        && let Some(read) = part.computed(document, tables, id, field)
     {
-        return derived::value(document, tables, id, part, field);
+        return read;
     }
-    let path = locate(document, &binding, field)?;
+    let path = binding.locate(document, field)?;
     let read = if binding.is_text() {
         read_text(document, &path).map(Value::Text)
-    } else if binding.is_spell() {
-        read_ability(document, &path).map(|id| Value::Int(i64::from(id)))
     } else {
         read_int(document, &path).map(Value::Int)
     };

@@ -9,8 +9,6 @@ use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
 
 use super::Ff1Model;
 use super::binding::Binding;
-use super::locate::locate;
-use super::meta;
 use crate::shared::write::{Target, set_value};
 
 impl Ff1Model {
@@ -56,13 +54,13 @@ impl Ff1Model {
 
     fn set(&mut self, field: &FieldId, value: &Value, policy: CapPolicy) -> Result<Edit, EditError> {
         let binding = Binding::resolve(field)?;
-        let meta = meta::field_meta(&binding, self.tables);
+        let meta = binding.meta(self.tables);
         // A read-only field refuses before any document read, so a slot of
         // another shape still answers `ReadOnly`.
         if meta.read_only {
             return Err(EditError::ReadOnly { field: field.clone() });
         }
-        let path = locate(&mut self.document, &binding, field)?;
+        let path = binding.locate(&mut self.document, field)?;
         let target = Target {
             field,
             meta: &meta,

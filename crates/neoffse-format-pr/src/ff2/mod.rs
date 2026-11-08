@@ -73,12 +73,12 @@ use neoffse_core::{Capability, CollectionMeta, EditError, FieldId, FieldMeta, Ga
 use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
+use crate::shared::bind::CharacterPart;
 use crate::shared::meta::collection_meta;
 use crate::shared::paths::Collection;
 use crate::shared::read::{format_error, read_int, read_text, row_keys};
 use crate::shared::{SlotDocument, SlotFormat};
-use binding::{Binding, Part};
-use locate::locate;
+use binding::Binding;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff2Pr;
@@ -185,7 +185,7 @@ impl Ff2Model {
     #[must_use]
     pub fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
         let binding = Binding::resolve(field).ok()?;
-        Some(meta::field_meta(&binding, self.tables))
+        Some(binding.meta(self.tables))
     }
 
     /// The metadata of `character`, `inventory`, `key_items` or `keywords`,
@@ -203,15 +203,12 @@ impl Ff2Model {
 /// shared summary can call it with the document it is walking.
 pub(super) fn get_in(document: &mut Document, tables: &GameTables, field: &FieldId) -> Result<Value, EditError> {
     let binding = Binding::resolve(field)?;
-    if let Binding::Character { id, part } = binding {
-        if let Part::Spell(chain) = part {
-            return spell::level(document, tables, id, chain, field);
-        }
-        if binding.is_derived() {
-            return derived::value(document, tables, id, part, field);
-        }
+    if let Binding::Character { id, part } = binding
+        && let Some(read) = part.computed(document, tables, id, field)
+    {
+        return read;
     }
-    let path = locate(document, &binding, field)?;
+    let path = binding.locate(document, field)?;
     let read = if binding.is_text() {
         read_text(document, &path).map(Value::Text)
     } else {

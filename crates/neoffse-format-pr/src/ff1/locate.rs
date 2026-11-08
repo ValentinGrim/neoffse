@@ -1,27 +1,13 @@
-//! The path that reaches the value of a binding, and the FF I reads that
-//! need a character's own layout (spell slots). Row and
-//! dictionary lookups live in [`crate::shared::read`].
+//! The path to each FF I character part, and the reads that need a
+//! character's own layout (spell slots). Row and dictionary lookups live in
+//! [`crate::shared::read`].
 
-use neoffse_core::{EditError, FieldId};
+use neoffse_core::{EditError, FieldId, Value};
 
-use super::binding::{Binding, Part};
+use super::binding::Part;
 use crate::document::{Document, DocumentError, Segment};
-use crate::shared::paths::{Path, element, gil_path, with};
-use crate::shared::read::{Located, character_part, count_path, entry_value, read_int, read_key, read_text, slot_path, wrong_kind};
-
-/// The path to the value of `binding`. `MissingRow` for an absent row,
-/// `UnknownField` for a dictionary without the key, `Format` for a read that
-/// fails, `ReadOnly` for a computed field, which has no path.
-pub(super) fn locate(document: &mut Document, binding: &Binding, field: &FieldId) -> Result<Path, EditError> {
-    if binding.is_derived() {
-        return Err(EditError::ReadOnly { field: field.clone() });
-    }
-    match *binding {
-        Binding::Gil => Ok(gil_path()),
-        Binding::Count { list, key } => count_path(document, list, key, field),
-        Binding::Character { id, part } => character_part(document, id, field, |document, base| locate_part(document, base, part)),
-    }
-}
+use crate::shared::paths::{Path, element, with};
+use crate::shared::read::{Located, character_part, entry_value, format_error, read_int, read_key, read_text, slot_path, wrong_kind};
 
 /// Index of the element of the `abilitySlotDataList` array `target` whose
 /// `level` is `wanted`, by value (`docs/formats/pixel-remaster.md#abilities`,
@@ -39,7 +25,7 @@ fn find_level(document: &mut Document, target: &[Segment<'static>], wanted: u32)
 /// The `abilityId` held by the spell slot value at `path`: 0 for `""`, the
 /// id of the ability object otherwise. A number, a text that holds no object
 /// with an integer `abilityId`, or an id outside `u32` is a `DocumentError`.
-pub(super) fn read_ability(document: &mut Document, path: &[Segment<'_>]) -> Result<u32, DocumentError> {
+fn read_ability(document: &mut Document, path: &[Segment<'_>]) -> Result<u32, DocumentError> {
     if read_text(document, path)?.is_empty() {
         return Ok(0);
     }
@@ -52,7 +38,15 @@ pub(super) fn read_ability(document: &mut Document, path: &[Segment<'_>]) -> Res
     }
 }
 
-fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, Located> {
+/// The ability id in the spell slot `part` of character `id`, as a number.
+pub(super) fn spell_ability(document: &mut Document, id: u32, part: Part, field: &FieldId) -> Result<Value, EditError> {
+    let path = character_part(document, id, field, |document, base| locate_part(document, base, part))?;
+    read_ability(document, &path)
+        .map(|ability| Value::Int(i64::from(ability)))
+        .map_err(|source| format_error(field, source))
+}
+
+pub(super) fn locate_part(document: &mut Document, base: Path, part: Part) -> Result<Path, Located> {
     let parameter = [Segment::Key("parameter"), Segment::Doc];
     let key = |name| [Segment::Key(name)];
     Ok(match part {
