@@ -4,9 +4,9 @@
 
 use neoffse_format_pr::ff1::GAME;
 
+use super::exit_facts::CHARS;
 use super::json_tree::Tree;
 
-const CHARS: &str = "userData.ownedCharacterList.target";
 /// `contentId - abilityId` for FF I spells.
 const OFFSET: i64 = 208;
 const SLOTS_PER_LEVEL: usize = 3;

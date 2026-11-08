@@ -188,7 +188,7 @@ fn an_inventory_placeholder_row_refuses_every_edit() {
 fn every_key_item_of_the_private_slots_holds_one() {
     let Some(slots) = ff2_real::slots() else { return };
     for slot in slots {
-        let mut model = ff2_real::model(&slot);
+        let mut model = slot.model::<Ff2Model>();
         let list = FieldId::new(names::KEY_ITEMS);
         let Ok(keys) = model.rows(&list) else {
             panic!("{}: key item rows do not read", slot.label)

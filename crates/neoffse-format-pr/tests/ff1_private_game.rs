@@ -6,22 +6,12 @@
 mod common;
 
 use common::STORAGE_ONLY;
-use common::ff1_real::{RealSlot, must, slots};
+use common::ff1_real::{RealSlot, slots};
 use common::ff1_rules::violations;
+use common::private::{int, rows, tables};
 use neoffse_core::{Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::container::{decode, encode};
-use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
-
-fn int(model: &mut Ff1Model, field: &FieldId, label: &str) -> i64 {
-    match model.get(field) {
-        Ok(Value::Int(value)) => value,
-        _ => panic!("{label}: {field} does not read as an integer"),
-    }
-}
-
-fn rows(model: &mut Ff1Model, list: &'static str, label: &str) -> Vec<u32> {
-    must(model.rows(&FieldId::new(list)), &format!("{label}: {list} rows do not read"))
-}
+use neoffse_format_pr::ff1::{Ff1Model, names};
 
 /// Fails with the label and the breached rules, each a field path.
 fn assert_rules(model: &mut Ff1Model, label: &str) {
@@ -52,7 +42,7 @@ fn snapshot(model: &mut Ff1Model, label: &str) -> Vec<(FieldId, i64)> {
             fields.push(collection.clone().with_id(key).with_name(names::COUNT));
         }
     }
-    fields.into_iter().map(|field| (field.clone(), int(model, &field, label))).collect()
+    fields.into_iter().map(|field| (field.clone(), int(model, label, &field))).collect()
 }
 
 fn run(model: &mut Ff1Model, set: &neoffse_core::ChangeSet, label: &str) {
@@ -65,10 +55,10 @@ fn real_equip_keeps_the_game_rules() {
     let Some(slots) = slots() else { return };
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let (first, second) = first_two(&mut model, label);
         assert_rules(&mut model, label);
-        let wanted = int(&mut model, &common::slot(second, 1), label);
+        let wanted = int(&mut model, label, &common::slot(second, 1));
         let edit = Edit::set(common::slot(first, 1), Value::Int(wanted));
         let Ok(change) = model.apply_game(&edit) else {
             panic!("{label}: the equip is refused")
@@ -78,7 +68,7 @@ fn real_equip_keeps_the_game_rules() {
             .with_id(u32::try_from(wanted).unwrap_or(0))
             .with_name(names::COUNT);
         if let Ok(Value::Int(inventory_count)) = model.get(&held) {
-            let slot_count = int(&mut model, &common::slot(first, 1).with_name(names::COUNT), label);
+            let slot_count = int(&mut model, label, &common::slot(first, 1).with_name(names::COUNT));
             assert!(
                 slot_count == inventory_count,
                 "{label}: the slot count differs from the inventory count after the equip"
@@ -93,7 +83,7 @@ fn real_equip_keeps_the_game_rules() {
             bytes,
             json: again.json,
         }
-        .model();
+        .model::<Ff1Model>();
         assert!(
             snapshot(&mut rebuilt, label) == snapshot(&mut model, label),
             "{label}: reads after the round trip"
@@ -106,14 +96,12 @@ fn real_equip_keeps_the_game_rules() {
 #[test]
 fn real_unequip_and_re_equip_restore_the_text() {
     let Some(slots) = slots() else { return };
-    let Some(tables) = neoffse_data::tables_for(GAME) else {
-        panic!("no FF I tables")
-    };
+    let tables = tables::<Ff1Model>();
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let (first, _) = first_two(&mut model, label);
-        let old = int(&mut model, &common::slot(first, 1), label);
+        let old = int(&mut model, label, &common::slot(first, 1));
         let Some(placeholder) = tables.placeholder(neoffse_core::TableKind::Weapon) else {
             panic!("{label}: no weapon placeholder")
         };
@@ -140,18 +128,16 @@ fn real_unequip_and_re_equip_restore_the_text() {
 #[test]
 fn real_worn_and_placeholder_rows_refuse_removal() {
     let Some(slots) = slots() else { return };
-    let Some(tables) = neoffse_data::tables_for(GAME) else {
-        panic!("no FF I tables")
-    };
+    let tables = tables::<Ff1Model>();
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let inventory = FieldId::new(names::INVENTORY);
         let held = rows(&mut model, names::INVENTORY, label);
         let mut worn = Vec::new();
         for character in rows(&mut model, names::CHARACTER, label) {
             for number in 1..=names::EQUIPMENT_SLOTS {
-                worn.push(int(&mut model, &common::slot(character, number), label));
+                worn.push(int(&mut model, label, &common::slot(character, number)));
             }
         }
         for key in held {

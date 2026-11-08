@@ -11,6 +11,7 @@ use common::character_field;
 use common::edit_paths::{shown, spaced_levels};
 use common::edit_proof::{How, Proof, Subject, prove};
 use common::exit_cases::{Case, FIXTURE_SKIPS, build, run};
+use common::exit_facts::INV;
 use common::ff1_save::SlotData;
 use common::json_diff::{added, diff, layout_chain, value};
 use common::json_tree::Tree;
@@ -57,12 +58,6 @@ fn decoded(subject: &Subject, document: &dyn SaveDocument) -> container::Decoded
     container::decode(files.get(&subject.name).unwrap()).unwrap()
 }
 
-fn assert_original(subject: &Subject, document: &dyn SaveDocument, what: &str) {
-    let after = decoded(subject, document);
-    assert!(after.json == subject.json, "{what}: the text changed");
-    assert_eq!(after.container, subject.container, "{what}: the container changed");
-}
-
 /// The tree after `case`'s edits, applied through `apply_game`.
 fn edited(subject: &Subject, case: &Case) -> Tree {
     let mut document = subject.open();
@@ -84,7 +79,7 @@ fn a_set_to_the_current_value_changes_nothing() {
     document.apply_game(&set_gil(current)).unwrap();
     let after = decoded(&subject, &*document);
     assert_eq!(diff(&subject.json, &after.json), Vec::new());
-    assert_original(&subject, &*document, "set to the current value");
+    subject.assert_original(&*document, "set to the current value");
     for how in [How::Game, How::Raw] {
         prove(&subject, "same value", &[set_gil(current)], how, &empty_proof());
     }
@@ -117,10 +112,10 @@ fn refused_edits_write_nothing() {
             panic!("{what}: the edit is accepted")
         };
         assert!(expected(&error), "{what}: wrong error: {error}");
-        assert_original(&subject, &*fresh, what);
+        subject.assert_original(&*fresh, what);
         assert!(shared.apply_game(&edit).is_err(), "{what}: accepted on the shared document");
     }
-    assert_original(&subject, &*shared, "five refusals in a row");
+    subject.assert_original(&*shared, "five refusals in a row");
 }
 
 #[test]
@@ -159,8 +154,6 @@ fn each_container_survives_an_edit() {
         run(&subject, find(&built.cases, "gil"));
     }
 }
-
-const INV: &str = "userData.normalOwnedItemList.target";
 
 #[test]
 fn shown_hides_an_index_equal_to_the_list_length() {

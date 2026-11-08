@@ -6,8 +6,10 @@ use std::path::Path;
 
 use neoffse_format_pr::container::decode;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Model, GAME};
+use neoffse_format_pr::shared::SlotModel;
 use neoffse_format_pr::slots::SLOT_FILES;
+
+use super::private::tables;
 
 /// The value of `result`, or a panic with `what` alone. The `Err` is dropped
 /// because its text can quote save content.
@@ -36,15 +38,12 @@ pub(crate) struct RealSlot {
 }
 
 impl RealSlot {
-    /// A model over the decoded JSON.
-    pub(crate) fn model(&self) -> Ff1Model {
+    /// A model `M` over the decoded JSON.
+    pub(crate) fn model<M: SlotModel>(&self) -> M {
         let Ok(document) = Document::parse(&self.json) else {
             panic!("{}: the decoded JSON does not parse", self.label)
         };
-        let Some(tables) = neoffse_data::tables_for(GAME) else {
-            panic!("no FF I tables")
-        };
-        Ff1Model::new(document, tables)
+        M::new(document, tables::<M>())
     }
 }
 

@@ -9,9 +9,9 @@
 use neoffse_core::TableKind;
 use neoffse_format_pr::ff2::GAME;
 
+use super::exit_facts::CHARS;
 use super::json_tree::Tree;
 
-const CHARS: &str = "userData.ownedCharacterList.target";
 /// The internal entry every character holds, outside the Magic list.
 const INTERNAL: i64 = 711;
 /// The key of the Magic command in `abilityDictionary`.

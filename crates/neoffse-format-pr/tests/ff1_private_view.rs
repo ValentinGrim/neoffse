@@ -7,6 +7,7 @@
 mod common;
 
 use common::ff1_real::{must, must_some, slots};
+use common::private::assert_fields_read_back;
 use neoffse_core::{Capability, FieldId};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, names};
@@ -16,7 +17,7 @@ use neoffse_format_pr::slots::slot_for_name;
 fn real_slots_have_a_summary() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let Ok(summary) = model.summary() else {
             panic!("{}: the summary does not read", slot.label)
         };
@@ -35,7 +36,7 @@ fn real_slots_have_a_summary() {
 fn real_summary_slot_matches_the_file_name() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let Ok(summary) = slot.model().summary() else {
+        let Ok(summary) = slot.model::<Ff1Model>().summary() else {
             panic!("{}: the summary does not read", slot.label)
         };
         assert!(summary.slot.is_some(), "{}: no slot from the id", slot.label);
@@ -47,7 +48,7 @@ fn real_summary_slot_matches_the_file_name() {
 fn real_views_cover_every_row() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let Ok(view) = model.view(Language::En) else {
             panic!("{}: the view does not read", slot.label)
         };
@@ -59,13 +60,6 @@ fn real_views_cover_every_row() {
         let inventory = must_some(view.section(Capability::Inventory), &format!("{}: no Inventory section", slot.label));
         assert!(party.entities.len() == characters, "{}: party entities", slot.label);
         assert!(inventory.entities.len() == 1 + rows, "{}: inventory entities", slot.label);
-        for entity in party.entities.iter().chain(&inventory.entities) {
-            for field in &entity.fields {
-                let Ok(value) = model.get(&field.id) else {
-                    panic!("{}: {} does not read", slot.label, field.id)
-                };
-                assert!(value == field.value, "{}: {} differs from the model", slot.label, field.id);
-            }
-        }
+        assert_fields_read_back(&slot.label, &mut model, party.entities.iter().chain(&inventory.entities));
     }
 }

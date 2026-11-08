@@ -11,6 +11,8 @@ use neoffse_core::{FieldId, Value};
 use neoffse_format_pr::shared::SlotModel;
 use neoffse_format_pr::shared::names;
 
+use super::private::is_placeholder;
+
 /// What differs between the games.
 pub(crate) struct Rules<M> {
     /// True when a placeholder row of the inventory may be worn by more
@@ -29,13 +31,6 @@ fn int<M: SlotModel>(model: &mut M, field: &FieldId) -> Result<i64, String> {
         Ok(_) => Err(format!("{field}: not an integer")),
         Err(_) => Err(format!("{field}: does not read")),
     }
-}
-
-/// True when the tables of `M` list `content` as a placeholder row.
-fn is_placeholder<M: SlotModel>(content: i64) -> bool {
-    let tables = neoffse_data::tables_for(M::GAME);
-    let entry = u32::try_from(content).ok().and_then(|id| tables?.content(id));
-    entry.is_some_and(|entry| entry.placeholder)
 }
 
 /// Every breach of the rules, each message starting with its kind:

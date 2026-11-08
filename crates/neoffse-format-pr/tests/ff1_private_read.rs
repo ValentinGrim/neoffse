@@ -11,55 +11,24 @@ use common::ff1_ability_rules::ability_violations;
 use common::ff1_real::{RealSlot, must, must_some, slots};
 use common::ff1_rules::{cap_violations, violations};
 use common::json_tree::Tree;
+use common::private::{self, all_fields, int, rows};
 use neoffse_core::{FieldId, Shape, TableKind, Value};
-use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
+use neoffse_data::GameTables;
+use neoffse_format_pr::ff1::{Ff1Model, names};
 
-fn tables() -> &'static neoffse_data::GameTables {
-    must_some(neoffse_data::tables_for(GAME), "no FF I tables")
+/// Binds the shared helpers to FF I.
+fn tables() -> &'static GameTables {
+    private::tables::<Ff1Model>()
 }
 
-fn rows(model: &mut Ff1Model, list: &'static str, label: &str) -> Vec<u32> {
-    must(model.rows(&FieldId::new(list)), &format!("{label}: {list} rows do not read"))
-}
-
-/// Every character field of every character, `gil` and every item count.
-fn all_fields(model: &mut Ff1Model, label: &str) -> Vec<FieldId> {
-    let mut fields = vec![FieldId::new(names::GIL)];
-    let Ok(ids) = model.rows(&FieldId::new(names::CHARACTER)) else {
-        panic!("{label}: character rows do not read")
-    };
-    for id in ids {
-        fields.extend(names::character_fields(id));
-    }
-    for list in [names::INVENTORY, names::KEY_ITEMS] {
-        let collection = FieldId::new(list);
-        let Ok(keys) = model.rows(&collection) else {
-            panic!("{label}: {list} rows do not read")
-        };
-        fields.extend(keys.into_iter().map(|key| collection.clone().with_id(key).with_name(names::COUNT)));
-    }
-    fields
-}
-
-fn for_each_slot(mut check: impl FnMut(&RealSlot, &mut Ff1Model)) {
-    let Some(slots) = slots() else { return };
-    for slot in slots {
-        let mut model = slot.model();
-        check(&slot, &mut model);
-    }
-}
-
-fn int(model: &mut Ff1Model, label: &str, field: &FieldId) -> i64 {
-    match model.get(field) {
-        Ok(Value::Int(value)) => value,
-        _ => panic!("{label}: {field} does not read as an integer"),
-    }
+fn for_each_slot(check: impl FnMut(&RealSlot, &mut Ff1Model)) {
+    private::for_each_slot(slots(), check);
 }
 
 #[test]
 fn real_slots_read_every_declared_field() {
     for_each_slot(|slot, model| {
-        for field in all_fields(model, &slot.label) {
+        for field in all_fields(model, &slot.label, names::character_fields) {
             let Ok(value) = model.get(&field) else {
                 panic!("{}: {field} does not read", slot.label)
             };
@@ -161,7 +130,7 @@ fn real_inventory_ids_are_table_entries() {
 #[test]
 fn real_reads_leave_the_text_unchanged() {
     for_each_slot(|slot, model| {
-        for field in all_fields(model, &slot.label) {
+        for field in all_fields(model, &slot.label, names::character_fields) {
             must(model.get(&field), &format!("{}: {field} does not read", slot.label));
         }
         assert!(model.document().to_json() == slot.json, "{}: a read changed the text", slot.label);

@@ -9,7 +9,7 @@ mod common;
 use common::character_path;
 use common::ff1_real::RealSlot;
 use common::ff1_real::{must, must_some};
-use common::ff2_real::{model, slots};
+use common::ff2_real::slots;
 use neoffse_core::{Capability, FieldId, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Scalar, Segment};
@@ -52,7 +52,7 @@ fn in_chains(ability: i64) -> bool {
 /// document order.
 fn open(slot: &RealSlot) -> (Document, Ff2Model, Vec<u32>) {
     let document = must(Document::parse(&slot.json), &format!("{}: the JSON does not parse", slot.label));
-    let mut model = model(slot);
+    let mut model = slot.model::<Ff2Model>();
     let ids = must(
         model.rows(&FieldId::new(names::CHARACTER)),
         &format!("{}: character rows do not read", slot.label),

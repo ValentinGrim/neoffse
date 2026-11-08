@@ -8,9 +8,10 @@ mod common;
 
 use common::character_field;
 use common::ff1_real::{RealSlot, must, must_some, slots};
+use common::private::tables;
 use neoffse_core::{Capability, FieldId, Value};
 use neoffse_data::Language;
-use neoffse_format_pr::ff1::{GAME, names};
+use neoffse_format_pr::ff1::{Ff1Model, names};
 
 /// The play time that the menu shows as 12:28, in whole minutes.
 const MENU_MINUTES: u64 = 748;
@@ -20,7 +21,7 @@ const MENU_MAX_HP: [i64; 4] = [999, 863, 930, 679];
 const MENU_NEXT_LEVEL: [i64; 4] = [20_295, 916, 11_681, 11_681];
 
 fn is_menu_state(slot: &RealSlot) -> bool {
-    let mut model = slot.model();
+    let mut model = slot.model::<Ff1Model>();
     let Ok(summary) = model.summary() else { return false };
     let minutes = summary.play_time.map(|time| time.as_secs() / 60);
     let gil = model.get(&FieldId::new(names::GIL)).ok();
@@ -36,7 +37,7 @@ fn the_private_state_at_12_28_shows_the_menu_values() {
         return;
     }
     for slot in candidates {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let view = must(model.view(Language::En), &format!("{}: the view does not read", slot.label));
         for (index, (max_hp, next_level)) in MENU_MAX_HP.iter().zip(MENU_NEXT_LEVEL).enumerate() {
             let id = u32::try_from(index).unwrap() + 1;
@@ -58,10 +59,10 @@ fn the_private_state_at_12_28_shows_the_menu_values() {
 #[test]
 fn every_private_slot_shows_both_fields_in_range() {
     let Some(slots) = slots() else { return };
-    let tables = must_some(neoffse_data::tables_for(GAME), "no FF I tables");
+    let tables = tables::<Ff1Model>();
     let cap = must_some(tables.bound("MAX_HP"), "no MAX_HP cap");
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let view = must(model.view(Language::En), &format!("{}: the view does not read", slot.label));
         let party = must_some(view.section(Capability::Party), &format!("{}: no Party section", slot.label));
         for entity in &party.entities {
@@ -87,9 +88,9 @@ fn every_private_slot_shows_both_fields_in_range() {
 fn computing_the_fields_changes_no_private_slot() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         must(model.view(Language::En), &format!("{}: the view does not read", slot.label));
-        let mut again = slot.model();
+        let mut again = slot.model::<Ff1Model>();
         for id in 1..=4 {
             for name in [names::MAX_HP, names::NEXT_LEVEL] {
                 // A character the slot lacks, or a field it leaves out, is no failure here.

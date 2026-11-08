@@ -6,10 +6,11 @@
 mod common;
 
 use common::ff1_real::{RealSlot, must, slots};
+use common::private::tables;
 use common::{ENFORCE, STORAGE_ONLY};
 use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
 use neoffse_format_pr::container::{decode, encode};
-use neoffse_format_pr::ff1::{GAME, names};
+use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
 fn inventory() -> FieldId {
     FieldId::new(names::INVENTORY)
@@ -26,7 +27,7 @@ fn real_insert_survives_encode_and_decode() {
     let Some(slots) = slots() else { return };
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let old = model.rows(&inventory()).unwrap_or_else(|_| panic!("{label}: inventory rows do not read"));
         let Some(id) = free_item(&old) else { panic!("{label}: no free item id") };
         let row = RowId::new(inventory(), id);
@@ -44,7 +45,7 @@ fn real_insert_survives_encode_and_decode() {
             bytes,
             json: again.json,
         }
-        .model();
+        .model::<Ff1Model>();
         let mut want = old.clone();
         want.push(id);
         let rows = must(rebuilt.rows(&inventory()), &format!("{label}: rows after the round trip do not read"));
@@ -66,7 +67,7 @@ fn real_remove_and_undo_restore_the_text() {
     let Some(slots) = slots() else { return };
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let rows = model.rows(&inventory()).unwrap_or_else(|_| panic!("{label}: inventory rows do not read"));
         let mut picked = None;
         for id in rows.iter().rev() {
@@ -99,7 +100,7 @@ fn real_rows_keep_order_after_an_insert_in_the_middle() {
     let Some(slots) = slots() else { return };
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let old = model.rows(&inventory()).unwrap_or_else(|_| panic!("{label}: inventory rows do not read"));
         let Some(id) = free_item(&old) else { panic!("{label}: no free item id") };
         let middle = old.len() / 2;
@@ -121,12 +122,10 @@ fn real_rows_keep_order_after_an_insert_in_the_middle() {
 #[test]
 fn real_placeholder_and_worn_rows_are_locked() {
     let Some(slots) = slots() else { return };
-    let Some(tables) = neoffse_data::tables_for(GAME) else {
-        panic!("no FF I tables")
-    };
+    let tables = tables::<Ff1Model>();
     for slot in slots {
         let label = &slot.label;
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let rows = model.rows(&inventory()).unwrap_or_else(|_| panic!("{label}: inventory rows do not read"));
         for id in &rows {
             if tables.content(*id).is_some_and(|entry| entry.placeholder) {

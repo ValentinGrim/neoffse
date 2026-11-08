@@ -7,16 +7,10 @@ mod common;
 
 use common::changed_span;
 use common::ff1_real::{RealSlot, must_some, slots};
+use common::private::int;
 use neoffse_core::{CapPolicy, Edit, FieldId, Shape, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{Ff1Model, names};
-
-fn int(model: &mut Ff1Model, label: &str, field: &FieldId) -> i64 {
-    match model.get(field) {
-        Ok(Value::Int(value)) => value,
-        _ => panic!("{label}: {field} does not read as an integer"),
-    }
-}
 
 /// `old - 1`, or 1 when `old` is 0.
 fn lower(old: i64) -> i64 {
@@ -27,7 +21,7 @@ fn lower(old: i64) -> i64 {
 /// changed and that the new value reads back.
 fn assert_digit_edit(slot: &RealSlot, field: &FieldId) {
     let label = &slot.label;
-    let mut model = slot.model();
+    let mut model = slot.model::<Ff1Model>();
     let value = lower(int(&mut model, label, field));
     let Ok(_) = model.apply(&Edit::set(field.clone(), Value::Int(value)), CapPolicy::Enforce) else {
         panic!("{label}: {field} refuses the edit")
@@ -52,7 +46,7 @@ fn assert_digit_edit(slot: &RealSlot, field: &FieldId) {
         bytes,
         json: again.json,
     }
-    .model();
+    .model::<Ff1Model>();
     assert!(int(&mut rebuilt, label, field) == value, "{label}: {field} does not read back");
 }
 
@@ -68,7 +62,7 @@ fn real_gil_edit_changes_only_digits() {
 fn real_character_edits_change_only_digits() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let Ok(ids) = model.rows(&FieldId::new(names::CHARACTER)) else {
             panic!("{}: character rows do not read", slot.label)
         };
@@ -86,7 +80,7 @@ fn real_character_edits_change_only_digits() {
 fn real_edit_then_inverse_restores_the_text() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let Ok(ids) = model.rows(&FieldId::new(names::CHARACTER)) else {
             panic!("{}: character rows do not read", slot.label)
         };
@@ -97,7 +91,7 @@ fn real_edit_then_inverse_restores_the_text() {
             fields.push(character.with_name(names::NAME));
         }
         for field in fields {
-            let mut model = slot.model();
+            let mut model = slot.model::<Ff1Model>();
             let Ok(old) = model.get(&field) else {
                 panic!("{}: {field} does not read", slot.label)
             };
