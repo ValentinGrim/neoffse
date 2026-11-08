@@ -7,7 +7,8 @@
 
 use neoffse_core::{EditError, FieldId, FormatError, RowId};
 
-use super::paths::{Collection, List, Path, element, with};
+use super::names;
+use super::paths::{Collection, List, Path, characters_target, element, with};
 use crate::document::{Document, DocumentError, Scalar, Segment, render_path};
 
 /// The error of a failed document read, bound to the field that asked.
@@ -30,6 +31,16 @@ pub(crate) fn read_int(document: &mut Document, path: &[Segment<'_>]) -> Result<
         Scalar::Int(int) => Ok(int),
         Scalar::Uint(uint) => i64::try_from(uint).map_err(|_| wrong_kind(path, "integer")),
         _ => Err(wrong_kind(path, "integer")),
+    }
+}
+
+/// An integer of a character, `None` when its key is missing. Any other
+/// failure is the `Format` error of `field`.
+pub(crate) fn read_stored(document: &mut Document, path: &[Segment<'_>], field: &FieldId) -> Result<Option<i64>, EditError> {
+    match read_int(document, path) {
+        Ok(number) => Ok(Some(number)),
+        Err(DocumentError::MissingKey { .. }) => Ok(None),
+        Err(source) => Err(format_error(field, source)),
     }
 }
 
@@ -108,6 +119,17 @@ pub(crate) enum Located {
     Failed(DocumentError),
 }
 
+impl Located {
+    /// The error a caller reports for `field`: `UnknownField` for an absent
+    /// entry, the `Format` error of the read otherwise.
+    pub(crate) fn into_error(self, field: &FieldId) -> EditError {
+        match self {
+            Self::Absent => EditError::UnknownField { field: field.clone() },
+            Self::Failed(source) => format_error(field, source),
+        }
+    }
+}
+
 impl From<DocumentError> for Located {
     fn from(source: DocumentError) -> Self {
         Self::Failed(source)
@@ -120,6 +142,15 @@ pub(crate) fn entry_value(document: &mut Document, dictionary: Path, key: u32) -
     Ok(with(dictionary, &[Segment::Key("values"), Segment::Index(index)]))
 }
 
+/// The path to the `contentId` (or, with `count`, the `count`) of the entry
+/// `slot` in the `equipmentList` dictionary of the character at `base`.
+pub(crate) fn slot_path(document: &mut Document, base: Path, slot: u32, count: bool) -> Result<Path, Located> {
+    let dictionary = with(base, &[Segment::Key("equipmentList"), Segment::Doc]);
+    let value = entry_value(document, dictionary, slot)?;
+    let name = if count { "count" } else { "contentId" };
+    Ok(with(value, &[Segment::Doc, Segment::Key(name)]))
+}
+
 /// The path to the `count` of the row `key` in `list`. `MissingRow` for an
 /// absent row, `Format` for a read that fails.
 pub(crate) fn count_path(document: &mut Document, list: List, key: u32, field: &FieldId) -> Result<Path, EditError> {
@@ -127,4 +158,19 @@ pub(crate) fn count_path(document: &mut Document, list: List, key: u32, field: &
         .map_err(|source| format_error(field, source))?
         .ok_or_else(|| missing_row(list.section(), key))?;
     Ok(with(element(list.target(), index), &[Segment::Key("count")]))
+}
+
+/// The path to a part of the character `id`: the row is found by `id`, then
+/// `part` builds the path from the character's element. `MissingRow` for an
+/// absent character, `UnknownField` when `part` finds no entry, `Format` for
+/// a read that fails.
+pub(crate) fn character_part<F>(document: &mut Document, id: u32, field: &FieldId, part: F) -> Result<Path, EditError>
+where
+    F: FnOnce(&mut Document, Path) -> Result<Path, Located>,
+{
+    let index = find_row(document, Collection::Character, id)
+        .map_err(|source| format_error(field, source))?
+        .ok_or_else(|| missing_row(names::CHARACTER, id))?;
+    let base = element(characters_target(), index);
+    part(document, base).map_err(|error| error.into_error(field))
 }

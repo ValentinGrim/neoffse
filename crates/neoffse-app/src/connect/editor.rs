@@ -17,8 +17,8 @@ use super::{close_editor_page, refresh_home};
 use crate::editor::{EditorViewModel, History, Input, problem_notice};
 use crate::theme::sync_theme;
 use crate::{
-    App, EditNotice, EditProblem, EditorBridge, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, OpenProblem, Overview, PickerEntry,
-    SectionData,
+    App, EditNotice, EditProblem, EditorBridge, EditorCommand, EditorData, EntityPage, FieldRow, ItemList, ItemRow, MainWindow, OpenProblem, Overview,
+    PickerEntry, SectionData,
 };
 
 /// Wires the editor callbacks of the [`EditorBridge`] global to `app.editor`.
@@ -129,6 +129,7 @@ pub(super) fn refresh_with(window: &MainWindow, app: &App, notice: Option<EditNo
     let failure = match app.editor.data() {
         Ok(data) => {
             apply(&bridge, data);
+            settle_command(&bridge);
             bridge.set_overview(app.editor.overview());
             // `history` locks the session, which a running save holds.
             if !app.editor.is_saving() {
@@ -145,6 +146,17 @@ pub(super) fn refresh_with(window: &MainWindow, app: &App, notice: Option<EditNo
     let notice = notice.or(failure);
     let offer = notice.as_ref().is_some_and(|notice| app.editor.offers_expert(notice));
     set_notice(&bridge, notice, offer);
+}
+
+/// Moves the editor from Raw spells to Magic when the data holds no raw
+/// section any more (expert mode ended, a restore or a reload dropped it).
+/// The user lands on the first character's page: the page of the raw section
+/// keeps its selection per instance and that instance is gone.
+fn settle_command(bridge: &EditorBridge<'_>) {
+    if bridge.get_command() == EditorCommand::RawMagic && !bridge.get_data().raw_magic.present {
+        bridge.set_command(EditorCommand::Magic);
+        bridge.set_character(-1);
+    }
 }
 
 /// Shows or clears the notice. `offer` adds the "Switch to expert mode"
@@ -167,6 +179,7 @@ fn apply(bridge: &EditorBridge<'_>, new: EditorData) {
         update_section(&old.party, &new.party);
         update_section(&old.inventory, &new.inventory);
         update_section(&old.magic, &new.magic);
+        update_section(&old.raw_magic, &new.raw_magic);
     } else {
         bridge.set_data(new);
     }
@@ -188,9 +201,14 @@ fn same_fields(old: &ModelRc<FieldRow>, new: &ModelRc<FieldRow>) -> bool {
 }
 
 fn same_shape(old: &EditorData, new: &EditorData) -> bool {
-    [(&old.party, &new.party), (&old.inventory, &new.inventory), (&old.magic, &new.magic)]
-        .into_iter()
-        .all(|(old, new)| same_section(old, new))
+    [
+        (&old.party, &new.party),
+        (&old.inventory, &new.inventory),
+        (&old.magic, &new.magic),
+        (&old.raw_magic, &new.raw_magic),
+    ]
+    .into_iter()
+    .all(|(old, new)| same_section(old, new))
 }
 
 fn same_section(old: &SectionData, new: &SectionData) -> bool {

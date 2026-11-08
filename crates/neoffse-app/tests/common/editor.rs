@@ -3,21 +3,22 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use neoffse::Session;
 use neoffse::core::{FieldId, Game, RowId, TableKind};
 use neoffse::data::{Language, tables_for};
+use neoffse::{Registry, Session};
 use neoffse_app::editor::{Input, Locks};
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{EditorData, EditorViewModel, EntityPage, FieldRow, ItemList, ItemRow, ReviewKind, ReviewRow, SectionData};
 
-use super::{Flow, ID_1, Outcomes, Site, items, slot_bytes, slot_file, steam_slot};
+use super::{Flow, ID_1, Outcomes, Site, items, registry, slot_bytes, slot_file, steam_slot};
 
-/// The three sections of the editor.
+/// The four sections of the editor.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Part {
     Party,
     Inventory,
     Magic,
+    RawMagic,
 }
 
 /// A site with the synthetic FF I slot 1 in a Proton save folder.
@@ -34,7 +35,12 @@ pub(crate) struct Editing {
 
 /// Opens slot 1 of `site`, run to the end.
 pub(crate) fn editing(site: &Site) -> Editing {
-    let flow = Flow::new(site, None);
+    editing_in(site, registry())
+}
+
+/// Opens slot 1 of `site` through `registry`, run to the end.
+pub(crate) fn editing_in(site: &Site, registry: Arc<Registry>) -> Editing {
+    let flow = Flow::with_registry(site, None, registry);
     let outcomes = Outcomes::new();
     flow.click(slot_file(1), &outcomes);
     flow.manual.run_all();
@@ -89,6 +95,7 @@ pub(crate) fn section(data: &EditorData, part: Part) -> SectionData {
         Part::Party => data.party.clone(),
         Part::Inventory => data.inventory.clone(),
         Part::Magic => data.magic.clone(),
+        Part::RawMagic => data.raw_magic.clone(),
     }
 }
 
@@ -112,7 +119,7 @@ pub(crate) fn rows(list: &ItemList) -> Vec<ItemRow> {
 /// the rows of each list.
 pub(crate) fn all_fields(data: &EditorData) -> Vec<FieldRow> {
     let mut out = Vec::new();
-    for part in [Part::Party, Part::Inventory, Part::Magic] {
+    for part in [Part::Party, Part::Inventory, Part::Magic, Part::RawMagic] {
         let section = section(data, part);
         for page in pages(&section) {
             out.extend(fields(&page));

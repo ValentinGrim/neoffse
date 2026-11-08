@@ -130,7 +130,7 @@ fn job(facts: &Facts<'_>) -> Option<Case> {
     Some(case("job", vec![Edit::set(field, Value::Int(i64::from(new)))], proof))
 }
 
-fn rename(facts: &Facts<'_>) -> Option<Case> {
+pub(super) fn rename(facts: &Facts<'_>) -> Option<Case> {
     let field = facts.field(names::NAME);
     let Value::Text(old) = &facts.view.find(&field)?.1.value else {
         return None;
@@ -154,7 +154,7 @@ fn charges(facts: &Facts<'_>) -> Option<Case> {
     nudged(facts, "charges", field, 0, format!("{list}.values[{index}]"))
 }
 
-fn item_count(facts: &Facts<'_>) -> Option<Case> {
+pub(super) fn item_count(facts: &Facts<'_>) -> Option<Case> {
     let key = facts.free_item?;
     let index = facts.subject.tree.find_row(INV, "contentId", i64::from(key))?;
     nudged(
@@ -184,17 +184,17 @@ fn insert(name: &'static str, row: RowId, array: &str, len: usize, position: Opt
     case(name, vec![Edit::insert(row, position, vec![(names::COUNT, Value::Int(count))])], proof)
 }
 
-fn insert_item(facts: &Facts<'_>, name: &'static str, position: Option<usize>) -> Option<Case> {
+pub(super) fn insert_item(facts: &Facts<'_>, name: &'static str, position: Option<usize>) -> Option<Case> {
     let id = facts.first_unowned(TableKind::Item, &facts.inv_rows)?;
     Some(insert(name, Facts::inventory(id), INV, facts.inv_len, position, 3))
 }
 
-fn insert_key_item(facts: &Facts<'_>) -> Option<Case> {
+pub(super) fn insert_key_item(facts: &Facts<'_>) -> Option<Case> {
     let id = facts.first_unowned(TableKind::KeyItem, &facts.key_rows)?;
     Some(insert("insert_key_item", Facts::key_item(id), KEYS, facts.keys_len, None, 1))
 }
 
-fn remove(facts: &Facts<'_>, name: &'static str, row: RowId, array: &str) -> Option<Case> {
+pub(super) fn remove(facts: &Facts<'_>, name: &'static str, row: RowId, array: &str) -> Option<Case> {
     let index = facts.subject.tree.find_row(array, "contentId", i64::from(row.key()))?;
     let proof = Proof {
         changes: vec![removed(&format!("{array}[{index}]"))],
@@ -205,7 +205,7 @@ fn remove(facts: &Facts<'_>, name: &'static str, row: RowId, array: &str) -> Opt
 }
 
 /// The four cases applied in one run: edits in two arrays at once.
-fn compose(parts: &[Option<&Case>]) -> Option<Case> {
+pub(super) fn compose(parts: &[Option<&Case>]) -> Option<Case> {
     let mut joined = Case {
         name: "compose",
         edits: Vec::new(),
@@ -262,7 +262,7 @@ pub(crate) fn build(subject: &Subject) -> Built {
         ),
     ];
     singles.extend(super::exit_fields::field_cases(&facts));
-    singles.extend(super::exit_equip::equip_cases(&facts));
+    singles.extend(super::exit_equip::equip_cases(&facts, super::exit_equip::FF1_SLOTS));
     let find = |wanted: &str| singles.iter().find(|(name, _)| *name == wanted).and_then(|(_, case)| case.as_ref());
     let composed = compose(&[find("gil"), find("level"), find("insert_item_middle"), find("remove_key_item")]);
     singles.push(("compose", composed));

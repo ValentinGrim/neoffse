@@ -2,13 +2,15 @@
 //!
 //! An [`AssetProvider`] answers "which image shows this character" by game
 //! and job id and hides where the image comes from. [`OriginalSprites`] holds
-//! the six sprites drawn for the project. A later provider that reads a
+//! the fifteen sprites drawn for the project. A later provider that reads a
 //! folder of extracted images joins a [`ProviderChain`] without any change to
 //! the screens (`docs/architecture.md#visual-assets`). No library crate
 //! depends on the trait: it belongs to the app layer.
 //!
-//! The job-to-class pairing of FF I is in [`class_of`].
+//! The job-to-class pairing of FF I is in [`class_of`]. FF II portraits go by
+//! person, through [`person_of`].
 
+mod persons;
 mod sprites;
 
 use std::fmt;
@@ -16,6 +18,7 @@ use std::sync::Arc;
 
 use neoffse::core::Game;
 
+pub use persons::{PortraitPerson, person_of};
 pub use sprites::{OriginalSprites, PortraitClass, class_of};
 
 /// A source of images for the screens. The portrait of a character is picked

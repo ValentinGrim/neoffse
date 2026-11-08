@@ -82,6 +82,16 @@ fn no_portrait_for_job_zero_thirteen_or_u32_max() {
 fn another_game_has_no_portrait() {
     for job in 1..=12 {
         assert!(class_of(Game::Ff2Pr, job).is_none(), "job {job}");
+        assert!(OriginalSprites.portrait(Game::Ff3Pr, job).is_none(), "job {job}");
+    }
+}
+
+#[test]
+fn ff2_has_portraits_for_its_nine_jobs_only() {
+    for job in 1..=9 {
+        assert!(OriginalSprites.portrait(Game::Ff2Pr, job).is_some(), "job {job}");
+    }
+    for job in [0, 10] {
         assert!(OriginalSprites.portrait(Game::Ff2Pr, job).is_none(), "job {job}");
     }
 }

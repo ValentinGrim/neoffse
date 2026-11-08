@@ -17,6 +17,8 @@ export component FieldList inherits ScrollView {
         padding: 8px;
         padding-right: 20px;
         spacing: 6px;
+        // A page with few fields keeps the natural height of its rows.
+        alignment: start;
 
         for field in root.fields: FieldLine {
             field: field;
@@ -89,8 +91,8 @@ component ReadOnlyNote inherits LookText {
     text: @tr("Read only");
 }
 
-// Magic: one button per character above the selected character's read-only
-// slots.
+// Magic and Raw spells: one button per character above the selected
+// character's page.
 export component CharacterPage inherits VerticalLayout {
     in property <Look> look: Theme.look;
     in property <[EntityPage]> pages;

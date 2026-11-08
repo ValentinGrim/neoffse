@@ -8,6 +8,7 @@ use neoffse_core::{Detection, FileProbe, FormatError, Game, PROBE_HEAD_LEN, Save
 use neoffse_data::Language;
 use neoffse_format_pr::OpenError;
 use neoffse_format_pr::ff1::Ff1Format;
+use neoffse_format_pr::ff2::Ff2Format;
 use neoffse_io::atomic::is_temp_name;
 use neoffse_io::error::IoError;
 use neoffse_io::files;
@@ -75,17 +76,17 @@ impl fmt::Debug for Registry {
 
 impl Registry {
     /// Builds the registry of the shipped formats. Each shipped game has one
-    /// line here. Today: FF I.
+    /// line here. Today: FF I and FF II.
     ///
     /// `language` names the game data in the views the formats build.
     ///
     /// # Panics
     ///
-    /// Panics as [`Ff1Format::with_language`] does: when the embedded tables
-    /// are invalid, a defect of the build.
+    /// Panics as [`Ff1Format::with_language`] and [`Ff2Format::with_language`]
+    /// do: when the embedded tables are invalid, a defect of the build.
     #[must_use]
     pub fn new(language: Language) -> Self {
-        Self::from_formats(vec![Arc::new(Ff1Format::with_language(language))])
+        Self::from_formats(vec![Arc::new(Ff1Format::with_language(language)), Arc::new(Ff2Format::with_language(language))])
     }
 
     /// A registry that holds `formats` and no other.

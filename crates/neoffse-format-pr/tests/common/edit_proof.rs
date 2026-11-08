@@ -9,22 +9,25 @@
 
 use std::fmt::Display;
 
-use neoffse_core::{CapPolicy, ChangeSet, Edit, SaveDocument, SaveFiles, SaveView};
+use neoffse_core::{CapPolicy, ChangeSet, Edit, Game, SaveDocument, SaveFiles, SaveView};
 use neoffse_format_pr::container::{self, Decoded};
 use neoffse_format_pr::document::Document;
-use neoffse_format_pr::ff1::{Ff1Model, GAME};
+use neoffse_format_pr::ff1::Ff1Model;
+use neoffse_format_pr::ff2::Ff2Model;
 
 use super::edit_paths::{describe, shown, spaced_levels};
-pub(crate) use super::edit_subject::{Subject, open_files};
+pub(crate) use super::edit_subject::Subject;
 pub(crate) use super::edit_view::ViewChange;
 use super::edit_view::{mismatch, raises_worn_count};
 use super::ff1_rules::violations;
+use super::ff2_rules::violations as ff2_violations;
 use super::json_diff::{Change, assert_changes_with, diff_trees, layout_chain};
 use super::json_tree::Tree;
 use super::rolls::Script;
 
 /// The interface an edit goes through: `apply_game`, or `apply` under `Enforce`
 /// (`apply_all` when a case holds several edits, to cover that override).
+/// `Expert` is the same call under `StorageOnly`, the policy of expert mode.
 /// `Rolled` replays the forward set of `Ff1Model::apply_game_with` (every roll
 /// fails) on the boxed document under `StorageOnly`, as a `Session` redo does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +35,7 @@ pub(crate) enum How {
     Game,
     Rolled,
     Raw,
+    Expert,
 }
 
 #[derive(Debug, Clone)]
@@ -66,7 +70,8 @@ struct Pair {
 /// 7. Undo on the edited document and check the original text returns.
 /// 8. Redo and check the encoding equals the one of step 3.
 /// 9. Undo on the reopened document and check the original text returns.
-/// 10. Unless `How::Raw`, check the edited slot against the game rules.
+/// 10. Unless `How::Raw` or `How::Expert`, check the edited slot against the
+///     game rules of the subject's game.
 ///
 /// # Panics
 ///
@@ -95,9 +100,14 @@ pub(crate) fn prove(subject: &Subject, case: &str, edits: &[Edit], how: How, pro
     }
     run.undo(&mut *reopened, &pairs, "undo after reopen");
     run.expect_restored(&*reopened, "undo after reopen differs");
-    if how != How::Raw {
+    if !matches!(how, How::Raw | How::Expert) {
         run.check_rules(&decoded.json, &before);
     }
+}
+
+/// The policy of a raw run: `Enforce`, or `StorageOnly` for expert mode.
+fn policy_of(how: How) -> CapPolicy {
+    if how == How::Expert { CapPolicy::StorageOnly } else { CapPolicy::Enforce }
 }
 
 struct Run<'a> {
@@ -124,7 +134,7 @@ impl Run<'_> {
     }
 
     fn open(&self, files: &SaveFiles) -> Box<dyn SaveDocument> {
-        open_files(files).unwrap_or_else(|error| self.fail_with("reopen failed", &error))
+        self.subject.reopen(files).unwrap_or_else(|error| self.fail_with("reopen failed", &error))
     }
 
     fn view(&self, document: &mut dyn SaveDocument) -> SaveView {
@@ -146,16 +156,16 @@ impl Run<'_> {
                     Err(error) => self.refused(index, &error),
                 })
                 .collect(),
-            (How::Raw, [edit]) => match document.apply(edit, CapPolicy::Enforce) {
+            (How::Raw | How::Expert, [edit]) => match document.apply(edit, policy_of(how)) {
                 Ok(inverse) => vec![Pair {
                     forward: ChangeSet::from_iter([edit.clone()]),
                     inverse: ChangeSet::from_iter([inverse]),
                 }],
                 Err(error) => self.refused(0, &error),
             },
-            (How::Raw, _) => {
+            (How::Raw | How::Expert, _) => {
                 let forward: ChangeSet = edits.iter().cloned().collect();
-                match document.apply_all(&forward, CapPolicy::Enforce) {
+                match document.apply_all(&forward, policy_of(how)) {
                     Ok(inverse) => vec![Pair { forward, inverse }],
                     Err(error) => self.refused(0, &error),
                 }
@@ -166,7 +176,7 @@ impl Run<'_> {
     /// `How::Rolled`: the forward set comes from a model over the subject's
     /// text, one edit after the other, and the boxed document replays it.
     fn rolled(&self, document: &mut dyn SaveDocument, edits: &[Edit]) -> Vec<Pair> {
-        let Some(tables) = neoffse_data::tables_for(GAME) else {
+        let Some(tables) = neoffse_data::tables_for(Game::Ff1Pr) else {
             self.fail("no FF I tables")
         };
         let Ok(parsed) = Document::parse(&self.subject.json) else {
@@ -283,14 +293,19 @@ impl Run<'_> {
     /// wearers keep the count they copied when they equipped it
     /// (`docs/formats/pixel-remaster.md#equipment-slots`, "does not refresh").
     fn check_rules(&self, json: &str, before: &SaveView) {
-        let Some(tables) = neoffse_data::tables_for(GAME) else {
-            self.fail("no FF I tables")
+        let game = self.subject.game();
+        let Some(tables) = neoffse_data::tables_for(game) else {
+            self.fail("no tables for the game")
         };
         let Ok(parsed) = Document::parse(json) else {
             self.fail("the document layer refuses the text")
         };
         let copy_counts = !self.subject.private && !raises_worn_count(before, &self.proof.view);
-        let found = violations(&mut Ff1Model::new(parsed, tables), copy_counts);
+        let found = match game {
+            Game::Ff1Pr => violations(&mut Ff1Model::new(parsed, tables), copy_counts),
+            Game::Ff2Pr => ff2_violations(&mut Ff2Model::new(parsed, tables), copy_counts),
+            _ => self.fail("no game rules for this game"),
+        };
         if !found.is_empty() {
             self.fail(found.join("; "));
         }

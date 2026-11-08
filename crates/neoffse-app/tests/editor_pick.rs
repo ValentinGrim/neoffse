@@ -157,6 +157,7 @@ fn nameless_job_tables() -> GameTables {
         monsters: None,
         bounds: "[bounds]\n",
         growth: None,
+        skills: None,
     };
     GameTables::parse(Game::Ff1Pr, &sources).expect("synthetic tables parse")
 }

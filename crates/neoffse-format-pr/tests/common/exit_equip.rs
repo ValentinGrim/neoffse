@@ -23,8 +23,12 @@ enum Pick {
     Unequip,
 }
 
-/// The table of each equipment slot, slot 1 first.
-const SLOT_TABLES: [TableKind; 5] = [TableKind::Weapon, TableKind::Shield, TableKind::Armor, TableKind::Helmet, TableKind::Gloves];
+/// The table of each equipment slot of FF I, slot 1 first.
+pub(super) const FF1_SLOTS: [TableKind; 5] = [TableKind::Weapon, TableKind::Shield, TableKind::Armor, TableKind::Helmet, TableKind::Gloves];
+
+/// The same for FF II: both hands take a weapon
+/// (`docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`).
+pub(super) const FF2_SLOTS: [TableKind; 5] = [TableKind::Weapon, TableKind::Weapon, TableKind::Armor, TableKind::Helmet, TableKind::Gloves];
 
 /// Case names by slot: new, held, unequip.
 const NAMES: [[&str; 3]; 5] = [
@@ -35,9 +39,10 @@ const NAMES: [[&str; 3]; 5] = [
     ["equip_new_s5", "equip_held_s5", "unequip_s5"],
 ];
 
-pub(super) fn equip_cases(facts: &Facts<'_>) -> Vec<(&'static str, Option<Case>)> {
+/// The equip cases of the five slots, whose items come from `tables`.
+pub(super) fn equip_cases(facts: &Facts<'_>, tables: [TableKind; 5]) -> Vec<(&'static str, Option<Case>)> {
     let mut cases = Vec::new();
-    for (index, (kind, names)) in SLOT_TABLES.into_iter().zip(NAMES).enumerate() {
+    for (index, (kind, names)) in tables.into_iter().zip(NAMES).enumerate() {
         let slot = u32::try_from(index + 1).unwrap_or(1);
         for (name, pick) in names.into_iter().zip([Pick::New, Pick::Held, Pick::Unequip]) {
             cases.push((name, equip(facts, name, pick, slot, kind)));

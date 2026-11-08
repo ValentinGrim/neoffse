@@ -4,13 +4,25 @@ use neoffse::pr::container::{self, Container};
 use neoffse::pr::document::{Document, Scalar, Segment};
 use neoffse::pr::slots::SLOT_FILES;
 
-/// The synthetic FF I slot with its top-level `id` set to `id`, in the
+/// The synthetic slot `fixture` with its top-level `id` set to `id`, in the
 /// game's container.
-pub(crate) fn slot_bytes(id: i64) -> Vec<u8> {
-    let json = neoffse_testkit::read_fixture("pr/ff1-slot.json").unwrap();
+fn fixture_bytes(fixture: &str, id: i64) -> Vec<u8> {
+    let json = neoffse_testkit::read_fixture(fixture).unwrap();
     let mut document = Document::parse(&String::from_utf8(json).unwrap()).unwrap();
     document.set(&[Segment::Key("id")], &Scalar::Int(id)).unwrap();
     container::encode(&document.to_json(), &Container::game()).unwrap()
+}
+
+/// The synthetic FF I slot with its top-level `id` set to `id`, in the
+/// game's container.
+pub(crate) fn slot_bytes(id: i64) -> Vec<u8> {
+    fixture_bytes("pr/ff1-slot.json", id)
+}
+
+/// The synthetic FF II slot with its top-level `id` set to `id`, in the
+/// game's container.
+pub(crate) fn ff2_slot_bytes(id: i64) -> Vec<u8> {
+    fixture_bytes("pr/ff2-slot.json", id)
 }
 
 /// The 44-character file name of the slot with JSON id `id`.

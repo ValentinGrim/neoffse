@@ -107,6 +107,7 @@ fn field_meta_matches_the_field_table_row_by_row() {
         assert_eq!(meta.cap, row.cap, "{}", row.field);
         assert_eq!(meta.tables, row.tables, "{}", row.field);
         assert!(meta.names.is_empty(), "{}", row.field);
+        assert!(!meta.game_edit, "{}", row.field);
     }
 }
 

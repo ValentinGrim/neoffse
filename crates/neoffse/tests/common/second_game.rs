@@ -1,97 +1,26 @@
-//! A second real `SlotFormat` for the registry tests: the shared slot
-//! pipeline, the real game rule and the real `OpenError`s, with a model that
-//! reports FF II.
+//! Files for the registry tests that hold two games: a slot with a chosen
+//! vehicle count, and a registry of the real FF I and FF II formats.
 
 use std::sync::Arc;
 
 use neoffse::Registry;
-use neoffse::core::{
-    CapPolicy, Capability, CollectionMeta, Edit, EditError, FieldId, FieldMeta, FormatError, Game, GameChange, RowId, SaveSummary, SaveView, Value,
-};
-use neoffse::data::{GameTables, Language};
+use neoffse::core::Game;
+use neoffse::data::Language;
 use neoffse::pr::OpenError;
 use neoffse::pr::container::{self, Container};
 use neoffse::pr::document::{Document, Segment};
-use neoffse::pr::ff1::{self, Ff1Format, Ff1Model};
+use neoffse::pr::ff1::Ff1Format;
+use neoffse::pr::ff2::Ff2Format;
 use neoffse::pr::games::identify;
-use neoffse::pr::shared::{SlotFormat, SlotModel};
 
-/// An FF I model that reports FF II, so the registry meets a second real
-/// `SlotFormat`. It reads an FF I document with the FF II tables: no FF II
-/// format exists. A test may call `open`, `game`, `capabilities` and `rows`
-/// on it; `summary`, `view` and edits are not valid on it.
-#[derive(Clone)]
-pub(crate) struct Ff2Stand {
-    inner: Ff1Model,
-    tables: &'static GameTables,
-}
-
-impl SlotModel for Ff2Stand {
-    const GAME: Game = Game::Ff2Pr;
-    const CAPABILITIES: &'static [Capability] = &ff1::CAPABILITIES;
-    const DOCUMENT: &'static str = "Ff2StandDocument";
-
-    fn new(document: Document, tables: &'static GameTables) -> Self {
-        Self {
-            inner: Ff1Model::new(document, tables),
-            tables,
-        }
-    }
-
-    fn document(&self) -> &Document {
-        Ff1Model::document(&self.inner)
-    }
-
-    fn tables(&self) -> &'static GameTables {
-        self.tables
-    }
-
-    fn rows(&mut self, collection: &FieldId) -> Result<Vec<u32>, EditError> {
-        Ff1Model::rows(&mut self.inner, collection)
-    }
-
-    fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
-        Ff1Model::get(&mut self.inner, field)
-    }
-
-    fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
-        Ff1Model::field_meta(&self.inner, field)
-    }
-
-    fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
-        Ff1Model::collection_meta(&self.inner, collection)
-    }
-
-    fn summary(&mut self) -> Result<SaveSummary, FormatError> {
-        Ff1Model::summary(&mut self.inner)
-    }
-
-    fn view(&mut self, language: Language) -> Result<SaveView, FormatError> {
-        Ff1Model::view(&mut self.inner, language)
-    }
-
-    fn apply(&mut self, edit: &Edit, policy: CapPolicy) -> Result<Edit, EditError> {
-        Ff1Model::apply(&mut self.inner, edit, policy)
-    }
-
-    fn apply_game(&mut self, edit: &Edit) -> Result<GameChange, EditError> {
-        Ff1Model::apply_game(&mut self.inner, edit)
-    }
-
-    fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
-        Ff1Model::row_locked(&mut self.inner, row)
-    }
-
-    fn field_locked(&self, field: &FieldId) -> Result<bool, EditError> {
-        Ff1Model::field_locked(&self.inner, field)
-    }
-}
-
-/// FF I and the FF II stand-in, both real `SlotFormat`s.
+/// FF I and FF II, the two real formats. A file built from the FF I fixture
+/// with 7 vehicles opens through the FF II format because `open` runs the
+/// game rule and the shape gate only; a test that reads the opened file
+/// further needs a real FF II slot.
 pub(crate) fn ff2_registry() -> Registry {
     Registry::from_formats(vec![
         Arc::new(Ff1Format::with_language(Language::En)),
-        Arc::new(SlotFormat::<Ff2Stand>::with_language(Language::En)),
+        Arc::new(Ff2Format::with_language(Language::En)),
     ])
 }
 
@@ -157,4 +86,11 @@ pub(crate) fn slot_with_text_replaced(count: usize, from: &str, to: &str) -> Vec
     let replaced = text.replacen(from, to, 1);
     assert_ne!(replaced, text, "{from} is not in the slot text");
     container::encode(&replaced, &Container::game()).unwrap()
+}
+
+/// The synthetic FF II slot of `fixtures/pr/ff2-slot.json`, in the game's
+/// container.
+pub(crate) fn ff2_slot_bytes() -> Vec<u8> {
+    let json = neoffse_testkit::read_fixture("pr/ff2-slot.json").unwrap();
+    container::encode(&String::from_utf8(json).unwrap(), &Container::game()).unwrap()
 }

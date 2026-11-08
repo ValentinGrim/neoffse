@@ -6,7 +6,7 @@ use neoffse_core::{CapPolicy, Edit, EditError, RowId, Value};
 
 use super::{Ff1Model, names};
 use crate::shared::items::Lists;
-use crate::shared::paths::Collection;
+use crate::shared::rules;
 
 impl Ff1Model {
     /// The item-list view of the model: the document and the tables.
@@ -43,18 +43,6 @@ impl Ff1Model {
     /// document does not hold (a character row included), `Format` when a read
     /// fails.
     pub fn row_locked(&mut self, row: &RowId) -> Result<bool, EditError> {
-        let (meta, collection) = self.lists().row_collection(row)?;
-        let index = self.lists().row_index(row, collection)?;
-        let Collection::Items(list) = collection else {
-            return Ok(true);
-        };
-        if self.is_placeholder(list, row.key()) || self.wearers_of(row.key(), row.id())? > 0 {
-            return Ok(true);
-        }
-        let Some(count) = self.lists().canonical_row(row, list, index)? else {
-            return Ok(true);
-        };
-        let values = [(names::COUNT, Value::Int(count))];
-        Ok(meta.check_insert(row, &values, CapPolicy::StorageOnly).is_err())
+        rules::row_locked(&mut self.lists(), row, names::EQUIPMENT_SLOTS)
     }
 }

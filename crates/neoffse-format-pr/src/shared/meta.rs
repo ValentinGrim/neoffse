@@ -9,11 +9,16 @@ use neoffse_data::GameTables;
 use super::names;
 use super::paths::{Collection, List};
 
-/// Largest stored value of a number field. Neither the master data nor the
-/// saves state a bound for these fields: `i32::MAX` is the clamp of the Go
-/// editor and holds every counter of FF I
-/// (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`, "Storage
-/// bound").
+/// Largest stored value of a number field: `i32::MAX`, the clamp of the Go
+/// editor (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`,
+/// "Storage bound"). FF II declares `owendGil`, the battle counters, `id`,
+/// `characterStatusId`, `jobId`, `currentExp`, `numberOfButtles`, `abilityId`,
+/// `contentId` and `skillLevel` as C# `int`
+/// (`docs/formats/pixel-remaster.md#bounds-in-ff-ii`), so the value holds
+/// them. The document states no type for the `parameter` fields, the
+/// `skillLevelTargets` values and the item and slot counts: there the clamp
+/// stays an assumption. The game cap of the gil is `MAX_GIL`, 9 999 999 in
+/// FF II and 999 999 in FF I; it sits in the tables, not in this constant.
 pub(crate) const STORAGE_MAX: i64 = 2_147_483_647;
 
 /// The tables that an `inventory` row key may name: items, weapons, shields,
@@ -34,6 +39,13 @@ const INVENTORY_TABLES: [TableKind; 6] = [
 pub(crate) fn int(label: impl Into<String>, min: i64, bound: Option<(&GameTables, &str)>) -> FieldMeta {
     let mut meta = FieldMeta::new(label, Shape::Int { min, max: STORAGE_MAX });
     meta.cap = bound.and_then(|(tables, key)| tables.bound(key));
+    meta
+}
+
+/// A computed field: an integer the editor shows and never sets.
+pub(crate) fn derived_meta(label: &'static str, bound: Option<(&GameTables, &str)>) -> FieldMeta {
+    let mut meta = int(label, 0, bound);
+    meta.read_only = true;
     meta
 }
 

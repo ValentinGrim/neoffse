@@ -3,7 +3,8 @@
 
 export enum FieldKind { label, text, number, choice, picker, toggle }
 // The commands of the editor menu. The command list shows them in this order.
-export enum EditorCommand { party, items, magic }
+// `raw-magic` is the stored places of the spells, in expert mode only.
+export enum EditorCommand { party, items, magic, raw-magic }
 export enum EditProblem { not-a-number, read-only, out-of-range, above-cap, unknown-id, duplicate-row, missing-row, not-editable, reloaded, stats-raised, saved, save-failed, reload-failed, internal }
 
 // What a row of the review list shows.
@@ -64,7 +65,9 @@ export struct ItemRow { key: int, label: string, fields: [FieldRow], locked: boo
 export struct ItemList { key: int, title: string, rows: [ItemRow], insertable: bool }
 // `read-only`: the section holds fields and every one is read only.
 export struct SectionData { present: bool, read-only: bool, pages: [EntityPage], lists: [ItemList] }
-export struct EditorData { party: SectionData, inventory: SectionData, magic: SectionData }
+// `raw-magic`: the expert-only pages of the Magic section, split off it in
+// expert mode; `present` is false in default mode and when the save has none.
+export struct EditorData { party: SectionData, inventory: SectionData, magic: SectionData, raw-magic: SectionData }
 
 // One character of the party overview. The numbers are decimal strings; an
 // entry is "" when the save or the data lacks it.
@@ -85,6 +88,13 @@ export struct CharacterCard {
     hp: string,
     // "": the view holds no maximum HP.
     hp-max: string,
+    // Current MP of a game that stores one number; "" when the game has
+    // none (the charges stand for it) or the view lacks it.
+    mp: string,
+    // "": the view holds no maximum MP.
+    mp-max: string,
+    // The game has a level: the card draws the Lv row.
+    has-level: bool,
     // Current charges, spell level 1 first; empty when the game has none.
     charges: [string],
     exp: string,

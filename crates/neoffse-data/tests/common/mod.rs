@@ -249,6 +249,7 @@ pub(crate) fn minimal() -> Sources<'static> {
         monsters: Some(MONSTERS),
         bounds: BOUNDS,
         growth: Some(GROWTH),
+        skills: None,
     }
 }
 

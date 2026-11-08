@@ -83,22 +83,22 @@ pub(super) fn user_data(slot: &SlotData) -> String {
 
 /// `userData.cheatSettingsData` is a plain nested object, not a string
 /// (`docs/formats/pixel-remaster.md#documents-inside-strings`).
-const CHEAT: &str = r#"{"isEnableEncount":true,"expRate":1,"gilRate":1,"learningProficiencyRate":1,"isHpIncreaseByFightCount":false,"abpRate":1,"magicProficiencyRate":1,"parameterUpRate":1,"magicLearningProficiencyRate":1}"#;
+pub(super) const CHEAT: &str = r#"{"isEnableEncount":true,"expRate":1,"gilRate":1,"learningProficiencyRate":1,"isHpIncreaseByFightCount":false,"abpRate":1,"magicProficiencyRate":1,"parameterUpRate":1,"magicLearningProficiencyRate":1}"#;
 
-fn object(pairs: &[(&str, String)], colon: &str) -> String {
+pub(super) fn object(pairs: &[(&str, String)], colon: &str) -> String {
     let body: Vec<String> = pairs.iter().map(|(key, value)| format!("\"{key}\"{colon}{value}")).collect();
     format!("{{{}}}", body.join(","))
 }
 
-fn list(items: &[String]) -> String {
+pub(super) fn list(items: &[String]) -> String {
     format!("{{\"target\":[{}]}}", items.join(","))
 }
 
-fn dict(keys: &[String], values: &[String]) -> String {
+pub(super) fn dict(keys: &[String], values: &[String]) -> String {
     format!("{{\"keys\":[{}],\"values\":[{}]}}", keys.join(","), values.join(","))
 }
 
-fn numbers(entries: &[(u32, u32)]) -> String {
+pub(super) fn numbers(entries: &[(u32, u32)]) -> String {
     let keys: Vec<String> = entries.iter().map(|(key, _)| key.to_string()).collect();
     let values: Vec<String> = entries.iter().map(|(_, value)| value.to_string()).collect();
     dict(&keys, &values)
@@ -242,7 +242,7 @@ fn render_character(character: &Character) -> String {
     object(&pairs, ":")
 }
 
-fn config_data() -> String {
+pub(super) fn config_data() -> String {
     let keys = [
         "buttonType",
         "battleModeIndex",
@@ -263,11 +263,11 @@ fn config_data() -> String {
     object(&pairs, ":")
 }
 
-fn data_storage() -> String {
+pub(super) fn data_storage() -> String {
     r#"{"scenario":[0,1,4294967295],"treasure":[3,0,255],"global":[0,0],"area":[0],"map":[0],"selected":0,"itemSelected":0,"transportation":[]}"#.to_owned()
 }
 
-fn map_data() -> String {
+pub(super) fn map_data() -> String {
     let player = embed(r#"{"position":{"x":12.0,"y":3.5,"z":0.0},"direction":2}"#);
     let gps = embed(r#"{"mapId":3,"areaId":2,"gpsId":1,"width":256,"height":256}"#);
     format!(

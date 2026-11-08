@@ -1,10 +1,8 @@
 //! The edit history of the open session: the counts the pending changes bar
 //! shows, undo and redo, and the net change list of the review.
 
-use neoffse::Session;
-use neoffse::core::EditError;
-
-use super::model::{EditorViewModel, lock_session, not_editable};
+use super::layout::without_expert_only;
+use super::model::{EditorViewModel, SessionLocks, lock_session, not_editable};
 use super::notice::problem_notice;
 use super::review::review_rows;
 use crate::{EditNotice, EditProblem, ReviewRow};
@@ -34,6 +32,7 @@ impl EditorViewModel {
             return History::default();
         };
         let session = lock_session(&session);
+        self.shared.raw.settle(session.pending_count(), session.can_redo());
         History {
             pending: session.pending_count(),
             can_undo: session.can_undo(),
@@ -42,7 +41,8 @@ impl EditorViewModel {
     }
 
     /// Undoes the last edit. `None`: it went through, or there was nothing to
-    /// undo. `Some`: the notice to show. It works in both modes: the replay
+    /// undo. An undo that starts at the clean point makes the review show
+    /// every row, since the undone edit may have sat on an expert-only page. `Some`: the notice to show. It works in both modes: the replay
     /// runs under `StorageOnly`. The caller refreshes with `data`.
     ///
     /// A call with no save open, or while a save runs, gives a
@@ -50,19 +50,39 @@ impl EditorViewModel {
     /// failed reload closes and answers `internal`.
     #[must_use]
     pub fn undo(&self) -> Option<EditNotice> {
-        self.replay(Session::undo)
+        self.on_session("", |session| {
+            let was_clean = !session.is_dirty();
+            let moved = session.undo()?;
+            if was_clean && moved {
+                self.shared.raw.undone_past_clean();
+            }
+            Ok(moved)
+        })
     }
 
     /// Redoes the last undone edit. Same answers as [`undo`](Self::undo).
     #[must_use]
     pub fn redo(&self) -> Option<EditNotice> {
-        self.replay(Session::redo)
+        self.on_session("", |session| {
+            let was_clean = !session.is_dirty();
+            let moved = session.redo()?;
+            if was_clean && session.is_dirty() {
+                self.shared.raw.restore();
+            }
+            Ok(moved)
+        })
     }
 
     /// The net difference between the clean state and the current state as
     /// review rows, in the registry's language. Empty when the edits cancel
     /// each other out. UI thread only: it decodes the clean bytes once per
     /// call and the result holds Slint strings.
+    ///
+    /// In the default mode the rows of the pages only expert mode edits stay
+    /// out: a Level edit lists one row, not the eight stored places it
+    /// writes. Expert mode lists every row, and so does the default mode
+    /// while an edit committed on such a page is pending, so no write goes
+    /// unseen.
     ///
     /// # Errors
     ///
@@ -73,13 +93,14 @@ impl EditorViewModel {
             return Err(not_editable());
         }
         let session = self.shared.state.session().ok_or_else(not_editable)?;
-        let changes = lock_session(&session)
-            .changes(self.shared.language)
-            .map_err(|_| problem_notice(EditProblem::Internal, ""))?;
-        Ok(review_rows(&changes))
-    }
-
-    fn replay(&self, step: impl FnOnce(&mut Session) -> Result<bool, EditError>) -> Option<EditNotice> {
-        self.on_session("", step)
+        let mut session = lock_session(&session);
+        let internal = || problem_notice(EditProblem::Internal, "");
+        let changes = session.changes(self.shared.language).map_err(|_| internal())?;
+        self.shared.raw.settle(session.pending_count(), session.can_redo());
+        if self.expert() || self.shared.raw.shown() {
+            return Ok(review_rows(&changes));
+        }
+        let view = session.view().map_err(|_| internal())?;
+        Ok(review_rows(&without_expert_only(changes, &view, &mut SessionLocks(&mut session))))
     }
 }

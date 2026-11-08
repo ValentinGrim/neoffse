@@ -27,12 +27,8 @@ def find_bundle(names: Iterable[str], prefix: str) -> str:
     return found[0]
 
 
-def read_assets(bundle: Path, wanted: Collection[str]) -> dict[str, str]:
-    """Text of each wanted asset path, keyed as the caller wrote it.
-
-    Container paths compare in lower case: Unity stores them lower-cased
-    in some builds. UnityPy is imported here only.
-    """
+def _load(bundle: Path) -> Any:
+    """The UnityPy environment of a bundle. UnityPy is imported here only."""
     try:
         import UnityPy
     except ImportError as error:
@@ -44,28 +40,59 @@ def read_assets(bundle: Path, wanted: Collection[str]) -> dict[str, str]:
             f"UnityPy {UnityPy.__version__} is installed, {PINNED_UNITYPY} is pinned: "
             "pip install -r requirements.txt (from tools/pr-tables)"
         )
+    return UnityPy.load(str(bundle))
+
+
+def _text_of(bundle: Path, path: str, found: list[Any]) -> str:
+    """The text of the one container entry behind `path`."""
+    if len(found) != 1:
+        raise ExportError(f"{bundle.name}: {path} matches {len(found)} container entries")
+    reader = found[0].deref()
+    if reader.type.name != "TextAsset":
+        raise ExportError(f"{bundle.name}: {path} is a {reader.type.name}, not a TextAsset")
+    script = reader.parse_as_object().m_Script
+    raw = script.encode("utf-8", "surrogateescape")
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise ExportError(f"{bundle.name}: {path} is not UTF-8: {error}") from error
+
+
+def read_assets(bundle: Path, wanted: Collection[str]) -> dict[str, str]:
+    """Text of each wanted asset path, keyed as the caller wrote it.
+
+    Container paths compare in lower case: Unity stores them lower-cased
+    in some builds.
+    """
     by_lower = {path.lower(): path for path in wanted}
     matches: dict[str, list[Any]] = {path: [] for path in wanted}
     try:
-        env = UnityPy.load(str(bundle))
+        env = _load(bundle)
         for container_path, pptr in env.container.items():
             path = by_lower.get(container_path.lower())
             if path is not None:
                 matches[path].append(pptr)
-        texts: dict[str, str] = {}
-        for path, found in matches.items():
-            if len(found) != 1:
-                raise ExportError(f"{bundle.name}: {path} matches {len(found)} container entries")
-            reader = found[0].deref()
-            if reader.type.name != "TextAsset":
-                raise ExportError(f"{bundle.name}: {path} is a {reader.type.name}, not a TextAsset")
-            script = reader.parse_as_object().m_Script
-            raw = script.encode("utf-8", "surrogateescape")
-            try:
-                texts[path] = raw.decode("utf-8-sig")
-            except UnicodeDecodeError as error:
-                raise ExportError(f"{bundle.name}: {path} is not UTF-8: {error}") from error
-        return texts
+        return {path: _text_of(bundle, path, found) for path, found in matches.items()}
+    except ExportError:
+        raise
+    except Exception as error:  # UnityPy raises many types on a damaged bundle
+        raise ExportError(f"{bundle.name}: cannot read the bundle: {error!r}") from error
+
+
+def read_asset_ending(bundle: Path, suffix: str) -> tuple[str, str]:
+    """The container path and text of the one entry whose path ends in `suffix`.
+
+    Used where the folder of an asset is not stated, only its file name. Zero or
+    several entries stop the run."""
+    wanted = suffix.lower()
+    try:
+        env = _load(bundle)
+        found = [
+            (path, pptr) for path, pptr in env.container.items() if path.lower().endswith(wanted)
+        ]
+        paths = sorted(path for path, _ in found)
+        text = _text_of(bundle, f"*{suffix}", [pptr for _, pptr in found])
+        return paths[0], text
     except ExportError:
         raise
     except Exception as error:  # UnityPy raises many types on a damaged bundle

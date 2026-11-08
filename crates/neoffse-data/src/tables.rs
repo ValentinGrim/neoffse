@@ -8,6 +8,7 @@ use crate::entry::Entry;
 use crate::error::DataError;
 use crate::growth::{Growth, GrowthStep};
 use crate::parse::parse_sources;
+use crate::skills::{BaseStats, Skills, SpellStep};
 
 /// The seven tables whose ids share one content id space
 /// (`docs/formats/pixel-remaster.md#id-spaces-and-tables`).
@@ -21,7 +22,7 @@ const CONTENT_KINDS: [TableKind; 7] = [
     TableKind::Gloves,
 ];
 
-/// The text of the files of one game: seven, two of them optional.
+/// The text of the files of one game: eight, three of them optional.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sources<'a> {
     /// `content.toml`: items, key items, equipment, keywords, magic stones and command content rows.
@@ -39,6 +40,9 @@ pub struct Sources<'a> {
     /// `growth.toml`: base stats per class, experience per level and growth rows.
     /// `None` for a game with no levels or whose level-up rule the document does not state yet.
     pub growth: Option<&'a str>,
+    /// `skills.toml`: base stats per status, the proficiency curve and the spell chains.
+    /// `None` for a game whose skill rules the document does not state yet.
+    pub skills: Option<&'a str>,
 }
 
 /// The immutable tables and caps of one game.
@@ -50,12 +54,13 @@ pub struct GameTables {
     tables: BTreeMap<TableKind, Vec<Entry>>,
     bounds: BTreeMap<String, i64>,
     growth: Option<Growth>,
+    skills: Option<Skills>,
 }
 
 impl GameTables {
     /// Parses the texts of `game` in the order content, abilities, jobs,
-    /// commands, monsters, bounds, growth. `monsters` and `growth` are optional
-    /// and skipped when `None`: a `Some` text is always parsed, an empty one
+    /// commands, monsters, bounds, growth, skills. `monsters`, `growth` and
+    /// `skills` are optional and skipped when `None`: a `Some` text is always parsed, an empty one
     /// included. The function reads no disk and keeps no global state.
     ///
     /// # Errors
@@ -72,7 +77,13 @@ impl GameTables {
     /// strictly, `exp_table` has `MAX_LV` rows when `bounds.toml` holds that
     /// cap, job and group ids rise, every group starts at level 2 and holds one value per
     /// level of `exp_table` in each column, `hp_value1` is 0 or 1, every job
-    /// names a group that exists, and no table is empty.
+    /// names a group that exists, and no table is empty. `skills.toml` adds
+    /// its own rules: status ids rise from 1, `skill_curve.total_exp` starts
+    /// at 0, rises strictly and has `MAX_MAGICAL_LEVEL` and `MAX_WEAPON_LEVEL`
+    /// rows when `bounds.toml` holds those caps, `spell_chains.length` is at
+    /// least 1, the chains rise and start at least `length` apart, every
+    /// ability id of a chain is a row of the ability table with a content id,
+    /// and no table is empty.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
         let parsed = parse_sources(sources)?;
         Ok(GameTables {
@@ -80,6 +91,7 @@ impl GameTables {
             tables: parsed.tables,
             bounds: parsed.bounds,
             growth: parsed.growth,
+            skills: parsed.skills,
         })
     }
 
@@ -177,5 +189,45 @@ impl GameTables {
     #[must_use]
     pub fn growth_step(&self, job_id: u32, level: u32) -> Option<GrowthStep> {
         self.growth.as_ref().and_then(|growth| growth.growth_step(job_id, level))
+    }
+
+    /// The base of the `character_status` row with that id (the
+    /// `characterStatusId` of a save). `None` for an id without a row and when
+    /// the game ships no `skills.toml`.
+    #[must_use]
+    pub fn base_stats(&self, status_id: u32) -> Option<BaseStats> {
+        self.skills.as_ref().and_then(|skills| skills.base_stats(status_id))
+    }
+
+    /// The total proficiency of a skill level: 0 at level 1. `None` for level
+    /// 0, for a level above the last row (16 in FF II) and when the game ships
+    /// no `skills.toml`.
+    #[must_use]
+    pub fn skill_total(&self, level: u32) -> Option<u32> {
+        self.skills.as_ref().and_then(|skills| skills.skill_total(level))
+    }
+
+    /// The chain and level of an ability id in the spell chains
+    /// (`docs/formats/pixel-remaster.md#spells-in-ff-ii`). `None` for an id
+    /// outside every chain and when the game ships no `skills.toml`.
+    #[must_use]
+    pub fn spell_step(&self, ability_id: u32) -> Option<SpellStep> {
+        self.skills.as_ref().and_then(|skills| skills.spell_step(ability_id))
+    }
+
+    /// The ability id at a chain and level: the inverse of
+    /// [`GameTables::spell_step`]. `None` for level 0, a level above the chain
+    /// length, a chain outside the list and when the game ships no
+    /// `skills.toml`.
+    #[must_use]
+    pub fn spell_ability(&self, chain: u32, level: u32) -> Option<u32> {
+        self.skills.as_ref().and_then(|skills| skills.spell_ability(chain, level))
+    }
+
+    /// The number of spell chains: 40 in FF II, 0 when the game ships no
+    /// `skills.toml`.
+    #[must_use]
+    pub fn spell_chains(&self) -> u32 {
+        self.skills.as_ref().map_or(0, Skills::chain_count)
     }
 }

@@ -81,10 +81,14 @@ pub struct FieldMeta {
     pub names: Vec<NamedValue>,
     /// ID tables the `Int` references; empty when it references none.
     pub tables: Vec<TableKind>,
+    /// The field has no stored place of its own, so every mode edits it
+    /// through the game interface; the raw interface refuses it.
+    pub game_edit: bool,
 }
 
 impl FieldMeta {
-    /// A writable field with no cap, no names and no table.
+    /// A writable field with no cap, no names and no table, edited through the
+    /// raw interface in expert mode (`game_edit` false).
     #[must_use]
     pub fn new(label: impl Into<String>, shape: Shape) -> Self {
         Self {
@@ -94,6 +98,7 @@ impl FieldMeta {
             cap: None,
             names: Vec::new(),
             tables: Vec::new(),
+            game_edit: false,
         }
     }
 

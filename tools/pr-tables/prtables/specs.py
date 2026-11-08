@@ -119,6 +119,25 @@ class GrowthSpec:
 
 
 @dataclass(frozen=True)
+class SkillsSpec:
+    """Base stats per character status, the proficiency curve and the spell chains of FF II
+    (docs/formats/pixel-remaster.md#skill-levels-in-ff-ii and #spells-in-ff-ii)."""
+
+    file: str
+    status_csv: str  # columns id and the stat columns skills.py names
+    exp_csv: str  # columns type_id, group_id, lv, total_exp: the proficiency curve
+    ability_csv: str  # columns id, use_value
+    misc_asset: str  # file name that ends the container path of the JSON asset
+    chain_table: str  # name of the list of {current_ability_id, next_ability_id} pairs
+    first_ability_id: int  # first id of the first chain
+    chains: int
+    chain_length: int  # rows per chain, the highest spell level
+    magical_cap_key: str  # game_constant_int.csv key: the highest spell level
+    weapon_cap_key: str  # game_constant_int.csv key: the highest weapon skill level
+    notes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Game:
     id: str
     label: str
@@ -135,6 +154,7 @@ class Game:
     bounds: BoundsSpec
     growth: GrowthSpec | None  # None: the game writes no growth file
     story: StorySpec | None = None  # None: the game reads no story file
+    skills: SkillsSpec | None = None  # None: the game writes no skills file
 
     def csv_files(self) -> tuple[str, ...]:
         """Every CSV the specs read, sorted, no repeat."""
@@ -152,4 +172,6 @@ class Game:
         if self.growth is not None:
             names.update((self.growth.status_csv, self.growth.exp_csv, self.growth.curve_csv))
             names.add(self.growth.step_csv)
+        if self.skills is not None:
+            names.update((self.skills.status_csv, self.skills.exp_csv, self.skills.ability_csv))
         return tuple(sorted(names))

@@ -15,7 +15,7 @@ use common::exit_cases::{ALWAYS, build, run};
 use common::ff1_real::{must, must_some, slots};
 use neoffse_core::{Capability, Edit, EditError, FieldId, Key, RowId, SaveDocument, Value};
 use neoffse_format_pr::container;
-use neoffse_format_pr::ff1::{GAME, names};
+use neoffse_format_pr::ff1::{Ff1Format, GAME, names};
 
 const CHARS: &str = "userData.ownedCharacterList.target";
 const INV: &str = "userData.normalOwnedItemList.target";
@@ -59,7 +59,7 @@ fn real_slots_prove_every_edit_kind() {
     let (mut compact, mut cases_run, mut raw_run, mut sort_lists) = (0, 0, 0, 0);
     let mut skipped: BTreeMap<&'static str, usize> = BTreeMap::new();
     for slot in &slots {
-        let subject = Subject::real(slot);
+        let subject = Subject::real(Ff1Format::new(), slot);
         compact += usize::from(is_compact(&subject));
         sort_lists += usize::from(subject.tree.array_len(SORT_LIST).is_some_and(|len| len > 0));
         let built = build(&subject);
@@ -138,7 +138,7 @@ fn refuses(subject: &Subject, what: &str, edit: &Edit) {
 fn real_refused_edits_write_nothing() {
     let Some(slots) = slots() else { return };
     for slot in &slots {
-        let subject = Subject::real(slot);
+        let subject = Subject::real(Ff1Format::new(), slot);
         let held = inventory_ids(&subject);
         let worn = worn_ids(&subject);
         let worn_row = worn.iter().find(|id| held.contains(id) && !is_placeholder(**id));

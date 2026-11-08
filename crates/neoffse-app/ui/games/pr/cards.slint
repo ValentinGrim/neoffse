@@ -3,9 +3,11 @@ import { CharacterCard, EntityPage, Overview } from "../../types/editor.slint";
 import { Frame, LookText, PortraitFrame, PressRow, RuleLine } from "../../widgets/frames.slint";
 
 // One character: a portrait frame with the sprite (the initial when there is
-// none), the job over the name, HP, the eight charges in two rows of four, the
-// level, and the experience or the next level. A click, Enter or Space opens
-// the character's page.
+// none), the job over the name, HP, the MP of a game that stores one (the
+// eight charges in two rows of four for a game that stores charges), the
+// level, and the experience or the next level, when the game has a level. A click, Enter or Space opens
+// the character's page. Every card is as high as the stats column of an FF I
+// card, whatever rows its game shows.
 component CharacterRow inherits PressRow {
     in property <CharacterCard> card;
     in property <bool> last;
@@ -17,12 +19,19 @@ component CharacterRow inherits PressRow {
     private property <length> frame: root.side + 2 * portrait-frame.inset;
     // The label column of the stats: wide enough for "HP", "MP" and "Lv".
     private property <length> label-width: root.look.font-body * 2.5;
+    // HP, the two charges rows, Lv: the stats column of the tallest PR card.
+    // Every card keeps room for that many lines so the pitch between
+    // portraits is the same in every game.
+    private property <int> stat-rows: 4;
+    // The height of those lines in the card's own font, plus the padding.
+    private property <length> rows-height: root.stat-rows * hp-row.preferred-height + 2 * root.look.padding;
 
     name: root.card.name;
-    // The card keeps the height of its rows (the portrait is twice the sprite
-    // and the four text rows decide the height), whatever room the panel has.
-    min-height: body.min-height;
-    preferred-height: body.preferred-height;
+    // The card keeps the height of an FF I stats column (the portrait is
+    // twice the sprite and the text rows decide the height), whatever rows
+    // the game shows and whatever room the panel has.
+    min-height: max(body.min-height, root.rows-height);
+    preferred-height: max(body.preferred-height, root.rows-height);
 
     body := HorizontalLayout {
         padding: root.look.padding;
@@ -63,7 +72,7 @@ component CharacterRow inherits PressRow {
             horizontal-stretch: 1;
             alignment: center;
 
-            HorizontalLayout {
+            hp-row := HorizontalLayout {
                 LookText {
                     look: root.look;
                     width: root.label-width;
@@ -73,6 +82,19 @@ component CharacterRow inherits PressRow {
                 LookText {
                     look: root.look;
                     text: root.card.hp-max != "" ? root.card.hp + "/ " + root.card.hp-max : root.card.hp;
+                    overflow: elide;
+                }
+            }
+            if root.card.mp != "": HorizontalLayout {
+                LookText {
+                    look: root.look;
+                    width: root.label-width;
+                    text: @tr("MP");
+                    color: root.look.label;
+                }
+                LookText {
+                    look: root.look;
+                    text: root.card.mp-max != "" ? root.card.mp + "/ " + root.card.mp-max : root.card.mp;
                     overflow: elide;
                 }
             }
@@ -97,7 +119,7 @@ component CharacterRow inherits PressRow {
                     text: root.card.charges[4] + "/ " + root.card.charges[5] + "/ " + root.card.charges[6] + "/ " + root.card.charges[7];
                 }
             }
-            HorizontalLayout {
+            if root.card.has-level: HorizontalLayout {
                 LookText {
                     look: root.look;
                     width: root.label-width;
