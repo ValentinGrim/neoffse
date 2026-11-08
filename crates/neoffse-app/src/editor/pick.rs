@@ -52,6 +52,7 @@ pub fn entry_name(tables: &GameTables, kinds: &[TableKind], language: Language, 
     kinds
         .iter()
         .find_map(|kind| tables.entry(*kind, id))
+        // A row without a name shows as "" and the UI prints "Entry {id}" for it.
         .map(|entry| entry.name(language).unwrap_or_default().to_owned())
 }
 

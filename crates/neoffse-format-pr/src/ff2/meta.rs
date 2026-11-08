@@ -64,7 +64,7 @@ fn skill_cap(tables: &GameTables, key: u32) -> Option<i64> {
     if key < FIRST_EVASION_KEY {
         return level_total(tables, "MAX_WEAPON_LEVEL");
     }
-    // A cap key the tables lack, or a negative one, leaves the skill uncapped.
+    // A cap key the tables lack, or one past `u32`, leaves the skill uncapped.
     let level = |name: &str| tables.bound(name).and_then(|level| u32::try_from(level).ok());
     let name = if key == FIRST_EVASION_KEY {
         "MAX_EVASION_TIMES_LEVEL"

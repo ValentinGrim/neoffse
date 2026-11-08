@@ -63,10 +63,11 @@ fn the_party_follows_the_list_order_and_skips_dangling_ids() {
 
 #[test]
 fn play_time_forms() {
-    let cases: [(&str, Option<Duration>); 5] = [
+    let cases: [(&str, Option<Duration>); 6] = [
         ("13621", Some(Duration::from_secs(13621))),
         ("-1", None),
         ("-1.5", None),
+        ("1e30", None),
         ("\"soon\"", None),
         ("null", None),
     ];
