@@ -7,9 +7,9 @@ mod common;
 
 use std::collections::BTreeMap;
 
-use common::{ff1, kind_rule::kind_of};
-use neoffse_core::{Game, TableKind};
-use neoffse_data::{AbilityKind, Language, tables_for};
+use common::ff1;
+use neoffse_core::TableKind;
+use neoffse_data::{AbilityKind, Language};
 
 fn ability(id: u32) -> &'static neoffse_data::Entry {
     ff1().entry(TableKind::Ability, id).unwrap()
@@ -117,15 +117,4 @@ fn the_ff1_type_ids_match_the_document() {
     let expected = BTreeMap::from([(1, 33), (2, 32), (3, 2), (4, 1), (5, 1), (6, 2), (8, 1), (13, 24)]);
     assert_eq!(histogram, expected);
     assert_eq!(histogram.values().sum::<usize>(), 96);
-}
-
-#[test]
-fn every_embedded_ability_follows_the_kind_rule() {
-    for game in Game::ALL {
-        let Some(tables) = tables_for(*game) else { continue };
-        for entry in tables.table(TableKind::Ability).unwrap_or_default() {
-            let info = entry.ability.unwrap();
-            assert_eq!(kind_of(info.type_id), Some(info.kind), "{game:?} ability {}", entry.id);
-        }
-    }
 }

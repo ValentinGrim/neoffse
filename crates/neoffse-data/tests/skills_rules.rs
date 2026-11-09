@@ -42,9 +42,9 @@ fn chains(first: &[u32], length: u32) -> String {
     format!("[spell_chains]\nfirst = [{}]\nlength = {length}\n", values.join(", "))
 }
 
-/// A valid text: two statuses, a four-level curve and two chains of two abilities.
+/// A valid text: two statuses, a two-level curve and two chains of two abilities.
 fn valid() -> String {
-    statuses(&[1, 2]) + &curve(&[0, 5, 12, 40]) + &chains(&[1, 3], 2)
+    statuses(&[1, 2]) + &curve(&[0, 5]) + &chains(&[1, 3], 2)
 }
 
 fn parse_with(skills: &str, abilities: &str, bounds: &str) -> Result<GameTables, DataError> {
@@ -71,7 +71,8 @@ fn broken(text: &str) -> (&'static str, String, &'static str) {
 fn the_valid_text_serves_its_rows() {
     let tables = parse(&valid()).unwrap();
     assert_eq!(tables.base_stats(2).map(|base| base.hp), Some(10));
-    assert_eq!(tables.skill_total(3), Some(12));
+    assert_eq!(tables.skill_total(2), Some(5));
+    assert_eq!(tables.skill_total(3), None);
     assert_eq!(tables.spell_chains(), 2);
     let step = tables.spell_step(4).unwrap();
     assert_eq!((step.chain, step.level), (1, 2));
@@ -151,7 +152,7 @@ fn a_curve_of_15_values_against_the_level_caps_is_refused() {
 
 #[test]
 fn a_curve_matching_the_level_caps_parses() {
-    let bounds = BOUNDS.to_string() + "MAX_MAGICAL_LEVEL = 4\nMAX_WEAPON_LEVEL = 4\n";
+    let bounds = BOUNDS.to_string() + "MAX_MAGICAL_LEVEL = 2\nMAX_WEAPON_LEVEL = 2\n";
     assert!(parse_with(&valid(), &abilities(None), &bounds).is_ok());
 }
 
@@ -165,6 +166,15 @@ fn an_empty_chain_list_is_refused() {
 fn a_chain_length_of_0_is_refused() {
     let text = statuses(&[1]) + &curve(&[0, 5]) + &chains(&[1, 3], 0);
     assert_eq!(broken(&text), ("skills.toml", "spell_chains".to_string(), "length is below 1"));
+}
+
+#[test]
+fn a_chain_length_that_differs_from_the_curve_is_refused() {
+    let expected = ("skills.toml", "spell_chains".to_string(), "chain length differs from the skill curve");
+    for (totals, length) in [(&[0, 5, 12][..], 2), (&[0, 5][..], 3)] {
+        let text = statuses(&[1]) + &curve(totals) + &chains(&[1, 4], length);
+        assert_eq!(broken(&text), expected, "{} levels, length {length}", totals.len());
+    }
 }
 
 #[test]

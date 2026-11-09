@@ -34,12 +34,12 @@ pub(crate) fn parse_sources(sources: &Sources<'_>) -> Result<Parsed, DataError> 
     content(&read("content.toml", sources.content)?, &mut tables)?;
     abilities(&read("abilities.toml", sources.abilities)?, &mut tables)?;
     let jobs: JobFile = read("jobs.toml", sources.jobs)?;
-    names("jobs.toml", &jobs.job, TableKind::Job, &mut tables)?;
+    names("jobs.toml", "job", &jobs.job, TableKind::Job, &mut tables)?;
     let commands: CommandFile = read("commands.toml", sources.commands)?;
-    names("commands.toml", &commands.command, TableKind::Command, &mut tables)?;
+    names("commands.toml", "command", &commands.command, TableKind::Command, &mut tables)?;
     if let Some(text) = sources.monsters {
         let monsters: MonsterFile = read("monsters.toml", text)?;
-        names("monsters.toml", &monsters.monster, TableKind::Monster, &mut tables)?;
+        names("monsters.toml", "monster", &monsters.monster, TableKind::Monster, &mut tables)?;
     }
     let bounds: BoundsFile = read("bounds.toml", sources.bounds)?;
     check_bounds(&bounds.bounds)?;

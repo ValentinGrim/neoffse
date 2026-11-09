@@ -180,7 +180,7 @@ pub(crate) fn parse_skills(text: &str, bounds: &BTreeMap<String, i64>, abilities
     let total = file.skill_curve.total_exp;
     check_curve(&total, bounds)?;
     let SpellChains { first, length } = file.spell_chains;
-    check_chains(&first, length, abilities)?;
+    check_chains(&first, length, total.len(), abilities)?;
     Ok(Skills { base, total, first, length })
 }
 
@@ -207,14 +207,19 @@ fn check_curve(total: &[u32], bounds: &BTreeMap<String, i64>) -> Result<(), Data
     Ok(())
 }
 
-/// The chains start at least `length` apart, rise, and every id of every chain
+/// `length` equals the `levels` of the skill curve (FF II: 16 and 16, see
+/// `docs/formats/pixel-remaster.md#spells-in-ff-ii` and `#skill-levels-in-ff-ii`),
+/// the chains start at least `length` apart, rise, and every id of every chain
 /// is an ability row with a content id.
-fn check_chains(first: &[u32], length: u32, abilities: &[Entry]) -> Result<(), DataError> {
+fn check_chains(first: &[u32], length: u32, levels: usize, abilities: &[Entry]) -> Result<(), DataError> {
     if first.is_empty() {
         return Err(rule("spell_chains".to_string(), "table has no row"));
     }
     if length == 0 {
         return Err(rule("spell_chains".to_string(), "length is below 1"));
+    }
+    if usize::try_from(length) != Ok(levels) {
+        return Err(rule("spell_chains".to_string(), "chain length differs from the skill curve"));
     }
     for (index, pair) in first.windows(2).enumerate() {
         let (Some(before), Some(after)) = (pair.first(), pair.get(1)) else {

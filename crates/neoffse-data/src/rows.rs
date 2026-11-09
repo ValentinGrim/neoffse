@@ -4,13 +4,14 @@
 //! `tools/pr-tables`, not the content. A column the tool adds fails the
 //! tests until this module handles it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use neoffse_core::TableKind;
 use serde::Deserialize;
 
-use crate::entry::{AbilityInfo, AbilityKind, Entry};
+use crate::entry::{AbilityInfo, Entry};
 use crate::error::DataError;
+use crate::kinds::{ability_kind, kind_of_type};
 use crate::parse::{rise, rule};
 
 #[derive(Deserialize)]
@@ -82,6 +83,15 @@ fn name_pair(file: &'static str, id: u32, en: Option<&str>, fr: Option<&str>) ->
     }
 }
 
+/// The five equipment kinds with the `kind` string of `content.toml`: each owns one placeholder row.
+const EQUIPMENT: [(&str, TableKind); 5] = [
+    ("weapon", TableKind::Weapon),
+    ("shield", TableKind::Shield),
+    ("armor", TableKind::Armor),
+    ("helmet", TableKind::Helmet),
+    ("gloves", TableKind::Gloves),
+];
+
 /// The empty-slot flag of a content row: absent or `true`, only on an
 /// equipment kind, once per kind.
 fn check_placeholder(row: &ContentRow, kind: TableKind, seen: &mut Vec<TableKind>) -> Result<bool, DataError> {
@@ -93,10 +103,7 @@ fn check_placeholder(row: &ContentRow, kind: TableKind, seen: &mut Vec<TableKind
     if !flag {
         return Err(rule(NAME, at(), "placeholder written as false"));
     }
-    if !matches!(
-        kind,
-        TableKind::Weapon | TableKind::Shield | TableKind::Armor | TableKind::Helmet | TableKind::Gloves
-    ) {
+    if !EQUIPMENT.iter().any(|(_, equipment)| *equipment == kind) {
         return Err(rule(NAME, at(), "placeholder on a non-equipment kind"));
     }
     if seen.contains(&kind) {
@@ -108,6 +115,9 @@ fn check_placeholder(row: &ContentRow, kind: TableKind, seen: &mut Vec<TableKind
 
 pub(crate) fn content(file: &ContentFile, tables: &mut BTreeMap<TableKind, Vec<Entry>>) -> Result<(), DataError> {
     const NAME: &str = "content.toml";
+    if file.content.is_empty() {
+        return Err(rule(NAME, "content".to_string(), "table has no row"));
+    }
     let mut last = 0;
     let mut seen = Vec::new();
     for row in &file.content {
@@ -142,44 +152,47 @@ pub(crate) fn content(file: &ContentFile, tables: &mut BTreeMap<TableKind, Vec<E
             ability: None,
         });
     }
+    // A kind with rows and no placeholder leaves the empty slot of a save unnamed.
+    for (name, kind) in EQUIPMENT {
+        if tables.contains_key(&kind) && !seen.contains(&kind) {
+            return Err(rule(NAME, name.to_string(), "equipment kind without a placeholder"));
+        }
+    }
     Ok(())
 }
 
 pub(crate) fn abilities(file: &AbilityFile, tables: &mut BTreeMap<TableKind, Vec<Entry>>) -> Result<(), DataError> {
     const NAME: &str = "abilities.toml";
+    if file.ability.is_empty() {
+        return Err(rule(NAME, "ability".to_string(), "table has no row"));
+    }
     let mut last = 0;
+    let mut contents = BTreeSet::new();
     for row in &file.ability {
         rise(NAME, &mut last, row.id)?;
-        let kind = match row.kind.as_str() {
-            "white_magic" => AbilityKind::WhiteMagic,
-            "black_magic" => AbilityKind::BlackMagic,
-            "monster" => AbilityKind::Monster,
-            "command" => AbilityKind::Command,
-            "summon" => AbilityKind::Summon,
-            "ninjutsu" => AbilityKind::Ninjutsu,
-            "other" => AbilityKind::Other,
-            "time_magic" => AbilityKind::TimeMagic,
-            "magic_sword" => AbilityKind::MagicSword,
-            "blue_magic" => AbilityKind::BlueMagic,
-            "hissatsu" => AbilityKind::Hissatsu,
-            "special_ability" => AbilityKind::SpecialAbility,
-            "dance" => AbilityKind::Dance,
-            "madou" => AbilityKind::Madou,
-            "rampage" => AbilityKind::Rampage,
-            "internal" => AbilityKind::Internal,
-            _ => {
-                return Err(DataError::UnknownKind {
-                    file: NAME,
-                    id: row.id,
-                    kind: row.kind.clone(),
-                });
-            }
+        let at = || format!("id {}", row.id);
+        let Some(kind) = ability_kind(&row.kind) else {
+            return Err(DataError::UnknownKind {
+                file: NAME,
+                id: row.id,
+                kind: row.kind.clone(),
+            });
         };
+        match kind_of_type(row.type_id) {
+            None => return Err(rule(NAME, at(), "type_id outside the kind table")),
+            Some(expected) if expected != kind => return Err(rule(NAME, at(), "kind differs from type_id")),
+            Some(_) => {}
+        }
         if row.level > 8 {
-            return Err(rule(NAME, format!("id {}", row.id), "level above 8"));
+            return Err(rule(NAME, at(), "level above 8"));
         }
         if row.content_id == Some(0) {
-            return Err(rule(NAME, format!("id {}", row.id), "content_id 0"));
+            return Err(rule(NAME, at(), "content_id 0"));
+        }
+        if let Some(content_id) = row.content_id
+            && !contents.insert(content_id)
+        {
+            return Err(rule(NAME, at(), "content_id repeats"));
         }
         let (name_en, name_fr) = name_pair(NAME, row.id, row.name_en.as_deref(), row.name_fr.as_deref())?;
         tables.entry(TableKind::Ability).or_default().push(Entry {
@@ -199,7 +212,17 @@ pub(crate) fn abilities(file: &AbilityFile, tables: &mut BTreeMap<TableKind, Vec
     Ok(())
 }
 
-pub(crate) fn names(file: &'static str, rows: &[NameRow], kind: TableKind, tables: &mut BTreeMap<TableKind, Vec<Entry>>) -> Result<(), DataError> {
+/// The rows of a name table. `key` is the array name, the row label of an empty array.
+pub(crate) fn names(
+    file: &'static str,
+    key: &'static str,
+    rows: &[NameRow],
+    kind: TableKind,
+    tables: &mut BTreeMap<TableKind, Vec<Entry>>,
+) -> Result<(), DataError> {
+    if rows.is_empty() {
+        return Err(rule(file, key.to_string(), "table has no row"));
+    }
     let mut last = 0;
     for row in rows {
         rise(file, &mut last, row.id)?;

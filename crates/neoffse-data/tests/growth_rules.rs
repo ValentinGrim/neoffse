@@ -83,6 +83,19 @@ fn a_status_id_of_zero_a_repeat_or_a_descent_is_an_id_order_error() {
 }
 
 #[test]
+fn a_first_status_id_other_than_1_is_refused() {
+    let tail = levels(&[0, 5]) + &curve_text(&[1], 2);
+    for ids in [&[2, 3][..], &[5]] {
+        let text = statuses(ids) + &tail;
+        assert_eq!(
+            rule(parse_growth(&text)),
+            ("growth.toml", format!("status id {}", ids[0]), "first status id is not 1"),
+            "{ids:?}"
+        );
+    }
+}
+
+#[test]
 fn an_equal_or_falling_total_is_refused() {
     for totals in [[0, 5, 5], [0, 5, 4]] {
         assert_eq!(

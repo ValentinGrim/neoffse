@@ -6,14 +6,11 @@
 
 mod common;
 
-use common::character_path;
 use common::ff2_save::{SlotData, Spell, content_of, model, standard_model, tables};
-use common::ff2_spell::{History, Where, level_edit, replay, small_tables, spell_rows};
+use common::ff2_spell::{History, Where, level_edit, replay};
 use common::json_diff::{Kind, assert_changes, diff};
 use common::slot_model::int;
 use neoffse_core::{Edit, EditError, FieldId, Value};
-use neoffse_data::GameTables;
-use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};
 
 const PARTS: [&str; 3] = ["abilityId", "contentId", "skillLevel"];
@@ -351,56 +348,6 @@ fn a_spaced_slot_undoes_up_to_layout() {
     // Only the whitespace of a rewritten level may differ after an undo.
     assert!(diff(&before, &history.text()).iter().all(|change| change.kind == Kind::Layout));
     assert!(history.undo.is_empty() && history.redo.len() == 1);
-}
-
-/// Tables whose chain holds three rows and whose curve holds two totals.
-fn short_curve_tables() -> &'static GameTables {
-    small_tables(&spell_rows(3, 0), "first = [1]\nlength = 3\n", "[bounds]\nMAX_GIL = 999999\n")
-}
-
-#[test]
-fn a_level_without_a_total_is_unknown_and_writes_nothing() {
-    let mut document = Document::parse(&SlotData::standard().render()).unwrap();
-    // The first spell of character 1 and its copy become row 1 of the short chain.
-    let list = character_path(
-        0,
-        &[
-            Segment::Doc,
-            Segment::Key("abilityList"),
-            Segment::Doc,
-            Segment::Key("target"),
-            Segment::Index(1),
-            Segment::Doc,
-            Segment::Key("abilityId"),
-        ],
-    );
-    let copy = character_path(
-        0,
-        &[
-            Segment::Doc,
-            Segment::Key("abilityDictionary"),
-            Segment::Doc,
-            Segment::Key("values"),
-            Segment::Index(0),
-            Segment::Doc,
-            Segment::Key("target"),
-            Segment::Index(0),
-            Segment::Doc,
-            Segment::Key("abilityId"),
-        ],
-    );
-    document.set(&list, &Scalar::Int(1)).unwrap();
-    document.set(&copy, &Scalar::Int(1)).unwrap();
-    let mut model = Ff2Model::new(document, short_curve_tables());
-    let before = model.document().to_json();
-    // Level 3 has a row but no total on the curve.
-    let error = model.apply_game(&level_edit(1, 0, 3)).unwrap_err();
-    assert!(matches!(error, EditError::UnknownId { id: 3, .. }), "{error:?}");
-    assert_eq!(model.document().to_json(), before);
-    // Level 2 has both.
-    let change = model.apply_game(&level_edit(1, 0, 2)).unwrap();
-    // The stored values differ from the short tables' rows, and both order lists hold the old content id.
-    assert_eq!(change.forward.len(), 8);
 }
 
 #[test]
