@@ -3,8 +3,8 @@
 
 mod common;
 
-use common::ff1_format::{one_file, sav, slot_name};
 use common::ff1_save::{SlotData, standard_model};
+use common::pr_files::{one_file, sav, slot_name};
 use common::{STORAGE_ONLY, character_field, equip, slot};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, SaveDocument, SaveFormat};
 use neoffse_format_pr::container::{Container, decode};

@@ -15,8 +15,7 @@ use neoffse_data::GameTables;
 use neoffse_format_pr::document::Document;
 use neoffse_format_pr::ff2::{Ff2Model, GAME};
 
-pub(crate) use super::ff1_save::Row;
-use super::slot_render::Equip;
+use super::slot_render::{Equip, Row};
 
 /// The FF II tables.
 pub(crate) fn tables() -> &'static GameTables {

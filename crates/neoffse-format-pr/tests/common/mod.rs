@@ -43,12 +43,12 @@ pub(crate) mod slot_model;
 pub(crate) mod slot_render;
 mod slot_rules;
 
-use ff1_format::{one_file, sav};
-use ff1_save::Row;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, RowId, SaveFormat, SaveSlot, Value};
 use neoffse_format_pr::container::Container;
 use neoffse_format_pr::document::{DocumentError, Segment};
 use neoffse_format_pr::shared::names;
+use pr_files::{one_file, sav};
+use slot_render::Row;
 
 /// The six game folders under the saves root, one per game of
 /// `docs/formats/pixel-remaster.md#games`.

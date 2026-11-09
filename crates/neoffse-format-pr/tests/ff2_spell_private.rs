@@ -9,12 +9,12 @@ mod common;
 use std::collections::BTreeMap;
 
 use common::character_path;
-use common::ff1_format::one_file;
 use common::ff2_real::slots;
 use common::ff2_save::{content_of, tables};
 use common::ff2_spell::{Where, level_edit};
 use common::json_diff::{Change, assert_changes_with, diff_trees, layout_chain};
 use common::json_tree::Tree;
+use common::pr_files::one_file;
 use common::real_slots::{RealSlot, must, must_some};
 use neoffse_core::{CapPolicy, Capability, EditError, FieldView, Key, SaveDocument, SaveFormat, Value};
 use neoffse_format_pr::container::{Decoded, decode};

@@ -4,9 +4,10 @@
 
 mod common;
 
-use common::ff1_save::{Row, SlotData, model};
+use common::ff1_save::{SlotData, model};
 use common::slot;
 use common::slot_render::Equip;
+use common::slot_render::Row;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::names;
 

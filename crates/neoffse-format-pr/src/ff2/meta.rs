@@ -14,7 +14,8 @@ use crate::shared::meta::{STORAGE_MAX, derived_meta, int};
 /// The slot labels and the tables each slot takes. Slots 1 and 2 take a
 /// weapon or a shield, slots 3 to 5 an armor, a helmet and gloves
 /// (`docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`). The hand
-/// labels are provisional until the game's own order is read (question 40).
+/// labels are provisional until the game's own order is read, which that
+/// section leaves open.
 const SLOTS: [(&str, &[TableKind]); 5] = [
     ("Hand 1", &[TableKind::Weapon, TableKind::Shield]),
     ("Hand 2", &[TableKind::Weapon, TableKind::Shield]),

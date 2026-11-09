@@ -1,6 +1,6 @@
 //! The section names every Pixel Remaster slot uses, the ones that build the
-//! first key of a `FieldId`, and the builders of the field lists both games
-//! share.
+//! first key of a `FieldId`, and the builders of the field lists every game
+//! shares.
 
 use neoffse_core::{FieldId, Key};
 
@@ -22,8 +22,8 @@ pub const JOB: &str = "job";
 pub const HP: &str = "hp";
 /// Maximum HP gain, `parameter.addtionalMaxHp`.
 pub const MAX_HP_GAIN: &str = "max_hp_gain";
-/// Maximum HP shown by the menu, computed in FF I and FF II. Read only. The
-/// `MAX_` cap keys of `bounds.toml` differ per game.
+/// Maximum HP shown by the menu, computed by the game. Read only. The `MAX_`
+/// cap keys of `bounds.toml` differ per game.
 pub const MAX_HP: &str = "max_hp";
 /// Power stat, `parameter.addtionalPower`.
 pub const POWER: &str = "power";

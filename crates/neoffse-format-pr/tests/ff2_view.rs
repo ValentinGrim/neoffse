@@ -4,8 +4,9 @@
 mod common;
 
 use common::character_path;
-use common::ff2_save::{Row, SlotData, inventory, key_items, keywords, model, standard_model, tables};
+use common::ff2_save::{SlotData, inventory, key_items, keywords, model, standard_model, tables};
 use common::slot_model::view_of;
+use common::slot_render::Row;
 use common::{character, item};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, RowId, SaveView, Value};
 use neoffse_data::Language;

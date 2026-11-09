@@ -15,7 +15,7 @@ use neoffse_format_pr::container::{Container, decode};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
 
-use common::ff1_format::{one_file, sav, slot_name};
+use common::pr_files::{one_file, sav, slot_name};
 
 /// A spaced slot whose copy of chain 0 stores `skillLevel` -5: the plan
 /// passes, and step 6 fails on the storage bound after five steps wrote.

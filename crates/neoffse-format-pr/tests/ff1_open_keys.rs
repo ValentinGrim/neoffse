@@ -5,8 +5,9 @@
 
 mod common;
 
-use common::ff1_format::{one_file, sav, slot_name};
-use common::ff1_save::{Row, SlotData};
+use common::ff1_save::SlotData;
+use common::pr_files::{one_file, sav, slot_name};
+use common::slot_render::Row;
 use neoffse_core::{EditError, FieldId, FormatError, RowId};
 use neoffse_format_pr::container::Container;
 use neoffse_format_pr::document::{Document, Segment};

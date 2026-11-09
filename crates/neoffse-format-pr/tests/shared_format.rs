@@ -5,8 +5,9 @@
 
 mod common;
 
-use common::ff1_format::{slot_name, standard_files};
+use common::ff1_format::standard_files;
 use common::ff1_save::INVENTORY;
+use common::pr_files::slot_name;
 use neoffse_core::{Capability, FieldId, FileProbe, Game, RowId, SaveDocument, SaveFormat};
 use neoffse_data::{Entry, Language, tables_for};
 use neoffse_format_pr::container::Container;

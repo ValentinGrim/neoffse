@@ -7,9 +7,9 @@
 mod common;
 
 use common::embed;
-use common::ff1_format::{one_file, open, sav, slot_name, standard_files};
+use common::ff1_format::{open, standard_files};
 use common::ff1_save::SlotData;
-use common::pr_files::open_error;
+use common::pr_files::{one_file, open_error, sav, slot_name};
 use common::{VEHICLE, VEHICLES};
 use neoffse_core::{FormatError, Game};
 use neoffse_format_pr::container::Container;

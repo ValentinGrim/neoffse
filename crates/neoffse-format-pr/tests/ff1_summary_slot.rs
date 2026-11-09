@@ -4,8 +4,8 @@
 
 mod common;
 
-use common::ff1_format::slot_name;
 use common::ff1_save::SlotData;
+use common::pr_files::slot_name;
 use common::{id_variants, slot_under};
 use neoffse_core::SaveSlot;
 use neoffse_format_pr::ff1::Ff1Format;

@@ -5,7 +5,6 @@
 //! small documents that fill the rest of the slot. A game renderer passes
 //! the values that differ.
 
-use super::ff1_save::Row;
 use super::{VEHICLE, embed};
 
 /// One entry of `equipmentList`.
@@ -29,6 +28,23 @@ impl Equip {
                 count: Some(count_of(content).to_string()),
             })
             .collect()
+    }
+}
+
+/// A row of an item list: the JSON text of the element, so a test can break it.
+#[derive(Debug, Clone)]
+pub(crate) struct Row {
+    pub text: String,
+}
+
+impl Row {
+    /// The canonical element text of the game.
+    pub(crate) fn new(content_id: u32, count: u32) -> Self {
+        Self::raw(format!("{{\"contentId\":{content_id},\"count\":{count}}}"))
+    }
+
+    pub(crate) fn raw(text: impl Into<String>) -> Self {
+        Self { text: text.into() }
     }
 }
 

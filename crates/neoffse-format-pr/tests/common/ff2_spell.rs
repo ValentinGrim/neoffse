@@ -9,8 +9,8 @@ use neoffse_data::{GameTables, Sources};
 use neoffse_format_pr::container::{Container, decode};
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
 
-use super::ff1_format::{one_file, sav, slot_name};
 use super::json_diff::{Change, value};
+use super::pr_files::{one_file, sav, slot_name};
 
 /// `Set character.<id>.spell.<chain>` to `level`.
 pub(crate) fn level_edit(id: u32, chain: u32, level: i64) -> Edit {

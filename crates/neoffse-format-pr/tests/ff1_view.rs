@@ -3,8 +3,9 @@
 
 mod common;
 
-use common::ff1_save::{INVENTORY, KEY_ITEMS, Row, SlotData, model, standard_model};
+use common::ff1_save::{INVENTORY, KEY_ITEMS, SlotData, model, standard_model};
 use common::slot_model::view_of;
+use common::slot_render::Row;
 use common::{character, item};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, RowId, Value};
 use neoffse_data::Language;
