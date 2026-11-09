@@ -29,9 +29,8 @@ fn every_real_keyword_is_a_row_of_the_keyword_table() {
                 "{}: keywords: element {index} is no type-6 row",
                 slot.label
             );
-            assert_eq!(
-                keys.iter().filter(|other| *other == key).count(),
-                1,
+            assert!(
+                keys.iter().filter(|other| *other == key).count() == 1,
                 "{}: keywords: element {index} repeats",
                 slot.label
             );
@@ -55,7 +54,7 @@ fn every_real_keyword_row_is_locked_and_listed_in_the_view() {
         let view = must(model.view(Language::En), &format!("{}: the view does not build", slot.label));
         let section = view.section(Capability::Inventory).unwrap();
         let listed = section.entities.iter().filter(|entity| entity.id.starts_with(&collection())).count();
-        assert_eq!(listed, keys.len(), "{}: keywords: the view lists another number of rows", slot.label);
+        assert!(listed == keys.len(), "{}: keywords: the view lists another number of rows", slot.label);
         assert!(
             section.collections.iter().any(|meta| meta.id == collection()),
             "{}: keywords: no collection meta",
@@ -72,7 +71,9 @@ fn a_real_slot_refuses_a_game_removal_and_takes_a_raw_one_back() {
         let keys = must(model.rows(&collection()), &format!("{}: keywords do not read", slot.label));
         let Some(first) = keys.first() else { continue };
         let row = RowId::new(collection(), *first);
-        let error = model.apply_game(&Edit::remove(row.clone())).unwrap_err();
+        let Err(error) = model.apply_game(&Edit::remove(row.clone())) else {
+            panic!("{}: keywords: the game removal succeeds", slot.label)
+        };
         assert!(
             matches!(error, EditError::ReadOnly { .. }),
             "{}: keywords: the game removal is not refused",
@@ -87,6 +88,6 @@ fn a_real_slot_refuses_a_game_removal_and_takes_a_raw_one_back() {
             &format!("{}: keywords: the inverse fails", slot.label),
         );
         let after = must(model.rows(&collection()), &format!("{}: keywords do not read after the undo", slot.label));
-        assert_eq!(after, keys, "{}: keywords: the undo changes the order", slot.label);
+        assert!(after == keys, "{}: keywords: the undo changes the order", slot.label);
     }
 }

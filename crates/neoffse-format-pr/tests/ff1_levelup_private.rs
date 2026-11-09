@@ -71,13 +71,13 @@ fn the_extremes_match_the_oracle() {
             let to = facts.level + 3;
             for (succeed, mut script) in [(false, Script::fixed(false, 20)), (true, Script::fixed(true, 24))] {
                 let mut model = slot.model::<Ff1Model>();
-                let start = Stored::read(&mut model, facts.id);
+                let start = Stored::read(&mut model, &slot.label, facts.id);
                 let wanted = grow(tables(), &start, facts.base_vitality, facts.job, facts.level, to, succeed);
                 must(
                     model.apply_game_with(&level_edit(facts.id, to), &mut script),
                     &format!("{}: character {} refused the level edit", slot.label, facts.id),
                 );
-                let got = Stored::read(&mut model, facts.id);
+                let got = Stored::read(&mut model, &slot.label, facts.id);
                 assert!(
                     got == wanted,
                     "{}: character {} differs from the oracle (all rolls {succeed})",
@@ -124,14 +124,14 @@ fn a_private_level_decrease_changes_no_stat_and_draws_nothing() {
         let mut probe = slot.model::<Ff1Model>();
         for facts in characters(&slot, &mut probe).into_iter().filter(|facts| facts.level > 1) {
             let mut model = slot.model::<Ff1Model>();
-            let before = Stored::read(&mut model, facts.id);
+            let before = Stored::read(&mut model, &slot.label, facts.id);
             let mut script = Script::queued(&[], &[]);
             must(
                 model.apply_game_with(&level_edit(facts.id, facts.level - 1), &mut script),
                 &format!("{}: character {} refused the decrease", slot.label, facts.id),
             );
             assert!(
-                Stored::read(&mut model, facts.id) == before,
+                Stored::read(&mut model, &slot.label, facts.id) == before,
                 "{}: character {} moved a stat",
                 slot.label,
                 facts.id
@@ -149,14 +149,14 @@ fn the_real_source_lands_between_the_extremes() {
         for facts in characters(&slot, &mut probe) {
             let to = facts.level + 1;
             let mut model = slot.model::<Ff1Model>();
-            let start = Stored::read(&mut model, facts.id);
+            let start = Stored::read(&mut model, &slot.label, facts.id);
             let low = grow(tables(), &start, facts.base_vitality, facts.job, facts.level, to, false);
             let high = grow(tables(), &start, facts.base_vitality, facts.job, facts.level, to, true);
             must(
                 model.apply_game(&level_edit(facts.id, to)),
                 &format!("{}: character {} refused the level edit", slot.label, facts.id),
             );
-            let got = Stored::read(&mut model, facts.id);
+            let got = Stored::read(&mut model, &slot.label, facts.id);
             for ((field, value), ((_, low), (_, high))) in got
                 .fields(facts.id)
                 .into_iter()

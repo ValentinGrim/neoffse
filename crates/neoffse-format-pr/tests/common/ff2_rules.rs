@@ -6,7 +6,7 @@
 //! callers can also run it on private saves.
 
 use neoffse_core::{FieldId, Value};
-use neoffse_data::{BaseStats, Language};
+use neoffse_data::BaseStats;
 use neoffse_format_pr::document::{Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, GAME, names};
 
@@ -53,17 +53,7 @@ const GAINS: [Gain; 8] = [
 /// stay at or under it (`docs/formats/pixel-remaster.md#character-growth-in-ff-ii`,
 /// "Reading a stored gain").
 pub(crate) fn cap_violations(model: &mut Ff2Model) -> Vec<String> {
-    let Ok(view) = model.view(Language::En) else {
-        return vec!["read: the view does not build".to_owned()];
-    };
-    let mut found = Vec::new();
-    for field in view.sections.iter().flat_map(|section| &section.entities).flat_map(|entity| &entity.fields) {
-        if let (Some(cap), Value::Int(value)) = (field.meta.cap, &field.value)
-            && *value > cap
-        {
-            found.push(format!("cap: {} is above its cap", field.id));
-        }
-    }
+    let mut found = slot_rules::view_caps(model);
     found.extend(gain_violations(model));
     found
 }

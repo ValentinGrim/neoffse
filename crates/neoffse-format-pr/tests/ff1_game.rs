@@ -29,7 +29,9 @@ fn equip_an_owned_unworn_item() {
     let mut model = standard_model();
     let before = inventory(&mut model);
     let other = slots(&mut model);
-    assert_eq!(other.len(), 4 * names::EQUIPMENT_SLOTS as usize, "four characters, every slot");
+    // The builder's character list, not the model's rows, which `slots` walks.
+    let characters = SlotData::standard().characters.len();
+    assert_eq!(other.len(), characters * names::EQUIPMENT_SLOTS as usize, "every slot of every character");
     let change = model.apply_game(&equip(1, 1, 100)).unwrap();
     let want = [equip(1, 1, 100), Edit::set(slot_count(1, 1), Value::Int(1))];
     assert_eq!(change.forward.edits(), want);

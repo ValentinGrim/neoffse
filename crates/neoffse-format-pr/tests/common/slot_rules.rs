@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use neoffse_core::{FieldId, Value};
+use neoffse_data::Language;
 use neoffse_format_pr::shared::SlotModel;
 use neoffse_format_pr::shared::names;
 
@@ -102,4 +103,19 @@ pub(crate) fn violations<M: SlotModel>(model: &mut M, copy_counts: bool, rules: 
 pub(crate) fn assert_rules<M: SlotModel>(model: &mut M, copy_counts: bool, rules: &Rules<M>) {
     let found = violations(model, copy_counts, rules);
     assert!(found.is_empty(), "{}", found.join("; "));
+}
+
+/// Every field of the view with a game cap whose integer value passes it, as
+/// a `cap:` message. A view that does not build is one `read:` message.
+pub(crate) fn view_caps<M: SlotModel>(model: &mut M) -> Vec<String> {
+    let Ok(view) = model.view(Language::En) else {
+        return vec!["read: the view does not build".to_owned()];
+    };
+    view.sections
+        .iter()
+        .flat_map(|section| &section.entities)
+        .flat_map(|entity| &entity.fields)
+        .filter(|field| matches!((field.meta.cap, &field.value), (Some(cap), Value::Int(value)) if *value > cap))
+        .map(|field| format!("cap: {} is above its cap", field.id))
+        .collect()
 }

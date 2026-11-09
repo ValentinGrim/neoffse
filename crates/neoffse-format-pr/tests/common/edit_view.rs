@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 
 use neoffse_core::{FieldId, Key, RowId, SaveView, Value};
 use neoffse_format_pr::ff1::names::{self, CHARACTER, COUNT, EQUIPMENT, INVENTORY};
-use neoffse_format_pr::ff2::names::MAX_MP;
 
 /// What the view must show after an edit, relative to the view before.
 #[derive(Debug, Clone)]
@@ -30,9 +29,11 @@ type Order = BTreeMap<&'static str, Vec<FieldId>>;
 
 /// The first way the view `after` departs from `before` with `changes`
 /// applied: a lost, gained or different field, a different row order or a
-/// stale label of a renamed character.
-pub(super) fn mismatch(before: &SaveView, after: &SaveView, changes: &[ViewChange]) -> Option<String> {
-    let (mut fields, mut order) = flatten(before);
+/// stale label of a renamed character. `derived` is the game's
+/// `names::derived_fields` of one character: the fields it names are left
+/// out of the comparison, whatever character they belong to.
+pub(super) fn mismatch(before: &SaveView, after: &SaveView, changes: &[ViewChange], derived: &[FieldId]) -> Option<String> {
+    let (mut fields, mut order) = flatten(before, derived);
     for change in changes {
         match change {
             ViewChange::Set(id, value) => {
@@ -55,7 +56,7 @@ pub(super) fn mismatch(before: &SaveView, after: &SaveView, changes: &[ViewChang
             }
         }
     }
-    let (actual, actual_order) = flatten(after);
+    let (actual, actual_order) = flatten(after, derived);
     for (id, expected) in &fields {
         match actual.get(id) {
             None => return Some(format!("view lost {id}")),
@@ -111,21 +112,18 @@ pub(super) fn raises_worn_count(before: &SaveView, changes: &[ViewChange]) -> bo
 }
 
 /// Every stored field value by id, and the entity ids of each collection in
-/// order. The computed `max_hp`, `max_mp` and `next_level` are left out: an
-/// edit of the level, the experience or a gain moves them, and the document
-/// check already proves the stored keys.
-fn flatten(view: &SaveView) -> (Fields, Order) {
+/// order. The `derived` fields are left out: an edit of the level, the
+/// experience or a gain moves them, and the document check already proves the
+/// stored keys.
+fn flatten(view: &SaveView, derived: &[FieldId]) -> (Fields, Order) {
+    let derived_names: Vec<Option<&Key>> = derived.iter().map(|id| id.keys().last()).collect();
     let mut fields = Fields::new();
     let mut order = Order::new();
     for entity in view.sections.iter().flat_map(|section| &section.entities) {
         order.entry(entity.id.section()).or_default().push(entity.id.clone());
-        for field in entity.fields.iter().filter(|field| !is_computed(&field.id)) {
+        for field in entity.fields.iter().filter(|field| !derived_names.contains(&field.id.keys().last())) {
             fields.insert(field.id.clone(), field.value.clone());
         }
     }
     (fields, order)
-}
-
-fn is_computed(id: &FieldId) -> bool {
-    matches!(id.keys().last(), Some(Key::Name(names::MAX_HP | names::NEXT_LEVEL | MAX_MP)))
 }

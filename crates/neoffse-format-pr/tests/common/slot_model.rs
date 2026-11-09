@@ -1,11 +1,12 @@
 //! Test helpers generic over the slot model: `Ff1Model`, `Ff2Model` and the
 //! models of the later games take the same call.
 
-use neoffse_core::{CapPolicy, ChangeSet, FieldId, SaveView, Value};
+use neoffse_core::{CapPolicy, ChangeSet, FieldId, SaveView};
 use neoffse_data::Language;
 use neoffse_format_pr::document::Document;
 use neoffse_format_pr::shared::{SlotModel, names};
 
+use super::private;
 use super::{count, slot, slot_count};
 
 /// A model over `document` with the embedded tables of its game.
@@ -19,12 +20,10 @@ pub(crate) fn view_of<M: SlotModel>(mut model: M) -> (M, SaveView) {
     (model, view)
 }
 
-/// The integer at `field`; any other value type panics.
+/// The integer at `field` of a synthetic slot; any other value type panics
+/// with the field path alone (see [`private::int`]).
 pub(crate) fn int<M: SlotModel>(model: &mut M, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
+    private::int(model, "fixture", field)
 }
 
 /// Every inventory row with its count, in document order.
@@ -38,10 +37,10 @@ pub(crate) fn inventory<M: SlotModel>(model: &mut M) -> Vec<(u32, i64)> {
         .collect()
 }
 
-/// Every slot `contentId` and `count` of the four characters.
+/// Every slot `contentId` and `count` of every character row, in row order.
 pub(crate) fn slots<M: SlotModel>(model: &mut M) -> Vec<(u32, u32, i64, i64)> {
     let mut found = Vec::new();
-    for id in 1..=4 {
+    for id in model.rows(&FieldId::new(names::CHARACTER)).unwrap() {
         for number in 1..=M::EQUIPMENT_SLOTS {
             found.push((id, number, int(model, &slot(id, number)), int(model, &slot_count(id, number))));
         }

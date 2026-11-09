@@ -54,7 +54,7 @@ const SKILL_CASES: [&str; 10] = [
 const EXPERT: [&str; 3] = ["max_hp_gain", "max_mp_gain", "stat"];
 
 /// `userData.ownedKeyWaordList.target`, the game's spelling.
-const WORDS: &str = "userData.ownedKeyWaordList.target";
+pub(crate) const WORDS: &str = "userData.ownedKeyWaordList.target";
 
 /// One edit case with the interfaces it runs through.
 #[derive(Debug, Clone)]

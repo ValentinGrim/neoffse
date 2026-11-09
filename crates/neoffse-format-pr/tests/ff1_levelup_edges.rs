@@ -228,7 +228,7 @@ fn any_mix_of_rolls_stays_between_the_two_extremes() {
     let grown = |rolls: &mut dyn Rolls| {
         let mut model = standard_model();
         model.apply_game_with(&set(level(1), 34), rolls).unwrap();
-        Stored::read(&mut model, 1)
+        Stored::read(&mut model, "fixture", 1)
     };
     let low = grown(&mut Script::fixed(false, 20));
     let high = grown(&mut Script::fixed(true, 24));
@@ -256,7 +256,7 @@ fn the_real_source_keeps_the_fixed_parts() {
     model.apply_game(&set(level(1), 34)).unwrap();
     assert_eq!(int(&mut model, &level(1)), 34);
     assert_eq!(int(&mut model, &field(1, names::EXP)), 125_357);
-    let stored = Stored::read(&mut model, 1);
+    let stored = Stored::read(&mut model, "fixture", 1);
     assert_eq!((stored.accuracy, stored.evasion), (155, 142));
     assert_eq!(stored.charges, [4, 4, 4, 1, 3, 4, 4, 1]);
     let inside = |name: &str, value: i64, low: i64, high: i64| assert!((low..=high).contains(&value), "{name} {value}");
@@ -274,10 +274,10 @@ fn the_real_source_keeps_the_fixed_parts() {
 fn raw_apply_grows_nothing() {
     for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
         let mut model = standard_model();
-        let before = Stored::read(&mut model, 1);
+        let before = Stored::read(&mut model, "fixture", 1);
         model.apply(&set(level(1), 40), policy).unwrap();
         assert_eq!(int(&mut model, &level(1)), 40);
-        assert_eq!(Stored::read(&mut model, 1), before);
+        assert_eq!(Stored::read(&mut model, "fixture", 1), before);
         assert_eq!(int(&mut model, &field(1, names::EXP)), 100_100);
     }
 }

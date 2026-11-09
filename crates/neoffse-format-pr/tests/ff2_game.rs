@@ -29,7 +29,9 @@ fn equip_an_owned_unworn_item() {
     let mut model = standard_model();
     let before = inventory(&mut model);
     let other = slots(&mut model);
-    assert_eq!(other.len(), 4 * names::EQUIPMENT_SLOTS as usize, "four characters, every slot");
+    // The builder's character list, not the model's rows, which `slots` walks.
+    let characters = SlotData::standard().characters.len();
+    assert_eq!(other.len(), characters * names::EQUIPMENT_SLOTS as usize, "every slot of every character");
     let weapon = unworn_weapon();
     let change = model.apply_game(&equip(1, 1, weapon)).unwrap();
     let want = [equip(1, 1, weapon), Edit::set(slot_count(1, 1), Value::Int(1))];
@@ -218,6 +220,28 @@ fn an_equip_is_atomic() {
     assert_eq!(model.document().to_json(), text);
     assert_eq!(int(&mut model, &count(names::INVENTORY, 91)), 1, "the raised count went back");
     assert_eq!(int(&mut model, &slot(2, 2)), 105);
+}
+
+#[test]
+fn a_two_edit_equip_plan_that_fails_at_its_second_step_restores_the_spaced_text() {
+    // Item 60 has 3 owned and 2 wearers: the third wearer raises no row, so the
+    // plan holds the slot and its count. The count has no key to set, and the
+    // slot write alone has already rewritten the text compactly.
+    let mut data = SlotData::standard();
+    data.spaced = true;
+    data.characters[1].equipment[1].count = None;
+    let text = data.render();
+    let mut twin = SlotData::standard();
+    twin.spaced = true;
+    assert_eq!(
+        model(&twin.render()).apply_game(&equip(2, 2, 60)).unwrap().forward.len(),
+        2,
+        "the plan has two edits"
+    );
+    let mut model = model(&text);
+    let error = model.apply_game(&equip(2, 2, 60)).unwrap_err();
+    assert!(matches!(error, EditError::Format { .. }), "{error}");
+    assert_eq!(model.document().to_json(), text);
 }
 
 #[test]
