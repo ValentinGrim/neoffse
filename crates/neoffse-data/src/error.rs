@@ -2,11 +2,12 @@
 
 /// Why a set of table texts failed to parse.
 ///
-/// `file` is the name the tool writes: `content.toml`, `abilities.toml`,
-/// `jobs.toml`, `commands.toml`, `monsters.toml`, `bounds.toml` or
-/// `growth.toml`. `Display` never repeats `source`. The parser checks the file contract of
-/// `data/pr/ff1/` row by row: the types (`Toml`), the kinds
-/// (`UnknownKind`), the id order (`IdOrder`) and the value rules (`Rule`).
+/// `file` is the name the tool writes in `data/pr/<game>/`: `content.toml`,
+/// `abilities.toml`, `jobs.toml`, `commands.toml`, `bounds.toml`, or one of the
+/// optional `monsters.toml`, `growth.toml` and `skills.toml`. `Display` never
+/// repeats `source`. The parser checks the file contract row by row: the types
+/// (`Toml`), the kinds (`UnknownKind`), the id order (`IdOrder`) and the value
+/// rules (`Rule`).
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum DataError {
@@ -41,8 +42,14 @@ pub enum DataError {
     Rule {
         /// The file that failed.
         file: &'static str,
-        /// The row: `id <N>` for a table row, the key for a cap, `lv <N>` for a
-        /// `growth.toml` level, the array name for an empty array.
+        /// The row: `id <N>` for a table row, the key for a cap, the `kind`
+        /// string for an equipment kind without a placeholder, `exp_table lv <N>`
+        /// or `skill_curve lv <N>` for a level, `status id <N>` for a first
+        /// status id, `spell_chains chain <N>` or `spell_chains chain <N> id <M>`
+        /// for a chain, `growth_curve group <N>` or
+        /// `intermediate_growth_curve job <N>` for a growth row, and the array
+        /// or table name (`content`, `job`, `spell_chains`) for an empty array
+        /// or a table-wide rule.
         row: String,
         /// The rule, as a short phrase.
         rule: &'static str,

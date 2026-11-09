@@ -5,82 +5,19 @@
 
 mod common;
 
+use common::character_field;
 use common::ff1_rules::assert_game_rules;
-use common::ff1_save::{Row, SlotData, character_field, model, standard_model};
-use neoffse_core::{CapPolicy, ChangeSet, Edit, FieldId, RowId, Value};
-use neoffse_format_pr::ff1::{Ff1Model, GameChange, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-
-fn slot(id: u32, slot: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(slot)
-}
-
-fn slot_count(id: u32, slot_number: u32) -> FieldId {
-    slot(id, slot_number).with_name(names::COUNT)
-}
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
-
-fn row(key: u32) -> RowId {
-    RowId::new(FieldId::new(names::INVENTORY), key)
-}
-
-fn equip(id: u32, slot_number: u32, content: i64) -> Edit {
-    Edit::set(slot(id, slot_number), Value::Int(content))
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
-}
-
-/// Every inventory row with its count, in document order.
-fn inventory(model: &mut Ff1Model) -> Vec<(u32, i64)> {
-    let list = FieldId::new(names::INVENTORY);
-    model
-        .rows(&list)
-        .unwrap()
-        .into_iter()
-        .map(|key| (key, int(model, &count(names::INVENTORY, key))))
-        .collect()
-}
-
-/// Every slot `contentId` and `count` of the four characters.
-fn slots(model: &mut Ff1Model) -> Vec<(u32, u32, i64, i64)> {
-    let mut found = Vec::new();
-    for id in 1..=4 {
-        for number in 1..=5 {
-            found.push((id, number, int(model, &slot(id, number)), int(model, &slot_count(id, number))));
-        }
-    }
-    found
-}
-
-fn with_count(data: &mut SlotData, key: u32, new_count: u32) {
-    let text = format!("{{\"contentId\":{key},\"count\":");
-    let index = data.inventory.iter().position(|row| row.text.starts_with(&text)).unwrap();
-    data.inventory[index] = Row::new(key, new_count);
-}
-
-fn without_placeholders(data: &mut SlotData) {
-    data.inventory.drain(..5);
-}
+use common::ff1_save::{SlotData, model, standard_model};
+use common::slot_model::{int, inventory, run, slots};
+use common::{ENFORCE, STORAGE_ONLY, count, equip, plain, row, slot, slot_count, with_count, without_placeholders};
+use neoffse_core::{Edit, FieldId, RowId, Value};
+use neoffse_format_pr::ff1::names;
 
 fn bare_slot() -> SlotData {
     let mut data = SlotData::standard();
     "0".clone_into(&mut data.characters[2].equipment[2].content_id);
     data.characters[2].equipment[2].count = Some("0".to_owned());
     data
-}
-
-fn plain(change: &GameChange) -> (Vec<Edit>, Vec<Edit>) {
-    (change.forward.edits().to_vec(), change.inverse.edits().to_vec())
 }
 
 fn is_set(edit: &Edit) -> bool {
@@ -92,6 +29,9 @@ fn equip_an_owned_unworn_item() {
     let mut model = standard_model();
     let before = inventory(&mut model);
     let other = slots(&mut model);
+    // The builder's character list, not the model's rows, which `slots` walks.
+    let characters = SlotData::standard().characters.len();
+    assert_eq!(other.len(), characters * names::EQUIPMENT_SLOTS as usize, "every slot of every character");
     let change = model.apply_game(&equip(1, 1, 100)).unwrap();
     let want = [equip(1, 1, 100), Edit::set(slot_count(1, 1), Value::Int(1))];
     assert_eq!(change.forward.edits(), want);
@@ -114,7 +54,7 @@ fn equip_an_unowned_item_inserts_its_row() {
     let change = model.apply_game(&equip(2, 1, 104)).unwrap();
     let want = [
         equip(2, 1, 104),
-        Edit::insert(row(104), None, vec![(names::COUNT, Value::Int(1))]),
+        Edit::insert(row(names::INVENTORY, 104), None, vec![(names::COUNT, Value::Int(1))]),
         Edit::set(slot_count(2, 1), Value::Int(1)),
     ];
     assert_eq!(change.forward.edits(), want);
@@ -142,7 +82,7 @@ fn equip_an_item_worn_by_others_raises_the_count() {
 #[test]
 fn equip_an_item_already_counted_enough_adds_no_row_edit() {
     let mut data = SlotData::standard();
-    with_count(&mut data, 100, 5);
+    with_count(&mut data.inventory, 100, 5);
     let mut model = model(&data.render());
     let change = model.apply_game(&equip(1, 1, 100)).unwrap();
     let want = [equip(1, 1, 100), Edit::set(slot_count(1, 1), Value::Int(5))];
@@ -171,7 +111,7 @@ fn unequip_writes_the_placeholder_and_its_count() {
     assert_eq!(inventory(&mut standard), before, "the item that left stays, the placeholder row is untouched");
 
     let mut data = SlotData::standard();
-    without_placeholders(&mut data);
+    without_placeholders(&mut data.inventory);
     let mut bare = model(&data.render());
     let change = bare.apply_game(&equip(1, 1, 62)).unwrap();
     assert_eq!(change.forward.edits(), [equip(1, 1, 62)]);
@@ -182,9 +122,9 @@ fn unequip_writes_the_placeholder_and_its_count() {
 fn cases() -> Vec<(String, Edit)> {
     let standard = SlotData::standard().render();
     let mut enough = SlotData::standard();
-    with_count(&mut enough, 100, 5);
+    with_count(&mut enough.inventory, 100, 5);
     let mut bare = SlotData::standard();
-    without_placeholders(&mut bare);
+    without_placeholders(&mut bare.inventory);
     vec![
         (standard.clone(), equip(1, 1, 100)),
         (standard.clone(), equip(2, 1, 104)),
@@ -196,10 +136,6 @@ fn cases() -> Vec<(String, Edit)> {
         (bare.render(), equip(1, 1, 62)),
         (bare_slot().render(), equip(3, 3, 154)),
     ]
-}
-
-fn run(model: &mut Ff1Model, set: &ChangeSet, policy: CapPolicy) -> ChangeSet {
-    set.apply_with(policy, |edit, policy| model.apply(edit, policy)).unwrap()
 }
 
 #[test]
@@ -230,7 +166,7 @@ fn every_edit_is_plain() {
             "inverse {index}"
         );
         let mut again = self::model(&text);
-        for step in &forward {
+        for step in forward {
             again.apply(step, ENFORCE).unwrap();
         }
         assert_eq!(again.document().to_json(), model.document().to_json(), "case {index}");
@@ -267,8 +203,8 @@ fn an_equip_is_atomic() {
 fn pass_through_edits_become_one_plain_edit() {
     let edits = [
         Edit::set(character_field(1, names::POWER), Value::Int(40)),
-        Edit::insert(row(7), None, Vec::new()),
-        Edit::remove(row(100)),
+        Edit::insert(row(names::INVENTORY, 7), None, Vec::new()),
+        Edit::remove(row(names::INVENTORY, 100)),
         Edit::remove(RowId::new(FieldId::new(names::KEY_ITEMS), 45)),
         Edit::insert(RowId::new(FieldId::new(names::KEY_ITEMS), 47), None, Vec::new()),
     ];

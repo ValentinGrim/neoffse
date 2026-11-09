@@ -1,101 +1,17 @@
-//! From a [`FieldId`] to what it names: gil, a part of a character, or the
-//! count of an item row. [`locate`](super::locate) turns a binding into a
-//! path into the document.
+//! The character fields of an FF I slot. The shared
+//! [`Binding`](crate::shared::bind::Binding) turns a [`FieldId`] into gil, a
+//! part of a character or the count of an item row, and calls `Part` for the
+//! character vocabulary.
 
-use neoffse_core::{EditError, FieldId, Key};
+use neoffse_core::{EditError, FieldId, FieldMeta, Key, Value};
+use neoffse_data::GameTables;
 
-use super::names;
-use crate::document::Segment;
-
-/// A path into the document; every key name is a `'static` literal.
-pub(super) type Path = Vec<Segment<'static>>;
-
-/// The two lists of `userData` that hold `{contentId, count}` rows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum List {
-    /// `normalOwnedItemList`: items and equipment.
-    Inventory,
-    /// `importantOwendItemList`: key items.
-    KeyItems,
-}
-
-impl List {
-    /// The document key of the list (the game's spelling).
-    fn document_key(self) -> &'static str {
-        match self {
-            List::Inventory => "normalOwnedItemList",
-            List::KeyItems => "importantOwendItemList",
-        }
-    }
-
-    /// The section name of the list's rows.
-    pub(super) fn section(self) -> &'static str {
-        match self {
-            List::Inventory => names::INVENTORY,
-            List::KeyItems => names::KEY_ITEMS,
-        }
-    }
-
-    /// Path to the `target` array of the list.
-    pub(super) fn target(self) -> Path {
-        vec![
-            Segment::Key("userData"),
-            Segment::Doc,
-            Segment::Key(self.document_key()),
-            Segment::Doc,
-            Segment::Key("target"),
-        ]
-    }
-}
-
-/// A collection of the model, named by its section.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Collection {
-    /// `ownedCharacterList`.
-    Character,
-    /// One of the item lists.
-    Items(List),
-}
-
-impl Collection {
-    /// The collection that `field` names exactly, if any.
-    pub(super) fn of(field: &FieldId) -> Option<Self> {
-        match field.keys() {
-            [Key::Name(names::CHARACTER)] => Some(Self::Character),
-            [Key::Name(names::INVENTORY)] => Some(Self::Items(List::Inventory)),
-            [Key::Name(names::KEY_ITEMS)] => Some(Self::Items(List::KeyItems)),
-            _ => None,
-        }
-    }
-
-    /// Path to the `target` array of the collection.
-    pub(super) fn target(self) -> Path {
-        match self {
-            Self::Character => characters_target(),
-            Self::Items(list) => list.target(),
-        }
-    }
-
-    /// The key that identifies a row inside its element.
-    pub(super) fn row_key(self) -> &'static str {
-        match self {
-            Self::Character => "id",
-            Self::Items(_) => "contentId",
-        }
-    }
-}
-
-/// The seven stat fields; each maps to one `addtional...` key of `parameter`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Stat {
-    Power,
-    Vitality,
-    Agility,
-    Intelligence,
-    Spirit,
-    Luck,
-    Magic,
-}
+use super::{derived, locate, meta, names};
+use crate::document::Document;
+use crate::shared::bind::CharacterPart;
+use crate::shared::paths::Path;
+use crate::shared::read::Located;
+use crate::shared::stat::Stat;
 
 /// A field of one character.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -130,63 +46,7 @@ pub(super) enum Part {
     },
 }
 
-/// What a [`FieldId`] names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Binding {
-    Gil,
-    Character { id: u32, part: Part },
-    Count { list: List, key: u32 },
-}
-
-impl Binding {
-    /// Resolves `field`, or `UnknownField` when it matches no declared field.
-    pub(super) fn resolve(field: &FieldId) -> Result<Self, EditError> {
-        Self::declared(field.keys()).ok_or_else(|| EditError::UnknownField { field: field.clone() })
-    }
-
-    fn declared(keys: &[Key]) -> Option<Self> {
-        match keys {
-            [Key::Name(names::GIL)] => Some(Self::Gil),
-            [Key::Name(names::CHARACTER), Key::Id(id), rest @ ..] => Some(Self::Character {
-                id: *id,
-                part: Part::declared(rest)?,
-            }),
-            [Key::Name(section), Key::Id(key), Key::Name(names::COUNT)] => {
-                let list = match *section {
-                    names::INVENTORY => List::Inventory,
-                    names::KEY_ITEMS => List::KeyItems,
-                    _ => return None,
-                };
-                Some(Self::Count { list, key: *key })
-            }
-            _ => None,
-        }
-    }
-
-    /// True for the ability id of a spell slot, a value that sits inside a
-    /// JSON string.
-    pub(super) fn is_spell(&self) -> bool {
-        matches!(self, Self::Character { part: Part::Spell { .. }, .. })
-    }
-
-    /// True for a computed field, which has no document path.
-    pub(super) fn is_derived(&self) -> bool {
-        matches!(
-            self,
-            Self::Character {
-                part: Part::MaxHp | Part::NextLevel,
-                ..
-            }
-        )
-    }
-
-    /// True for the one text field, `name`.
-    pub(super) fn is_text(&self) -> bool {
-        matches!(self, Self::Character { part: Part::Name, .. })
-    }
-}
-
-impl Part {
+impl CharacterPart for Part {
     fn declared(keys: &[Key]) -> Option<Self> {
         let level_ok = |level: u32| (1..=names::SPELL_LEVELS).contains(&level);
         let slot_ok = |slot: u32| (1..=names::EQUIPMENT_SLOTS).contains(&slot);
@@ -202,13 +62,6 @@ impl Part {
             [Key::Name(names::MAGIC_EVASION_GAIN)] => Some(Self::MagicEvasionGain),
             [Key::Name(names::MAX_HP)] => Some(Self::MaxHp),
             [Key::Name(names::NEXT_LEVEL)] => Some(Self::NextLevel),
-            [Key::Name(names::POWER)] => Some(Self::Stat(Stat::Power)),
-            [Key::Name(names::VITALITY)] => Some(Self::Stat(Stat::Vitality)),
-            [Key::Name(names::AGILITY)] => Some(Self::Stat(Stat::Agility)),
-            [Key::Name(names::INTELLIGENCE)] => Some(Self::Stat(Stat::Intelligence)),
-            [Key::Name(names::SPIRIT)] => Some(Self::Stat(Stat::Spirit)),
-            [Key::Name(names::LUCK)] => Some(Self::Stat(Stat::Luck)),
-            [Key::Name(names::MAGIC)] => Some(Self::Stat(Stat::Magic)),
             [Key::Name(names::CHARGES), Key::Id(level)] if level_ok(*level) => Some(Self::Charges(*level)),
             [Key::Name(names::CHARGES_MAX_GAIN), Key::Id(level)] if level_ok(*level) => Some(Self::ChargesMaxGain(*level)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot)] if slot_ok(*slot) => Some(Self::Slot(*slot)),
@@ -216,60 +69,36 @@ impl Part {
             [Key::Name(names::SPELL), Key::Id(level), Key::Id(slot)] if level_ok(*level) && spell_slot_ok(*slot) => {
                 Some(Self::Spell { level: *level, slot: *slot })
             }
+            [Key::Name(name)] => Stat::of_name(name).map(Self::Stat),
             _ => None,
         }
     }
-}
 
-impl Stat {
-    /// The `parameter` key of the stat (the game's spelling).
-    pub(super) fn document_key(self) -> &'static str {
-        match self {
-            Stat::Power => "addtionalPower",
-            Stat::Vitality => "addtionalVitality",
-            Stat::Agility => "addtionalAgility",
-            Stat::Intelligence => "addtionalIntelligence",
-            Stat::Spirit => "addtionalSpirit",
-            Stat::Luck => "addtionalLuck",
-            Stat::Magic => "addtionalMagic",
-        }
+    fn meta(self, tables: &GameTables) -> FieldMeta {
+        meta::part_meta(self, tables)
     }
 
-    /// The `bounds.toml` key of the stat's game cap, spelled as the game
-    /// spells it (`docs/formats/pixel-remaster.md#bounds-in-the-master-data`).
-    /// Magic has no cap.
-    pub(super) fn bound_key(self) -> Option<&'static str> {
+    fn locate(self, document: &mut Document, base: Path) -> Result<Path, Located> {
+        locate::locate_part(document, base, self)
+    }
+
+    fn is_text(self) -> bool {
+        self == Self::Name
+    }
+
+    fn is_pathless(self) -> bool {
+        matches!(self, Self::MaxHp | Self::NextLevel)
+    }
+
+    fn is_locked(self) -> bool {
+        matches!(self, Self::SlotCount(_) | Self::Spell { .. } | Self::MaxHp | Self::NextLevel)
+    }
+
+    fn computed(self, document: &mut Document, tables: &GameTables, _id: u32, field: &FieldId, base: Path) -> Option<Result<Value, EditError>> {
         match self {
-            Stat::Power => Some("MAX_STRNGTH"),
-            Stat::Vitality => Some("MAX_VITALITY"),
-            Stat::Agility => Some("MAX_AGILITY"),
-            Stat::Intelligence => Some("MAX_INTELIGENCE"),
-            Stat::Spirit => Some("MAX_SPRIT"),
-            Stat::Luck => Some("MAX_LUCK"),
-            Stat::Magic => None,
+            Self::MaxHp | Self::NextLevel => Some(derived::value(document, tables, self, field, base)),
+            Self::Spell { .. } => Some(locate::spell_ability(document, self, field, base)),
+            _ => None,
         }
     }
-}
-
-/// Path to `ownedCharacterList.target`.
-pub(super) fn characters_target() -> Path {
-    vec![
-        Segment::Key("userData"),
-        Segment::Doc,
-        Segment::Key("ownedCharacterList"),
-        Segment::Doc,
-        Segment::Key("target"),
-    ]
-}
-
-/// Path to the document of the element `index` of `target`.
-pub(super) fn element(mut target: Path, index: usize) -> Path {
-    target.push(Segment::Index(index));
-    target.push(Segment::Doc);
-    target
-}
-
-pub(super) fn with(mut path: Path, tail: &[Segment<'static>]) -> Path {
-    path.extend_from_slice(tail);
-    path
 }

@@ -4,23 +4,12 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
-use common::{changed_span, character_path};
+use common::ff1_save::{SlotData, model, standard_model};
+use common::{changed_span, character_field, character_path};
+use common::{count, gil, slot};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Key, Value};
 use neoffse_format_pr::document::{Scalar, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, names};
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
-
-fn slot(id: u32, slot: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(slot)
-}
 
 fn set(field: &FieldId, value: Value) -> Edit {
     Edit::set(field.clone(), value)

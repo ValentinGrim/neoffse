@@ -3,24 +3,19 @@
 
 mod common;
 
-use common::{folder_with, slot_bytes, slot_name};
+use common::{ff1_registry as registry, folder_with, slot_bytes, slot_file_at};
+use neoffse::Error;
 use neoffse::core::{FormatError, Game};
-use neoffse::data::Language;
 use neoffse::io::error::{IoError, Operation};
-use neoffse::{Error, Registry};
-
-fn registry() -> Registry {
-    Registry::new(Language::En)
-}
 
 #[test]
 fn a_slot_opens_by_name_with_or_without_a_game() {
     let bytes = slot_bytes();
-    let dir = folder_with(&[(slot_name(2), &bytes)]);
+    let dir = folder_with(&[(slot_file_at(2), &bytes)]);
     for game in [Some(Game::Ff1Pr), None] {
-        let save = registry().open(dir.path(), slot_name(2), game).unwrap();
+        let save = registry().open(dir.path(), slot_file_at(2), game).unwrap();
         assert_eq!(save.game(), Game::Ff1Pr);
-        assert_eq!(save.name(), slot_name(2));
+        assert_eq!(save.name(), slot_file_at(2));
         assert_eq!(save.dir(), dir.path());
     }
 }
@@ -36,10 +31,10 @@ fn a_renamed_slot_copy_opens_as_ff1_without_a_game() {
 #[test]
 fn original_holds_the_bytes_read() {
     let bytes = slot_bytes();
-    let dir = folder_with(&[(slot_name(2), &bytes)]);
-    let save = registry().open(dir.path(), slot_name(2), None).unwrap();
+    let dir = folder_with(&[(slot_file_at(2), &bytes)]);
+    let save = registry().open(dir.path(), slot_file_at(2), None).unwrap();
     assert_eq!(save.original().len(), 1);
-    assert_eq!(save.original().get(slot_name(2)), Some(bytes.as_slice()));
+    assert_eq!(save.original().get(slot_file_at(2)), Some(bytes.as_slice()));
     assert!(!save.is_dirty());
 }
 
@@ -67,8 +62,8 @@ fn a_non_save_file_with_a_game_is_a_format_error() {
 
 #[test]
 fn a_game_without_a_format_is_unsupported() {
-    let dir = folder_with(&[(slot_name(2), &slot_bytes())]);
-    let error = registry().open(dir.path(), slot_name(2), Some(Game::Ff2Pr)).unwrap_err();
+    let dir = folder_with(&[(slot_file_at(2), &slot_bytes())]);
+    let error = registry().open(dir.path(), slot_file_at(2), Some(Game::Ff2Pr)).unwrap_err();
     assert!(matches!(error, Error::UnsupportedGame { game: Game::Ff2Pr }));
     assert_eq!(error.to_string(), "no format supports ff2-pr");
 }
@@ -76,7 +71,7 @@ fn a_game_without_a_format_is_unsupported() {
 #[test]
 fn a_missing_file_is_an_io_error() {
     let dir = folder_with(&[]);
-    let error = registry().open(dir.path(), slot_name(2), None).unwrap_err();
+    let error = registry().open(dir.path(), slot_file_at(2), None).unwrap_err();
     assert!(matches!(
         error,
         Error::Io {
@@ -90,7 +85,7 @@ fn a_missing_file_is_an_io_error() {
 
 #[test]
 fn a_name_with_a_separator_is_refused_by_the_io_layer() {
-    let dir = folder_with(&[(slot_name(2), &slot_bytes())]);
+    let dir = folder_with(&[(slot_file_at(2), &slot_bytes())]);
     for name in ["sub/file", "..", "a\\b", ""] {
         let error = registry().open(dir.path(), name, None).unwrap_err();
         assert!(

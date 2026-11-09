@@ -1,7 +1,8 @@
 //! Test helpers: locate and read the committed fixtures under `fixtures/`,
 //! and locate the private real saves named by `NEOFFSE_SAVES`. The crate
 //! generates no fixture. A test that finds no private save returns early
-//! and passes, after [`skip`] has written the reason on stderr.
+//! and passes, after [`skip`] has written the reason on stderr. A private-save
+//! test prints its counts with [`report`].
 //!
 //! A test that needs real saves starts with:
 //!
@@ -110,4 +111,12 @@ pub fn private_saves(game: &str) -> Option<Vec<PathBuf>> {
 #[allow(clippy::print_stderr, reason = "a skipped test must say why, and stderr is the only channel it has")]
 pub fn skip(reason: &str) {
     eprintln!("skipped: {reason}");
+}
+
+/// Prints one line of a private-save run on stderr.
+///
+/// Never pass a personal value: a save name, a Steam ID or a player name.
+#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
+pub fn report(line: &str) {
+    eprintln!("{line}");
 }

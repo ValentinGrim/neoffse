@@ -1,8 +1,9 @@
 # NeoFFSE roadmap
 
-NeoFFSE should reach its first release, v0.7.0, in six milestones and a release stage:  
-foundations, the PR codec, file safety, the PR domain, the app on FF I, FF II to VI, then the release.  
-A step closes when its exit checks pass, and the next one opens after it.
+NeoFFSE should reach its first release, v0.12.0, in eleven milestones and a release stage:  
+foundations, the PR codec, file safety, the PR domain, the app on FF I, one milestone for each of FF II to FF VI, the bestiaries, then the release.  
+A step closes when its exit checks pass, and the next one opens after it.  
+Milestone M0 delivers crate version v0.1.0, and each later milestone raises the minor version by one: M5 delivers v0.6.0, M10 delivers v0.11.0 and the release is v0.12.0.
 [Layers and milestone boundaries](architecture.md#layers-and-milestone-boundaries)
 lists the crates each milestone closes.
 
@@ -82,8 +83,8 @@ the real saves of a Steam install on Linux and on Windows; the ignored
   game's master data, and you run it where the game is installed.
 - The mapping from the PR document to the domain for FF I, in
   `neoffse-format-pr`: characters, inventory, key items and gil, with the
-  slot and game detection, `Ff1Format` and `Ff1Document`. FF II to VI wait
-  for M5.
+  slot and game detection, `Ff1Format` and `Ff1Document`. FF II to VI
+  follow in M5 to M9.
 
 **Exit.** On FF I, an edit followed by encode and decode yields the
 intended change and no other difference (see
@@ -104,18 +105,62 @@ the Unity asset bundles.
 
 **Exit.** A real FF I save edited in the app loads in the game.
 
-## M5 FF II to VI
+## M5 FF II
 
-**Scope.** The per-game systems:
-- FF II weapon and skill levels.
-- FF III and FF V jobs.
-- FF VI espers, rages, blitzes and the other parties.
-- The bestiaries.
+**Scope.**
+- The FF II mapping and format in `neoffse-format-pr`: characters, items,
+  key items, keywords, gil, the ten skill totals, and the level of each
+  spell.
+- The shared PR layer (`neoffse_format_pr::shared`) that `Ff1Format` and
+  `Ff2Format` both run through, so each later game plugs in its own model.
+- The master-data tables of FF II to VI in `neoffse-data`.
+- The FF II editor: cards with portraits, the Magic page with its
+  editable Level, and the Raw spells page in expert mode.
 
-**Exit.** For each game from FF II to FF VI, a real save edited in the
-app loads in the game and shows the edit.
+**Exit.** A real FF II save edited in the app loads in the game and shows
+the edit.
 
-## v0.7.0 release
+## M6 FF III
+
+**Scope.** The FF III mapping and format on the shared PR layer, the FF III
+jobs, and the FF III editor in the app.
+
+**Exit.** A real FF III save edited in the app loads in the game and shows
+the edit.
+
+## M7 FF IV
+
+**Scope.** The FF IV mapping and format on the shared PR layer, the
+per-game systems of FF IV, and the FF IV editor in the app.
+
+**Exit.** A real FF IV save edited in the app loads in the game and shows
+the edit.
+
+## M8 FF V
+
+**Scope.** The FF V mapping and format on the shared PR layer, the FF V
+jobs, and the FF V editor in the app.
+
+**Exit.** A real FF V save edited in the app loads in the game and shows
+the edit.
+
+## M9 FF VI
+
+**Scope.** The FF VI mapping and format on the shared PR layer, the espers,
+rages, blitzes and the other parties of FF VI, and the FF VI editor in the
+app.
+
+**Exit.** A real FF VI save edited in the app loads in the game and shows
+the edit.
+
+## M10 Bestiaries
+
+**Scope.** The bestiaries of FF I to FF VI.
+
+**Exit.** For each game from FF I to FF VI, a real save with an edited
+bestiary, opened in the app, loads in the game and shows the edit.
+
+## v0.12.0 release
 
 **Scope.** Polish, French and English translations, user documentation,
 and CI release builds: a Linux `tar.xz`, a Windows `zip`, and
@@ -125,7 +170,7 @@ and CI release builds: a Linux `tar.xz`, a Windows `zip`, and
 the checksums match, and the app from each archive opens a real save on
 its system in French and in English.
 
-## After v0.7.0
+## After v0.12.0
 
 A guide on adding a format comes first, so a contributor can add a game without reading the whole codebase.  
 More games follow, then the platform variants (GBA, memory cards, NDS, consoles).

@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use neoffse::Registry;
 use neoffse::data::Language;
 use neoffse_app::{
     AboutDialog, App, FilePicker, GameRow, MainWindow, RestoreBridge, SlotRow, connect_about, connect_close, connect_editor, connect_expert, connect_history,
@@ -27,11 +28,16 @@ impl Ui {
     /// Installs the testing backend for this thread, builds the window and
     /// connects it. The first scan is queued, not run.
     pub(crate) fn new(site: &Site, pick: Option<PathBuf>) -> Self {
+        Self::with_registry(site, pick, registry())
+    }
+
+    /// Like `new`, over `registry`.
+    pub(crate) fn with_registry(site: &Site, pick: Option<PathBuf>, registry: Arc<Registry>) -> Self {
         i_slint_backend_testing::init_no_event_loop();
         let manual = Manual::new();
         let picker = FixedPicker::new(pick);
         let app = App::new(
-            registry(),
+            registry,
             Language::En,
             environment(site),
             Arc::clone(&picker) as Arc<dyn FilePicker>,
@@ -63,6 +69,13 @@ impl Ui {
     /// Like `new`, then the first scan runs to the end.
     pub(crate) fn scanned(site: &Site, pick: Option<PathBuf>) -> Self {
         let ui = Self::new(site, pick);
+        ui.manual.run_all();
+        ui
+    }
+
+    /// Like `scanned`, over `registry`.
+    pub(crate) fn scanned_with(site: &Site, pick: Option<PathBuf>, registry: Arc<Registry>) -> Self {
+        let ui = Self::with_registry(site, pick, registry);
         ui.manual.run_all();
         ui
     }

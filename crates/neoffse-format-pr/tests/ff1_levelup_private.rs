@@ -6,15 +6,17 @@
 
 mod common;
 
+use common::character_field;
 use common::character_path;
-use common::ff1_real::{RealSlot, must, must_some, slots};
-use common::ff1_save::character_field;
+use common::ff1_real::slots;
 use common::growth_oracle::{Stored, grow};
+use common::private;
+use common::real_slots::{RealSlot, must, must_some};
 use common::rolls::Script;
 use neoffse_core::{CapPolicy, ChangeSet, Edit, FieldId, Value};
 use neoffse_data::GameTables;
 use neoffse_format_pr::document::{Scalar, Segment};
-use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
+use neoffse_format_pr::ff1::{Ff1Model, names};
 
 /// A character as the growth step reads it.
 struct Facts {
@@ -25,7 +27,7 @@ struct Facts {
 }
 
 fn tables() -> &'static GameTables {
-    must_some(neoffse_data::tables_for(GAME), "no FF I tables")
+    private::tables::<Ff1Model>()
 }
 
 fn int(model: &mut Ff1Model, slot: &RealSlot, id: u32, name: &'static str) -> i64 {
@@ -64,18 +66,18 @@ fn level_edit(id: u32, level: u32) -> Edit {
 fn the_extremes_match_the_oracle() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut probe = slot.model();
+        let mut probe = slot.model::<Ff1Model>();
         for facts in characters(&slot, &mut probe) {
             let to = facts.level + 3;
             for (succeed, mut script) in [(false, Script::fixed(false, 20)), (true, Script::fixed(true, 24))] {
-                let mut model = slot.model();
-                let start = Stored::read(&mut model, facts.id);
+                let mut model = slot.model::<Ff1Model>();
+                let start = Stored::read(&mut model, &slot.label, facts.id);
                 let wanted = grow(tables(), &start, facts.base_vitality, facts.job, facts.level, to, succeed);
                 must(
                     model.apply_game_with(&level_edit(facts.id, to), &mut script),
                     &format!("{}: character {} refused the level edit", slot.label, facts.id),
                 );
-                let got = Stored::read(&mut model, facts.id);
+                let got = Stored::read(&mut model, &slot.label, facts.id);
                 assert!(
                     got == wanted,
                     "{}: character {} differs from the oracle (all rolls {succeed})",
@@ -98,9 +100,9 @@ fn apply_all(model: &mut Ff1Model, set: &ChangeSet) {
 fn a_private_level_up_undoes_byte_for_byte() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut probe = slot.model();
+        let mut probe = slot.model::<Ff1Model>();
         for facts in characters(&slot, &mut probe) {
-            let mut model = slot.model();
+            let mut model = slot.model::<Ff1Model>();
             let before = model.document().to_json();
             let change = must(
                 model.apply_game_with(&level_edit(facts.id, facts.level + 3), &mut Script::fixed(true, 24)),
@@ -119,17 +121,17 @@ fn a_private_level_up_undoes_byte_for_byte() {
 fn a_private_level_decrease_changes_no_stat_and_draws_nothing() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut probe = slot.model();
+        let mut probe = slot.model::<Ff1Model>();
         for facts in characters(&slot, &mut probe).into_iter().filter(|facts| facts.level > 1) {
-            let mut model = slot.model();
-            let before = Stored::read(&mut model, facts.id);
+            let mut model = slot.model::<Ff1Model>();
+            let before = Stored::read(&mut model, &slot.label, facts.id);
             let mut script = Script::queued(&[], &[]);
             must(
                 model.apply_game_with(&level_edit(facts.id, facts.level - 1), &mut script),
                 &format!("{}: character {} refused the decrease", slot.label, facts.id),
             );
             assert!(
-                Stored::read(&mut model, facts.id) == before,
+                Stored::read(&mut model, &slot.label, facts.id) == before,
                 "{}: character {} moved a stat",
                 slot.label,
                 facts.id
@@ -143,18 +145,18 @@ fn a_private_level_decrease_changes_no_stat_and_draws_nothing() {
 fn the_real_source_lands_between_the_extremes() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut probe = slot.model();
+        let mut probe = slot.model::<Ff1Model>();
         for facts in characters(&slot, &mut probe) {
             let to = facts.level + 1;
-            let mut model = slot.model();
-            let start = Stored::read(&mut model, facts.id);
+            let mut model = slot.model::<Ff1Model>();
+            let start = Stored::read(&mut model, &slot.label, facts.id);
             let low = grow(tables(), &start, facts.base_vitality, facts.job, facts.level, to, false);
             let high = grow(tables(), &start, facts.base_vitality, facts.job, facts.level, to, true);
             must(
                 model.apply_game(&level_edit(facts.id, to)),
                 &format!("{}: character {} refused the level edit", slot.label, facts.id),
             );
-            let got = Stored::read(&mut model, facts.id);
+            let got = Stored::read(&mut model, &slot.label, facts.id);
             for ((field, value), ((_, low), (_, high))) in got
                 .fields(facts.id)
                 .into_iter()

@@ -6,9 +6,12 @@ mod common;
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::thread;
 
-use common::{Flow, ID_1, Outcomes, Site, no_game_bytes, other_game_bytes, slot_bytes, slot_file, steam_slot};
+use common::{Flow, ID_1, Outcomes, Refusing, Site, no_game_bytes, other_game_bytes, registry_with, slot_bytes, slot_file, steam_slot};
+use neoffse::Registry;
+use neoffse::core::Game;
 use neoffse_app::OpenProblem;
 use neoffse_app::home::OpenOutcome;
 
@@ -139,6 +142,46 @@ fn a_vehicle_count_no_game_has_stays_not_a_save() {
     let site = Site::new();
     let path = elsewhere(&site, slot_file(1), &no_game_bytes());
     let flow = Flow::new(&site, Some(path));
+
+    assert_eq!(pick_once(&flow), vec![failed(OpenProblem::NotASave)]);
+    assert!(!flow.state.is_open());
+}
+
+#[test]
+fn a_file_that_names_a_registered_game_gives_not_a_save() {
+    let site = Site::new();
+    let path = elsewhere(&site, slot_file(1), &other_game_bytes());
+    let refusing = Refusing {
+        game: Game::Ff6Pr,
+        found: Some(Game::Ff1Pr),
+        vehicles: 4,
+    };
+    let flow = Flow::with_registry(&site, Some(path), registry_with(vec![Arc::new(refusing)]));
+
+    assert_eq!(pick_once(&flow), vec![failed(OpenProblem::NotASave)]);
+    assert!(!flow.state.is_open());
+}
+
+#[test]
+fn a_slot_of_an_unregistered_game_stays_unsupported_with_two_formats() {
+    let site = Site::new();
+    let path = elsewhere(&site, slot_file(1), &other_game_bytes());
+    let refusing = Refusing {
+        game: Game::Ff2Pr,
+        found: Some(Game::Ff6Pr),
+        vehicles: 4,
+    };
+    let flow = Flow::with_registry(&site, Some(path), registry_with(vec![Arc::new(refusing)]));
+
+    assert_eq!(pick_once(&flow), vec![failed(OpenProblem::Unsupported)]);
+    assert!(!flow.state.is_open());
+}
+
+#[test]
+fn an_empty_registry_gives_not_a_save() {
+    let site = Site::new();
+    let path = elsewhere(&site, slot_file(1), &slot_bytes(1));
+    let flow = Flow::with_registry(&site, Some(path), Arc::new(Registry::from_formats(Vec::new())));
 
     assert_eq!(pick_once(&flow), vec![failed(OpenProblem::NotASave)]);
     assert!(!flow.state.is_open());

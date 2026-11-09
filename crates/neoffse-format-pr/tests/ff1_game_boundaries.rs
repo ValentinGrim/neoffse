@@ -4,16 +4,15 @@
 
 mod common;
 
-use common::ff1_save::{Equip, Row, SlotData, character_field, model};
+use common::ff1_save::{SlotData, model};
+use common::slot;
+use common::slot_render::Equip;
+use common::slot_render::Row;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::names;
 
 fn item(key: u32) -> RowId {
     RowId::new(FieldId::new(names::INVENTORY), key)
-}
-
-fn slot(id: u32, number: u32) -> FieldId {
-    character_field(id, names::EQUIPMENT).with_id(number)
 }
 
 /// The unequip of slot 1 is a two-step plan: the slot `contentId`, then the

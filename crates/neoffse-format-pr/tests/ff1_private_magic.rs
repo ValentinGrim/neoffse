@@ -6,16 +6,17 @@
 mod common;
 
 use common::ff1_magic::slot_mismatches;
-use common::ff1_real::{must, slots};
+use common::ff1_real::slots;
+use common::real_slots::must;
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, Value};
 use neoffse_data::Language;
-use neoffse_format_pr::ff1::names;
+use neoffse_format_pr::ff1::{Ff1Model, names};
 
 #[test]
 fn real_spell_slots_equal_the_ability_list() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let found = slot_mismatches(&mut model, &slot.json);
         assert!(found.is_empty(), "{}: {}", slot.label, found.join("; "));
     }
@@ -25,7 +26,7 @@ fn real_spell_slots_equal_the_ability_list() {
 fn real_spell_slots_read_and_show_in_the_view() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let ids = must(
             model.rows(&FieldId::new(names::CHARACTER)),
             &format!("{}: character rows do not read", slot.label),
@@ -45,7 +46,7 @@ fn real_spell_slots_read_and_show_in_the_view() {
 fn real_spell_slots_refuse_every_edit() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = slot.model();
+        let mut model = slot.model::<Ff1Model>();
         let before = model.document().to_json();
         let ids = must(
             model.rows(&FieldId::new(names::CHARACTER)),

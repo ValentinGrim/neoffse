@@ -8,7 +8,7 @@
 
 use neoffse::core::Game;
 
-use super::AssetProvider;
+use super::{AssetProvider, person_of};
 
 /// The six FF I classes that have a sprite. A promoted job shares the image
 /// of its base class.
@@ -96,9 +96,13 @@ pub struct OriginalSprites;
 
 impl AssetProvider for OriginalSprites {
     fn portrait(&self, game: Game, job: u32) -> Option<slint::Image> {
-        let class = class_of(game, job)?;
+        // FF I keys are classes, FF II keys are people: a pair has at most one.
+        let png = match class_of(game, job) {
+            Some(class) => class.png(),
+            None => person_of(game, job)?.png(),
+        };
         // The PNGs are compiled in and `a_portrait_is_32_px` decodes each one: a failure is a build defect,
         // and the card falls back to its initial.
-        slint::Image::load_from_data(class.png(), Some("png")).ok()
+        slint::Image::load_from_data(png, Some("png")).ok()
     }
 }

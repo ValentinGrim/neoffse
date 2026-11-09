@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from . import ExportError
 from .build import Row
-from .tables import Game
+from .specs import Game
 
 _FIELD_KEY = re.compile(r"[a-z][a-z0-9_]*")
 _TABLE_KEY = re.compile(r"[A-Z][A-Z0-9_]*")
@@ -27,6 +27,8 @@ class Provenance:
     message_bundle: str
     message_sha256: str
     build_id: str | None
+    misc_bundle: str | None = None  # set for a game with a skills file; shown in that file only
+    misc_sha256: str | None = None
 
 
 def toml_string(value: str) -> str:
@@ -37,8 +39,12 @@ def toml_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def file_header(game: Game, file: str, prov: Provenance, notes: Sequence[str]) -> list[str]:
-    """Comment lines without the `# ` prefix."""
+def file_header(
+    game: Game, file: str, prov: Provenance, notes: Sequence[str], *, misc: bool = False
+) -> list[str]:
+    """Comment lines without the `# ` prefix. `misc` adds the line of the misc bundle."""
+    if misc and prov.misc_bundle is None:
+        raise ExportError(f"{file}: no misc bundle to name in the header")
     build = f"build {prov.build_id}" if prov.build_id else "build unknown"
     lines = [
         f"{game.id}/{file}",
@@ -47,6 +53,7 @@ def file_header(game: Game, file: str, prov: Provenance, notes: Sequence[str]) -
         f"Game: {game.label}, Steam app {game.steam_app_id}, {build}.",
         f"Master bundle: {prov.master_bundle} (sha256 {prov.master_sha256}).",
         f"Message bundle: {prov.message_bundle} (sha256 {prov.message_sha256}).",
+        *([f"Misc bundle: {prov.misc_bundle} (sha256 {prov.misc_sha256})."] if misc else []),
         "Format reference: docs/formats/pixel-remaster.md#game-master-data",
         *notes,
     ]

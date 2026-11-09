@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, ThreadId};
 
+use neoffse::Registry;
+use neoffse::core::Game;
 use neoffse::data::Language;
 use neoffse::pr::slots::SLOT_FILES;
 use neoffse_app::EditorViewModel;
@@ -13,7 +15,7 @@ use neoffse_app::FilePicker;
 use neoffse_app::home::{HomeViewModel, OpenOutcome, OpenViewModel, SlotTarget};
 use neoffse_app::state::AppState;
 
-use super::{ID_1, Manual, Site, registry, scanned, steam_folder};
+use super::{ID_1, Manual, Site, must_some, registry, scanned_with, steam_folder};
 
 /// A picker that returns a fixed answer and records who asked.
 pub(crate) struct FixedPicker {
@@ -83,10 +85,15 @@ impl Flow {
     /// Scans `site` to the end, then builds the open flow with a picker that
     /// answers `pick`.
     pub(crate) fn new(site: &Site, pick: Option<PathBuf>) -> Self {
-        let home = scanned(site);
+        Self::with_registry(site, pick, registry())
+    }
+
+    /// [`Flow::new`] over `registry`: the scan and the open flow share it.
+    pub(crate) fn with_registry(site: &Site, pick: Option<PathBuf>, registry: Arc<Registry>) -> Self {
+        let home = scanned_with(site, Arc::clone(&registry));
         let state = Arc::new(AppState::new());
         let picker = FixedPicker::new(pick);
-        let open = OpenViewModel::new(registry(), Arc::clone(&picker) as Arc<dyn FilePicker>, Arc::clone(&state));
+        let open = OpenViewModel::new(registry, Arc::clone(&picker) as Arc<dyn FilePicker>, Arc::clone(&state));
         let editor = EditorViewModel::new(Arc::clone(&state), Language::En);
         Self {
             home,
@@ -109,26 +116,30 @@ impl Flow {
     }
 }
 
-/// A private FF I slot file copied into the FF I Steam folder of a synthetic
-/// machine. The site deletes the copy on drop.
+/// A private slot file copied into the Steam folder of its game on a
+/// synthetic machine. The site deletes the copy on drop.
 pub(crate) struct PrivateSlot {
     pub(crate) name: String,
     pub(crate) site: Site,
     pub(crate) copy: PathBuf,
 }
 
-/// One [`PrivateSlot`] per FF I slot file of the private saves. Returns
-/// `None` after reporting why when the saves hold no slot file, so the test
-/// returns early and says so.
-pub(crate) fn private_slot_copies() -> Option<Vec<PrivateSlot>> {
-    let paths = neoffse_testkit::private_saves("ff1")?;
+/// One [`PrivateSlot`] per slot file of the private saves of `game`. The
+/// private folder is the game id without its `-pr` suffix (`ff2-pr` reads
+/// `ff2`); the copy lands in the Steam folder of the game, whose position in
+/// `GAMES` is its position in `Game::ALL`. Returns `None` after reporting why
+/// when the saves hold no slot file, so the test returns early and says so.
+pub(crate) fn private_slot_copies(game: Game) -> Option<Vec<PrivateSlot>> {
+    let folder = game.id().trim_end_matches("-pr");
+    let game_index = must_some(Game::ALL.iter().position(|each| *each == game), "a game is in Game::ALL");
+    let paths = neoffse_testkit::private_saves(folder)?;
     let slots: Vec<PrivateSlot> = paths
         .iter()
         .filter_map(|path| {
             let name = path.file_name()?.to_str()?;
             SLOT_FILES.iter().any(|file| file.name == name).then(|| {
                 let site = Site::new();
-                let copy = steam_folder(&site, 0, ID_1).join(name);
+                let copy = steam_folder(&site, game_index, ID_1).join(name);
                 fs::copy(path, &copy).unwrap();
                 PrivateSlot {
                     name: name.to_owned(),
@@ -139,7 +150,7 @@ pub(crate) fn private_slot_copies() -> Option<Vec<PrivateSlot>> {
         })
         .collect();
     if slots.is_empty() {
-        neoffse_testkit::skip("no FF I slot file in the private saves");
+        neoffse_testkit::skip(&format!("no {} slot file in the private saves", game.id()));
         return None;
     }
     Some(slots)

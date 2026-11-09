@@ -7,15 +7,18 @@
 
 mod common;
 
+use common::character_field;
 use common::edit_paths::{shown, spaced_levels};
 use common::edit_proof::{How, Proof, Subject, prove};
 use common::exit_cases::{Case, FIXTURE_SKIPS, build, run};
-use common::ff1_save::{SlotData, character_field};
+use common::exit_facts::INV;
+use common::ff1_save::SlotData;
 use common::json_diff::{added, diff, layout_chain, value};
 use common::json_tree::Tree;
+use common::pr_files::containers;
 use neoffse_core::{Edit, EditError, FieldId, RowId, SaveDocument, Value};
 use neoffse_format_pr::container::{self, Container};
-use neoffse_format_pr::ff1::names;
+use neoffse_format_pr::ff1::{Ff1Format, names};
 
 const GIL: &str = "userData.owendGil";
 const PLAY_TIME: &str = "userData.playTime";
@@ -26,7 +29,7 @@ const PLAY_TIME_TEXT: &str = "13621.814333377138";
 type Refusal = (&'static str, Edit, fn(&EditError) -> bool);
 
 fn subject() -> Subject {
-    Subject::fixture(&SlotData::standard(), Container::game())
+    Subject::fixture(Ff1Format::new(), &SlotData::standard(), Container::game())
 }
 
 fn set_gil(number: i64) -> Edit {
@@ -55,12 +58,6 @@ fn decoded(subject: &Subject, document: &dyn SaveDocument) -> container::Decoded
     container::decode(files.get(&subject.name).unwrap()).unwrap()
 }
 
-fn assert_original(subject: &Subject, document: &dyn SaveDocument, what: &str) {
-    let after = decoded(subject, document);
-    assert!(after.json == subject.json, "{what}: the text changed");
-    assert_eq!(after.container, subject.container, "{what}: the container changed");
-}
-
 /// The tree after `case`'s edits, applied through `apply_game`.
 fn edited(subject: &Subject, case: &Case) -> Tree {
     let mut document = subject.open();
@@ -82,7 +79,7 @@ fn a_set_to_the_current_value_changes_nothing() {
     document.apply_game(&set_gil(current)).unwrap();
     let after = decoded(&subject, &*document);
     assert_eq!(diff(&subject.json, &after.json), Vec::new());
-    assert_original(&subject, &*document, "set to the current value");
+    subject.assert_original(&*document, "set to the current value");
     for how in [How::Game, How::Raw] {
         prove(&subject, "same value", &[set_gil(current)], how, &empty_proof());
     }
@@ -115,10 +112,10 @@ fn refused_edits_write_nothing() {
             panic!("{what}: the edit is accepted")
         };
         assert!(expected(&error), "{what}: wrong error: {error}");
-        assert_original(&subject, &*fresh, what);
+        subject.assert_original(&*fresh, what);
         assert!(shared.apply_game(&edit).is_err(), "{what}: accepted on the shared document");
     }
-    assert_original(&subject, &*shared, "five refusals in a row");
+    subject.assert_original(&*shared, "five refusals in a row");
 }
 
 #[test]
@@ -151,22 +148,12 @@ fn a_non_shortest_float_survives_every_edit() {
 
 #[test]
 fn each_container_survives_an_edit() {
-    let containers = [
-        Container::game(),
-        Container { bom: true, trailer: vec![] },
-        Container {
-            bom: false,
-            trailer: b" \r\n\t".to_vec(),
-        },
-    ];
-    for container in containers {
-        let subject = Subject::fixture(&SlotData::standard(), container);
+    for container in containers() {
+        let subject = Subject::fixture(Ff1Format::new(), &SlotData::standard(), container);
         let built = build(&subject);
         run(&subject, find(&built.cases, "gil"));
     }
 }
-
-const INV: &str = "userData.normalOwnedItemList.target";
 
 #[test]
 fn shown_hides_an_index_equal_to_the_list_length() {

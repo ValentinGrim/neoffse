@@ -3,17 +3,25 @@
 #![allow(dead_code, reason = "each test crate uses a subset of the shared helpers")]
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod second_game;
+mod stand_in;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use neoffse::Session;
 use neoffse::core::{Edit, FieldId, Game, SaveFiles, Value};
 use neoffse::io::backup::Moment;
 use neoffse::io::dirs::DataDir;
 use neoffse::pr::container::{self, Container};
 use neoffse::pr::ff1::names;
 use neoffse::pr::slots::SLOT_FILES;
+use neoffse::{Error, Registry, Session};
 use tempfile::TempDir;
+
+#[allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
+pub(crate) use second_game::*;
+#[allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
+pub(crate) use stand_in::*;
 
 /// A synthetic FF I slot in the game's container: BOM, base64, CRLF.
 pub(crate) fn slot_bytes() -> Vec<u8> {
@@ -22,8 +30,9 @@ pub(crate) fn slot_bytes() -> Vec<u8> {
     container::encode(&json, &Container::game()).unwrap()
 }
 
-/// The PC file name of the `index`th row of `SLOT_FILES`.
-pub(crate) fn slot_name(index: usize) -> &'static str {
+/// The PC file name of the `index`th row of `SLOT_FILES`. The index is a row
+/// position, not the JSON id: `slot_file_at(2)` is the file of id 1.
+pub(crate) fn slot_file_at(index: usize) -> &'static str {
     SLOT_FILES[index].name
 }
 
@@ -44,9 +53,9 @@ pub(crate) fn write_in(dir: &Path, name: &str, bytes: &[u8]) {
 /// the session: it holds the file the session read.
 pub(crate) fn open_session() -> (TempDir, neoffse::Session) {
     let bytes = slot_bytes();
-    let dir = folder_with(&[(slot_name(2), &bytes)]);
+    let dir = folder_with(&[(slot_file_at(2), &bytes)]);
     let session = neoffse::Registry::new(neoffse::data::Language::En)
-        .open(dir.path(), slot_name(2), None)
+        .open(dir.path(), slot_file_at(2), None)
         .unwrap();
     (dir, session)
 }
@@ -67,25 +76,39 @@ pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
     }
 }
 
-/// The name and path of each FF I slot file of the private saves, in name
-/// order. Returns `None` after reporting why when the saves hold no slot
-/// file (a folder with only `desktop.ini`, say), so the test returns early
-/// and says so. The paths are the originals: a test that writes uses
-/// [`private_slot_copies`].
-pub(crate) fn private_slot_paths() -> Option<Vec<(String, PathBuf)>> {
-    let paths = neoffse_testkit::private_saves("ff1")?;
-    let slots: Vec<(String, PathBuf)> = paths
+/// Every file of the private saves of `game_dir` (`ff1` to `ff6`) as a name
+/// and the original path, in name order. Returns `None` after the testkit
+/// reports why when the folder is absent or empty. A test that needs slot
+/// files uses [`private_slots_of`]: this folder may hold only other files.
+pub(crate) fn private_files_of(game_dir: &str) -> Option<Vec<(String, PathBuf)>> {
+    let paths = neoffse_testkit::private_saves(game_dir)?;
+    let files = paths
         .into_iter()
         .filter_map(|path| {
             let name = path.file_name()?.to_str()?.to_owned();
-            SLOT_FILES.iter().any(|file| file.name == name).then_some((name, path))
+            Some((name, path))
         })
         .collect();
+    Some(files)
+}
+
+/// The name and original path of each slot file in the private saves of
+/// `game_dir` (`ff1` to `ff6`), in name order. Returns `None` after reporting
+/// why when the folder holds no slot file (a folder with only `desktop.ini`,
+/// say), so the test returns early and says so. A test that writes copies
+/// first: [`private_slot_copies`].
+pub(crate) fn private_slots_of(game_dir: &str) -> Option<Vec<(String, PathBuf)>> {
+    let slots: Vec<(String, PathBuf)> = private_files_of(game_dir)?.into_iter().filter(|(name, _)| is_slot_name(name)).collect();
     if slots.is_empty() {
-        neoffse_testkit::skip("no FF I slot file in the private saves");
+        neoffse_testkit::skip(&format!("no slot file in the private saves for {game_dir}"));
         return None;
     }
     Some(slots)
+}
+
+/// [`private_slots_of`] for the FF I folder.
+pub(crate) fn private_slot_paths() -> Option<Vec<(String, PathBuf)>> {
+    private_slots_of("ff1")
 }
 
 /// Each FF I slot file of the private saves, copied under its own name into
@@ -102,6 +125,33 @@ pub(crate) fn private_slot_copies() -> Option<Vec<(String, TempDir)>> {
         })
         .collect();
     Some(copies)
+}
+
+/// Whether `name` is one of the FF I to VI slot file names.
+pub(crate) fn is_slot_name(name: &str) -> bool {
+    SLOT_FILES.iter().any(|file| file.name == name)
+}
+
+/// The folder of a private file.
+pub(crate) fn folder_of(path: &Path) -> &Path {
+    must_some(path.parent(), "a private file has a folder")
+}
+
+/// The error of opening `name` of `dir` in `registry`.
+#[track_caller]
+pub(crate) fn failure_in(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> Error {
+    let Err(error) = registry.open(dir, name, game) else {
+        panic!("the open must fail");
+    };
+    error
+}
+
+/// The error of opening `bytes` in `registry`. The file name is fixed: the
+/// stand-in formats ignore it and the real ones read the game from the bytes.
+#[track_caller]
+pub(crate) fn failure(registry: &Registry, bytes: &[u8], game: Option<Game>) -> Error {
+    let dir = folder_with(&[("slot.bin", bytes)]);
+    failure_in(registry, dir.path(), "slot.bin", game)
 }
 
 /// A probe that finds no running game.

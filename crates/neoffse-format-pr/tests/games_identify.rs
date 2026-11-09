@@ -7,31 +7,24 @@
 mod common;
 
 use common::embed;
-use common::ff1_format::{one_file, open, sav, slot_name, standard_files};
+use common::ff1_format::{open, standard_files};
 use common::ff1_save::SlotData;
+use common::pr_files::{one_file, open_error, sav, slot_name};
+use common::{VEHICLE, VEHICLES};
 use neoffse_core::{FormatError, Game};
 use neoffse_format_pr::container::Container;
-use neoffse_format_pr::document::{Document, Scalar, Segment};
+use neoffse_format_pr::document::{Document, Scalar};
 use neoffse_format_pr::ff1::{Ff1Format, OpenError};
 use neoffse_format_pr::games::identify;
-
-const TARGET: [Segment<'static>; 5] = [
-    Segment::Key("userData"),
-    Segment::Doc,
-    Segment::Key("ownedTransportationList"),
-    Segment::Doc,
-    Segment::Key("target"),
-];
-const VEHICLE: &str = r#"{"position":{"x":1000.0,"y":1000.0,"z":-1000.0},"direction":0,"id":1,"mapId":-1,"enable":false,"timeStampTicks":0}"#;
 
 /// The standard slot text with `target` holding `count` entries.
 fn with_vehicles(count: usize) -> String {
     let mut document = Document::parse(&SlotData::standard().render()).unwrap();
     for _ in 4..count {
-        document.insert_raw(&TARGET, 0, &embed(VEHICLE)).unwrap();
+        document.insert_raw(&VEHICLES, 0, &embed(VEHICLE)).unwrap();
     }
     for _ in count..4 {
-        document.remove(&TARGET, 0).unwrap();
+        document.remove(&VEHICLES, 0).unwrap();
     }
     document.to_json()
 }
@@ -46,13 +39,6 @@ fn replaced(text: &str, from: &str, to: &str) -> String {
 fn open_text(text: &str) -> Result<neoffse_format_pr::ff1::Ff1Document, FormatError> {
     let files = one_file(slot_name(1), sav(text, &Container::game()));
     Ff1Format::new().open_document(&files)
-}
-
-fn open_error(result: Result<neoffse_format_pr::ff1::Ff1Document, FormatError>) -> OpenError {
-    let Err(FormatError::Decode { source }) = result else {
-        panic!("expected a Decode error")
-    };
-    *source.downcast::<OpenError>().expect("the source is an OpenError")
 }
 
 fn identified(text: &str) -> Result<Game, OpenError> {
@@ -127,9 +113,9 @@ fn a_missing_list_or_a_target_that_is_no_array_is_not_a_slot() {
     let slot = SlotData::standard().render();
     let missing = replaced(&slot, r#"\"ownedTransportationList\""#, r#"\"ownedTransportationListX\""#);
     let mut flat = Document::parse(&slot).unwrap();
-    flat.set_raw(&TARGET, "{}").unwrap();
+    flat.set_raw(&VEHICLES, "{}").unwrap();
     let mut text = Document::parse(&slot).unwrap();
-    text.set(&TARGET, &Scalar::Text("x".to_owned())).unwrap();
+    text.set(&VEHICLES, &Scalar::Text("x".to_owned())).unwrap();
     for text in [missing, flat.to_json(), text.to_json()] {
         assert!(matches!(identified(&text), Err(OpenError::NotASlot { .. })));
         assert!(matches!(open_error(open_text(&text)), OpenError::NotASlot { .. }));

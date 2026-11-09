@@ -18,7 +18,12 @@ fn rule_of(sources: &Sources<'_>) -> (&'static str, String, &'static str) {
 }
 
 fn ability(id: u32, content_id: u32, level: u32) -> String {
-    format!("[[ability]]\nid = {id}\ncontent_id = {content_id}\nkind = \"white_magic\"\nlevel = {level}\nname_en = \"A\"\nname_fr = \"B\"\n")
+    format!("[[ability]]\nid = {id}\ncontent_id = {content_id}\ntype_id = 1\nkind = \"white_magic\"\nlevel = {level}\nname_en = \"A\"\nname_fr = \"B\"\n")
+}
+
+/// An ability row of the given `type_id` and `kind` string, with no content id.
+fn typed(id: u32, type_id: u32, kind: &str) -> String {
+    format!("[[ability]]\nid = {id}\ntype_id = {type_id}\nkind = \"{kind}\"\nlevel = 0\nname_en = \"A\"\nname_fr = \"B\"\n\n")
 }
 
 fn content(id: u32, kind: &str, placeholder: &str) -> String {
@@ -124,4 +129,118 @@ fn the_message_names_file_row_and_rule() {
     };
     let message = parse(&sources).unwrap_err().to_string();
     assert_eq!(message, "bounds.toml: MAX_GIL breaks a rule: negative bound");
+}
+
+#[test]
+fn a_type_id_outside_the_kind_table_is_refused() {
+    for type_id in [0, 39, 999] {
+        let text = typed(1, type_id, "command");
+        let sources = Sources { abilities: &text, ..minimal() };
+        assert_eq!(
+            rule_of(&sources),
+            ("abilities.toml", "id 1".to_string(), "type_id outside the kind table"),
+            "type_id {type_id}"
+        );
+    }
+}
+
+#[test]
+fn a_kind_that_differs_from_its_type_id_is_refused() {
+    for (type_id, kind) in [(1, "black_magic"), (3, "command"), (638, "command"), (4, "internal")] {
+        let text = typed(1, type_id, kind);
+        let sources = Sources { abilities: &text, ..minimal() };
+        assert_eq!(
+            rule_of(&sources),
+            ("abilities.toml", "id 1".to_string(), "kind differs from type_id"),
+            "type_id {type_id}"
+        );
+    }
+}
+
+#[test]
+fn a_kind_that_follows_its_type_id_parses() {
+    let text = typed(1, 13, "monster") + &typed(2, 36, "command") + &typed(3, 41, "internal");
+    assert!(parse(&Sources { abilities: &text, ..minimal() }).is_ok());
+}
+
+#[test]
+fn an_unknown_kind_string_comes_before_the_type_id_rules() {
+    let text = typed(1, 999, "spell");
+    let sources = Sources { abilities: &text, ..minimal() };
+    assert!(matches!(
+        parse(&sources).unwrap_err(),
+        DataError::UnknownKind {
+            file: "abilities.toml",
+            id: 1,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn a_repeated_content_id_is_refused() {
+    let text = ability(1, 209, 1) + "\n" + &ability(2, 300, 1) + "\n" + &ability(3, 209, 1);
+    let sources = Sources { abilities: &text, ..minimal() };
+    assert_eq!(rule_of(&sources), ("abilities.toml", "id 3".to_string(), "content_id repeats"));
+}
+
+#[test]
+fn rows_without_a_content_id_never_repeat() {
+    let text = typed(1, 1, "white_magic") + &typed(2, 1, "white_magic") + &ability(3, 209, 1);
+    let tables = parse(&Sources { abilities: &text, ..minimal() }).unwrap();
+    assert_eq!(tables.ability_by_content(209).map(|entry| entry.id), Some(3));
+}
+
+#[test]
+fn an_equipment_kind_without_a_placeholder_is_refused() {
+    for kind in ["weapon", "shield", "armor", "helmet", "gloves"] {
+        let text = content(1, "item", "") + &content(2, kind, "");
+        let sources = Sources { content: &text, ..minimal() };
+        assert_eq!(
+            rule_of(&sources),
+            ("content.toml", kind.to_string(), "equipment kind without a placeholder"),
+            "{kind}"
+        );
+    }
+}
+
+#[test]
+fn an_equipment_kind_with_no_row_needs_no_placeholder() {
+    let text = content(1, "item", "") + &content(2, "key_item", "");
+    assert!(parse(&Sources { content: &text, ..minimal() }).is_ok());
+}
+
+#[test]
+fn a_present_table_with_an_empty_array_is_refused() {
+    let sources = Sources {
+        content: "content = []\n",
+        ..minimal()
+    };
+    assert_eq!(rule_of(&sources), ("content.toml", "content".to_string(), "table has no row"));
+    let sources = Sources {
+        abilities: "ability = []\n",
+        ..minimal()
+    };
+    assert_eq!(rule_of(&sources), ("abilities.toml", "ability".to_string(), "table has no row"));
+    let sources = Sources {
+        jobs: "job = []\n",
+        ..minimal()
+    };
+    assert_eq!(rule_of(&sources), ("jobs.toml", "job".to_string(), "table has no row"));
+    let sources = Sources {
+        commands: "command = []\n",
+        ..minimal()
+    };
+    assert_eq!(rule_of(&sources), ("commands.toml", "command".to_string(), "table has no row"));
+    let sources = Sources {
+        monsters: Some("monster = []\n"),
+        ..minimal()
+    };
+    assert_eq!(rule_of(&sources), ("monsters.toml", "monster".to_string(), "table has no row"));
+}
+
+#[test]
+fn an_absent_monsters_file_is_not_an_empty_table() {
+    let tables = parse(&Sources { monsters: None, ..minimal() }).unwrap();
+    assert!(tables.table(TableKind::Monster).is_none());
 }

@@ -37,8 +37,10 @@
 //! [`Ff1Format`] implements `neoffse_core::SaveFormat` for the game: it
 //! detects a slot file by its name and opens it as an [`Ff1Document`], which
 //! implements `neoffse_core::SaveDocument` over the model, the container
-//! facts of the opened file and its name. [`OpenError`] says why a file is no
-//! slot of this game.
+//! facts of the opened file and its name. Both are aliases of the generic
+//! [`SlotFormat`] and [`SlotDocument`] of [`crate::shared`], instantiated
+//! with [`Ff1Model`]; the impl of `SlotModel` for the model lives in this
+//! module. [`OpenError`] says why a file is no slot of this game.
 //!
 //! Open a slot, change the gil the way the game would, and encode the file:
 //!
@@ -65,7 +67,6 @@
 mod apply;
 mod binding;
 mod derived;
-mod format;
 mod game;
 mod growth;
 mod level;
@@ -74,7 +75,7 @@ mod locate;
 mod meta;
 pub mod names;
 mod rolls;
-mod save;
+mod slot;
 mod summary;
 mod view;
 
@@ -84,11 +85,11 @@ use neoffse_data::GameTables;
 
 use crate::document::{Document, DocumentError, Scalar, Segment};
 pub use crate::open_error::OpenError;
-use binding::{Binding, Collection};
-pub use format::Ff1Format;
-use locate::{format_error, locate, read_ability, read_int, read_text, row_keys};
+use crate::shared::meta::collection_meta;
+use crate::shared::paths::Collection;
+use crate::shared::{SlotDocument, SlotFormat, access};
+use binding::Part;
 pub use rolls::{Rolls, ThreadRolls};
-pub use save::Ff1Document;
 
 /// The game of this module.
 pub const GAME: Game = Game::Ff1Pr;
@@ -96,6 +97,21 @@ pub const GAME: Game = Game::Ff1Pr;
 /// The capabilities of an FF I slot: the party, the inventory (gil sits under
 /// the inventory) and the magic (the spell slots, read only).
 pub const CAPABILITIES: [Capability; 3] = [Capability::Party, Capability::Inventory, Capability::Magic];
+
+/// The FF I Pixel Remaster format of `neoffse-core`: detection by slot name
+/// and the typed open.
+///
+/// It holds the ID tables and the language of the view labels, fixed for
+/// every document it opens: a language switch builds a new format. It is an
+/// alias of the generic [`SlotFormat`] of the shared layer.
+pub type Ff1Format = SlotFormat<Ff1Model>;
+
+/// An FF I slot opened by [`Ff1Format`].
+///
+/// It keeps the BOM and the exact trailer of the opened file and the file
+/// name, so `encode` writes the file back as it came. Its `Debug` is written
+/// by hand and prints the file name only, and it has no `Clone`.
+pub type Ff1Document = SlotDocument<Ff1Model>;
 
 /// An FF I slot document with its ID tables.
 ///
@@ -111,7 +127,7 @@ impl Ff1Model {
     /// fails when a field reads it.
     ///
     /// A lookup by `id` or `contentId` takes the first row with that key.
-    /// [`Ff1Format::open_document`](Ff1Format::open_document) refuses a
+    /// [`SlotFormat::open_document`] refuses a
     /// document that repeats a key; a model built here accepts it.
     #[must_use]
     pub fn new(document: Document, tables: &'static GameTables) -> Self {
@@ -149,8 +165,7 @@ impl Ff1Model {
     /// `NotACollection` when `collection` is none of the three, `Format` when
     /// the document does not hold the list or a key.
     pub fn rows(&mut self, collection: &FieldId) -> Result<Vec<u32>, EditError> {
-        let kind = Collection::of(collection).ok_or_else(|| EditError::NotACollection { field: collection.clone() })?;
-        row_keys(&mut self.document, kind).map_err(|source| format_error(collection, source))
+        access::rows(&mut self.document, collection)
     }
 
     /// The value of `field`. `max_hp` and `next_level` are computed from the
@@ -167,35 +182,20 @@ impl Ff1Model {
     /// document holds another shape: a float or an oversized integer where
     /// an integer belongs, a non-string name.
     pub fn get(&mut self, field: &FieldId) -> Result<Value, EditError> {
-        let binding = Binding::resolve(field)?;
-        if let Binding::Character { id, part } = binding
-            && binding.is_derived()
-        {
-            return derived::value(&mut self.document, self.tables, id, part, field);
-        }
-        let path = locate(&mut self.document, &binding, field)?;
-        let read = if binding.is_text() {
-            read_text(&mut self.document, &path).map(Value::Text)
-        } else if binding.is_spell() {
-            read_ability(&mut self.document, &path).map(|id| Value::Int(i64::from(id)))
-        } else {
-            read_int(&mut self.document, &path).map(Value::Int)
-        };
-        read.map_err(|source| format_error(field, source))
+        access::get_in::<Part>(&mut self.document, self.tables, field)
     }
 
     /// The metadata of `field`, or `None` for an undeclared path. It reads
     /// no document: a path that names an absent row still has a meta.
     #[must_use]
     pub fn field_meta(&self, field: &FieldId) -> Option<FieldMeta> {
-        let binding = Binding::resolve(field).ok()?;
-        Some(meta::field_meta(&binding, self.tables))
+        access::field_meta::<Part>(self.tables, field)
     }
 
     /// The metadata of `character`, `inventory` or `key_items`, `None` for
     /// any other path.
     #[must_use]
     pub fn collection_meta(&self, collection: &FieldId) -> Option<CollectionMeta> {
-        Some(meta::collection_meta(Collection::of(collection)?, self.tables))
+        Some(collection_meta(Collection::of(collection)?, self.tables))
     }
 }

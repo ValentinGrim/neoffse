@@ -1,5 +1,5 @@
 //! A gil edit and a level increase saved through the editor over a copy of the
-//! owner's FF I saves (`NEOFFSE_SAVES`, read only). Every slot is copied into a
+//! private FF I saves (`NEOFFSE_SAVES`, read only). Every slot is copied into a
 //! temporary folder first, saved into it with a temporary data folder, and
 //! compared with the original opened by the facade with the same two edits
 //! applied through `Session::edit`. The growth rolls are not injectable: the
@@ -25,11 +25,7 @@ use neoffse::pr::ff1::names;
 use neoffse::{Registry, Running};
 use neoffse_app::editor::{Input, SaveOutcome};
 use neoffse_app::home::OpenOutcome;
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
+use neoffse_testkit::report;
 
 fn int_of(view: &SaveView, field: &FieldId, what: &str) -> i64 {
     let (_, view) = must_some(view.find(field), what);
@@ -77,7 +73,7 @@ fn below_cap(view: &SaveView, max_level: i64) -> Option<(usize, u32, i64)> {
 
 #[test]
 fn every_private_slot_saves_a_gil_and_level_edit() {
-    let Some(slots) = private_slot_copies() else { return };
+    let Some(slots) = private_slot_copies(Game::Ff1Pr) else { return };
     let tables = must_some(tables_for(Game::Ff1Pr), "no FF I tables");
     let max_level = must_some(tables.bound("MAX_LV"), "no MAX_LV in the FF I tables");
     let gil_id = FieldId::new(names::GIL);

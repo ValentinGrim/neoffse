@@ -137,8 +137,11 @@ fn picker_queries_fill_the_entries() {
     bridge.invoke_field_picker_query(job, "".into());
     assert_eq!(bridge.get_picker_entries().row_count(), jobs.len());
 
-    let first = jobs.iter().find(|entry| !entry.name_en.is_empty()).expect("a named job");
-    bridge.invoke_field_picker_query(job, first.name_en.to_lowercase().as_str().into());
+    let first = jobs
+        .iter()
+        .find(|entry| entry.name_en.as_deref().is_some_and(|name| !name.is_empty()))
+        .expect("a named job");
+    bridge.invoke_field_picker_query(job, first.name_en.as_deref().unwrap().to_lowercase().as_str().into());
     let narrowed = entry_ids(&ui);
     assert!(narrowed.contains(&i32::try_from(first.id).unwrap()));
     assert!(narrowed.len() < jobs.len());

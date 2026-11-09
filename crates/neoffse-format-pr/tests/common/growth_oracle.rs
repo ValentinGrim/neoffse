@@ -5,11 +5,12 @@
 //! The oracle runs the two extreme sources: every roll fails (the bonus is
 //! 20 when `hp_value1` forces it), or every roll succeeds with a bonus of 24.
 
-use neoffse_core::{FieldId, Value};
+use neoffse_core::FieldId;
 use neoffse_data::GameTables;
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
-use super::ff1_save::character_field;
+use super::character_field;
+use super::private::int;
 
 /// What a growth step moves, as the character stores it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,17 +28,11 @@ pub(crate) struct Stored {
     pub charges: [i64; 8],
 }
 
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(number) => number,
-        other => panic!("{field}: {other:?}"),
-    }
-}
-
 impl Stored {
-    /// Reads the character through `get`.
-    pub(crate) fn read(model: &mut Ff1Model, id: u32) -> Stored {
-        let mut field = |name| int(model, &character_field(id, name));
+    /// Reads the character through `get`. `label` names the slot in a failure
+    /// message: `fixture` for a synthetic slot, the slot label for a private one.
+    pub(crate) fn read(model: &mut Ff1Model, label: &str, id: u32) -> Stored {
+        let mut field = |name| int(model, label, &character_field(id, name));
         let mut stored = Stored {
             max_hp_gain: field(names::MAX_HP_GAIN),
             power: field(names::POWER),
@@ -53,7 +48,7 @@ impl Stored {
         };
         for level in 1..=8 {
             let at = usize::try_from(level - 1).unwrap();
-            stored.charges[at] = int(model, &character_field(id, names::CHARGES_MAX_GAIN).with_id(level));
+            stored.charges[at] = int(model, label, &character_field(id, names::CHARGES_MAX_GAIN).with_id(level));
         }
         stored
     }

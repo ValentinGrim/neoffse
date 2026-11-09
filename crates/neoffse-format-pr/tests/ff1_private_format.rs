@@ -6,29 +6,22 @@
 
 mod common;
 
-use common::ff1_format::one_file;
-use common::ff1_real::{files, must, must_some, slots};
-use common::{GAMES, save_files};
-use neoffse_core::{CapPolicy, Confidence, Edit, FieldId, FileProbe, FormatError, SaveDocument, Value};
+use common::ff1_real::slots;
+use common::pr_files::one_file;
+use common::real_slots::{files_of, must, must_some};
+use common::{GAMES, gil, save_files};
+use neoffse_core::{CapPolicy, Confidence, Edit, FileProbe, FormatError, SaveDocument, Value};
 use neoffse_format_pr::container::decode;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Format, OpenError, names};
+use neoffse_format_pr::ff1::{Ff1Format, OpenError};
 use neoffse_format_pr::games::identify;
 use neoffse_format_pr::slots::slot_for_name;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
+use neoffse_testkit::report;
 
 fn holds_user_data(json: &str, label: &str) -> bool {
     must(Document::parse(json), &format!("{label}: parse failed"))
         .raw(&[Segment::Key("userData")])
         .is_ok()
-}
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
 }
 
 #[test]
@@ -53,7 +46,7 @@ fn real_slot_files_open_and_round_trip() {
 
 #[test]
 fn real_detection_agrees_with_the_files() {
-    let Some(files) = files() else { return };
+    let Some(files) = files_of("ff1") else { return };
     let format = Ff1Format::new();
     for file in files {
         let json = must(decode(&file.bytes), &format!("{}: decode failed", file.label)).json;
@@ -77,7 +70,7 @@ fn real_detection_agrees_with_the_files() {
 
 #[test]
 fn real_non_slot_files_do_not_open() {
-    let Some(files) = files() else { return };
+    let Some(files) = files_of("ff1") else { return };
     for file in files {
         let decoded = must(decode(&file.bytes), &format!("{}: decode failed", file.label));
         if holds_user_data(&decoded.json, &file.label) {

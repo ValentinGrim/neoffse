@@ -8,19 +8,10 @@
 //! inventory, key items are ids of 45 to 61 with `count` 1. The public
 //! fields let a test twist one value; numbers a test breaks are raw text.
 
-use neoffse_core::FieldId;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
+use neoffse_format_pr::ff1::{Ff1Model, GAME};
 
-/// One entry of `equipmentList`.
-#[derive(Debug, Clone)]
-pub(crate) struct Equip {
-    pub key: u32,
-    /// Raw number text.
-    pub content_id: String,
-    /// Raw number text; `None` leaves the key out.
-    pub count: Option<String>,
-}
+use super::slot_render::{Equip, Row};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Character {
@@ -46,23 +37,6 @@ pub(crate) struct Character {
     pub abilities: Vec<(u32, u32)>,
     /// A key of the character or of its `parameter` to leave out, by name.
     pub omit: Option<&'static str>,
-}
-
-/// A row of an item list: the JSON text of the element, so a test can break it.
-#[derive(Debug, Clone)]
-pub(crate) struct Row {
-    pub text: String,
-}
-
-impl Row {
-    /// The canonical element text of the game.
-    pub(crate) fn new(content_id: u32, count: u32) -> Self {
-        Self::raw(format!("{{\"contentId\":{content_id},\"count\":{count}}}"))
-    }
-
-    pub(crate) fn raw(text: impl Into<String>) -> Self {
-        Self { text: text.into() }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -148,14 +122,7 @@ fn standard_character(index: usize) -> Character {
         stats: [10, 20, 30, 40, 50, 60, 70].map(|stat| stat + base),
         charges: (1..=8).map(|level| (level, (level + id) % 10)).collect(),
         charges_gain: (1..=8).map(|level| (level, (2 * level + id) % 8)).collect(),
-        equipment: (1..=5)
-            .zip(EQUIPPED[index])
-            .map(|(key, content)| Equip {
-                key,
-                content_id: content.to_string(),
-                count: Some(count_of(content).to_string()),
-            })
-            .collect(),
+        equipment: Equip::worn(EQUIPPED[index], count_of),
         abilities: if id == 3 { vec![(5, 213), (6, 214)] } else { Vec::new() },
         omit: None,
     }
@@ -218,30 +185,4 @@ pub(crate) fn model_with_escaped_row(canonical_key: u32, escaped_key: u32) -> (F
 /// A model over the standard slot.
 pub(crate) fn standard_model() -> Ff1Model {
     model(&SlotData::standard().render())
-}
-
-/// The id of a field of a character.
-pub(crate) fn character_field(id: u32, name: &'static str) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(name)
-}
-
-/// The keys of the JSON object `text`, in order, repeats included.
-pub(crate) fn keys(text: &str) -> Vec<String> {
-    use serde::de::{Deserializer as _, IgnoredAny, MapAccess, Visitor};
-
-    struct Keys;
-    impl<'de> Visitor<'de> for Keys {
-        type Value = Vec<String>;
-        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            formatter.write_str("an object")
-        }
-        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-            let mut keys = Vec::new();
-            while let Some((key, IgnoredAny)) = map.next_entry::<String, IgnoredAny>()? {
-                keys.push(key);
-            }
-            Ok(keys)
-        }
-    }
-    serde_json::Deserializer::from_str(text).deserialize_map(Keys).unwrap()
 }

@@ -1,4 +1,4 @@
-//! `Session` on a copy of the owner's FF I saves (`NEOFFSE_SAVES`, read
+//! `Session` on a copy of private FF I saves (`NEOFFSE_SAVES`, read
 //! only). The test skips when the folder holds no slot file and prints slot
 //! positions, never file names or values.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]

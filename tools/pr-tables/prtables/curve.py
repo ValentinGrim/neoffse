@@ -8,7 +8,7 @@ level of the experience table, and the rows use the one mode the rule covers.
 
 from . import ExportError
 from .build import Csvs, Row, _int
-from .tables import GrowthSpec
+from .specs import GrowthSpec
 
 # Column -> required value. Any other value is a mode the rule does not cover.
 _MODES = {

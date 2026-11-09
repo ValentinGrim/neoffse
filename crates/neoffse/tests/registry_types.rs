@@ -5,7 +5,7 @@ mod common;
 
 use std::error::Error as _;
 
-use common::{folder_with, slot_bytes, slot_name};
+use common::{folder_with, slot_bytes, slot_file_at};
 use neoffse::core::{FormatError, Game};
 use neoffse::data::Language;
 use neoffse::io::error::IoError;
@@ -25,11 +25,11 @@ fn the_types_cross_threads() {
 #[test]
 fn debug_of_a_session_holds_the_game_and_the_name_only() {
     let bytes = slot_bytes();
-    let dir = folder_with(&[(slot_name(2), &bytes)]);
-    let save = Registry::new(Language::En).open(dir.path(), slot_name(2), None).unwrap();
+    let dir = folder_with(&[(slot_file_at(2), &bytes)]);
+    let save = Registry::new(Language::En).open(dir.path(), slot_file_at(2), None).unwrap();
     let text = format!("{save:?}");
     assert!(text.contains("ff1-pr"));
-    assert!(text.contains(slot_name(2)));
+    assert!(text.contains(slot_file_at(2)));
     // No byte of the file, and no folder path.
     let body = String::from_utf8_lossy(&bytes[3..40]).into_owned();
     assert!(!text.contains(&body));

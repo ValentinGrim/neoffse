@@ -5,9 +5,11 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::ff1_save::{SlotData, model, standard_model};
 use common::growth_oracle::Stored;
 use common::rolls::Script;
+use common::slot_model::int;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, Rolls, names};
@@ -25,13 +27,6 @@ fn field(id: u32, name: &'static str) -> FieldId {
 
 fn level(id: u32) -> FieldId {
     field(id, names::LEVEL)
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 fn edits(model: &mut Ff1Model, edit: &Edit, rolls: &mut dyn Rolls) -> Vec<Edit> {
@@ -159,13 +154,16 @@ fn a_job_or_status_without_a_growth_row_is_refused() {
 }
 
 #[test]
-fn a_missing_status_key_is_a_format_error() {
+fn a_missing_status_key_is_an_unknown_field() {
     let mut data = SlotData::standard();
     data.characters[0].status_id = None;
     let mut model = model(&data.render());
     let before = model.document().to_json();
     let refused = model.apply_game_with(&set(level(1), 40), &mut Script::queued(&[], &[]));
-    assert!(matches!(refused, Err(EditError::Format { .. })), "{refused:?}");
+    assert!(
+        matches!(refused, Err(EditError::UnknownField { ref field }) if *field == level(1)),
+        "{refused:?}"
+    );
     assert_eq!(model.document().to_json(), before);
     let plan = edits(&mut model, &set(level(1), 1), &mut Script::queued(&[], &[]));
     assert_eq!(plan.len(), 2);
@@ -230,7 +228,7 @@ fn any_mix_of_rolls_stays_between_the_two_extremes() {
     let grown = |rolls: &mut dyn Rolls| {
         let mut model = standard_model();
         model.apply_game_with(&set(level(1), 34), rolls).unwrap();
-        Stored::read(&mut model, 1)
+        Stored::read(&mut model, "fixture", 1)
     };
     let low = grown(&mut Script::fixed(false, 20));
     let high = grown(&mut Script::fixed(true, 24));
@@ -258,7 +256,7 @@ fn the_real_source_keeps_the_fixed_parts() {
     model.apply_game(&set(level(1), 34)).unwrap();
     assert_eq!(int(&mut model, &level(1)), 34);
     assert_eq!(int(&mut model, &field(1, names::EXP)), 125_357);
-    let stored = Stored::read(&mut model, 1);
+    let stored = Stored::read(&mut model, "fixture", 1);
     assert_eq!((stored.accuracy, stored.evasion), (155, 142));
     assert_eq!(stored.charges, [4, 4, 4, 1, 3, 4, 4, 1]);
     let inside = |name: &str, value: i64, low: i64, high: i64| assert!((low..=high).contains(&value), "{name} {value}");
@@ -276,10 +274,10 @@ fn the_real_source_keeps_the_fixed_parts() {
 fn raw_apply_grows_nothing() {
     for policy in [CapPolicy::Enforce, CapPolicy::StorageOnly] {
         let mut model = standard_model();
-        let before = Stored::read(&mut model, 1);
+        let before = Stored::read(&mut model, "fixture", 1);
         model.apply(&set(level(1), 40), policy).unwrap();
         assert_eq!(int(&mut model, &level(1)), 40);
-        assert_eq!(Stored::read(&mut model, 1), before);
+        assert_eq!(Stored::read(&mut model, "fixture", 1), before);
         assert_eq!(int(&mut model, &field(1, names::EXP)), 100_100);
     }
 }

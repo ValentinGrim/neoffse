@@ -4,11 +4,10 @@
 
 mod common;
 
+use common::STORAGE_MAX;
 use common::ff1_save::standard_model;
 use neoffse_core::{Capability, FieldId, FieldMeta, Game, Shape, TableKind, Value};
 use neoffse_format_pr::ff1::{CAPABILITIES, GAME, names};
-
-const STORAGE: i64 = 2_147_483_647;
 
 fn character(name: &'static str) -> FieldId {
     FieldId::new(names::CHARACTER).with_id(1).with_name(name)
@@ -102,11 +101,12 @@ fn field_meta_matches_the_field_table_row_by_row() {
         let meta = model.field_meta(&row.field).unwrap_or_else(|| panic!("{} has no meta", row.field));
         assert_eq!(meta.label, row.label, "{}", row.field);
         // The level is bounded by MAX_LV; every other number by the storage maximum.
-        let max = if row.field == character(names::LEVEL) { 99 } else { STORAGE };
+        let max = if row.field == character(names::LEVEL) { 99 } else { STORAGE_MAX };
         assert_eq!(meta.shape, Shape::Int { min: row.min, max }, "{}", row.field);
         assert_eq!(meta.cap, row.cap, "{}", row.field);
         assert_eq!(meta.tables, row.tables, "{}", row.field);
         assert!(meta.names.is_empty(), "{}", row.field);
+        assert!(!meta.game_edit, "{}", row.field);
     }
 }
 
@@ -181,7 +181,7 @@ fn equipment_tables_follow_the_slot() {
 }
 
 fn count_row(meta: &FieldMeta, cap: Option<i64>) {
-    assert_eq!(meta.shape, Shape::Int { min: 1, max: STORAGE });
+    assert_eq!(meta.shape, Shape::Int { min: 1, max: STORAGE_MAX });
     assert_eq!(meta.cap, cap);
 }
 
@@ -196,7 +196,7 @@ fn collection_meta_of_the_three_collections() {
     let inventory = model.collection_meta(&FieldId::new(names::INVENTORY)).unwrap();
     assert_eq!(inventory.label, "Items");
     assert!(inventory.insertable && inventory.removable);
-    assert_eq!(inventory.key.shape, Shape::Int { min: 1, max: STORAGE });
+    assert_eq!(inventory.key.shape, Shape::Int { min: 1, max: STORAGE_MAX });
     assert_eq!(
         inventory.key.tables,
         [
@@ -212,7 +212,7 @@ fn collection_meta_of_the_three_collections() {
     let key_items = model.collection_meta(&FieldId::new(names::KEY_ITEMS)).unwrap();
     assert_eq!(key_items.label, "Key items");
     assert!(key_items.insertable && key_items.removable);
-    assert_eq!(key_items.key.shape, Shape::Int { min: 1, max: STORAGE });
+    assert_eq!(key_items.key.shape, Shape::Int { min: 1, max: STORAGE_MAX });
     assert_eq!(key_items.key.tables, [TableKind::KeyItem]);
 
     for (collection, cap) in [(&inventory, Some(99)), (&key_items, None)] {

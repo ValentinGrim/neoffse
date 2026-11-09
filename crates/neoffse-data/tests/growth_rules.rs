@@ -83,6 +83,19 @@ fn a_status_id_of_zero_a_repeat_or_a_descent_is_an_id_order_error() {
 }
 
 #[test]
+fn a_first_status_id_other_than_1_is_refused() {
+    let tail = levels(&[0, 5]) + &curve_text(&[1], 2);
+    for ids in [&[2, 3][..], &[5]] {
+        let text = statuses(ids) + &tail;
+        assert_eq!(
+            rule(parse_growth(&text)),
+            ("growth.toml", format!("status id {}", ids[0]), "first status id is not 1"),
+            "{ids:?}"
+        );
+    }
+}
+
+#[test]
 fn an_equal_or_falling_total_is_refused() {
     for totals in [[0, 5, 5], [0, 5, 4]] {
         assert_eq!(
@@ -91,10 +104,28 @@ fn an_equal_or_falling_total_is_refused() {
         );
     }
     assert_eq!(
-        rule(parse_growth(&with_levels(&[3, 2]))),
+        rule(parse_growth(&with_levels(&[0, 0]))),
         ("growth.toml", "exp_table lv 2".to_string(), "total_exp does not rise")
     );
-    assert!(parse_growth(&with_levels(&[7, 8])).is_ok(), "the first total is the tool's check");
+}
+
+#[test]
+fn a_first_total_other_than_zero_is_refused() {
+    // [3, 2] breaks both rules: the level 1 rule reports first.
+    for totals in [&[7, 8][..], &[1, 5, 12], &[3, 2]] {
+        assert_eq!(
+            rule(parse_growth(&with_levels(totals))),
+            ("growth.toml", "exp_table lv 1".to_string(), "total_exp of level 1 is not 0"),
+            "{totals:?}"
+        );
+    }
+}
+
+#[test]
+fn a_first_total_of_zero_is_accepted() {
+    let tables = parse_growth(&with_levels(&[0, 1])).unwrap();
+    assert_eq!(tables.exp_to_reach(1), Some(0));
+    assert_eq!(tables.exp_to_reach(2), Some(1));
 }
 
 #[test]
@@ -110,4 +141,10 @@ fn an_empty_array_is_refused() {
 fn the_display_text_of_a_growth_rule() {
     let error = parse_growth(&with_levels(&[0, 5, 5])).unwrap_err();
     assert_eq!(error.to_string(), "growth.toml: exp_table lv 3 breaks a rule: total_exp does not rise");
+}
+
+#[test]
+fn the_display_text_of_the_level_one_rule() {
+    let error = parse_growth(&with_levels(&[7, 8])).unwrap_err();
+    assert_eq!(error.to_string(), "growth.toml: exp_table lv 1 breaks a rule: total_exp of level 1 is not 0");
 }

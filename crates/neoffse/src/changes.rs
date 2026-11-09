@@ -78,7 +78,8 @@ pub enum ChangeKind {
 ///
 /// An `Int` shows its name from the field's metadata when it has one. Else
 /// it shows the name of the first table of the metadata that holds the id,
-/// in `language`. Else it shows the number.
+/// in `language`; a listed row without a name reads `Entry <id>`. An id no
+/// table of the metadata lists shows the number.
 ///
 /// ```
 /// use neoffse::changes::{Change, ChangeKind, diff};
@@ -145,10 +146,10 @@ impl Texts<'_> {
         if let (Some(tables), Ok(id)) = (self.tables, u32::try_from(number)) {
             for kind in &meta.tables {
                 if let Some(entry) = tables.entry(*kind, id) {
-                    let name = entry.name(self.language);
-                    if !name.is_empty() {
-                        return name.to_owned();
-                    }
+                    return match entry.name(self.language).filter(|name| !name.is_empty()) {
+                        Some(name) => name.to_owned(),
+                        None => format!("Entry {id}"),
+                    };
                 }
             }
         }

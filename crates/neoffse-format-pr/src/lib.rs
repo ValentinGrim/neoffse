@@ -1,12 +1,13 @@
 //! Final Fantasy I to VI Pixel Remaster saves: the codec that turns a PC
 //! save file into its JSON text and back, a lossless document that reads and
-//! edits that text by path, and, for FF I, the mapping of that document onto
-//! the domain of `neoffse-core`.
+//! edits that text by path, and, for FF I and FF II, the mapping of that
+//! document onto the domain of `neoffse-core`.
 //! `docs/formats/pixel-remaster.md` is the source of truth for every rule
 //! this crate implements. The codec and the document move bytes and JSON
 //! text and know no domain type. [`games`] and [`slots`] use the games and
-//! slots of `neoffse-core`, and [`ff1`] alone maps a game's fields: it knows
-//! only the FF I slot.
+//! slots of `neoffse-core`. [`ff1`], [`ff2`] and [`shared`] map a game's
+//! fields: each game maps its characters and knows only the slot of its own
+//! game, and [`shared`] maps gil and the item counts for every game.
 //!
 //! - [`cipher`]: Rijndael with a 256-bit block, CBC mode, the PR key and IV,
 //!   and the PR zero padding.
@@ -19,13 +20,26 @@
 //!   reads and edits them through two interfaces, `apply` under a
 //!   `CapPolicy` and `apply_game`, which edits the way the game does.
 //!   [`ff1::Ff1Format`] and [`ff1::Ff1Document`] implement `SaveFormat` and
-//!   `SaveDocument` on top of it.
+//!   `SaveDocument` on top of it, as aliases of the generic types of
+//!   [`shared`].
+//! - [`ff2`]: the FF II slot as fields of `neoffse-core`. [`ff2::Ff2Model`]
+//!   reads and edits the characters (HP, MP, the stat and maximum gains, the
+//!   ten skills, five equipment slots), the level of each spell, the item and
+//!   key item lists, the keywords and gil, through the same two interfaces as
+//!   FF I. [`ff2::Ff2Format`] and [`ff2::Ff2Document`] are aliases of the
+//!   generic types of [`shared`]. FF II has no level or experience field.
+//! - [`shared`]: what the six games share: the section names of a slot, the
+//!   document paths of its collections, the reads that find a row or a
+//!   dictionary entry by key, the open pipeline ([`shared::SlotFormat`])
+//!   and the open document ([`shared::SlotDocument`]), generic over the
+//!   [`shared::SlotModel`] of a game.
 //! - [`games`]: the six games with their game id, Steam app ID, folder under
 //!   `My Games` and executable name, and [`games::identify`], which names the
 //!   game of a slot document by its vehicle count and refuses it when a marker
 //!   key of another game contradicts the count.
 //! - [`slots`]: the 22 slot file names shared by the six games, and the
 //!   detection that recognizes a slot file by its name and head.
+//! - [`OpenError`]: why a file is no slot of the game that tried to open it.
 //!
 //! Decode a file, edit one value, encode it again:
 //!
@@ -50,6 +64,10 @@ pub mod cipher;
 pub mod container;
 pub mod document;
 pub mod ff1;
+pub mod ff2;
 pub mod games;
 mod open_error;
+pub mod shared;
 pub mod slots;
+
+pub use open_error::OpenError;

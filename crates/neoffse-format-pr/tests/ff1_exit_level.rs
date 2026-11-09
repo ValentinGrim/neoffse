@@ -6,17 +6,18 @@
 
 mod common;
 
+use common::character_field;
 use common::edit_proof::{How, Proof, Subject, ViewChange, prove};
-use common::ff1_save::{SlotData, character_field};
+use common::ff1_save::SlotData;
 use common::json_diff::value;
 use neoffse_core::{Edit, Value};
 use neoffse_format_pr::container::Container;
-use neoffse_format_pr::ff1::names;
+use neoffse_format_pr::ff1::{Ff1Format, names};
 
 const CHARACTER: &str = "userData.ownedCharacterList.target[0]";
 
 fn subject() -> Subject {
-    Subject::fixture(&SlotData::standard(), Container::game())
+    Subject::fixture(Ff1Format::new(), &SlotData::standard(), Container::game())
 }
 
 #[test]

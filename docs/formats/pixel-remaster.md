@@ -8,7 +8,7 @@ The container rules and the top-level JSON rules below hold in all six games.
 
 The rules rest on 32 Steam save files the game wrote: 6 each for FF I and FF II, 5 each for FF III to VI.
 Two more files, slot 2 of FF I and FF II that KiameV's editor wrote, show how that editor encodes ([Slot 2 of FF I and FF II](#slot-2-of-ff-i-and-ff-ii)).  
-The content rules that the early-game FF III to VI saves do not exercise (ability offsets, FF VI espers and parties) come from the code of KiameV's Go editor and stay [C].
+The content rules that the early-game FF III to VI saves do not exercise (the FF IV and FF V ability offsets, FF VI espers and parties) come from the code of KiameV's Go editor and stay [C].
 
 The FF I domain rules ([ID spaces and tables](#id-spaces-and-tables), [Equipment slots](#equipment-slots)) rest on two independent game states:
 slot 1 and the Quick Save, four promoted characters each, from late game.  
@@ -17,7 +17,8 @@ Every [M] on an FF I character value in those sections rests on 8 character stat
 The ranges quoted there are observations, not bounds: no measured value comes from a new game (level 1, bare hands, low gil).
 Two in-game tests on edited copies of one FF I slot add readings for the level and the level-up ([Level-up in FF I](#level-up-in-ff-i)).
 Their start states are NeoFFSE edits, not game states, so they stay out of the 8 and carry the tag [M, edited copy].
-The names and IDs of FF I items, equipment, abilities, jobs, commands, maps and monsters, and the bounds the game states, come from the game's own master data, read from one install of FF I ([Game master data](#game-master-data)).
+The FF II rules ([FF II](#ff-ii)) rest on four FF II files: the Quick Save, slot 1 and the Auto Save that the game wrote, and slot 2 that KiameV's editor wrote.
+The names and IDs of FF I items, equipment, abilities, jobs, commands, maps and monsters, and the bounds the game states, come from the game's own master data, read from the FF I install ([Game master data](#game-master-data)); the other five installs are measured too ([Master data per game](#master-data-per-game)).
 
 ### Games
 
@@ -46,9 +47,12 @@ Platforms covered:
 | Source | Location | Used for |
 |---|---|---|
 | KiameV's Go editor | `final-fantasy-pr-save-editor` 1.3.1, fork branch `bestiary-and-fixes`, commits `6f8f74a` to `d4de261` on top of `a91b889` | codec, data model, pitfalls (commit messages explain each bug) |
-| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix; bundles and files listed in [Game master data](#game-master-data); read with UnityPy 1.25.4 from copies of the bundles | IDs, kinds and English and French names of the FF I items, equipment, abilities, jobs, commands, maps and monsters, the base HP and experience tables, and the bounds in `game_constant_int.csv` ([Game master data](#game-master-data) and the four sections after it) [D] |
-| Game binary | `GameAssembly.dll` and `global-metadata.dat` of FF I PR, build 20249397 (IL2CPP, Unity 2019.4.26f1), © Square Enix; copies read with `llvm-objdump` and own readers for the metadata tables; class and method names come from the metadata, rules from the machine code | the FF I level-up rule ([Level-up in FF I](#level-up-in-ff-i)) [B] |
+| Game master data | FF I PR, Steam app 1173770, build 20249397, Unity 2019.4.26f1, © Square Enix; bundles and files listed in [Game master data](#game-master-data); read with UnityPy 1.25.4 from copies of the bundles. FF II to VI PR, apps 1173780 to 1173820, builds in [Master data per game](#master-data-per-game), same Unity version, read the same way | IDs, kinds and English and French names of the FF I items, equipment, abilities, jobs, commands, maps and monsters, the base HP and experience tables, and the bounds in `game_constant_int.csv` ([Game master data](#game-master-data) and the four sections after it); for FF II to VI, the file inventory, content types, ability `type_id` values, name-key gaps, `MAX_` keys and curve counts ([Master data per game](#master-data-per-game)) [D] |
+| Game binary | `GameAssembly.dll` and `global-metadata.dat` of FF I PR, build 20249397 (IL2CPP, Unity 2019.4.26f1), © Square Enix, and of FF II to VI PR, builds 20251646, 20264899, 20265023, 20265087 and 20265119; copies read with `llvm-objdump` and own readers for the metadata tables; class and method names come from the metadata, rules from the machine code | the FF I level-up rule ([Level-up in FF I](#level-up-in-ff-i)); for FF II to VI, the ability and content type enums, the ability grouping and the path of a missing name ([Ability types](#ability-types), [Ability groups](#ability-groups), [Content types 5 to 9](#content-types-5-to-9), [Rows without a name](#rows-without-a-name)); for FF II, the growth, skill, spell, keyword, party and bound rules of [FF II](#ff-ii) and the readers of `currentExp` and `addtionalLevel` [B] |
+| Game misc data and prefabs | FF II PR, Steam app 1173780, build 20251646, © Square Enix: `serial_misc_assets.json` in `misc_assets_all_<hash>.bundle`, and the prefabs of the `key_*`, `touch_party_setting`, `touch_play_data` and `touch_serial_common` bundles; read with UnityPy 1.25.4 from copies of the bundles | the spell chain table `magic_level_acquisition_table` ([Spells in FF II](#spells-in-ff-ii)); the bindings of `status_details.prefab` and of the result prefabs ([Character growth in FF II](#character-growth-in-ff-ii)) [D] |
+| FF II guides | [Final Fantasy II: how to level up, RPG Site](https://www.rpgsite.net/feature/11516-final-fantasy-ii-how-to-level-up-and-an-explanation-on-the-leveling-system), no license stated; [Rank (Final Fantasy II), Fandom](https://finalfantasy.fandom.com/wiki/Rank_%28Final_Fantasy_II%29), CC BY-SA; [Final Fantasy II (Pixel Remaster), RPGFan](https://www.rpgfan.com/review/final-fantasy-ii-pixel-remaster/). The Fandom and RPGFan pages were read as search summaries; nothing copied | the 100-points-per-level claim for weapons, which the binary contradicts ([Skill levels in FF II](#skill-levels-in-ff-ii)); the effect of rank on proficiency, which agrees with the binary; Boost and its HP option [C] |
 | Go editor tables | `github.com/ValentinGrim/final-fantasy-pr-save-editor`, tag `v1.5.1` (`32d3e59`), MIT, © 2022 Travis Offtermatt: package `models/core/costs/ff1` and `models/nameValue.go`. Both are byte-identical to KiameV's last upstream commit `cea371fe99b4476e9ed419961eea04f7de605054` (repository archived), the original work | the FF I names the editor uses, compared with the game ([Go editor tables](#go-editor-tables)) |
+| FF6 Hacking wiki | [Final Fantasy VI Pixel Remaster page](https://www.ff6hacking.com/wiki/doku.php?id=ff6pr) and the CSV legend it links, no license stated; read, nothing copied | cross-check of the FF VI `AbilityType` names; its `ability_group.csv` sheet shifts the designations by one row against the data, which wins [C] |
 | Cipher library | `github.com/kiamev/ffpr-save-cypher` v1.0.0, MIT, © 2024 KiameV, a port of py3rijndael | key, IV, padding |
 | Real saves | one Steam save folder per game, read-only copies | every [M] fact about the files |
 | Steam's own files | `libraryfolders.vdf`, `appmanifest_<app ID>.acf`, `remotecache.vdf`, `loginusers.vdf` and the install folders of one Linux Steam install with two libraries; structure only, personal values masked | every [M] fact about roots, libraries and Steam Cloud |
@@ -76,10 +80,10 @@ The 34 measured files, sizes in bytes.
 
 | Tag | Meaning |
 |---|---|
-| [M] | Measured on the 32 game-written Steam files (FF I to VI) or, for roots, libraries and Steam Cloud, on one Linux Steam install; "[M, two editor files]" marks a measurement on the two editor-written files, and "[M, edited copy]" a measurement on a file the game wrote after a battle played on a copy edited with NeoFFSE (FF I, one slot) |
+| [M] | Measured on the 32 game-written Steam files (FF I to VI) or, for roots, libraries and Steam Cloud, on one Linux Steam install; "[M, two editor files]" marks a measurement on the two editor-written files, and "[M, edited copy]" a measurement on a file the game wrote after a battle played on a copy edited with NeoFFSE (FF I and FF II, one slot each) |
 | [G] | Verified in game, including a menu read on an edited copy |
-| [D] | Read from the game's own master data or message files (FF I, build 20249397); not checked on other builds or games |
-| [B] | Read in the game's binary (FF I, build 20249397, IL2CPP), on a copy: class and method names come from the metadata, rules from the machine code; not checked on other builds or games |
+| [D] | Read from the game's own master data, message files or, for FF II, the misc assets file and the UI prefabs of the `key_*` bundles (FF I, build 20249397, unless the text names another game and its build); not checked on other builds |
+| [B] | Read in the game's binary (FF I, build 20249397, IL2CPP, unless the text names another game), on a copy: class and method names come from the metadata, rules from the machine code. FF II to VI builds 20251646, 20264899, 20265023, 20265087 and 20265119 carry the tag for the enums, the grouping, the missing-name path and the master-data loader of [Master data per game](#master-data-per-game). FF II build 20251646 carries it for the rules of [FF II](#ff-ii) too: skill and stat growth, spell learning and forgetting, keywords, joining, the integer types of the counters, the equipment helpers and the readers of `currentExp` and `addtionalLevel`; each such fact names its class and method. Not checked on other builds |
 | [C] | Taken from the code, tests or commit messages of KiameV's Go editor, or from the code or documentation of another source named beside the tag; not measured |
 | [I] | Inferred from measurements, or a rule NeoFFSE applies; consistent with the data, not proven |
 
@@ -528,11 +532,14 @@ Step 4 only refuses.
 A game's own markers are never required, because the count decides and a build could drop a key.
 The rule keys on the count, not on the full ID set, so a list the game reorders still passes.
 
-The FF I format applies the rule; NeoFFSE has no format for FF II to VI yet.
-The saves give the FF II to VI counts [M], while the tables behind them stay unread, so each count remains a reading of the saves ([Open questions](#open-questions), 16 to 19).
+Each PR format applies the rule to its own game.
+The saves give the FF II to VI counts [M], and the `transportation.csv` of each game holds that many rows with the IDs the saves list [D] ([Transportation](#transportation); [Open questions](#open-questions), 16 to 18).
 
-After the game rule, the FF I format checks the shape of what it edits [I].
+After the game rule, the format checks the shape of what it edits [I].
 `ownedCharacterList`, `normalOwnedItemList` and `importantOwendItemList` must exist, each row key (`id` of a character, `contentId` of an item) must be an unsigned 32-bit integer, and no key repeats inside a list ([Characters](#characters), [Inventory](#inventory)).
+An FF II slot adds a fourth list: `userData → ownedKeyWaordList → target` must exist, each element must be an unsigned 32-bit integer, and no element repeats ([Keywords in FF II](#keywords-in-ff-ii)).
+The game keeps the keywords unique, so a game-written slot passes.
+The check is NeoFFSE's own: a `Remove` of a repeated key returns an `Insert` that fails as a duplicate row, so its undo would fail on every call.
 The format refuses a file that fails a check as not a slot.
 
 ### Documents inside strings
@@ -652,17 +659,19 @@ The three `…KeySettings` values are dictionaries whose values are more diction
 The game stores its IDs and their names in its own data files.
 `content.csv` gives each `contentId` a type and a name key, and the message files turn the key into text in each language.
 NeoFFSE builds its tables from these files.
-Every fact below and in the four sections after it comes from the FF I install, build 20249397 [D].
-The installs of the other five games were not read.
+Every fact below and in the four sections after it comes from the FF I install, build 20249397, unless a sentence names another game [D].
+[Master data per game](#master-data-per-game) measures the other five installs.
 
 **Where the files sit.**
-`<install>` is `<library>/steamapps/common/FINAL FANTASY PR/`.
-Both files are TextAssets inside Unity Addressables bundles in `<install>/FINAL FANTASY_Data/StreamingAssets/aa/StandaloneWindows64/`:
+All six games keep their master data in the same place [D].
+`<install>` is `<library>/steamapps/common/<install folder>/` ([Games](#games) gives the folder names, `FINAL FANTASY PR` for FF I).
+Both files are TextAssets inside Unity Addressables bundles in `<install>/<name>_Data/StreamingAssets/aa/StandaloneWindows64/`, where `<name>_Data` is `FINAL FANTASY_Data` for FF I and `FINAL FANTASY II_Data` for FF II.
+Each game holds one bundle of each kind:
 
 | Bundle | TextAsset | Holds |
 |---|---|---|
-| `master_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Master/*.csv` | 89 CSV files; `content.csv` defines the content IDs |
-| `message_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Message/system_en.txt`, `system_fr.txt`, `system_ja.txt` | text per language, one file each |
+| `master_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Master/*.csv` | 91 CSV files in FF I to IV, 92 in FF V, 96 in FF VI; `content.csv` defines the content IDs |
+| `message_assets_all_<hash>.bundle` | `Assets/GameAssets/Serial/Data/Message/*.txt` | 48 files: `etc_text`, `story_cha`, `story_mes` and `system`, each in 12 languages; FF I's `system_en.txt`, `system_fr.txt` and `system_ja.txt` hold the names |
 
 The `<hash>` part of the bundle names changes with the build.
 Match the exact prefixes `master_assets_all_` and `message_assets_all_`: a looser match on `message_assets_all_` hits `common_message_assets_all_<hash>.bundle` too, which holds UI sprites.
@@ -691,7 +700,7 @@ Columns, in order:
 | 2 | weapon | row in `weapon.csv` | 41 |
 | 3 | armor | row in `armor.csv` | 44 |
 | 4 | ability | row in `ability.csv` | 99 |
-| 5 | gil | not measured | 1 |
+| 5 | gil [B] | not measured | 1 |
 
 Type 4 holds the names of the abilities ([Ability, job and command tables](#ability-job-and-command-tables)).
 Types 1 to 3 hold 121 content IDs, from 2 to 202 [D].
@@ -699,9 +708,11 @@ The `id` column is the `contentId` of saves: 111 entries of the Go editor's tabl
 
 **Resolving a name.**
 Look up `mes_id_name` in the message file of the language.
-A message file holds one `key<TAB>text` pair per CRLF line, and no key repeats [D].
+A message file holds one `key<TAB>text` pair per CRLF line [D].
+No key repeats in an FF I file, or in a `system_*` file of the other games; FF V's `story_cha` and `story_mes` files repeat keys ([Master data per game](#master-data-per-game)).
 `system_en.txt` and `system_fr.txt` hold the same 1 099 keys.
-Every name key of the tables in this document resolves in them, and in no other message file (`story_cha`, `story_mes` and `etc_text` do not hold them) [D].
+In FF I, every name key of the tables in this document resolves in them, and in no other message file (`story_cha`, `story_mes` and `etc_text` do not hold them) [D].
+In FF II to VI, some name keys resolve in no file, or only in a story file ([Master data per game](#master-data-per-game)).
 The game resolves names this way [I]: the column name and the matches against the Go editor's tables say so.
 
 - **Icon tags.**
@@ -778,6 +789,27 @@ The labels "item" and "key item" come from the name-key prefixes and the icons, 
 Each `[[character_status]]` entry holds `id`, `hp` and `vitality`, and `[exp_table]` holds `total_exp` as one list in level order from level 1.
 Each `[[intermediate_growth_curve]]` entry holds `job_id` and `growth_curve_group_id`.
 Each `[[growth_curve]]` entry covers one growth group: `group_id`, `first_lv` and one list per column of `growth_curve.csv`, in level order from `first_lv`.
+
+**The other five games.**
+A game's `content.csv` has the same seven columns in all six games.
+`type_id` 1, 2, 3 and 4 point to `item.csv`, `weapon.csv`, `armor.csv` and `ability.csv` in all six, and `type_id` 5 is one row, gil, in every game.
+FF II adds type 6 (keyword), FF V and FF VI add type 7, which points to `command.csv`, and FF VI adds type 9 (magic stone) [D].
+[Content types 5 to 9](#content-types-5-to-9) names them.
+
+`parts_group_id` is the slot key in all six games.
+`parts_group.csv` states which equipment slots accept each group.
+Each game holds one empty-slot content row for each of groups 1 to 5, under its own message key, so read the key per game [D].
+
+`ability.csv` `type_id` values differ per game, and the game's `AbilityType` enum names them ([Ability types](#ability-types)).
+FF I's reading of the values as school and monster kinds holds for FF I and no other game.
+`ability_lv` is at most 8 in all six games and 0 on every row in FF II, FF IV and FF VI [D].
+
+A name key can be `None`: on abilities in FF II to VI, on jobs in FF IV, on commands in FF IV to VI, and on monsters in FF V and VI.
+Some keys resolve in no message file, and FF VI has keys that resolve in `story_mes` only [D] ([Rows without a name](#rows-without-a-name)).
+
+`game_constant_int.csv` holds a different set of `MAX_` keys per game.
+`MAX_GRADUAL_PETRIFICATION` carries a `value2` of 24 in FF III and FF IV.
+In FF VI, `content.csv` and `game_constant_int.csv` repeat IDs, and the game keeps the last row of each ([Master data per game](#master-data-per-game)) [D].
 
 ### Maximum HP and experience tables
 
@@ -858,9 +890,10 @@ Join on `type_value`, not on a fixed offset:
 | 3 | 77 and 91 | 2 | `MSG_MON_ATK_*` | none |
 | 4, 5, 6, 8 | 1 (type 4), 2 (type 5), 3 and 95 (type 6), 4 (type 8) | 5 | `MSG_SYSTEM_*` (Attack, Defend, Flee, Back) | none |
 
-No table in the data names these kinds.
-Type 1 as white magic and type 2 as black magic rest on the icon tags and on the white and black offsets measured in the saves [I].
-Types 3 and 13 are both monster abilities by their name keys; the data does not say what separates them [I].
+The game's `AbilityType` enum names the values: 1 `White`, 2 `Black`, 3 `Enemy`, 4 `Fight`, 5 `Defend`, 6 `Escape`, 8 `Skip` and 13 `EnemyMagic` [B] ([Ability types](#ability-types)).
+The icon tags and the white and black offsets measured in the saves agree with `White` and `Black` [M, D].
+Types 3 and 13 both carry `MSG_MON_ATK_*` keys in FF I; the data does not say what separates `Enemy` from `EnemyMagic` [I].
+The enum describes how the game runs an ability, so `Enemy` and `EnemyMagic` do not mean monster in every game.
 
 `ability_lv` holds the spell level, 1 to 8, and 0 for every non-spell.
 For IDs 5 to 68, `ability_lv` = (`id` − 5) / 8 + 1 with integer division, and `type_id` is 1 for offsets 0 to 3 and 2 for offsets 4 to 7, without exception.
@@ -939,7 +972,7 @@ The keys of the saved bestiary are these monster IDs ([Bestiary](#bestiary)).
 
 ### Bounds in the master data
 
-The game states six caps and several stat caps in `game_constant_int.csv` (96 rows: `id`, `key_name`, `value1`, `value2`) [D]:
+FF I's `game_constant_int.csv` (96 rows: `id`, `key_name`, `value1`, `value2`) states six caps and several stat caps [D]; the other games differ ([Master data per game](#master-data-per-game)):
 
 | Save field | `key_name` | `value1` |
 |---|---|---|
@@ -952,7 +985,7 @@ The game states six caps and several stat caps in `game_constant_int.csv` (96 ro
 | strength, vitality, agility, intelligence, spirit, luck | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` | 99 each |
 | attack, defense, ability attack, ability defense, accuracy, evasion | `MAX_ATTACK`, `MAX_DEFENSE`, `MAX_ABILITY_ATTACK`, `MAX_ABILITY_DEFENSE`, `MAX_ACCURACY_RATE`, `MAX_EVASION_RATE` | 255 each |
 
-Nine more `MAX_` rows have no known save field [I]: `MAX_ACCURACY_RATE_PERCENTAGE`, `MAX_EVASION_RATE_PERCENTAGE`, `MAX_ABILITY_EVASION_RATE` (open: [question 26](#open-questions)), `MAX_ABILITY_EVASION_RATE_PERCENTAGE`, `MAX_CRITICAL_RATE`, `MAX_CRITICAL_RATE_PERCENTAGE`, `MAX_ATTACK_SPEED`, `MAX_HIT_VALUE` and `MAX_GETAWAY_PROBABILITY_RATE`.
+Nine more `MAX_` rows have no known save field [I]: `MAX_ACCURACY_RATE_PERCENTAGE`, `MAX_EVASION_RATE_PERCENTAGE`, `MAX_ABILITY_EVASION_RATE` (open: [question 25](#open-questions)), `MAX_ABILITY_EVASION_RATE_PERCENTAGE`, `MAX_CRITICAL_RATE`, `MAX_CRITICAL_RATE_PERCENTAGE`, `MAX_ATTACK_SPEED`, `MAX_HIT_VALUE` and `MAX_GETAWAY_PROBABILITY_RATE`.
 
 `MAX_ITEM` is one row with no list name [D].
 NeoFFSE reads it as the cap of the normal inventory and not of the key items, which hold `count` 1 ([Inventory](#inventory)) [I].
@@ -971,7 +1004,7 @@ Whether the game clamps an edited gain field is open ([Open questions](#open-que
 
 **Caps in NeoFFSE.**
 A cap is a limit the game states; a storage bound is the range a save field can hold (next paragraph).
-Under `CapPolicy::Enforce` and in the game interface, NeoFFSE applies a cap to the stored field that carries the value [I]:
+For FF I, under `CapPolicy::Enforce` and in the game interface, NeoFFSE applies a cap to the stored field that carries the value [I]:
 
 | Stored field | Cap |
 |---|---|
@@ -983,10 +1016,11 @@ Under `CapPolicy::Enforce` and in the game interface, NeoFFSE applies a cap to t
 | each value of `currentMpCountList` | `MAX_MAGICAL_TIMES` |
 | `addtionalPower`, `addtionalVitality`, `addtionalAgility`, `addtionalIntelligence`, `addtionalSpirit`, `addtionalLuck` | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` (99 each) |
 
-The six stat fields hold gains over a base the file does not store, and NeoFFSE applies the stat cap to the stored gain.
+In FF I, the six stat fields hold gains over a base the file does not store, and NeoFFSE applies the stat cap to the stored gain.
 No stored gain of the four measured FF I slots exceeds 99 [M, 4 slots].
 NeoFFSE caps `currentHP`, not the gain `addtionalMaxHp`: it reads `currentHP` as bounded by the displayed maximum that `MAX_HP` limits, while the game caps the sum of base and gain, so a stored gain above 999 stays legal.
 The magic stat (`addtionalMagic`), `addtionalMaxHp`, `addtionalMaxMpCountList` and the equipment slot `count` have no cap: the master data states none.
+In FF II the game interface checks each gain against `cap - base`, and the raw interface caps no gain ([Character growth in FF II](#character-growth-in-ff-ii)).
 
 **Storage bound.**
 Neither the master data nor the saves state a bound for the integer fields NeoFFSE edits, apart from the caps above.
@@ -1000,11 +1034,497 @@ A value above a cap and inside the storage bound is storable.
 Both edit interfaces refuse a value outside the storage bound [I].
 The game interface refuses a key-item `count` other than 1 and any hand-set `count` of an equipment slot ([Inventory](#inventory), [Equipment slots](#equipment-slots)) [I].
 
+### Master data per game
+
+FF II to VI ship the same two bundles and the same 15 master CSVs as FF I, with FF I's column count in each.
+FF I's content types, ability kinds, name keys, bounds and curve shapes do not carry over.
+Every fact below is [D], read from the build in the first table, unless a tag says otherwise.
+
+**Builds and files.**
+
+| Game | Build | Master CSVs |
+|---|---|---|
+| FF I | 20249397 | 91 |
+| FF II | 20251646 | 91 |
+| FF III | 20264899 | 91 |
+| FF IV | 20265023 | 91 |
+| FF V | 20265087 | 92 |
+| FF VI | 20265119 | 96 |
+
+- All six run Unity 2019.4.26f1 and hold one `master_assets_all_<hash>.bundle`, one `message_assets_all_<hash>.bundle` and 48 message files.
+  The master bundle holds no folder other than `Assets/GameAssets/Serial/Data/Master/` and no entry that is not a CSV, and every CSV parses as plain CSV with a header line.
+- Every game holds the 91 CSV names of FF I.
+  FF V adds `wepon_group.csv`.
+  FF VI adds `attribute.csv`, `battle_bgm_asset.csv`, `battle_weapon_asset.csv`, `name.csv` and `npc.csv`.
+- The 15 CSVs that NeoFFSE's tables read are present in all six games, with FF I's column count.
+  `content.csv`, `weapon.csv`, `armor.csv`, `job.csv`, `command.csv`, `picture_book.csv`, `picture_book_group.csv`, `game_constant_int.csv`, `character_status.csv`, `exp_table.csv`, `intermediate_growth_curve.csv` and `growth_curve.csv` keep FF I's header.
+  Three headers differ in spelling or position, and none of those columns feeds a NeoFFSE table.
+  `item.csv` column 20 reads `battle_effect_asset_id` in FF II to VI, where FF I reads `attle_effect_asset_id`.
+  `monster.csv` column 30 reads `ability_defense_rate` in FF II, IV, V and VI, where FF I reads `ability_defense_reat`.
+  Its column 18 reads `attack_plus_grop` in FF V and VI, where FF I reads `attack_plus_group`.
+  In FF III, `ability.csv` columns 31, 32 and 33 read `ability_random_group_id`, `buy` and `sell`, where FF I reads `buy`, `sell` and `sales_not_possible`.
+
+Rows per CSV in the file, without the header line.
+FF VI's `content.csv` and `game_constant_int.csv` hold repeated IDs, and the game keeps one row per ID (see the repeated IDs below):
+
+| CSV | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| `content.csv` | 221 | 1 016 | 467 | 701 | 1 478 | 1 820 |
+| `item.csv` | 36 | 85 | 104 | 75 | 47 | 50 |
+| `weapon.csv` | 41 | 54 | 85 | 93 | 108 | 91 |
+| `armor.csv` | 44 | 53 | 68 | 83 | 83 | 132 |
+| `ability.csv` | 96 | 808 | 209 | 446 | 1 004 | 1 631 |
+| `job.csv` | 12 | 9 | 22 | 15 | 22 | 22 |
+| `command.csv` | 6 | 7 | 28 | 35 | 238 | 696 |
+| `monster.csv` | 129 | 142 | 238 | 264 | 407 | 509 |
+| `picture_book.csv` | 129 | 140 | 236 | 249 | 370 | 358 |
+| `picture_book_group.csv` | 129 | 140 | 236 | 249 | 370 | 358 |
+| `game_constant_int.csv` | 96 | 142 | 108 | 137 | 128 | 126 |
+| `character_status.csv` | 6 | 10 | 4 | 14 | 6 | 34 |
+| `exp_table.csv` | 99 | 16 | 2 376 | 1 118 | 199 | 99 |
+| `intermediate_growth_curve.csv` | 12 | 0 | 88 | 14 | 132 | 33 |
+| `growth_curve.csv` | 1 176 | 0 | 2 156 | 1 105 | 99 | 99 |
+
+**Content types.**
+`type_id` of `content.csv`, with the file rows per value:
+
+| `type_id` | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| 1 | 36 | 85 | 104 | 75 | 47 | 50 |
+| 2 | 41 | 54 | 85 | 93 | 108 | 91 |
+| 3 | 44 | 53 | 68 | 83 | 83 | 132 |
+| 4 | 99 | 808 | 209 | 449 | 1 003 | 1 486 |
+| 5 | 1 | 1 | 1 | 1 | 1 | 1 |
+| 6 | | 15 | | | | |
+| 7 | | | | | 236 | 33 |
+| 9 | | | | | | 27 |
+
+- Types 1, 2 and 3 each match the ID set of `item.csv`, `weapon.csv` and `armor.csv` in all six games, with no `type_value` that points nowhere.
+- Type 4 points to `ability.csv`.
+  The ID sets are equal in FF II and FF III.
+  FF IV has 3 content rows with no ability, as FF I does.
+  FF V and FF VI have abilities with no content row (see Abilities, below).
+- Type 5 is one row, content 1, key family `MSG_SYSTEM`, in all six games.
+  The enum names it gil [B]; its target is unmeasured in every game.
+- Type 6 (FF II) holds 15 rows, contents 917 to 931, `type_value` 1 to 15, all with `MSG_IMP_WORD_*` keys.
+  They are the keywords of the game ([Content types 5 to 9](#content-types-5-to-9)).
+- Type 7 (FF V and FF VI): every `type_value` is a `command.csv` ID.
+  The `mes_id_name` of that command row equals the content key on 201 of 236 rows in FF V and on 33 of 33 in FF VI.
+  One of the 201 is content 877, and one of the 33 is content 1289: the key is `None` on both the content row and its command ([Content types 5 to 9](#content-types-5-to-9)).
+  The 35 other FF V rows fall in two groups ([Content types 5 to 9](#content-types-5-to-9)).
+- Type 9 (FF VI) holds 27 rows, contents 62 to 88, `type_value` 1 to 27, all with `MSG_MAGIC_NAME_*` keys.
+  They are the espers of the game ([Content types 5 to 9](#content-types-5-to-9)).
+- FF VI holds 1 486 type-4 rows in the file and 1 482 after the game keeps the last row of each repeated ID (see the repeated IDs below).
+
+**Repeated IDs.**
+The game loads every master CSV through one loader, `MasterBase.MasterParse<T>`, and a repeated first-column ID overwrites the earlier row: the last row wins, the game logs a warning and goes on [B].
+The method body is the same in the six builds [B].
+Every later lookup sees the surviving row only, including a lookup by `type_value` or by `key_name`.
+Only FF VI repeats IDs, in two files, and no other master CSV of the six games does [D]:
+
+- `content.csv` holds 1 820 rows and 1 816 IDs.
+  ID 1861 sits on three type-4 rows, for abilities 1525, 1528 and 1530, and ID 1863 on three, for abilities 1527, 1529 and 1531.
+  The three rows of one ID differ only in `type_value`: they share `MSG_MAGIC_NAME_20` for 1861 and `MSG_MAGIC_NAME_12` for 1863.
+  The last row wins, so content 1861 resolves to ability 1530 and content 1863 to ability 1531 [D, B].
+- Abilities 1525, 1527, 1528 and 1529 stay in `ability.csv` and resolve by ID, but they have no content row.
+  Their name key comes back empty ([Rows without a name](#rows-without-a-name)), and the game's add path refuses them: `OwnedCharacterClient.AddAbility` logs an error and adds nothing [B].
+- A save that holds one of the four loads unchanged, because the load resolves `abilityId` and `contentId` on their own and does not compare them [B].
+  How the game displays a saved pair such as (1525, 1861) is unproven ([question 34](#open-questions)).
+- `game_constant_int.csv` holds 126 rows and 125 IDs.
+  ID 353 appears as `CHARACTER_MOG_ASSET_POSTURE` (`value1` 11), then as `SPECIAL_ABILITY_MESSAGE_SPEED` (`value1` 2).
+  The second row keeps the ID, so `CHARACTER_MOG_ASSET_POSTURE` reads 0 and the 11 never reaches the game [D, B].
+
+**Equipment groups.**
+`parts_group.csv` exists in all six games and states the slots with `equip1_possible` to `equip6_possible`.
+The cells list the slots that hold 1:
+
+| `parts_group.csv` `id` | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| 1 | 1 | 1, 2 | 1, 2 | 1 | 1, 2 | 1, 2 |
+| 2 | 2 | 1, 2 | 1, 2 | 2 | 1, 2 | 1, 2 |
+| 3 | 3 | 3 | 3 | 3 | 3 | 3 |
+| 4 | 4 | 4 | 4 | 4 | 4 | 4 |
+| 5 | 5 | 5 | 5 | 5 | 5 | 5, 6 |
+| 6 | | | | 1, 2 | | |
+
+- FF IV has a sixth group, for 19 `weapon.csv` rows, with 12 `<IC_ARW>` and 7 `<IC_BOW>` icon tags.
+  It reads as arrows and bows [I].
+  It has no empty-slot row.
+- FF VI group 5 goes in slot 5 or 6, the only use of `equip6_possible`.
+- The label of FF I's group 5 (gloves) does not describe it elsewhere: group 5 holds 5 `<IC_RING>` and 8 `<IC_GLOV>` rows in FF III, 21 and none in FF V, 50 and 5 in FF VI.
+  The `parts_group_id` is the fact.
+- `item.csv` `type_id` holds only 1 and 2 in all six games, and every type-2 row carries `<IC_IOBJ>`.
+  A `MSG_KEY_NAME_*` key does not imply type 2: FF IV and FF V each hold one on a type-1 row.
+  FF III has 56 `MSG_MAGIC_NAME_*` keys on type-1 rows and FF VI 8 `MSG_WEAPON_NAME_*` keys on type-1 rows.
+
+Each game holds five empty-slot rows, one per group 1 to 5, under its own keys.
+Each key serves only those rows.
+No save of FF III to VI confirms these IDs.
+The FF II saves confirm 47, 209, 210 and 211, and hold 47, not 208, in an empty second hand [M] ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
+
+| Game | Weapon key, ID | Armor key | Shield, armor, helmet, gloves IDs |
+|---|---|---|---|
+| FF I | `MSG_SYSTEM_069`, 62 | `MSG_SYSTEM_070` | 130, 131, 132, 133 |
+| FF II | `MSG_WEAPON_NAME_01`, 47 | `MSG_SYSTEM_075` | 208, 209, 210, 211 |
+| FF III | `MSG_SYSTEM_286`, 50 | `MSG_SYSTEM_287` | 135, 136, 137, 138 |
+| FF IV | `MSG_SYSTEM_166`, 127 | `MSG_SYSTEM_167` | 224, 225, 226, 227 |
+| FF V | `MSG_SYSTEM_175`, 59 | `MSG_SYSTEM_176` | 174, 175, 176, 177 |
+| FF VI | `MSG_SYSTEM_187`, 93 | `MSG_SYSTEM_188` | 197, 198, 199, 200 |
+
+**Abilities.**
+`ability.csv` `type_id` values, with the rows per value:
+
+- FF I (8 values): 1 (33), 2 (32), 3 (2), 4 (1), 5 (1), 6 (2), 8 (1), 13 (24)
+- FF II (10 values): 1 (361), 2 (395), 3 (2), 4 (5), 5 (1), 6 (3), 7 (1), 8 (1), 12 (1), 13 (38)
+- FF III (23 values): 1 (36), 2 (56), 4 (25), 5 (1), 6 (2), 7 (1), 8 (1), 9 (34), 11 (4), 12 (1), 13 (32), 15 (1), 16 (1), 20 (1), 21 (1), 28 (1), 31 (1), 301 (1), 302 (1), 303 (1), 304 (1), 305 (1), 306 (5)
+- FF IV (40 values): 1 (53), 2 (59), 3 (52), 4 (7), 5 (1), 6 (1), 7 (1), 8 (1), 9 (30), 10 (7), 11 (4), 12 (1), 13 (96), 14 (2), 15 (3), 16 (1), 17 (2), 18 (1), 19 (1), 20 (1), 21 (1), 22 (5), 23 (1), 24 (1), 25 (1), 26 (1), 27 (1), 28 (2), 29 (2), 30 (1), 31 (1), 32 (1), 33 (1), 34 (8), 35 (89), 36 (2), 37 (1), 38 (1), 40 (1), 41 (1)
+- FF V (43 values): 1 (60), 2 (75), 3 (164), 4 (6), 5 (2), 6 (3), 7 (1), 8 (1), 9 (68), 10 (1), 11 (9), 12 (1), 13 (196), 15 (2), 16 (2), 19 (1), 21 (2), 25 (2), 26 (1), 27 (2), 28 (1), 31 (2), 34 (10), 35 (187), 38 (1), 40 (1), 41 (1), 301 (1), 303 (2), 501 (39), 502 (19), 503 (1), 504 (64), 505 (60), 506 (1), 507 (1), 508 (1), 512 (1), 513 (1), 514 (6), 515 (1), 516 (2), 609 (2)
+- FF VI (48 values): 1 (72), 2 (115), 3 (458), 4 (37), 5 (1), 6 (1), 7 (1), 8 (1), 9 (29), 12 (1), 13 (116), 15 (2), 16 (3), 34 (99), 35 (287), 40 (1), 41 (1), 504 (29), 601 (15), 602 (9), 603 (8), 604 (8), 605 (1), 606 (1), 607 (1), 608 (1), 609 (1), 610 (1), 611 (1), 612 (1), 613 (8), 614 (1), 615 (1), 616 (1), 617 (1), 618 (1), 619 (1), 620 (13), 621 (2), 622 (3), 623 (3), 625 (252), 627 (1), 628 (2), 629 (13), 637 (24), 638 (1), 639 (1)
+
+| Fact | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| `type_id` values | 8 | 10 | 23 | 40 | 43 | 48 |
+| values outside FF I's eight | 0 | 2 | 16 | 32 | 35 | 40 |
+| rows of those values | 0 | 2 | 56 | 176 | 497 | 830 |
+| highest `ability_lv` | 8 | 0 | 8 | 0 | 6 | 0 |
+| rows with `ability_lv` above 0 | 65 | 0 | 117 | 0 | 207 | 0 |
+| `type_id` values with `ability_lv` above 0 | 1, 2 | none | 1, 2, 9 | none | 1, 2, 9, 35, 501, 502 | none |
+| abilities with no type-4 content row in the file | 0 | 0 | 0 | 0 | 1 | 145 |
+| abilities with no type-4 content row in the game | 0 | 0 | 0 | 0 | 1 | 149 |
+| type-4 content rows with no ability | 3 | 0 | 0 | 3 | 0 | 0 |
+
+- No game passes level 8 for a spell.
+  `ability_lv` is 0 on every row in FF II, FF IV and FF VI, spells included, so FF I's "1 to 8 for a spell" does not hold there.
+- The abilities with no type-4 content row in the file are ID 1090 in FF V and, in FF VI, IDs 5000 to 5100, 5102 to 5127 and 5900 to 5917.
+  The game has no content row for FF VI's abilities 1525, 1527, 1528 and 1529, because the repeated content IDs overwrite them (see the repeated IDs above).
+- Type 13 holds 112 `MSG_MON_ATK_*`, 37 `MSG_MAGIC_NAME_*`, 31 `MSG_SCMD_NAME_*` and 12 `MSG_CMD_NAME_*` keys in FF V, and `MSG_MAGIC_NAME_*` keys on 112 of 116 rows in FF VI.
+  FF I reads type 13 as monster abilities with `MSG_MON_ATK_*` keys ([Ability types](#ability-types)).
+- Types 1 and 2 carry the white and black icons on most rows, not on all.
+  FF VI puts 48 `<IC_IMGC>` tags in type 1.
+- No master file names a `type_id` value, in any game; the game's `AbilityType` enum does ([Ability types](#ability-types)).
+
+**Name keys.**
+A name key can be `None`, or can resolve in no `system_*` file:
+
+| Fact | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| abilities with key `None` | 0 | 5 | 4 | 139 | 207 | 313 |
+| abilities whose key is in no `system_*` file | 0 | 0 | 0 | 0 | 2 | 90 |
+| job IDs with key `None` | none | none | none | 15 | none | none |
+| command IDs with key `None` | none | none | none | 4 | 4 | 4 |
+| monster IDs with key `None` | none | none | none | none | 231 | 367, 369, 371, 376 to 377, 379 to 381, 383 to 384, 392, 398 |
+
+Where the keys that no `system_*` file holds sit:
+
+| Game | Table | IDs | Found in |
+|---|---|---|---|
+| FF III | commands | 10 (`MSG_SYSTEM_195`), 14 (`MSG_SYSTEM_199`), 22 (`MSG_SYSTEM_208`) | no file |
+| FF V | abilities | 484 (`MSG_MON_ATK_69`), 686 (`MSG_SYSTEM_094`) | no file |
+| FF VI | abilities | 431 (`MSG_MON_ATK_52`) | no file |
+| FF VI | abilities | 89 rows | `story_mes` |
+| FF VI | jobs | 20 (`SPEAKER_31`), 22 (`SPEAKER_19`) | `story_mes` |
+| FF VI | monsters | 311 (`MSG_MON_NAME_296`), 312 (`MSG_MON_NAME_297`) | no file |
+| FF VI | monsters | 521 (`SPEAKER_05`), 549 and 550 (`SPEAKER_08`) | `story_mes` |
+
+- A case or space variant of a key found in no file does not exist in `system_en`.
+- FF II's `job.csv` uses `MSG_CHAR_NAME_*` keys, so its nine rows name characters [I].
+- `system_*` holds the same key set in all 12 languages of a game: 1 099 keys in FF I, 1 290 in FF II, 1 519 in FF III, 1 714 in FF IV, 2 323 in FF V and 2 413 in FF VI.
+- FF V's `story_cha_*` and `story_mes_*` files repeat 263 keys each, first on `END_LETTER_01_01`, in every language but Japanese (22 files).
+  No other game repeats a key in any file.
+
+**Bounds.**
+`game_constant_int.csv` holds a different set of `MAX_` keys in each game:
+
+| Fact | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| `MAX_` rows | 27 | 39 | 27 | 31 | 32 | 27 |
+| all rows | 96 | 142 | 108 | 137 | 128 | 126 |
+| `MAX_GIL` | 999 999 | 9 999 999 | 9 999 999 | 9 999 999 | 9 999 999 | 9 999 999 |
+| `MAX_ITEM` | 99 | 99 | 99 | 99 | 99 | 99 |
+| `MAX_LV` | 99 | 99 | 99 | 99 | 99 | 99 |
+| `MAX_EXP` | 9 999 999 | 9 999 999 | 9 999 999 | 9 999 999 | 9 999 999 | 15 000 000 |
+| `MAX_HP` | 999 | 9 999 | 9 999 | 9 999 | 9 999 | 9 999 |
+| `MAX_MP` | none | 999 | none | 999 | 999 | 999 |
+| `MAX_MAGICAL_TIMES` | 9 | none | 99 | none | none | none |
+| non-`MAX_` rows with `value2` not 0 | 0 | 0 | 2 | 12 | 9 | 9 |
+
+- `MAX_GRADUAL_PETRIFICATION` is the only `MAX_` row with a non-zero `value2`: 24, in FF III (`value1` 3) and FF IV (`value1` 4).
+- `MAX_MP` exists in FF II, IV, V and VI and `MAX_MAGICAL_TIMES` in FF I and FF III, which fits the games that use MP and the games that use spell charges [I].
+- Other keys differ too: `MAX_STRNGTH` is 128 in FF VI and `MAX_ATTACK_SPEED` is 36 in FF II.
+
+**Experience and growth.**
+
+| Fact | FF I | FF II | FF III | FF IV | FF V | FF VI |
+|---|---|---|---|---|---|---|
+| `exp_table.csv` `type_id` values | 1 | 1 | 1, 101, 201 | 1 | 1, 101 | 1 |
+| experience curves | 1 | 1 | 24 | 13 | 22 | 1 |
+| `intermediate_growth_curve.csv` rows | 12 | 0 | 88 | 14 | 132 | 33 |
+| `growth_curve.csv` groups | 12 | 0 | 22 | 13 | 1 | 1 |
+
+An experience curve is one `(type_id, group_id)` pair of `exp_table.csv`.
+FF III holds 1 curve of type 1, 22 of type 101 and 1 of type 201.
+FF V holds 1 curve of type 1 and 21 of type 101.
+
+- FF II's `exp_table.csv` has 16 rows against a `MAX_LV` of 99, and both growth files are empty.
+  `MAX_WEAPON_LEVEL` and `MAX_MAGICAL_LEVEL` are 16, which fits a skill table [I].
+- 11 of FF IV's 13 curves start above level 1, at a non-zero total.
+  FF V's 21 type-101 curves start at level 1 with a non-zero total.
+  Every other curve starts at level 1 with a total of 0, and every curve rises without a gap.
+- The growth groups of `growth_curve.csv` start at level 2 in FF I (12 groups) and FF III (22 groups), at levels 2 to 51 in FF IV, and at level 1 in FF V and FF VI (one group each).
+- The meaning of types 101 and 201 is unproven.
+  That they serve job levels is a reading [I].
+
+### Ability types
+
+`ability.csv` `type_id` holds a value of the game's `Last.Defaine.Master.AbilityType` enum [B].
+The value says how the game runs an ability, not which school it belongs to: FF VI files 48 `<IC_IMGC>` spells under `White`, so the icon tag carries the display school and `type_id` does not [D].
+Numbers keep their names across games, and each game adds its own: 514 `DanceFF5` in FF V, 639 `ChangeAbilityByWeaponFF6` in FF VI.
+The facts below are for FF II to VI, from the builds of [Master data per game](#master-data-per-game), unless a sentence names FF I.
+
+- The enum holds 80 names in FF I and FF II, 92 in FF III, 91 in FF IV, 98 in FF V and 96 in FF VI [B].
+- No `type_id` of any game falls outside its own enum.
+  Every one sits in that game's `chanting.csv`, except FF III's 8 [D].
+- The game's code reads the enum.
+  `Serial.FF3.Management.StatusUpProvider::IsSkillUpAbility` compares an ability type with 301 and 306, `Serial.FF5.Management.AbilitySortData::SortAbilityList` with 502, and `Last.Systems.CommandUtility::IsRelease` (FF VI) calls `Ability::get_TypeId` and compares the result with 605 [B].
+- `Last.Management.AbilityFilter` compares `Ability.TypeId` with the tables of [Ability groups](#ability-groups) [B].
+
+Names of the values in use:
+
+| Value | `AbilityType` name | Rows and keys |
+|---|---|---|
+| 1 | `White` | magic names |
+| 2 | `Black` | magic names |
+| 3 | `Enemy` | `MSG_MON_ATK_*` keys; FF VI adds weapon and item names |
+| 4 | `Fight` | attack rows |
+| 5, 6 | `Defend`, `Escape` | |
+| 7 | `Change` | a row change [I] |
+| 8 | `Skip` | |
+| 9 | `Summon` | FF III to VI |
+| 10 | `Ninjutsu` | FF IV and FF V |
+| 11 | `Other` | FF III to V; a command lists it in FF III and FF V, and the rows are item names in FF IV |
+| 12 | `TwoSwordStyle` | passive, see below |
+| 13 | `EnemyMagic` | see below |
+| 14 to 33, 36 to 38 | `Dark`, `JumpUp`, `JumpDown`, `Prayer`, `Aim`, `Protect`, `Throwing`, `Steal`, `PairSkill`, `Lie`, `Strengthen`, `Drug`, `Hide`, `Accumulate`, `Kick`, `Patience`, `Recall`, `Scan`, `SpiritualWave`, `RecallFailure`, `PairSkillPrepare`, `NotProtect`, `Appear` | 6 values in FF III, 23 in FF IV, 10 in FF V, 2 in FF VI; one job command each on most values |
+| 34 | `Non` | FF IV to VI |
+| 35 | `NonAct` | FF IV to VI; the name is `None` on 89, 184 and 284 rows |
+| 40, 41 | `ReverseSkip`, `TargetCharacterSkip` | FF IV to VI |
+| 301 to 306 | `Terrain`, `WholeSlash`, `DisorderlyShoot`, `Attract`, `KnightDefend`, `KarateAccumulate` | FF III and FF V |
+| 501, 502 | `TimeMagic`, `MagicSword` | FF V |
+| 503, 505 to 508 | `Animal`, `Formulation`, `Drinking`, `Loose`, `CallSummon` | FF V |
+| 504 | `BlueMagic` | FF V and FF VI |
+| 512 to 516 | `Mineuchi`, `MagicFight`, `DanceFF5`, `AimFF5`, `Iainuki` | FF V |
+| 601 to 604 | `Hissatsu`, `SpecialAbility`, `Dance`, `Madou` | FF VI |
+| 605 to 623 | `Trance`, `TranceEnd`, `StealFF6`, `StealAttack`, `Throw`, `MagicSeal`, `Skech`, `Operate`, `Slot`, `GilThrow`, `Dive`, `Mimic`, `PrayerFF6`, `Shock`, `Ghost`, `DyingSpAttack`, `Interceptor`, `Umalo`, `Machine` | FF VI; FF V holds 609 only |
+| 625 | `Rampage` | FF VI; `MSG_MON_NAME_*` keys |
+| 627, 628, 629 | `bothHands`, `DyingMagic`, `AddMagic` | FF VI |
+| 637, 638, 639 | `DanceAct`, `DanceFail`, `ChangeAbilityByWeaponFF6` | FF VI |
+
+The row counts per value and game sit in the lists of [Master data per game](#master-data-per-game).
+
+- **Type 12.**
+  `Last.Data.User.OwnedCharacterData::get_HasTwoSwordStyle` exists [B], which fits `TwoSwordStyle` as a passive dual-wield ability [I].
+  Its body is unread.
+- **`EnemyMagic` (13) does not mean monster.**
+  FF V's 196 rows of type 13 hold 112 `MSG_MON_ATK_*`, 37 `MSG_MAGIC_NAME_*`, 31 `MSG_SCMD_NAME_*` and 12 `MSG_CMD_NAME_*` keys, and 49 FF V `command.csv` rows run a type-13 ability [D].
+  FF VI's 116 rows hold 112 `MSG_MAGIC_NAME_*` keys, and 109 FF VI command rows run one [D].
+  Reading type 13 as a monster ability by key family holds on all of FF III, on 25 of 38 rows in FF II and on 91 of 96 in FF IV.
+  It fails on 84 of 196 rows in FF V and on every row of FF VI [D].
+
+**What the saves test.**
+The measured saves exercise six enum names: `White`, `Black`, `Madou`, `DyingSpAttack`, `Other` and `TwoSwordStyle` ([Abilities](#abilities)).
+The other names rest on the enum and on the rows.
+The disassembly covers `IsRelease` and `IsAvailable` instruction by instruction.
+The other comparisons come from a scan for `cmp reg, imm` instructions with a matching number, which also hits unrelated code: the scan supports the enum and proves no single value [B].
+The FF6 Hacking wiki's legend agrees with the enum on the FF VI rows both name: 601 `Hissatsu`, 602 `SpecialAbility`, 504 `BlueMagic`, 604 `Madou` and 625 `Rampage` [C].
+
+### Ability groups
+
+A battle command lists its abilities through three tables, and `Last.Management.AbilityFilter::GetAbilityList` walks them [B]:
+
+1. `command.csv` `ability_group_id` selects the rows of `ability_group.csv` that hold that `group_id`.
+2. Each selected row's `type_id` is an `id` of `chanting.csv`, not an ability type.
+   The `ability_type_id` of that `chanting.csv` row is the ability type.
+   When `SystemConfig::IsAbilityGroupCheck` returns true, the function fetches the `chanting.csv` row by the group's `type_id` and keeps the abilities whose `TypeId` equals that row's `AbilityTypeId`.
+   The other path compares `ability.TypeId` with the group's `type_id` itself.
+3. A level filter follows: an ability stays when `ability_lv` is at most `command_lv`.
+   FF V's levelled commands use it.
+
+`SystemConfigData::IsAbilityGroupCheck` returns 1 in FF II, FF III, FF IV (namespace `Serial.FF0`), FF V and FF VI [B].
+The closures of `GetAbilityList` come from FF VI's binary only.
+
+The master data fits the indirection [D]:
+
+- FF V's `ability_group.csv` lists types 44 and 45, and FF VI's lists 39 to 43 and 64.
+  None is an ability type, and each resolves through `chanting.csv`: FF V 44 to 501 and 45 to 502; FF VI 39 to 601, 40 to 602, 41 to 504, 42 to 603, 43 to 604 and 64 to 625.
+- `chanting.csv` `id` differs from `ability_type_id` on some rows of all five games.
+  Reading the `type_id` of `ability_group.csv` as an ability type gives the wrong list: FF V reaches 212 abilities that way against 334 through `chanting.csv`, and FF VI 189 against 508.
+- `ability.csv` `ability_group_id` is a different field.
+  The filter does not read it for this, and its values do not match: FF V rows with group 7 and 8 are type 13, while group 7 resolves to 503 and group 8 to 301.
+
+The ability types a command lists through this chain [D]:
+
+| Game | Types the game lists |
+|---|---|
+| FF II | 1, 2 |
+| FF III | 1, 2, 9, 11 |
+| FF IV | 1, 2, 9, 10 |
+| FF V | 1, 2, 9, 11, 501, 502, 504 |
+| FF VI | 1, 2, 504, 601, 602, 603, 604, 625 |
+
+FF VI's group 2 (`Summon`) has a row in `ability_group.csv` and no command points to it.
+`SystemConfig::IsDisplayPhantomBeastInBattleMagic` exists [B]; how it feeds the magic list is unread, as is every screen other than this filter.
+
+### Content types 5 to 9
+
+The game's `Last.Defaine.Content.ContentType` enum names every `content.csv` `type_id` and is identical in all six binaries: `None` 0, `Item` 1, `Weapon` 2, `Armor` 3, `Ability` 4, `Gil` 5, `Keyword` 6, `Command` 7, `MagicItem` 8, `MagicStone` 9 [B].
+`content_type.csv` lists the values a game uses: 1 to 5 in every game, plus 6 in FF II, plus 7 in FF V, plus 7 and 9 in FF VI [D].
+No game ships a row of type 8.
+Type 5 is gil [B]; its `type_value` target is unmeasured.
+
+**Type 6, FF II: `Keyword`, the 15 learned words.**
+No CSV holds them: `type_value` 1 to 15 is an ordinal, and the name sits in the content row (`MSG_IMP_WORD_01` to `_15`) [D].
+`userData → ownedKeyWaordList → target` holds their content IDs: 30 entries in 3 FF II slots, each one a type-6 row, IDs 917 to 931 [M].
+`Last.Management.UserDataClient::AddKeyWord` and the `Last.UI.*.SecretWordController` classes handle them [B, names only].
+
+**Type 9, FF VI: `MagicStone`, the 27 espers.**
+No CSV holds them either.
+The game keys them on the content ID:
+
+- `Serial.FF6.Management.MagicStoneData::.ctor` passes the integers 62 to 88 in order, then a subset on two more runs [B].
+  These are contents 62 to 88.
+- A closure field of `GetLearnableAbilityList` reads `magicStoneContentId` [B].
+- `learning.csv` type 2 (92 rows) holds `value1` 62 to 88, all 27 values, with `value2` and `content_id` beside it, so that table carries the learnable spells of an esper [D, I].
+- The Go editor's esper table runs 62 to 88 [C].
+
+The 27 keys (`MSG_MAGIC_NAME_55` to `_81`) serve the 29 abilities of type 9 too: the English name of each ability equals an esper's [D].
+The esper and the summon it casts are different rows.
+`ownedMagicStoneList` is empty in both measured FF VI slots, so the stored form of an esper is unproven ([question 33](#open-questions)).
+
+**Type 7, FF V and FF VI: `Command`.**
+`type_value` is a `command.csv` ID.
+The 35 FF V rows whose key differs from their command's fall in two groups [D]:
+
+- 32 rows (contents 918 to 949) are levelled job abilities.
+  The content key names the ability with its level, and the command key names the battle command.
+  Each command key pairs with up to six content keys.
+  On 32 of 32 rows the trailing number of the English content name equals `command_lv` and the name starts with the command's.
+  All 32 sit in `learning.csv` (`type_id` 5, with `job_id`).
+  The content row is what the player learns, and the command row is what the player uses.
+- 3 rows (879, 1030, 1503) carry the key `None`.
+  They point to commands 6, 100 and 247, whose key is `MSG_CMD_NAME_51`, whose `ability_id` is 5, 673 and 990 (`Skip`, `ReverseSkip`, `TargetCharacterSkip`) and whose `command_type` is 6, `LimitedATBBattle` in `Last.Defaine.Master.CommandType` [B].
+  None of the three sits in `learning.csv`.
+
+A fourth row, content 877, also carries the key `None`.
+Its `type_value` is 4, and command 4 has key `None` too, so its key equals the command's and it falls outside the 35.
+FF V holds 4 type-7 rows with key `None` and 232 with a name.
+
+FF VI's content 1289 is the same case: a type-7 row with key `None` and `type_value` 4, which points to command 4, whose key is `None` too.
+FF VI holds 1 type-7 row with key `None` and 32 with a name, and the 32 keys match their command.
+
+FF V's `learning.csv` points to 67 type-7 and 33 type-4 content rows.
+FF VI's 33 type-7 rows appear in no `learning.csv` row.
+Nothing in the data reads FF VI's type 7 ([question 32](#open-questions)) [D].
+
+### Rows without a name
+
+For a row whose name key is `None`, sits in no message file, or has no content row, the name functions return an empty string, and the game holds no fallback name [B].
+Real saves hold such rows: FF II's ability 711 and FF III's ability 136 sit on every character.
+A table that leaves keyless rows out breaks those saves.
+Whether and where a screen draws the empty string is unconfirmed ([question 27](#open-questions)).
+
+**Labels in NeoFFSE.**
+The view labels a listed row with no name `Entry <id>` [I].
+It labels an id that no table lists by its list: `Keyword <id>`, `Item <id>` or `Key item <id>`.
+
+**What the game does.**
+`Last.Systems.ContentUtitlity::GetAbilityName(id)` fetches the ability, calls `GetContentOfTypeValue(4, id)`, takes `MesIdName` and calls `MessageManager.GetMessage`.
+A missing ability, a missing content row or a null key each return `String.Empty`.
+`MessageManager.GetMessage` returns `String.Empty` on an empty key.
+On a key its dictionary lacks, it calls `LogManager.LogWarning` and returns `String.Empty`.
+No `system_*` file holds a key `None`, so a `None` row takes that path [D, B].
+Each of the two methods compiles to the same instruction sequence in FF II to VI, with addresses masked [B].
+
+**Counts.**
+Abilities with no key, or no content row in the file [D]:
+
+| Game | Rows | By `AbilityType` name |
+|---|---|---|
+| FF II | 5 | `Fight` 4, `TwoSwordStyle` 1 |
+| FF III | 4 | `Summon`, `TwoSwordStyle`, `JumpDown`, `KarateAccumulate` |
+| FF IV | 139 | `NonAct` 89, `Enemy` 29, `Fight` 4, `Summon` 4, 12 others |
+| FF V | 208 (1 without a content row) | `NonAct` 184, `Enemy` 4, `EnemyMagic` 4, `Fight` 3, `Non` 3, 8 others |
+| FF VI | 458 (145 without a content row) | `NonAct` 284, `Enemy` 79, `Fight` 36, `Black` 15, `AddMagic` 13, `Non` 9, 17 others |
+
+The repeated content IDs of FF VI remove a content row from four more abilities: 1525, 1527, 1528 and 1529 keep their name key in the file and lose it in the game.
+The game sees 462 such FF VI rows, 149 of them without a content row ([Master data per game](#master-data-per-game)) [D, B].
+
+No keyless ability row carries a description key.
+Three FF IV rows carry a battle key, and no other game has one.
+The abilities with no content row in the file are FF V 1090 (`MagicFight`) and, in FF VI, 5000 to 5100, 5102 to 5127 and 5900 to 5916 (144 `NonAct` rows) and 5917 (`TargetCharacterSkip`, run by command 763).
+No CSV points to FF V 1090 or to the 144 FF VI rows [D].
+
+**Can a player reach them?**
+A keyless ability reaches a player's list only if its type sits in a listed group ([Ability groups](#ability-groups)) and the character holds it [D].
+Rows that qualify by type: FF III 134; FF IV 76, 223, 224, 225 and 278; FF V 575 and 1165; FF VI 277 to 285, 290, 1280 to 1285 and 1336.
+No keyless row appears in `learning.csv` or in any `*content_id` column, in any game.
+The CSVs reach other keyless rows through `command.csv` `ability_id`, `ability_random_group.csv`, or the `trigger_ability_id` of a weapon or armor.
+
+**Other keyless rows** [D]:
+
+- FF IV job 15 has key `None` and `character_status.csv` row 14 uses it.
+- FF VI jobs 20 and 22 hold `SPEAKER_*` keys, used by `character_status.csv` rows 30 and 34.
+- Command 4 in FF IV, FF V and FF VI has key `None` and `command_type` 5 (`LimitedTurnBattle`), and runs ability 3 (`Escape`) ([question 28](#open-questions)).
+- FF III commands 10, 14 and 22 hold keys found nowhere, and no job and no `character_status.csv` row references them.
+- Monsters with key `None`: FF V 231 and FF VI's 12 (IDs under Name keys in [Master data per game](#master-data-per-game)).
+  None sits in a picture book entry or in `monster_party.csv`.
+  FF VI 311 and 312, whose keys are found nowhere, are in the same case.
+  FF VI 521, 549 and 550 hold `SPEAKER_*` keys, sit in one party each and in no picture book entry.
+
+**What the private saves hold** [M]:
+
+| Row | Key | Where | Count |
+|---|---|---|---|
+| FF II ability 711 (`TwoSwordStyle`) | `None` | `abilityList` and `learnedAbilityList`, every character | 23 characters in 3 slots |
+| FF III ability 136 (`TwoSwordStyle`) | `None` | `abilityList` and `learnedAbilityList`, every character | 8 characters in 2 slots |
+| Command 4 in FF IV, FF V and FF VI | `None` | `commandList` | 4, 2 and 6 entries |
+
+No measured save holds an ability with no content row, an ability with a story key, a keyless job or a keyless monster.
+The bestiary files name every monster they hold: 75 keys in FF II, 2 in FF III, 2 in FF IV and 3 in FF VI.
+FF V's bestiary is empty.
+
+**Keys in no message file.**
+The table under Name keys in [Master data per game](#master-data-per-game) lists them, searched in the English `system`, `story_cha`, `story_mes` and `etc_text` files [D].
+Of the abilities, FF V 484 is `NonAct`, FF V 686 is `Non` and FF VI 431 is `Enemy`.
+The game shows these rows as empty, like a `None` key, and logs a warning [B].
+No measured save holds one [M].
+
+**The 94 FF VI story-key rows.**
+The names of 94 FF VI rows sit in `story_mes` and in no `system_*` file:
+
+| Table | Rows | Key family | Content |
+|---|---|---|---|
+| jobs | 20, 22 | `SPEAKER_*` | short names, one word each: 6 and 7 characters in English |
+| monsters | 521, 549, 550 | `SPEAKER_*` | 8 characters (521) and 5 characters (549, 550) in English, each ending in a closing mark |
+| abilities | 89 rows, all `type_id` 34 (`Non`) | `E<scene>_b_<n>`, one `M102_01` | lines of dialogue |
+
+All 94 keys resolve in `story_mes`, which holds their text [D].
+`story_cha_en` and `story_cha_fr` hold an empty value for all 98 `SPEAKER_*` keys of FF VI [D].
+The 89 ability IDs are 1096, 1111 to 1131, 1147 to 1155, 1163 to 1165, 1169 to 1171, 1181, 1182, 1188, 1189, 1258, 1267 to 1279, 1306, 1316 to 1319, 1321, 1323, 1326, 1334, 1335, 1345 to 1349, 1353, 1354, 1360 to 1368, 1370 to 1374 and 1421 to 1423.
+81 of the 89 texts end in punctuation or run 4 words or more.
+The other 8 (1125, 1275, 1347, 1348, 1349, 1366, 1367, 1368) are short without closing punctuation and share the scene key families of the rest, so they count as dialogue too [I].
+Their shape suggests that a monster speaks in battle by using a no-action ability named with a line [I].
+These keys sit in no `system_*` file, which is why the ID tables export no name for the 89 rows ([ID spaces and tables](#id-spaces-and-tables)).
+
 ### ID spaces and tables
 
 A save points into the game data through six ID spaces: `contentId`, `abilityId`, `jobId`, commands, maps and monsters.
 NeoFFSE takes the IDs, kinds and names of all six from the game's master files and message files ([Game master data](#game-master-data), [Ability, job and command tables](#ability-job-and-command-tables), [Map and monster tables](#map-and-monster-tables)).
 Facts about game data are [D], facts about the Go editor's tables [C], comparisons with the saves [M].
+
+**Names the tables export.**
+The ID tables export names from the `system_*` files, plus FF VI jobs 20 and 22, which they read by their `SPEAKER_*` keys from `story_mes` [I].
+No other line of a story file is read, and no dialogue line is exported, so the 89 FF VI ability rows with story keys carry an ID and no name ([Rows without a name](#rows-without-a-name)) [I].
+FF VI ships no monster table yet, so monsters 521, 549 and 550 export no name.
 
 | Space | Referenced by | Names from | IDs |
 |---|---|---|---|
@@ -1016,12 +1536,16 @@ Facts about game data are [D], facts about the Go editor's tables [C], compariso
 | monster | `monsterDefeats` keys | `monster.csv` [D] | 1 to 129 in the game [D]; 1 to 128 in the saves [M] |
 
 Items, key items and equipment share one `contentId` space.
-Key items are the content IDs 45 to 61, the rows of type 2 in `item.csv` [D], and every ID of `importantOwendItemList` falls in that range [M].
+In FF I, key items are the content IDs 45 to 61, the rows of type 2 in `item.csv` [D], and every ID of `importantOwendItemList` falls in that range [M].
+The key items of the FF II saves carry the content IDs 2, 3, 4, 6, 7, 9, 10 and 14 [M] ([Inventory](#inventory)).
 Spell content IDs (`abilityId + 208` in FF I, with one exception, [Abilities](#abilities)) sit above every item and equipment ID, and none appears in the inventory [M].
 
 - **Placeholders.**
   The game holds a row for each empty-slot ID: the name of 62 reads "Empty" (key `MSG_SYSTEM_069`) and the names of 130 to 133 read "None" (key `MSG_SYSTEM_070`) [D].
   They are content IDs the game uses for an empty slot, not items ([Equipment slots](#equipment-slots)).
+- **Repeated IDs.**
+  The ID tables follow the last row of a repeated ID, as the game does [I].
+  In FF VI, content 1861 maps to ability 1530 and content 1863 to ability 1531, and abilities 1525, 1527, 1528 and 1529 get no content row and no name ([Master data per game](#master-data-per-game)).
 
 ### Go editor tables
 
@@ -1124,17 +1648,17 @@ Identify a character by `id`; names repeat and change.
 |---|---|---|
 | `id` | int | 1 to N, unique [M]; NeoFFSE refuses a file that repeats an `id` [I] |
 | `characterStatusId` | int | FF I 1 to 6, FF II 1 to 10 [M]. FF I: `jobId` = `characterStatusId` + 6 for 4 of 4 promoted characters [M]; the id names the `character_status.csv` row, the base class, whose `hp` is the base of the maximum HP ([Maximum HP and experience tables](#maximum-hp-and-experience-tables)) [M, D, G] |
-| `isEnableCorps` | bool | 4 of 8 FF II characters are `false` [M]; the Go editor runs its per-game ability rules only for `true` [C] |
+| `isEnableCorps` | bool | FF II: `false` on 4 of 8 characters in slot 1, 5 of 8 in the Auto Save and 3 of 7 in the Quick Save [M]; it equals membership of `corpsList` ([People and party in FF II](#people-and-party-in-ff-ii)). The Go editor runs its per-game ability rules only for `true` [C] |
 | `jobId` | int | FF I 7 to 12, FF II 1 to 9 [M]; FF I measured 7, 8, 11 and 12, all promoted classes; names in `job.csv` ([ID spaces and tables](#id-spaces-and-tables)) |
 | `name` | string | raw UTF-8, may hold non-ASCII [M]; two FF I heroes may share a name, FF VI has two Mogs [C, `d8a6c6f`] |
-| `currentExp` | int | [M]; the game caps it at 9 999 999 (`MAX_EXP`) [D] ([Bounds in the master data](#bounds-in-the-master-data)) |
+| `currentExp` | int | [M]; the game caps it at 9 999 999 (`MAX_EXP`) [D] ([Bounds in the master data](#bounds-in-the-master-data)). FF II adds each battle's share to it and shows that share on the result list; no rule reads the total ([Character growth in FF II](#character-growth-in-ff-ii)) |
 | `parameter` | JSON | stats, below |
 | `commandList` | JSON list of ints | FF I `[1,3,4,2,5]`, FF II `[1,3,4,2,5,7]` [M]; the Go editor writes it only when the user enabled command editing [C]. The FF I values read Attack, Magic, Items, Defend and Flee in `command.csv` [M, D] |
 | `abilityList`, `abilitySlotDataList`, `additionOrderOwnedAbilityIds`, `sortOrderOwnedAbilityIds`, `abilityDictionary`, `skillLevelTargets`, `learningAbilitys` | JSON | [Abilities](#abilities) |
-| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries (`id` 1 to 12), FF II 8 [M]. FF I: `level` 1 and `currentProficiency` 0 in every entry of the 8 character states [M]; FF I does not use them [I] |
+| `jobList` | JSON list of `{id, level, currentProficiency}` | FF I 12 entries (`id` 1 to 12), FF II 4 to 8, growing as people join [M]. FF I: `level` 1 and `currentProficiency` 0 in every entry of the 8 character states [M]; FF I does not use them [I] |
 | `equipmentList` | JSON dictionary | keys 1 to 5 (equipment slots), values `{contentId, count}` [M]; `count` above 1 occurs (FF I up to 7, FF II up to 4); slots and `count` in [Equipment slots](#equipment-slots) |
 | `equipmentAbilitys` | JSON list | `[0,0,0]` in FF I and FF II [M] |
-| `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C] |
+| `numberOfButtles`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | int | `0` in FF I [M]; `magicStoneId` is the FF VI equipped esper [C]. In FF II `numberOfButtles` is the Boost battle counter, 0 to 9 ([Character growth in FF II](#character-growth-in-ff-ii)) [B, M] |
 
 NeoFFSE edits the characters in place and never inserts or removes a character row [I].
 
@@ -1310,6 +1834,7 @@ An empty slot holds the placeholder `contentId` of its slot, not 0 [M, 1 entry; 
   In FF I, `count` equals the inventory count of the same `contentId` in 40 of 40 slot entries, placeholder 130 included (count 9, inventory 9) [M].
   In FF II, 54 of 75 entries match and all 21 others sit below the inventory count [M].
   Reading: the game copies the inventory count when a character equips and does not refresh it [I].
+  A battle and a save on an FF II copy rewrote the `count` of party members' slots, so the second half does not hold for them ([Game edits in FF II](#game-edits-in-ff-ii)).
   Whether the game reads `count` at all is open.
 - **Equip and unequip in NeoFFSE.**
   The game interface edits a slot the way the game does [I].
@@ -1317,6 +1842,8 @@ An empty slot holds the placeholder `contentId` of its slot, not 0 [M, 1 entry; 
   Unequip writes the slot's placeholder, copies the count of the placeholder's inventory row into the slot `count` (when the list holds that row) and keeps the item in the inventory.
   The game interface refuses to set a slot `count` by hand, since the equip plan owns it [I].
   The raw interface writes any of these fields alone.
+- **FF II.**
+  Slots 1 and 2 each take a weapon or a shield, and an empty hand holds 47 ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
 
 ### Abilities
 
@@ -1329,14 +1856,19 @@ Ability object: `{"abilityId":int,"contentId":int,"skillLevel":int}`.
 | Game | `contentId − abilityId` | Tag |
 |---|---|---|
 | FF I | 208 | [M] 47 of 47 abilities and slot spells, slot 1 and Quick Save; [D] 95 of 96 `ability.csv` rows, the exception being ability 100 at content 310 (offset 210) |
-| FF II | 207 for spells; ability 711 maps to content 937 (offset 226) | [M] 35 spells at 207; each FF II character holds ability 711 |
-| FF III | 201 | [C] |
+| FF II | 207 on 704 `ability.csv` rows, 226 on 100 rows (ability 711, content 937, is one) and 931 on abilities 1 to 4 | [D] over the 808 rows; [M] 119 entries in 3 slots: 96 spells at 207 (up to 35 in one slot) and 23 entries of ability 711 at 226; each FF II character holds ability 711 |
+| FF III | 250 on the measured entries; the Go editor gives 201 | [M] 16 entries (8 `Other`, 8 `TwoSwordStyle`) at 250; 201 is [C] and no measured entry shows it |
 | FF IV | 310 | [C] |
 | FF V | 266 | [C] |
-| FF VI | 330 | [C] |
+| FF VI | 330 | [M] 142 entries in 2 slots; [C] agrees |
 
 The Go editor applies the offset only to an ability whose `contentId` is 0 [C].
 Ability 711 is missing from its FF II table, which stops at 644 [C].
+
+Every measured entry's `contentId` equals the `content.csv` type-4 row of its `abilityId`: 277 of 277 entries in FF II, FF III and FF VI, with no mismatch and no missing row [M, D].
+FF II has two offsets and FF III's measured offset differs from the Go editor's, so join through `content.csv` and never add a constant.
+The entries of these saves use six `AbilityType` names: `White`, `Black`, `Madou`, `DyingSpAttack`, `Other` and `TwoSwordStyle` ([Ability types](#ability-types)).
+FF IV and FF V saves hold no ability entry in the measured files.
 
 Character keys that reference abilities:
 
@@ -1344,14 +1876,14 @@ Character keys that reference abilities:
 |---|---|---|
 | `abilityList` | ability objects as JSON strings | one entry per `abilityId` [M] |
 | `additionOrderOwnedAbilityIds` | content IDs | the content IDs of `abilityList`, same order, in all 35 characters of the six slots [M] |
-| `sortOrderOwnedAbilityIds` | content IDs | empty or a subset of the owned ones; only FF II had entries [M]; the Go editor never edits it |
-| `abilityDictionary` | dictionary | FF II: key `3` maps to `{"target":[ability JSON strings]}`; FF I: empty [M]; meaning not measured |
-| `skillLevelTargets` | dictionary | FF II: keys 0 to 9 with ints; FF I: empty [M]; meaning not measured |
+| `sortOrderOwnedAbilityIds` | content IDs | empty or a subset of the owned ones; only FF II had entries [M]: the player's spell order [B]; the Go editor never edits it |
+| `abilityDictionary` | dictionary | FF II: key `3`, the Magic command, maps to `{"target":[ability JSON strings]}`, a second copy of the spells; FF I: empty [M, B] ([Spells in FF II](#spells-in-ff-ii)) |
+| `skillLevelTargets` | dictionary | FF II: keys 0 to 9 with ints, the weapon, shield, bare-hand and evasion proficiency; FF I: empty [M, B] ([Skill levels in FF II](#skill-levels-in-ff-ii)) |
 | `learningAbilitys` | list | empty in FF I and FF II [M] |
 
 `userData → learnedAbilityList` holds ability IDs.
 In FF I it equals the union of the party's `abilityId`s as a set (47 IDs in slot 1 and the Quick Save), and its order is not ascending [M, 4 slots].
-In FF II it does not equal that union, and its meaning is unknown [M].
+In FF II it does not equal that union: it holds every ability ID that a learning wrote, across the party, and keeps it after a row change or a forget; slot 1 holds 46, with 711 first [M, B] ([Spells in FF II](#spells-in-ff-ii)).
 
 **FF I spell slots** [M].
 `abilitySlotDataList → target[]` holds 8 JSON strings, one per spell level: `{"level":1..8,"slotInfo":"<JSON>"}`.
@@ -1374,14 +1906,18 @@ The two spellcasters hold 47 spells in all, `abilityId` 5 to 68, every one in `A
 
 **`skillLevel`.**
 FF I: `0` [M].
-FF II: spell proficiency, 0 to 456 measured; the Go editor edits it as a level [M, C].
+FF II: the proficiency total of the spell on the `exp_table.csv` curve, not a level; the highest spell value measured is 456, level 11 ([Skill levels in FF II](#skill-levels-in-ff-ii), [Spells in FF II](#spells-in-ff-ii)) [M, B].
+The Go editor edits it as a level [C]: slot 2 holds the 400 that it wrote on 12 spells ([Row and value in FF II](#row-and-value-in-ff-ii)).
 FF VI: learning percentage, 100 means learned [C].
 
 ### Party
 
 `userData → corpsList` lists the active party; keep `characterId` values pointing at existing character `id`s.
+FF II also uses `characterId` 0 for an empty seat.
 
 - `corpsList → target[]`: 4 JSON strings `{"id":1,"characterId":n}` in FF I, FF II, FF III, FF V and FF VI, 5 in FF IV; `id` is 1 in each entry in FF I and FF II [M].
+  In FF II `id` is `Last.Defaine.User.CorpsId`, Front 1 and Back 2 [B]; FF I's 1 reads as Front too [I].
+  FF II's Auto Save holds `characterId` 0 in its fourth seat [M].
   NeoFFSE lists the party in the order of this list [I].
   The measured files do not show whether that order is the battle order.
   The editor view lists every character in the order of `ownedCharacterList`, in the party or not [I].
@@ -1390,7 +1926,7 @@ FF VI: learning percentage, 100 means learned [C].
   FF VI uses several parties [C].
 - `userData.corpsSlotIndex`: `0` in all six slots [M].
 - `mapData.playableCharacterCorpsId`: 0 to 3 [M]; meaning not measured.
-- `userData → releasedJobs → target`: FF I 1 to 12, FF II 4 entries [M].
+- `userData → releasedJobs → target`: FF I 1 to 12, FF II 3 or 4 entries: 4 in the Quick Save, slot 1 and slot 2, and 3 in the Auto Save [M].
 
 ### Inventory
 
@@ -1403,9 +1939,11 @@ FF VI: learning percentage, 100 means learned [C].
   None of the 221 rows of `normalOwnedItemList` in the four measured FF I slots holds a content ID from 45 to 61 [M, 4 slots].
   NeoFFSE resolves the row keys of `inventory` in the item and equipment tables only, and the row keys of `key_items` in the key item table [I].
 - `importantOwendItemList`: same shape.
-  Every measured row holds `count` 1 [M].
+  Every measured row of FF I and FF II holds `count` 1 [M].
   In FF I it holds 9 or 10 entries, IDs 45 to 61, all in `ImportantItems` [M].
   In the game's data these IDs are the key items, `item.csv` `type_id` 2 [D].
+  In FF II, the 20 rows of the three game-written files (Quick Save 6, slot 1 7, Auto Save 7) and the 7 rows of the editor-written slot 2 hold the integer 1 [M].
+  Those rows carry the content IDs 2, 3, 4, 6, 7, 9, 10 and 14 and no others, so the saves say nothing of the other FF II key items.
   The game holds one of each key item and never shows a key-item `count` above 1 [I], so `MAX_ITEM` does not apply to this list.
   A format that edits the way the game does keeps every key-item `count` at 1 [I]: NeoFFSE's game interface refuses to set a key-item `count` and to insert a key item with another `count` [I].
 - **The inventory includes equipped items.**
@@ -1428,7 +1966,7 @@ FF VI: learning percentage, 100 means learned [C].
   FF II slot 1 and FF II Auto Save hold 23, each one an owned item; the other four slots hold none [M].
   The Go editor drops rows with `contentId` 0 and keeps the sort list unless the user resets it [C].
 - `warehouseItemList`, `ownedMagicList`: empty in FF I and FF II [M].
-- `ownedKeyWaordList → target`: FF II keywords, ints 917 to 931 [M]; content IDs [I].
+- `ownedKeyWaordList → target`: FF II keywords, ints 917 to 931 [M]; they are the content IDs of the type-6 rows ([Content types 5 to 9](#content-types-5-to-9)) [M, D].
 
 ### Party position and map
 
@@ -1469,8 +2007,8 @@ The count identifies the game ([Telling the games apart](#telling-the-games-apar
 - The list does not track ownership.
   `enable` is `false` in every entry of every file, and 0 to 2 entries per file sit on a map (`mapId` not −1).
   The FF V files come from an early-game, one-character save and hold 19 entries [M].
-- FF I's master data, `transportation.csv` (build 20249397), has 4 rows with IDs 1 to 4, the IDs the FF I saves hold [D].
-  The tables of FF II to VI are unread, so their counts stay a reading of the saves [M].
+- `transportation.csv` has the rows and IDs of the table above in each of the six games [D].
+  FF III lacks IDs 4 and 7 and FF V lacks ID 16 in the master data as well.
 - The count does not grow with progress within the measured range: late FF I saves hold 4 entries and early FF V saves hold the full 19 [M].
 - Keys: `position` (`x`, `y`, `z` floats), `direction` (0 to 8), `id`, `mapId`, `enable`, `timeStampTicks` [M].
 - An unplaced vehicle has `mapId` −1 and a position such as `(1000.0, 1000.0, -1000.0)` [M].
@@ -1487,7 +2025,7 @@ The count identifies the game ([Telling the games apart](#telling-the-games-apar
 
 | Key in `userData` | Type | Notes |
 |---|---|---|
-| `owendGil` | int | the game caps it at 999 999 (`MAX_GIL`) [D] |
+| `owendGil` | int | the game caps it at 999 999 in FF I and 9 999 999 in FF II to VI (`MAX_GIL`) [D] ([Master data per game](#master-data-per-game)) |
 | `totalGil` | int | `0` in all six slots |
 | `playTime` | float | seconds; an invented example is `13621.814333377138` |
 | `steps`, `escapeCount` | int | `0` in all six slots |
@@ -1573,13 +2111,564 @@ Keep `scenarioFlags`, unknown keys and number text as read [C].
 
 The saves show the FF VI key names in `mapData` [M].
 The measured FF VI saves come from early game: they hold no esper and no filled `playerEntity` of another party.
-The rules below come from the Go code [C].
+The rules below come from the Go code [C] unless a tag says otherwise.
 
 - Espers: `userData → ownedMagicStoneList → target` lists owned esper IDs; a character's `magicStoneId` holds the equipped one.
-- Magic: each spell sits in `abilityList` with `skillLevel` as the learning percentage; 100 means learned; `contentId = abilityId + 330`.
+  The 27 espers are the type-9 rows of `content.csv`, contents 62 to 88, so the IDs are content IDs ([Content types 5 to 9](#content-types-5-to-9)) [B, D, C].
+  No measured save holds an esper, so the stored form is unproven ([Open questions](#open-questions)).
+- Magic: each spell sits in `abilityList` with `skillLevel` as the learning percentage; 100 means learned [C]; `contentId = abilityId + 330` [M, C].
 - Other parties: `mapData.otherPartyDataList` is a plain array of objects `{mapId, pointIn, playerEntity, playableCharacterCorpsId}`, with `playerEntity` a JSON string as in [Party position and map](#party-position-and-map).
   Related keys: `partyPlayableCharacterCorpsId`, `currentSelectedPartyId`.
 - Cursed Shield fights: `dataStorage.global[9]`.
+
+### FF II
+
+FF II has no character level and no experience rule.
+At the end of a battle, `Last.Systems.StatusUpProvider::Execution` raises weapon and spell proficiency, then HP, MP and six stats, from the battle log [B].
+A spell's level sits in its `abilityId`, one of 16 consecutive IDs of its chain, and `skillLevel` holds the proficiency total.
+The figures below are for build 20251646, and each [B] fact names the class and method that hold the rule.
+
+Four FF II files back the [M] facts:
+
+| Label | File | Writer | `battleCount` | Characters | Keywords |
+|---|---|---|---|---|---|
+| Quick Save | `Rl18osV3…` | game | 408 | 7 | 6 |
+| Slot 1 | `ookrbATY…` | game | 768 | 8 | 12 |
+| Auto Save | `7nCxyzTw…` | game | 769 | 8 | 12 |
+| Slot 2 | `vgU2wnua…` | KiameV's editor | 768 | 8 | 12 |
+
+"31 character states" counts the rows of all four files (7 + 8 + 8 + 8), the editor-written slot 2 included.
+"Game-file states" leaves out slot 2 and counts 23.
+
+The files cannot test these cases, so the rules for them rest on [B] and [D]: a bow equipped, a spell or weapon skill at level 16 (the highest measured are level 11 for a spell and a value of 533 for a weapon skill), a stat at its cap, a back-row member, the return of Leon (status 9), Ultima, a run with the Boost settings of `cheatSettingsData` off or at other rates, and an Auto Save with no editor pass in its history.
+
+#### Skill levels in FF II
+
+**Where the save holds them.**
+`skillLevelTargets` is a `{keys, values}` dictionary with keys 0 to 9 on every FF II character [M, 31 states].
+The keys come from `Last.Defaine.SkillLevelTarget` [B]:
+
+| Key | Enum name | Reads | Level from | Top value |
+|---|---|---|---|---|
+| 0 | `WeaponSword` | swords | `exp_table.csv` | 860 |
+| 1 | `WeaponKnife` | knives | same | 860 |
+| 2 | `WeaponSpear` | spears | same | 860 |
+| 3 | `WeaponAxe` | axes | same | 860 |
+| 4 | `WeaponCane` | staves and rods | same | 860 |
+| 5 | `WeaponBow` | bows | same | 860 |
+| 6 | `WeaponShield` | shields | same | 860 |
+| 7 | `WeaponWrestle` | bare hands | same | 860 |
+| 8 | `PhysicalAvoidance` | evasion | `value / 100 + 1` | 1 500 [C] |
+| 9 | `AbilityAvoidance` | magic evasion | `value / 100 + 1` | 1 500 [C] |
+
+The enum also names `RightArm` 10 and `LeftArm` 11, and no save holds them [M].
+`Serial.FF2.Management.SystemConfigData::.ctor` lists targets 0 to 9 [B].
+
+`StatusUpProvider::.cctor` maps the `weapon.csv` `category_type` to a target [B, D]: 1 sword, 5 knife, 6 spear, 8 axe, 10 cane, 12 bow, 43 bare hands (held by content 47 alone).
+`StatusUpProvider::GetSkillUpWeaponTarget` returns 6 for a held armor row, which is a shield, and 7 by default [B].
+Spell proficiency sits in the `skillLevel` of the spell entries ([Spells in FF II](#spells-in-ff-ii)).
+
+**The value.**
+`skillLevel` and the weapon values are totals.
+`ExpUtility::GetExpLevel` takes the highest `exp_table.csv` row whose `total_exp` does not pass the value, and `ExpUtility::GetNextTotalExp` takes the next row's total [B].
+Both read the single curve of 16 rows, with `total_exp` 0, 20, 45, 70, 100, 135, 175, 220, 270, 330, 400, 480, 570, 660, 760 and 860 [D].
+`Last.UI.SkillLevelProvider::SettingSkillLevel` shows that level as text and fills a gauge from `ExpUtility::GetNextExp` and `GetExpDifference`.
+It pins the gauge when the text equals `MAX_MAGICAL_LEVEL`, 16 [B].
+`Serial.FF2.UI.KeyInput.StatusDetailsController::UpdateView` calls it for each skill row with `SkillLevelTargets[target]` [B].
+
+The screen shows an evasion level as `value / 100 + 1`, the formula growth uses: the values 252 and 342 of one character show levels 3 and 4, where `exp_table.csv` would give 8 and 10 [G].
+So the evasion rows skip the `exp_table.csv` reading of `SettingSkillLevel`, and the code that draws them is unread.
+
+Every game-written spell row fits the curve: on the Quick Save and slot 1, the row of the 61 spell entries gives the `exp_table.csv` level of the `abilityList` `skillLevel` in 61 of 61 cases [M].
+Examples: ability 335 (level 11) at 456, ability 12 (level 8) at 251 and ability 330 (level 6) at 139.
+Public guides state 100 points per level for weapons [C, RPG Site].
+Build 20251646 reads `exp_table.csv` for weapons, shields and bare hands [B], and the starting values agree: 20 is level 2 and 45 is level 3 [M, D].
+
+**The rule that raises them.**
+`StatusUpProvider::Execution` runs per character at the end of a battle.
+It calls `ExecutionSkillUpWeapon`, `ExecutionSkillUpMagic`, `ExecutionSkillUpPhysicalAvoidance`, `ExecutionSkillUpAbilityAvoidance` and `ExecutionParameterUp` in that order [B].
+`level` below is the skill's current level.
+`rank` is `Last.Battle.BattleSkillUpInformation.MonsterAverageRank`, the battle's enemy rank (the Rank paragraph below).
+The log filters read the actor from `BattlePlayerData` and exclude item uses (`<Execution>b__15_0` and `b__1`).
+
+| Skill | Uses counted | Gain | Then |
+|---|---|---|---|
+| Weapon | `Fight` (type 4) log rows of the hand's target; a non-shield attack with a shield in the other hand counts for both the weapon and the shield | `max(uses - level + rank + 10, 0)`; no gain when that value is at most 10 | `min(value + gain, next total)` |
+| Spell | log rows of that `abilityId` with type 1 or 2, from the character | `max(uses - level + rank + 2, 0)` | same; at the next total the row changes |
+| Physical evasion | enemy rows of ability type 3 or 4 that name the character among their targets (`b__19_0`); `level` is `value / 100 + 1` | `max(uses - level + rank - 3, 0)`; a character named by `ForcedAvoidanceCountUpCharacterId` takes an extra 1 | cut at the next multiple of 100 |
+| Magic evasion | enemy magic rows that target the character (`b__20_0` to `_2`, bodies unread) | `max(uses - level + rank + 4, 0)` | same |
+
+Gains pass the Boost settings of `cheatSettingsData` through `CheatSettingsClient` [B].
+`learningProficiencyRate` scales weapons, `magicLearningProficiencyRate` scales spells and magic evasion, and `parameterUpRate` scales physical evasion.
+Each is read at its field offset in `Last.Data.CheatSettingsData`.
+`CheatSettingsClient::GetResultMagicLearningProficiency` returns `CeilToInt(gain x rate)`, so a gain of 0 stays 0 at any rate [B].
+
+**Rank.**
+`BattleController::StartWinResult` calls `BattleUtility::CalcAverageMonsterRank` on the battle's enemies and passes the result to the `BattleSkillUpInformation` constructor [B].
+The method sums `monster.csv` `exp` over every enemy of the battle, killed ones included, divides by their count and truncates [B].
+Only `BattleFunction20::CreateEnemy` removes an enemy from the list, and the target of an act plays no part [B].
+`exp` runs from 1 to 7 on all 142 monsters, and the 1 183 parties of `monster_party.csv` give ranks 1 to 7, 73 of them 7 [D].
+Community guides give a rank of the same range [C, RPG Site].
+
+**What the rule means.**
+`level` comes from the stored value, never from the ability row [B].
+A spell gains in a battle only when `casts + rank - level + 2` is above 0: at rank 7, one cast works up to level 9, and level 10 needs two [B, D].
+The smallest cast count with any gain is `level - rank - 1`, at least 1.
+A weapon gains only when `uses + rank` exceeds the level, and then by at least 11 [B].
+An act adds one log row whatever its target count, so a spell cast on four targets counts once [B, I]; one call site was read and no test confirms it ([question 51](#open-questions)).
+
+- **Caps.**
+  `GetNextTotalExp` returns 0 at the top, and the code skips the skill.
+  The `min` holds a value at the next total, so one battle raises a skill by one level at most.
+  Evasion stops at level 16, or when `ConfirmedEvasionCount` or `ConfirmedMagicDefenseCount` reaches 16 (`MAX_EVASION_TIMES_LEVEL`, `MAX_ABILITY_DEFENSE_TIMES_LEVEL`), so 1 500 is the top value [B, C].
+- **Decline.**
+  None.
+  `ExecutionSkillUpWeapon` and its siblings subtract nothing from a stored value, and the gain's floor is 0 [B].
+- **Menu cast.**
+  `StatusUpProvider::SkillUpAbilityUsedInMenu` adds `AbilityUsedInMenuSkillUpValue`, 2, through the magic rate, under the same `min` and the same row change [B].
+  It does not help ability 30, whose `menu_function_group_id` is 0; 5 of the 40 chains have a menu function, with first rows 261, 325, 341, 373 and 613 [D].
+
+**Start values.**
+`Serial.FF2.Management.JobInfomationData::SetSkillLevel`, called by `OwnedCharacterClient::AddFromMaster`, sets keys 0 to 7 to the `total_exp` of a level per status row.
+The levels come from `JobInfomationData::.ctor` [B]:
+
+| Status | Sword | Knife | Spear | Axe | Cane | Bow | Shield | Bare |
+|---|---|---|---|---|---|---|---|---|
+| 1 to 4, 10 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| 5 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 2 |
+| 6 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+| 7 | 4 | 4 | 1 | 1 | 1 | 3 | 1 | 1 |
+| 8 | 7 | 1 | 7 | 1 | 1 | 1 | 4 | 1 |
+| 9 | 7 | 4 | 6 | 8 | 5 | 3 | 2 | 2 |
+
+The saves agree: the status 6 character reads 20 on its untrained keys, and the status 7 character reads 0 for the unused spear, axe and shield and 45 for the bow [M].
+
+#### Character growth in FF II
+
+**Fields.**
+
+| Field | FF II meaning | Evidence |
+|---|---|---|
+| `addtionalLevel` | 1, written once at creation; no screen draws it and no FF II branch takes it | 31 of 31 character states [M]; readers in the paragraphs below [B, D] |
+| `currentExp` | battle experience, added at battle end; the result list shows each share, and no rule reads the total | the shares match across the party, with values from 888 to 3 306 for two members; a guest out of the party keeps its value [M]. `StatusUpProvider::Execution` and its callees call no `GetExpLevel` on it [B] |
+| `exp_table.csv` | the proficiency curve, not a character curve | `SkillExpTableGroupId` is 1 in `StatusUpProvider`, and every caller passes 1 [B] |
+| `growth_curve.csv`, `intermediate_growth_curve.csv` | empty | header only [D] |
+| `addtionalMaxHp`, `addtionalMaxMp` | gain over `character_status.hp` and `mp` | rule below [M, D, B] |
+| `addtionalPower`, `addtionalVitality`, `addtionalAgility`, `addtionalIntelligence`, `addtionalSpirit`, `addtionalMagic` | gain over the status row's stat | rule below |
+| `addionalWeight`, `addtionalLuck`, `addtionalAttack`, `addtionalDefense` and the rate and count fields | 0 on 31 states | [M]; `StatusUpProvider` writes none of them [B] |
+| `numberOfButtles` | Boost battle counter, 0 to 9 | rule below [B, M] |
+
+A character's base sits in the `hp`, `mp`, `strength`, `vitality`, `agility`, `intelligence`, `spirit`, `magic` and `luck` columns of `character_status.csv` [D]. Power reads `strength`: the `addtionalPower` gain caps at `MAX_STRNGTH` [I].
+
+`Serial.FF2.UI.KeyInput.StatusDetailsController::UpdateView` writes to `expText` and `nextExpText`.
+Both are null in `status_details.prefab`, so the status screen shows no level, experience or next-level row [B, D].
+The level text sits under an inactive object of that prefab, and `GetNextExp` returns 0 in FF II: it passes group 0, and `exp_table.csv` holds only group 1 [B, D].
+
+**Readers of `currentExp`.**
+`BattleResultProvider::Genelate` adds the battle's share to each character at every won battle.
+The one reachable display is the result list (`ResultCharacterListContentController::SetData`): it shows the share and counts it down to 0.
+The total reaches no screen.
+The share exceeds what one count per kill gives: in one battle on an edited copy each of four members gained 12, a total of 48 to 51, while the highest `monster.csv` `exp` sum of any enemy party is 40 [M, edited copy; D].
+So the battle's experience counts a kill more than once; that `UnableFightConditionFunction::Start` and `DejongConditionFunction::Start`, which each call `SetExpditionMonsters`, both run per death is [I].
+No FF II formula, shop, event, script or level-up reads `currentExp` [B, D].
+The headers of the list's Exp and Next columns have no text in `system_en.txt`, so the English screen should show a name, an empty column and the number under empty headers [B, D, I].
+No in-game reading confirms this ([question 47](#open-questions)).
+
+**Readers of `addtionalLevel`.**
+`OwnedCharacterClient::AddFromMaster` writes it once, at creation, and it holds 1.
+Every reachable reader ends in a null text, an inactive object or a branch no FF II data takes [B, D, M].
+On an edited save, a level above 1 changes nothing the code names ([question 48](#open-questions)).
+
+**The growth rule.**
+`StatusUpProvider::ExecutionParameterUp` applies it [B].
+`natural` is the status base plus the stored gain, clamped by its cap (`PlayerCharacterParameter::NaturalMaxHp`, `NaturalPower`).
+`roll(n)` is `Random.Range(0, n + 1)`.
+
+| Stored field | Trigger | Gain | Stops at |
+|---|---|---|---|
+| `addtionalMaxHp` | damage in this battle above 0, and `roll(9)` at least `ConfirmedMaxHp / damage` | `min(ConfirmedVitality, 99)` | `NaturalMaxHp` reaches `MAX_HP` 9 999 |
+| `addtionalVitality` | the same trigger | 1 | `MAX_VITALITY` 99 |
+| `addtionalMaxMp` | MP spent plus MP damage above 0, and `roll(9)` at least `ConfirmedMaxMp / used` | `min(ConfirmedMagic, 99)` | `MAX_MP` 999 |
+| `addtionalMagic` | the same trigger | 1 | `MAX_MAGIC` 99 |
+| `addtionalPower` | count of `Fight` rows above `roll(min(45, natural))` | 1 | `MAX_STRNGTH` 99 |
+| `addtionalIntelligence` | count of type-2 rows above `roll(min(25, natural))` | 1 | `MAX_INTELIGENCE` 99 |
+| `addtionalSpirit` | count of type-1 rows above `roll(min(15, natural))` | 1 | `MAX_SPRIT` 99 |
+| `addtionalAgility` | `ConfirmedEvasionRate / 4` above `roll(255)` | 1 | `MAX_AGILITY` 99 |
+
+The tables sit in `StatusUpProvider::.cctor` as `AdditionalParameterRandomTable` and `AdditionalParameterCalcTable`, keyed by `Last.Defaine.ParameterType` (2 HP, 3 MP, 4 Power, 5 Vitality, 6 Agility, 8 Intelligence, 9 Spirit, 14 Magic) [B].
+The trigger's division is integer division.
+`Execution` seeds the generator with `ConfirmedAgility * JobId * seed`, and `Last.Systems.BattleResultProvider::Genelate` takes the seed from `DateTime.Now.Millisecond` [B].
+As in FF I, no tool can recompute the stored gains.
+
+**Boost.**
+`ExecutionParameterUpHp` reads `isHpIncreaseByFightCount`.
+On a battle with no HP raise, the counter `numberOfButtles` rises; at 10 it resets and the character gets the HP gain without the Vitality point [B].
+Measured: `numberOfButtles` holds 0 to 9 on 31 states, `isHpIncreaseByFightCount` is `true` in all four files and `parameterUpRate` is 1 [M].
+
+**Checks on the saves.**
+Between the Quick Save and slot 1, 360 battles apart, for characters in the party throughout [M, D, C]:
+
+| Character, field | Stat range | Stat gains | Sum of the gain per stat point | Stored gain | Rest |
+|---|---|---|---|---|---|
+| 2, MP | Magic 19 to 33 | 14 | 357 | 357 | 0 |
+| 1, MP | Magic 5 to 6 | 1 | 5 | 5 | 0 |
+| 3, MP | Magic 5 to 6 | 1 | 5 | 5 | 0 |
+| 1, HP | Vitality 20 to 40 | 20 | 590 | 1 659 | 1 069 |
+| 2, HP | Vitality 20 to 41 | 21 | 630 | 1 710 | 1 080 |
+| 3, HP | Vitality 22 to 44 | 22 | 715 | 1 820 | 1 105 |
+
+The MP rows match the sums with no remainder, with the gain taken before the Magic point.
+The HP rest fits the Boost path: 360 battles at one gain per 10 give at most 36 gains, and 1 069, 1 080 and 1 105 divide into 36 gains of 29.7, 30.0 and 30.7, inside each Vitality range.
+That shows the size of a gain and leaves the rate of the Boost path open.
+Two alternatives fail.
+A fixed MP gain fails: 357 over 14 points is no constant, and characters 1 and 3 show 5.
+A gain taken after the Magic point would give 371 and 6.
+
+**Differences from FF I.**
+
+| FF I rule | FF II |
+|---|---|
+| `addtionalLevel` follows `currentExp` | fails: 1 at every experience measured |
+| Level cap `MAX_LV` 99 | the row exists, and no growth reads it [B]; the level stays at 1 |
+| Growth replay from `growth_curve.csv` | does not apply: the file is empty, so FF I's step finds no row |
+| Next level `total_exp(L + 1) - currentExp` | does not apply: `currentExp` passes 860 on 4 of 8 characters in slot 1 [M] |
+| Stored gains over a base file | holds: `min(base + gain, cap)`, and the file stores no maximum [M, B] |
+| The game stores raw sums and caps on read | holds for reads; the game's raise stops at the cap, so its own saves stay at or under it [B] |
+
+**Reading a stored gain.**
+The game reads `min(max(base + gain, 0), cap)` [B].
+A Power gain of 120 on a copy shows Power 99 [G], and after a battle and a save the stored 120 is unchanged [M, edited copy]: the game clamps on read and does not write the field back.
+Whether a raise stops at the cap is untested, since no raise was attempted ([question 42](#open-questions)).
+The load path keeps any stored value [I].
+A gain with `base + gain` at or under the cap is a state the game can reach, and no battle count or proficiency enters the stored gain [B].
+The base comes from the character's `character_status.csv` row, and the caps are [D]:
+
+| Field | Cap key | Cap |
+|---|---|---|
+| Max HP | `MAX_HP` | 9 999 |
+| Max MP | `MAX_MP` | 999 |
+| Power, Vitality, Agility, Intelligence, Spirit, Magic | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_MAGIC` | 99 |
+
+NeoFFSE's game interface refuses a Max HP, Max MP or stat gain above `cap - base`: the edit fails as `AboveCap`, and the cap it reports is `cap - base` [I].
+It answers `UnknownId` for a status with no base row and `UnknownField` for a character with no `characterStatusId`.
+The raw interface caps no FF II gain, even under `Enforce`: it takes any value inside the storage bound.
+
+Wounded states occur in slot 1: current HP 468 of 491, 430 of 513 and 648 of 771 [M].
+The maximum HP is not the current HP in FF II, which answers [question 20](#open-questions) for this game.
+`MAX_LUCK` exists, the status rows hold 0 for Luck and nothing raises it [D, B].
+
+**Fields in NeoFFSE.**
+FF II has no Level, Experience or Luck field in either mode, and NeoFFSE keeps the stored `addtionalLevel`, `currentExp` and `addtionalLuck` as they are [I].
+The Person (`jobId`) is read only.
+Current HP and current MP stop at `MAX_HP` and `MAX_MP`, and Max HP and Max MP are computed, read-only fields: the base of the status row plus the stored gain, held to the cap [I].
+A skill is edited as its stored total, and NeoFFSE computes no level for display [I].
+
+#### Spells in FF II
+
+**Chains and levels.**
+`ability.csv` IDs 5 to 644 form 40 spells of 16 rows each, and the spell level is `(abilityId - 5) mod 16 + 1` [D].
+`use_value`, the MP cost, and `attack_count` both equal the level on 640 of 640 rows, and the 16 rows of a chain share one `mes_id_name` [D].
+`ability_lv` stays 0 ([Master data per game](#master-data-per-game)).
+The `type_id` varies by chain: 20 chains hold type 1 and 20 hold type 2 [D].
+
+`Misc.MiscAssetDesc.magic_level_acquisition_table` lists each step [D].
+`magic_level_acquisition_table` is a top-level key of the JSON object in `Assets/GameAssets/Serial/Data/Misc/serial_misc_assets.json`, the only entry of `misc_assets_all_<hash>.bundle` that is a TextAsset [D].
+Its value is a list of 640 pairs `{current_ability_id, next_ability_id}`.
+`next_ability_id` is `current_ability_id + 1`, or 0 on the sixteenth row of a chain.
+A level-up replaces the ability entry with the next ID [B].
+
+| Rule | FF I | FF II |
+|---|---|---|
+| Layout | 8 levels of 3 slots | a flat list of up to 16 spells; `abilitySlotDataList` has FF I's shape and every value is `""` on 31 states [M] |
+| Spell level | `(id - 5) / 8 + 1` | `(id - 5) mod 16 + 1` |
+| School | from the offset inside the level | from the chain: `type_id` 1 or 2 |
+| `contentId - abilityId` | 208 | 207 on the spells measured ([Abilities](#abilities)) |
+| Charges | per spell level | none: spells cost MP; `currentMpCountList` and `addtionalMaxMpCountList` hold zeros [M], and `MAX_MAGICAL_TIMES` does not exist [D] |
+| `abilityList` | equals the slots | adds ability 711 |
+
+**Learning.**
+The 40 tomes are `item.csv` rows reached by contents 151 to 190.
+Each row's `menu_function_group_id` names a `function_group.csv` row with `function1_id` 47 (`LearningAbility` in `Last.Defaine.Master.FunctionType`) and `function1_value2` set to the first row of a chain: 5, 21, 37 and so on to 629 [D, B].
+`Serial.FF2.Management.UseItemData::IsUseLearningAbility` decides whether a tome works [B]:
+
+- `TargetCommandId` is 3 and `LearningMaxCount` is 16 (`.ctor`).
+  `Last.Management.AbilityFilter::GetAbilityList` counts the abilities of the character that the Magic command lists, and a count of 16 refuses.
+- `CreateGroup` walks the chain, up to 16 rows, and an owned row of the same chain refuses.
+
+`OwnedCharacterClient::AddAbility(characterId, abilityId)` writes [B]:
+
+- a new entry with `skillLevel` 0 at the end of `abilityList`,
+- the content ID at the end of `additionOrderOwnedAbilityIds`,
+- the rebuilt dictionary, through `Last.Systems.AbilityUtility::SetTargetAbilityList`,
+- the ability ID in `learnedAbilityList` when absent.
+
+It refuses a repeated ability, an unknown character and an ability with no content row.
+Measured: the status 4 character holds 16 spells in all files, and ability 711 sits beside them, outside the count [M].
+The tomes reach the 40 first rows of the chains, IDs `5 + 16k` for k from 0 to 39, and no other row [D, B].
+`ability.csv` holds 116 more rows of type 1 or 2 (645 to 805, with gaps) with item-use and battle keys, and no tome points to them; no character holds one [D, M].
+
+**Forgetting.**
+`Serial.FF2.UI.KeyInput.AbilityWindowController::FIxForgetAbility` calls `OwnedCharacterClient::ForgetAbility`, which calls `RemoveAbility` [B].
+It removes the entry from `abilityList` and from each dictionary list that holds it, and the content ID from `additionOrderOwnedAbilityIds` (`OwnedCharacterData` +0x40).
+It leaves `sortOrderOwnedAbilityIds` alone, and `learnedAbilityList` keeps the ID: no code path removes it [B].
+Relearning runs `AddAbility`, so the spell restarts at the first row with 0 proficiency, unless the unread consumer of `SystemConfigData.IsTransferSkillLevel` (which returns 1) changes that ([question 43](#open-questions)).
+
+**Spell level and the row change.**
+In `StatusUpProvider::ExecutionSkillUpMagic`, a `skillLevel` that reaches the next total makes the game take `next_ability_id` from the chain table [B].
+It finds the type-4 content row, builds a new `OwnedAbility` with that ability, content and value, and swaps it in place in `abilityList`.
+It replaces the content ID in `additionOrderOwnedAbilityIds` and `sortOrderOwnedAbilityIds` in place, or appends it when absent, and swaps the entry in the dictionary list of every command that holds it.
+
+**Edited levels.**
+A Level edit writes `total_exp(level)`, which the game reads back as that level with no progress [B, D].
+From level 10 on, single casts gain nothing ([Skill levels in FF II](#skill-levels-in-ff-ii)): a spell edited to level 10 gains only when a battle holds two casts at rank 7, or more at a lower rank, and a higher level needs more casts.
+No value of the Level edit misbehaves, and level 16 at 860 never gains [B].
+A raw `Proficiency` of 860 on a row that is not the chain's top row freezes that row: the method skips the entry before it looks at the row change [B, I].
+NeoFFSE does not prevent that value in expert mode, where `proficiency` accepts 860 on any row.
+No battle has shown a positive spell gain, so the constant +2 of the spell rule rests on the code alone ([question 51](#open-questions)).
+
+**Level in NeoFFSE.**
+NeoFFSE reads a spell's level from the row, by `(abilityId - 5) mod 16 + 1` [I], which is the level the game shows [G] ([Row and value in FF II](#row-and-value-in-ff-ii)).
+It pairs an `abilityList` entry with its `abilityDictionary` key 3 entry by chain and takes the first entry of the chain in each list [I].
+A Level edit writes up to eight stored places, listed in [Row and value in FF II](#row-and-value-in-ff-ii), and skips a place that already holds its target value, apart from the first [I].
+The edit finds every place it writes before it writes the first one.
+A spell with no entry in the key-3 `abilityDictionary` copy, or none in `abilityList`, fails as an unknown field, and nothing is written [I].
+When an order list lacks the old content ID, NeoFFSE leaves that list unchanged, where the game appends the new ID.
+On a pair whose row and `skillLevel` disagree, the game shows the row's level as well, and its gauge follows the value, as that section describes.
+
+#### Row and value in FF II
+
+**Row and value are two facts.**
+The game changes them together, and nothing in the file ties them.
+Slot 2, which KiameV's editor wrote, differs from slot 1 on 12 spell entries of one character, and the editor wrote `skillLevel` 400 on each with the rows unchanged ([Slot 2 of FF I and FF II](#slot-2-of-ff-i-and-ff-ii)) [M, editor file].
+The Auto Save holds 456 on the same 12 entries.
+The game wrote that file, with a `battleCount` of 769 against 768, and the rows of the 12 entries give levels 1 to 8 [M].
+The battle rule does not explain 400 becoming 456: a battle adds a small gain and moves no row.
+A further editor pass before the game loaded the data would fit [I]; nothing confirms it.
+The Auto Save shows that the game writes a mismatched pair without repair [M].
+Its 12 entries stay out of every check on game rules.
+
+A spell whose value passes its row's band shows the row's level, and its gauge follows the value [G, earlier run with another editor, written bytes unchecked].
+The next level takes the experience of the value's level: a level 1 spell filled to level 4 stays level 1 and needs the experience of level 4 to reach level 2 [G, same run].
+`ExecutionSkillUpMagic` moves one row at each next total [B], and the MP cost and power stay those of the row [B, I].
+Only a raw expert edit of `proficiency` makes that state: NeoFFSE's Level field reads the row and writes row and value together.
+A level change that matches what the game writes sets up to eight stored places for one spell of one character, one value each [B, I]:
+
+1. on the `abilityList` entry: the `abilityId` of that level in the chain, the content ID of its type-4 row, and `skillLevel`, set to `total_exp(level)`,
+2. the same three values on the entry in `abilityDictionary` key 3,
+3. the old content ID in `additionOrderOwnedAbilityIds`, replaced in place,
+4. the old content ID in `sortOrderOwnedAbilityIds`, replaced in place when it holds it.
+
+**The two copies.**
+`OwnedCharacterData` holds `OwnedAbilityList` at +0x18 and `AbilityDictionary` at +0x50 [B].
+Its copy constructor builds new `OwnedAbility` objects for each.
+`BattleResultProvider::Genelate` installs a copy after growth (`OwnedCharacterClient::SetOwnedCharacter`), and `ExecutionSkillUpMagic` sets the value on the list's object [B].
+So the dictionary's value goes stale until the row changes.
+
+Measured on the three game files: the two copies hold the same IDs in the same order, minus 711, on every character.
+15 of the 16 spells of the status 4 character are equal, and the rest differ with the list at or above the dictionary, for example 251 against 227 and 83 against 70 [M].
+The dictionary row equals the level of its own value on all 96 game-file entries [M].
+On the four files, key 3 is absent when, and only when, a character holds no spell, and its entry count equals the character's spell count, ability 711 excluded, on all 31 character states [M].
+The Magic screen draws the `abilityList` copy: character 2's spell 12 holds 251 in `abilityList` and 227 in `abilityDictionary`, and its gauge fills about 64% by eye, where 251 in the band 220 to 270 gives 62% and 227 gives 14% [G].
+
+**The Magic list.**
+`command.csv` row 3 names `ability_group_id` 1, `ability_group.csv` holds group 1 with `type_id` 1 and 2, and `chanting.csv` rows 1 and 2 give the ability types 1 and 2 [D].
+`SystemConfigData::IsAbilityGroupCheck` returns 1 [B], and `command_lv` and `ability_lv` are 0, so the level filter passes every ability [D].
+The Magic list holds the owned abilities of type 1 or 2, which leaves out ability 711 (type 12).
+Measured: each dictionary list equals `abilityList` minus 711 [M].
+The closures of `AbilityFilter` come from FF VI's binary and were not re-read on FF II ([Ability groups](#ability-groups)).
+
+#### Keywords in FF II
+
+`userData → ownedKeyWaordList → target` is a flat list of ints, not JSON strings.
+It lists the keywords in acquisition order (917, 918, 921, 919 and so on) with no repeat, and holds 6 entries in the Quick Save and 12 in each other file, IDs 917 to 931 [M].
+Every ID is a type-6 content row [D].
+
+The 15 rows are contents 917 to 931, keys `MSG_IMP_WORD_01` to `_15`, `type_value` 1 to 15 [D].
+Their short names, in order, are Wild Rose, Mythril, Dreadnought, Palamecia, Airship, Goddess's Bell, Sunfire, Mysidia, Ultima Tome, Dragoons, Wyverns, Cyclone, Jade Passage, Mask and Ekmet Teloes [D].
+
+`Last.Management.UserDataClient::AddKeyWord(contentId)` checks that the content row has type 6 and is absent from the list, and appends it [B].
+The script function `Last.Interpreter.Instructions.SystemCall.Current::NbrMemory` calls it, plays a sound and opens `SecretWordUIClient` [B].
+So a story event adds a keyword, and a debug item menu adds them all (`ItemDebugController::AddAll`) [B].
+`AddKeyWord` is the only write method the metadata names, so no method removes a keyword [B, names].
+`game_constant_int.csv` `WORD_LEARN_MEMORY` is 15 [D], which reads as the target of an achievement [I].
+A keyword added to a copy shows in the usable Words list [G].
+Whether a character reacts to it before the story reaches it is untested: characters react to a word only when the story reaches it ([question 44](#open-questions)).
+
+NeoFFSE adds a keyword as `AddKeyWord` does: a type-6 row absent from the list, appended [I].
+It removes a keyword in expert mode only, through the raw interface [I].
+The game has no removal path.
+After a keyword is removed through the raw interface, the word can no longer be used in the game [G].
+Whether a dialogue that needs the word still runs is untested ([question 49](#open-questions)).
+
+#### People and party in FF II
+
+**People.**
+`job.csv` holds one row per person, 1 to 9, keyed `MSG_CHAR_NAME_01` to `_09`: Firion, Maria, Guy, Minwu, Josef, Gordon, Leila, Ricard and Leon [D].
+`jobId` equals the `job_id` of the character's `character_status.csv` row on all 31 states [M, D], so `job` names the person here.
+The game hides job text (`SystemConfigData::IsVisibleJobText` returns 0) and job names on equipment (`IsEquipableJobName` returns 0) [B].
+`job_group.csv` row 1 accepts jobs 1 to 9, and every equipment row names that group, so any person wears any item [D].
+
+| Status | `job_id` | Person | Base HP, MP | Joins through |
+|---|---|---|---|---|
+| 1, 2, 3 | 1, 2, 3 | Firion, Maria, Guy | 30, 10; 20, 10; 40, 10 | `INIT_PARTY_1` to `_3`, new game [D] |
+| 10 | 9 | Leon, first form | 30, 5 | `INIT_PARTY_4` = 10 [D]; the row exists with `isEnableCorps` false on all states [M] |
+| 4 | 4 | Minwu | 175, 103 | `SystemCall.Current::JoinMingWu` |
+| 5 | 5 | Josef | 235, 5 | `JoinJosef` |
+| 6 | 6 | Gordon | 128, 15 | `JoinGordon` |
+| 7 | 7 | Leila | 248, 35 | `JoinReila` |
+| 8 | 8 | Ricard | 549, 5 | `JoinRichard` |
+| 9 | 9 | Leon, return | 1 098, 5 | `JoinLeonhart` |
+
+`SystemCall.Current::JoinCharacter` calls `Corps::UnlockCharacter`, which creates the row from master data the first time through `OwnedCharacterClient::AddFromMaster`.
+Next it calls `Corps::AddMemberToCorps`, `Character::RemoveCondition`, `RecoveryHp` and `RecoveryMp` [B].
+`SecededCharacter` calls `Corps::RemoveMemberFromCorps` and leaves the row and its gains: the rows of Josef, Gordon and Minwu stay after they leave [B, M].
+Scripts find a person through the status (`Corps::GetCharacterIdFromStatusId`) [B].
+`SystemCall.Current::AddPowerToCorps`, `AddSpiritToCorps`, `AddIntelligenceToCorps` and `AddAgilityToCorps` exist, so a story event can add stats beyond the battle rule and the stored gain has no fixed sum [B, names].
+
+The rows grow by join: 7 in the Quick Save and 8 in slot 1 and the Auto Save [M].
+The status table allows 10 rows at most [D, I].
+`id` follows join order, not the status: Leon's first form is 4, Minwu 5, Josef 6, Gordon 7 and Leila 8 [M].
+What `JoinLeonhart` does to the status 10 row, and whether status 9 is a new row, is unproven: no save reaches it, and the code touches statuses 9, 10 and 11 [B, unread beyond those constants].
+
+**Job lists.**
+`jobList` starts with the person's own job and holds 4 to 8 entries on 31 states, each with `level` 1 and `currentProficiency` 0 [M].
+It grows as people join.
+`userData.releasedJobs` holds 3 or 4 entries ([Party](#party)).
+In the four files it equals jobs 1 to 3 plus the `jobId` of the fourth `corpsList` member, and an empty seat adds nothing [M, I].
+The Quick Save holds 1, 2, 3 and 6. Slot 1 and slot 2 hold 1, 2, 3 and 7. The Auto Save, whose fourth seat is empty, holds 1, 2, 3.
+
+**Party.**
+`isEnableCorps` equals membership of `corpsList` on all 31 states [M].
+`corpsList` has four seats (`GetMemberMaxCount` returns 4) [B].
+Its `id` is `Last.Defaine.User.CorpsId`, Front 1 and Back 2 [B], and `characterId` 0 marks an empty seat, as in the fourth entry of the Auto Save [M].
+`character_status.csv` `corps` starts Maria at 2 and `INIT_CORPS_2` is 2 [D], yet the saves hold 1 in every entry [M].
+A row change made in game would write the field [I] ([question 41](#open-questions)).
+
+**The row command.**
+`commandList` is `[1, 3, 4, 2, 5, 7]`: Attack, Magic, Items, Defend, Flee and Row [M, D].
+Command 7 runs ability 797, type 7 `Change` [D].
+The Row command is FF II's sixth command, so a five-entry `commandList` is an FF I shape.
+
+#### Other fields in FF II
+
+| Path | Holds |
+|---|---|
+| `learnedAbilityList` | every ability ID that an `AddAbility` wrote, across the party, kept after a row change or a forget; 46 in slot 1, with 711 first [M, B]; a won battle adds the current rows of the party ([Game edits in FF II](#game-edits-in-ff-ii)) [I] |
+| `character.sortOrderOwnedAbilityIds` | the player's spell order, as content IDs [M, B] |
+| `character.abilitySlotDataList` | the empty grid [M] |
+| `character.currentMpCountList`, `addtionalMaxMpCountList` | zeros [M] |
+| `character.learningAbilitys`, `equipmentAbilitys`, `ownedMonsterId`, `magicStoneId`, `magicLearningValue` | empty or 0 on 31 states [M] |
+| `character.parameter.addtional…Count`, `…Rate`, `addtionalAttack`, `addtionalDefense`, `addtionalAbilityDefense` | 0 on 31 states [M] |
+| `character.parameter.currentConditionList` | `{"target":[]}` [M] |
+| `userData.cheatSettingsData` | nine Boost keys, which change growth [B] |
+| `userData.ownedMagicList`, `ownedMagicStoneList`, `warehouseItemList` | empty [M] |
+| `userData.owendCrystalFlags` | 4 booleans, all false [M] |
+| `userData.ownedTransportationList` | 7 vehicles ([Transportation](#transportation)) |
+| `dataStorage` | the `scenario`, `treasure`, `global`, `area` and `map` flags |
+
+`Last.Battle` computes attack, defence, evasion and the hit counts per battle from equipment and skills (`Serial.FF2.Calc.CalcExecuteFF2`); the file stores none of them [M, B].
+Weight sits in `weapon.csv` and `armor.csv` and is read at battle [D].
+`achievement.csv` and `game_constant_int.csv` hold targets that these fields reach: `ALL_EQUIP_SKILL` 16, `ALL_MAGIC_SKILL` 16, `WORD_LEARN_MEMORY` 15, `ALL_AREA_VISIT` 27 and `TOTAL_CHEST_COUNT` 243 [D].
+The achievement code is unread.
+
+#### Bounds in FF II
+
+`Last.Data.User.UserSaveData` declares `owendGil`, `escapeCount`, `battleCount`, `corpsSlotIndex`, `openChestCount`, `steps`, `saveCompleteCount`, `monstersKilledCount` and `totalGil` as C# `int`.
+`OwnedCharacterSaveData` declares `id`, `characterStatusId`, `jobId`, `currentExp` and `numberOfButtles` as `int`, and `OwnedAbilitySaveData` declares `abilityId`, `contentId` and `skillLevel` as `int`.
+`playTime` is a `double` [B].
+
+The `MAX_` keys of `game_constant_int.csv` that apply to FF II fields [D]:
+
+| Field | Key | Value |
+|---|---|---|
+| `owendGil` | `MAX_GIL` | 9 999 999 |
+| inventory `count` | `MAX_ITEM` | 99 |
+| HP, MP, stats | [Character growth in FF II](#character-growth-in-ff-ii) | |
+| weapon, shield and bare-hand skill | `MAX_WEAPON_LEVEL` | level 16, value 860 |
+| spell | `MAX_MAGICAL_LEVEL` | level 16, value 860 |
+| evasion and magic evasion | `MAX_EVASION_TIMES_LEVEL`, `MAX_ABILITY_DEFENSE_TIMES_LEVEL` | level 16, value 1 500 |
+| `currentExp` | `MAX_EXP` | 9 999 999 [I] |
+
+These keys have no save field in FF II: `MAX_ATTACK`, `MAX_DEFENSE`, `MAX_ABILITY_ATTACK`, `MAX_ABILITY_DEFENSE`, `MAX_ACCURACY_RATE` and its siblings, `MAX_ATTACK_SPEED`, `MAX_HIT_VALUE`, `MAX_EVASION_TIMES`, `MAX_ABILITY_DEFENSE_TIMES`, `MAX_ACCURACY_TIMES` and `MAX_LV`.
+
+#### Equipment slots in FF II
+
+`parts_group.csv` and the `parts_group_id` of `weapon.csv` and `armor.csv` state the slots [D]:
+
+| Slot | Takes | Empty holds | Evidence |
+|---|---|---|---|
+| 1 | weapon (group 1), shield (group 2) | 47 | 12 of 12 empty first hands read 47 [M] |
+| 2 | weapon, shield | 47, not 208 | 12 of 12 empty second hands read 47; 208 sits in no slot [M] |
+| 3 | armor (21 rows) | 209 | [M, D] |
+| 4 | helmet (11) | 210 | [M, D] |
+| 5 | gloves (11) | 211 | [M, D] |
+
+FF I binds equipment slot 1 to a weapon and slot 2 to a shield, with a placeholder per slot ([Equipment slots](#equipment-slots)).
+Both rules fail in FF II:
+
+- On the three game files, equipment slot 2 holds 12 empty entries, 10 weapons and 1 shield (content 105, in the Quick Save). No measured equipment slot 1 holds a shield [M].
+- An empty hand holds 47 in either equipment slot. Content 208 stays a row with an inventory count of 5 and sits in no measured slot [M].
+  NeoFFSE's game interface refuses 208 in a hand [I]: no game file places it in a slot, and [question 40](#open-questions) leaves open what a hand that held a shield holds.
+- Equipment slots 1 and 2 can hold the same ID, for example 60 and 60, or 91 and 91. On all three game files, the inventory count of every held non-placeholder ID covers the number of slots that hold it [M].
+- The equip floor of [Inventory](#inventory) holds on those files for non-placeholder rows [M].
+  Placeholder counts do not follow the number of slots that hold the placeholder [M].
+  On the four measured slots (three game-written, one editor-written), row 47 counts 10 on all four while 10, 6, 8 and 8 hands hold it.
+  Row 208 counts 5 on all four and sits in no slot.
+  Rows 209 and 210 count 5 and 11 on all four, and row 211 counts 11 on three slots and 10 in the Quick Save, against 3 to 5 wearers of each.
+  No measured file holds more than 10 empty hands: the Auto Save has 8 characters and 10 hands that hold 47 [M].
+  The meaning of the placeholder counts is open.
+- NeoFFSE's game interface leaves the placeholder rows alone on an unequip, so an unequip can bring the hands that hold 47 past the count of row 47 [I].
+  Whether the game accepts that state is open ([question 50](#open-questions)).
+
+`weapon.csv` holds 7 rows with `category_type` 12 (bows), `two_handed_flag` 1 and `back_flag` 1 [D].
+`OwnedItemData::get_IsTwoHanded` and `get_IsBow` exist, and `OwnedCharacterClient::CorrectNotEquipTwoHandedShields` is the game's cleanup [B, names].
+No measured character holds a bow, so the stored form of a two-handed row is open ([question 39](#open-questions)).
+
+#### Nameless rows in FF II
+
+Five FF II rows have no name: `content.csv` key `None` on contents 937, 962, 963, 1025 and 1026, which are abilities 711, 736, 737, 799 and 800 [D].
+Ability 711 is `TwoSwordStyle` (12), and the others are `Fight` (4) [D].
+No job, command, monster or other content row of FF II lacks a key [D].
+
+| Row | In the saves | Reach |
+|---|---|---|
+| 711 | on every character: 7, 8, 8 and 8 entries in the four files (31), first in `abilityList` and in `learnedAbilityList`; `abilityDictionary` does not hold it [M] | `ability_random_group.csv` holds it on groups 1 to 3 with rate 0, and `character_status.csv` `ability_random_group_id` names 1 to 3 [D] |
+| 736, 737, 799, 800 | in no file [M] | no save route found |
+
+`Last.Data.User.OwnedCharacterData::get_HasTwoSwordStyle` exists, so row 711 reads as FF II's dual-wield permission, and removing it may stop a character from dual wielding [I].
+Every other ability row of FF II has a name, so ability 711 is the one nameless row in the saves ([Rows without a name](#rows-without-a-name)).
+
+#### Game edits in FF II
+
+A slot edited in default mode loads in the game, plays a battle, saves, and keeps every edit [G, M, edited copy].
+The edits were gil, an item count, new item rows, a weapon in an empty Hand 2, HP, Max HP and Power gains, a weapon skill value, a spell Level up and a keyword.
+
+The game rewrote three things in that file [M, edited copy]:
+
+- **Equipment slot `count`.**
+  It changed on party members' slots, 11 in all, for example from 1 to 5, while the inventory rows stayed as they were.
+  Characters out of the party kept their slot counts.
+  The rule of [Equipment slots](#equipment-slots) says the game copies the inventory count at equip time and does not refresh it; for party members it does write the field, by a path that is unread.
+- **`learnedAbilityList`.**
+  It went from 46 to 51 entries and its order changed.
+  The IDs 28, 30, 335, 380 and 599, rows that characters hold, joined it, and the row 24 that the Level edit replaced stayed.
+  `StartWinResult` calls `OwnedCharacterClient::UpdateOwnedMagicFromHisotry` [B]; that it writes this list is [I], since its body is unread.
+  A Level edit needs no row added to the list to survive.
+- **`numberOfButtles`.**
+  One character's counter went from 9 to 0 in a file where its Max HP gain had risen.
+  The Boost rule of [Character growth in FF II](#character-growth-in-ff-ii) resets the counter at 10, so it fits a reset from 9; the file does not show whether the battle gave that gain, and the cause is unread.
+
+#### Identifying FF II
+
+The shared gate of [Telling the games apart](#telling-the-games-apart) rejects nothing on a real FF II save [M, 4 files]:
+
+- `ownedTransportationList.target` holds 7 entries, the count that maps to FF II.
+- `cheatSettingsData.jobProficiencyRate`, `wonderWandIndex` and `mapData.otherPartyDataList` are absent, so no marker contradicts the count.
+- `ownedCharacterList`, `normalOwnedItemList` and `importantOwendItemList` exist with unique `id` and `contentId` values.
+- `ownedKeyWaordList.target` exists and holds unsigned 32-bit integers with no repeat, the fourth list that an FF II slot must pass.
+
+FF II has no key-name marker of its own.
+The count of `skillLevelTargets` keys separates the games: 10 on every FF II character, 0 on FF I, FF IV, FF V and FF VI, and 2 on FF III [M, 16 files].
 
 ### Slot `configData`
 
@@ -1628,7 +2717,7 @@ A writer changes the keys the user edited and nothing else, re-encodes the conta
 14. FF VI toggles and reselecting a character appended duplicate or unlearned spells [C, `d8a6c6f`].
 15. FF I abilities added in the editor kept `contentId` 0 [C, `375f916`].
 16. FF I slot spells went into `additionOrderOwnedAbilityIds` twice [C, `375f916`].
-17. FF II ability 711 breaks the +207 rule; it maps to 937 [M].
+17. FF II holds three offsets between `contentId` and `abilityId` (207, 226 and 931); ability 711 breaks the +207 rule and maps to 937 [M, D].
 18. "Reset Sort" wrote row numbers `1..N` into `normalOwnedItemSortIdList` [C, `6ef3bc7`].
 19. Time stamps: a `0` prefix, one en-US layout, and a rewrite of stamps the editor could not parse [C, `6ef3bc7`].
 20. `NowToTicks` is 112 days off; the .NET epoch offset is `621355968000000000` [C].
@@ -1648,7 +2737,14 @@ A writer changes the keys the user edited and nothing else, re-encodes the conta
 
 ## Open questions
 
-Each point needs a real save or an in-game test.
+Questions 1 to 25 need a real save or an in-game test.
+Questions 26 to 34 need an in-game test, a save that uses the rows, or a read of the game's binary.
+Questions 35 to 45 are FF II in-game tests, each run on a copy of a save, edited and loaded in the game: character numbers are `id`s in FF II slot 1 ([FF II](#ff-ii)).
+Question 46 lists the FF II binary reads still open.
+Questions 47 and 48 are FF II in-game readings on the experience and level fields.
+Question 49 is an FF II in-game reading on a keyword removal.
+Question 50 is an FF II in-game reading on the empty hands.
+Question 51 is an FF II in-game test of the spell gain.
 
 1. FF III to VI: slot names 2 to 20 and the Quick Save name (FF I and FF II: slot names 3 to 20), the ability offsets, FF VI espers and other parties, and how the game writes non-ASCII text in FF III, V and VI.
    The measured saves come from early game.
@@ -1659,8 +2755,10 @@ Each point needs a real save or an in-game test.
    None of the 34 files had a stream length divisible by 32.
 5. The `timeStamp` layout: FF I and FF II used different layouts on one machine, and the setting that picks the layout is unknown.
 6. `timeStampTicks`: local time or UTC?
-7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `pointIn`, `playableCharacterCorpsId`, `skillLevelTargets`, `abilityDictionary`, `scenarioFlags`, and the FF II `learnedAbilityList`.
+7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `pointIn`, `playableCharacterCorpsId` and `scenarioFlags`.
 8. Does the game accept an inventory item missing from a non-empty `normalOwnedItemSortIdList`?
+   FF II: an edited copy with new item rows, whose sort list NeoFFSE leaves as read, loaded in the game and kept the rows ([Game edits in FF II](#game-edits-in-ff-ii)) [G, edited copy].
+   The other games stay open.
 9. The PlayStation variant: file layout after extraction, presence of a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not measured.
 11. Does the game read equipment `count`, and what do the inventory counts 5 and 9 of the placeholders mean?
@@ -1673,30 +2771,108 @@ Each point needs a real save or an in-game test.
 15. The label the game shows for a map (area name and title joined), and the use of the `map.csv` rows 800 to 802.
 16. Does a slot file from a new game, saved at the first save point, hold the full transportation list?
     The FF V files (one character, 19 entries) make a short or empty list unlikely [I], but no measured file comes from a new game ([Telling the games apart](#telling-the-games-apart)).
-17. Do the `transportation.csv` tables of FF II to VI hold 7, 14, 11, 19 and 8 rows with the IDs the saves list?
-    Reading them from an install would settle it and explain the gaps (FF III lacks IDs 4 and 7, FF V lacks 16).
-18. A patch or a new build that adds or removes a vehicle row shifts that game's count, and the rule would refuse every save of the build.
+17. A patch or a new build that adds or removes a vehicle row shifts that game's count, and the rule would refuse every save of the build.
     The error names the count it found so a report carries it.
-19. Other builds and the PlayStation variant: every count comes from one Steam build, and another tool that rebuilds the list (adding or dropping entries) would defeat the rule.
+18. Other builds and the PlayStation variant: every count comes from one Steam build, and another tool that rebuilds the list (adding or dropping entries) would defeat the rule.
     The Go editor does not [C].
-20. Which game holds the measured `mapData.mapId` values up to 228, and does `mapId` reference `map.csv`?
+19. Which game holds the measured `mapData.mapId` values up to 228, and does `mapId` reference `map.csv`?
     FF I's `map.csv` lists IDs 1 to 127 and 800 to 802 [D], and the link rests on the Go editor's code [C] ([Party position and map](#party-position-and-map)).
-21. Maximum HP of a wounded character.
+20. Maximum HP of a wounded character.
     All 8 measured character states sit at full HP, so `currentHP` equals `min(base + addtionalMaxHp, MAX_HP)` there.
     The menu readings cannot exclude a menu whose maximum equals `currentHP`.
     The match of the base on 7 states makes that reading unlikely [I].
     A saved character with lowered HP, read in the menu as a current and maximum pair, would settle it.
-22. The next-level display at level 99.
+21. The next-level display at level 99.
     `exp_table.csv` has no row for level 100, and no measured save holds a character at level 99.
-23. Which `game_constant_int.csv` keys cap the level, the experience and the experience setter?
+22. Which `game_constant_int.csv` keys cap the level, the experience and the experience setter?
     The game binary reads them through a string key that stayed unresolved; `MAX_LV` and `MAX_EXP` are the likely keys [I].
     The `GROWTH_CURVE_HP_RATE` row (8) is not read on the FF I path: the 1-in-8 roll is a literal in the code [B].
-24. Which characters does a battle level?
+23. Which characters does a battle level?
     The game runs the level-up for the characters in its experience list (`BattleUtility.IsGetExp`).
     The filter was not read; living, non-petrified members are the likely rule [I].
-25. Can a battle bonus still be active when a level-up runs?
+24. Can a battle bonus still be active when a level-up runs?
     The vitality the HP rule uses also adds a temporary vitality and two bonus entries.
     FF I equipment adds no vitality [D], and the code does not show whether a battle effect lasts until the level-up.
-26. Does `MAX_ABILITY_EVASION_RATE` cap `addtionalAbilityEvasionRate`?
+25. Does `MAX_ABILITY_EVASION_RATE` cap `addtionalAbilityEvasionRate`?
     The field holds the growth of the magic defence ([Characters](#characters)), and the bound sits among the `MAX_` rows with no known save field ([Bounds in the master data](#bounds-in-the-master-data)).
     The code that reads the bound would settle it, or a save whose sum of base and gain passes the bound.
+26. What do the `exp_table.csv` `type_id` values 101 and 201 select?
+    FF III and FF V hold curves of type 101 and FF III one of type 201; that they serve job levels is a reading [I].
+27. What does a row without a name look like on screen?
+    The name functions return an empty string ([Rows without a name](#rows-without-a-name)), and no in-game test shows where a screen draws it.
+    FF II to VI hold 5, 4, 139, 207 and 313 abilities with key `None`, and real saves hold three such rows: ability 711 in FF II, ability 136 in FF III and command 4 in FF IV to VI.
+    A save that holds ability 711 in FF II, opened on the status and magic screens, would settle it.
+28. Does the FF IV to VI battle menu draw command 4?
+    Its `command_type` is `LimitedTurnBattle`, which suggests the ATB games never draw it [I].
+    The battle menu code (`BattleInfomationController`) is unread.
+29. What do most `AbilityType` names mean in play?
+    The measured saves exercise six names ([Ability types](#ability-types)); the others rest on the enum and the rows, and saves of FF III to VI that hold more abilities would extend the check.
+    `Other` (11) reads as a song type in FF III and FF V [I]; a comparison of its rows with a public ability list would settle it.
+30. Why do FF VI's 144 `NonAct` abilities from 5000 up and FF V's ability 1090 exist?
+    They have no content row and no CSV points to them.
+    The monster AI scripts (`monster_ai_script.csv` and its scripts) may reference them.
+31. Does a FF VI story line show on screen?
+    The 89 `Non` ability rows take their name from `story_mes`.
+    Whether `GetAbilityName` reads that file depends on whether the game loads it into `messageDictionary`, which the unread `MessageResourceSetting` and the battle message path would show [I].
+32. Why does FF VI hold 33 type-7 content rows?
+    No CSV reads them ([Content types 5 to 9](#content-types-5-to-9)).
+    A reader of `ContentType.Command` in the binary would settle it.
+33. How does a save store an esper?
+    No measured FF VI save holds one, so `ownedMagicStoneList` and `magicStoneId` are unverified.
+    A save with one esper owned and equipped would settle it.
+34. How does the game display a saved pair such as (1525, 1861)?
+    The load keeps both values ([Master data per game](#master-data-per-game)), and the name functions look the ability up through its content row, which the repeat removed.
+    A test copy that holds one of the four abilities, opened on the magic screen, would settle it.
+35. Closed: the screen shows an evasion level as `value / 100 + 1` ([Skill levels in FF II](#skill-levels-in-ff-ii)).
+36. Closed: the Magic screen draws the `abilityList` copy ([Row and value in FF II](#row-and-value-in-ff-ii)).
+37. Closed: a spell whose value passes its row keeps the row's level ([Row and value in FF II](#row-and-value-in-ff-ii)).
+38. Closed: a spell at value 330 stays at 330 after one cast and a won battle, as the gain rule predicts ([Skill levels in FF II](#skill-levels-in-ff-ii)).
+39. A bow.
+    Equip a bow and save.
+    Read `equipmentList` keys 1 and 2 and the inventory count of the bow's content ID.
+    The reading shows the stored form of a two-handed row ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
+40. Hands and shields.
+    Remove a shield from equipment slot 2, save and read the slot: 47 or 208.
+    Read which hand equipment slot 1 labels on the status 7 character (`dominant_arm` 2).
+    The readings settle the unequip placeholder and the hand label.
+41. Row.
+    Set a member to the back row, save, and read `id` in `corpsList` and `corpsSlots`.
+    A 2 confirms `CorpsId` and shows that the row lives in those lists ([People and party in FF II](#people-and-party-in-ff-ii)).
+42. A stat above its cap.
+    A Power gain of 120 shows Power 99, and the stored 120 survives a battle and a save ([Character growth in FF II](#character-growth-in-ff-ii)).
+    Open: whether a raise stops at the cap, since no raise was attempted.
+    A copy whose base plus gain sits at the cap, and a battle that raises Power, would settle it.
+43. Forget and relearn.
+    Forget a spell of level 4 or more, use its tome and save.
+    Read the row and `skillLevel`: the first row and 0 confirm `AddAbility`, and a kept level shows that `IsTransferSkillLevel` carries it.
+    Then read `learnedAbilityList`: the forgotten ID stays.
+44. A keyword ahead of the story.
+    An added keyword shows in the usable Words list ([Keywords in FF II](#keywords-in-ff-ii)).
+    Open: whether a character reacts to it, since characters react to a word only when the story reaches it.
+    The reading shows whether the list alone unlocks dialogue and whether a story flag gates it.
+45. Ability 711 on screen.
+    Open the Magic and status screens and read whether any row or blank line shows.
+    The expected reading is none.
+    It settles [question 27](#open-questions) for FF II.
+46. FF II binary reads left open, none of them blocking a read of the saves: the log rows that `<Execution>b__20_0` to `_2` keep; the body of `UpdateOwnedMagicFromHisotry`; `JoinLeonhart` beyond its constants; the consumer of `IsTransferSkillLevel`; the `Condition` filter of `BattleResultProvider::Genelate`; the second `Genelate` loop over members out of battle; the achievement code behind `ALL_EQUIP_SKILL`, `ALL_MAGIC_SKILL`, `WORD_LEARN_MEMORY`, `ALL_AREA_VISIT` and `TOTAL_CHEST_COUNT`; and, among the readers of `currentExp` and `addtionalLevel`, whether a shipped build opens `Last.Debugs.*` and `Last.Battle.Damage.*`, the `UnityEvent` calls in prefabs, the touch bundles outside `touch_party_setting`, `touch_play_data` and `touch_serial_common` (`CloudSaveMainContentController` reads the level), one unread script file, `<>c::<GetResult>b__0_0` and the native `JsonUtility`.
+47. FF II result list and status detail.
+    Win a battle against an enemy that gives experience and read the panel below Gil.
+    The code predicts one row per party member with a name, an empty column and a number that counts down to 0 under empty headers, and 0 in both columns for a member with no share [B, D, I].
+    Compare the first number of a row with that character's `currentExp` gain between a save before the battle and a save after it.
+    Then open the status detail of one character: the prefab predicts no Lv, Exp or Next row.
+48. An edited FF II level.
+    On a copy, set `addtionalLevel` to 50 for one character, play one battle and save.
+    Expect damage, hit and menus unchanged and the file still holding 50 ([Character growth in FF II](#character-growth-in-ff-ii)).
+49. A removed keyword.
+    After a removal in expert mode, the word can no longer be used in the game ([Keywords in FF II](#keywords-in-ff-ii)).
+    Open: whether a dialogue that needs the word still runs, since no dialogue was tested.
+50. Eleven empty hands.
+    On a copy of the Auto Save, unequip one weapon with NeoFFSE's game interface: 11 hands then hold 47 while row 47 counts 10.
+    Load the file in the game and save.
+    Read whether the game loads it, and read the count of row 47 and the `contentId` of each hand in the saved file ([Equipment slots in FF II](#equipment-slots-in-ff-ii)).
+51. The spell gain.
+    No battle has shown a positive spell gain: the one measured battle gave 0, as the rule predicts for a single cast at level 10 ([Skill levels in FF II](#skill-levels-in-ff-ii)).
+    On a copy, cast Thunder at value 330 four times in a battle against enemies of average rank 5: the rule gives 331.
+    A spell at level 1 and value 0, cast once at rank 5, gives 7 under the same rule.
+    Either result settles the constant +2.
+    A third test settles the count of one row per act: one cast on four enemies at rank 7 leaves 330 when an act counts once and gives 333 when each target counts.

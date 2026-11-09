@@ -4,26 +4,12 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::ff1_save::{SlotData, model, standard_model};
+use common::{ENFORCE, STORAGE_MAX, STORAGE_ONLY, count, gil, slot};
 use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, Value};
 use neoffse_format_pr::document::DocumentError;
 use neoffse_format_pr::ff1::names;
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-const STORAGE_MAX: i64 = 2_147_483_647;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
-
-fn slot(slot: u32) -> FieldId {
-    character_field(1, names::EQUIPMENT).with_id(slot)
-}
 
 /// `Set` on a fresh standard model.
 fn try_set(field: &FieldId, value: i64, policy: CapPolicy) -> Result<Edit, EditError> {
@@ -60,7 +46,7 @@ fn unknown_fields_and_missing_rows() {
     data.characters[0].charges.retain(|(level, _)| *level != 3);
     data.characters[0].equipment.retain(|equip| equip.key != 4);
     let mut model = model_of(&data);
-    for field in [character_field(1, names::CHARGES).with_id(3), slot(4), slot(4).with_name(names::COUNT)] {
+    for field in [character_field(1, names::CHARGES).with_id(3), slot(1, 4), slot(1, 4).with_name(names::COUNT)] {
         let result = model.apply(&Edit::set(field.clone(), Value::Int(1)), ENFORCE);
         assert!(matches!(result, Err(EditError::UnknownField { field: named }) if named == field), "{field}");
     }
@@ -169,18 +155,18 @@ fn jobs_are_checked_against_the_job_table_under_enforce() {
 fn equipment_ids_must_belong_to_the_slot_table_under_enforce() {
     let accepted = [(2, 165), (1, 62), (2, 130), (3, 131), (4, 132), (5, 133)];
     for (number, id) in accepted {
-        assert!(try_set(&slot(number), id, ENFORCE).is_ok(), "slot {number} id {id}");
+        assert!(try_set(&slot(1, number), id, ENFORCE).is_ok(), "slot {number} id {id}");
     }
     let refused = [(1, 165), (2, 62), (1, 45), (1, 999), (3, 0)];
     for (number, id) in refused {
-        let result = try_set(&slot(number), id, ENFORCE);
+        let result = try_set(&slot(1, number), id, ENFORCE);
         assert!(
             matches!(result, Err(EditError::UnknownId { id: found, .. }) if found == id),
             "slot {number} id {id}"
         );
     }
-    assert!(try_set(&slot(1), 999, STORAGE_ONLY).is_ok());
-    assert!(try_set(&slot(3), 0, STORAGE_ONLY).is_ok());
+    assert!(try_set(&slot(1, 1), 999, STORAGE_ONLY).is_ok());
+    assert!(try_set(&slot(1, 3), 0, STORAGE_ONLY).is_ok());
 }
 
 #[test]
@@ -222,7 +208,7 @@ fn a_failed_set_leaves_the_text_untouched() {
         (level.clone(), Value::Int(-1), STORAGE_ONLY),
         (level.clone(), Value::Int(100), ENFORCE),
         (character_field(1, names::JOB), Value::Int(13), ENFORCE),
-        (slot(1), Value::Int(165), ENFORCE),
+        (slot(1, 1), Value::Int(165), ENFORCE),
     ];
     for (field, value, policy) in cases {
         assert!(model.apply(&Edit::set(field.clone(), value), policy).is_err(), "{field}");

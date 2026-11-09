@@ -5,14 +5,16 @@
 # Master bundle: master_assets_all_0cd15384ed0315e57b8edf1ba6b3925c.bundle (sha256 1c4f66bf186a77968a5aa0292d8d47d84fe035873a1bd7497709db25a085405d).
 # Message bundle: message_assets_all_0fa953164799e15ca32394768bad704a.bundle (sha256 a754d4b520027ae0a85cd9a8fe97727a6633dd3c006542f66b494829ee363950).
 # Format reference: docs/formats/pixel-remaster.md#game-master-data
-# One row per ability.csv row. content_id is the contentId of the ability object: the content.csv row of type 4 whose type_value is the id.
-# kind reads ability.csv type_id: white_magic (1), black_magic (2), monster (3, 13), command (4, 5, 6, 8).
-# The game names none of these kinds (docs/formats/pixel-remaster.md#ability-job-and-command-tables).
-# level is ability_lv: 1 to 8 for a spell, 0 for any other ability. Names repeat: look an entry up by id.
+# One row per ability.csv row. content_id, when present, is the contentId of the ability object: the content.csv row of type 4 whose type_value is the id.
+# type_id is the ability.csv type_id: a value of the game's AbilityType enum (docs/formats/pixel-remaster.md#ability-types).
+# kind is one reading of type_id for all six games: white_magic (1), black_magic (2), monster (3, 13), summon (9), ninjutsu (10), other (11), time_magic (501), magic_sword (502), blue_magic (504), hissatsu (601), special_ability (602), dance (603), madou (604), rampage (625), internal (12, 34, 35, 40, 41, 627, 628, 629, 638, 639), command (4 to 8, 14 to 33, 36 to 38, 301 to 306, 503, 505 to 508, 512 to 516, 605 to 623, 637).
+# A row without name_en and name_fr has a name key None, a key in no system message file, or no content row (docs/formats/pixel-remaster.md#rows-without-a-name).
+# level is ability_lv. Names repeat: look an entry up by id.
 
 [[ability]]
 id = 1
 content_id = 209
+type_id = 4
 kind = "command"
 level = 0
 name_en = "Attack"
@@ -21,6 +23,7 @@ name_fr = "Attaque"
 [[ability]]
 id = 2
 content_id = 210
+type_id = 5
 kind = "command"
 level = 0
 name_en = "Defend"
@@ -29,6 +32,7 @@ name_fr = "Défense"
 [[ability]]
 id = 3
 content_id = 211
+type_id = 6
 kind = "command"
 level = 0
 name_en = "Flee"
@@ -37,6 +41,7 @@ name_fr = "Fuite"
 [[ability]]
 id = 4
 content_id = 212
+type_id = 8
 kind = "command"
 level = 0
 name_en = "Back"
@@ -45,6 +50,7 @@ name_fr = "Retour"
 [[ability]]
 id = 5
 content_id = 213
+type_id = 1
 kind = "white_magic"
 level = 1
 name_en = "Cure"
@@ -53,6 +59,7 @@ name_fr = "Soin"
 [[ability]]
 id = 6
 content_id = 214
+type_id = 1
 kind = "white_magic"
 level = 1
 name_en = "Protect"
@@ -61,6 +68,7 @@ name_fr = "Garde"
 [[ability]]
 id = 7
 content_id = 215
+type_id = 1
 kind = "white_magic"
 level = 1
 name_en = "Dia"
@@ -69,6 +77,7 @@ name_fr = "Lumen"
 [[ability]]
 id = 8
 content_id = 216
+type_id = 1
 kind = "white_magic"
 level = 1
 name_en = "Blink"
@@ -77,6 +86,7 @@ name_fr = "Leurre"
 [[ability]]
 id = 9
 content_id = 217
+type_id = 2
 kind = "black_magic"
 level = 1
 name_en = "Fire"
@@ -85,6 +95,7 @@ name_fr = "Brasier"
 [[ability]]
 id = 10
 content_id = 218
+type_id = 2
 kind = "black_magic"
 level = 1
 name_en = "Focus"
@@ -93,6 +104,7 @@ name_fr = "Fièvre"
 [[ability]]
 id = 11
 content_id = 219
+type_id = 2
 kind = "black_magic"
 level = 1
 name_en = "Sleep"
@@ -101,6 +113,7 @@ name_fr = "Morphée"
 [[ability]]
 id = 12
 content_id = 220
+type_id = 2
 kind = "black_magic"
 level = 1
 name_en = "Thunder"
@@ -109,6 +122,7 @@ name_fr = "Foudre"
 [[ability]]
 id = 13
 content_id = 221
+type_id = 1
 kind = "white_magic"
 level = 2
 name_en = "Invis"
@@ -117,6 +131,7 @@ name_fr = "Invisible"
 [[ability]]
 id = 14
 content_id = 222
+type_id = 1
 kind = "white_magic"
 level = 2
 name_en = "Silence"
@@ -125,6 +140,7 @@ name_fr = "Silence"
 [[ability]]
 id = 15
 content_id = 223
+type_id = 1
 kind = "white_magic"
 level = 2
 name_en = "Blindna"
@@ -133,6 +149,7 @@ name_fr = "Flash"
 [[ability]]
 id = 16
 content_id = 224
+type_id = 1
 kind = "white_magic"
 level = 2
 name_en = "NulShock"
@@ -141,6 +158,7 @@ name_fr = "Anti-Foudre"
 [[ability]]
 id = 17
 content_id = 225
+type_id = 2
 kind = "black_magic"
 level = 2
 name_en = "Blizzard"
@@ -149,6 +167,7 @@ name_fr = "Glacier"
 [[ability]]
 id = 18
 content_id = 226
+type_id = 2
 kind = "black_magic"
 level = 2
 name_en = "Temper"
@@ -157,6 +176,7 @@ name_fr = "Rage"
 [[ability]]
 id = 19
 content_id = 227
+type_id = 2
 kind = "black_magic"
 level = 2
 name_en = "Dark"
@@ -165,6 +185,7 @@ name_fr = "Brume"
 [[ability]]
 id = 20
 content_id = 228
+type_id = 2
 kind = "black_magic"
 level = 2
 name_en = "Slow"
@@ -173,6 +194,7 @@ name_fr = "Somni"
 [[ability]]
 id = 21
 content_id = 229
+type_id = 1
 kind = "white_magic"
 level = 3
 name_en = "Cura"
@@ -181,6 +203,7 @@ name_fr = "Soin +"
 [[ability]]
 id = 22
 content_id = 230
+type_id = 1
 kind = "white_magic"
 level = 3
 name_en = "NulBlaze"
@@ -189,6 +212,7 @@ name_fr = "Anti-Feu"
 [[ability]]
 id = 23
 content_id = 231
+type_id = 1
 kind = "white_magic"
 level = 3
 name_en = "Diara"
@@ -197,6 +221,7 @@ name_fr = "Lumen +"
 [[ability]]
 id = 24
 content_id = 232
+type_id = 1
 kind = "white_magic"
 level = 3
 name_en = "Heal"
@@ -205,6 +230,7 @@ name_fr = "Grâce"
 [[ability]]
 id = 25
 content_id = 233
+type_id = 2
 kind = "black_magic"
 level = 3
 name_en = "Fira"
@@ -213,6 +239,7 @@ name_fr = "Brasier +"
 [[ability]]
 id = 26
 content_id = 234
+type_id = 2
 kind = "black_magic"
 level = 3
 name_en = "Thundara"
@@ -221,6 +248,7 @@ name_fr = "Foudre +"
 [[ability]]
 id = 27
 content_id = 235
+type_id = 2
 kind = "black_magic"
 level = 3
 name_en = "Hold"
@@ -229,6 +257,7 @@ name_fr = "Camisole"
 [[ability]]
 id = 28
 content_id = 236
+type_id = 2
 kind = "black_magic"
 level = 3
 name_en = "Focara"
@@ -237,6 +266,7 @@ name_fr = "Fièvre +"
 [[ability]]
 id = 29
 content_id = 237
+type_id = 1
 kind = "white_magic"
 level = 4
 name_en = "Poisona"
@@ -245,6 +275,7 @@ name_fr = "Sérum"
 [[ability]]
 id = 30
 content_id = 238
+type_id = 1
 kind = "white_magic"
 level = 4
 name_en = "NulFrost"
@@ -253,6 +284,7 @@ name_fr = "Anti-Glace"
 [[ability]]
 id = 31
 content_id = 239
+type_id = 1
 kind = "white_magic"
 level = 4
 name_en = "Fear"
@@ -261,6 +293,7 @@ name_fr = "Angoisse"
 [[ability]]
 id = 32
 content_id = 240
+type_id = 1
 kind = "white_magic"
 level = 4
 name_en = "Vox"
@@ -269,6 +302,7 @@ name_fr = "Vocalise"
 [[ability]]
 id = 33
 content_id = 241
+type_id = 2
 kind = "black_magic"
 level = 4
 name_en = "Sleepra"
@@ -277,6 +311,7 @@ name_fr = "Morphée +"
 [[ability]]
 id = 34
 content_id = 242
+type_id = 2
 kind = "black_magic"
 level = 4
 name_en = "Confuse"
@@ -285,6 +320,7 @@ name_fr = "Démence"
 [[ability]]
 id = 35
 content_id = 243
+type_id = 2
 kind = "black_magic"
 level = 4
 name_en = "Haste"
@@ -293,6 +329,7 @@ name_fr = "Booster"
 [[ability]]
 id = 36
 content_id = 244
+type_id = 2
 kind = "black_magic"
 level = 4
 name_en = "Blizzara"
@@ -301,6 +338,7 @@ name_fr = "Glacier +"
 [[ability]]
 id = 37
 content_id = 245
+type_id = 1
 kind = "white_magic"
 level = 5
 name_en = "Curaga"
@@ -309,6 +347,7 @@ name_fr = "Soin X"
 [[ability]]
 id = 38
 content_id = 246
+type_id = 1
 kind = "white_magic"
 level = 5
 name_en = "Diaga"
@@ -317,6 +356,7 @@ name_fr = "Lumen X"
 [[ability]]
 id = 39
 content_id = 247
+type_id = 1
 kind = "white_magic"
 level = 5
 name_en = "Life"
@@ -325,6 +365,7 @@ name_fr = "Vie"
 [[ability]]
 id = 40
 content_id = 248
+type_id = 1
 kind = "white_magic"
 level = 5
 name_en = "Healara"
@@ -333,6 +374,7 @@ name_fr = "Grâce +"
 [[ability]]
 id = 41
 content_id = 249
+type_id = 2
 kind = "black_magic"
 level = 5
 name_en = "Firaga"
@@ -341,6 +383,7 @@ name_fr = "Brasier X"
 [[ability]]
 id = 42
 content_id = 250
+type_id = 2
 kind = "black_magic"
 level = 5
 name_en = "Teleport"
@@ -349,6 +392,7 @@ name_fr = "Renvoi"
 [[ability]]
 id = 43
 content_id = 251
+type_id = 2
 kind = "black_magic"
 level = 5
 name_en = "Scourge"
@@ -357,6 +401,7 @@ name_fr = "Supplice"
 [[ability]]
 id = 44
 content_id = 252
+type_id = 2
 kind = "black_magic"
 level = 5
 name_en = "Slowra"
@@ -365,6 +410,7 @@ name_fr = "Somni +"
 [[ability]]
 id = 45
 content_id = 253
+type_id = 1
 kind = "white_magic"
 level = 6
 name_en = "Stona"
@@ -373,6 +419,7 @@ name_fr = "Chair"
 [[ability]]
 id = 46
 content_id = 254
+type_id = 1
 kind = "white_magic"
 level = 6
 name_en = "Protera"
@@ -381,6 +428,7 @@ name_fr = "Garde +"
 [[ability]]
 id = 47
 content_id = 255
+type_id = 1
 kind = "white_magic"
 level = 6
 name_en = "Exit"
@@ -389,6 +437,7 @@ name_fr = "Téléport"
 [[ability]]
 id = 48
 content_id = 256
+type_id = 1
 kind = "white_magic"
 level = 6
 name_en = "Invisira"
@@ -397,6 +446,7 @@ name_fr = "Invisible +"
 [[ability]]
 id = 49
 content_id = 257
+type_id = 2
 kind = "black_magic"
 level = 6
 name_en = "Thundaga"
@@ -405,6 +455,7 @@ name_fr = "Foudre X"
 [[ability]]
 id = 50
 content_id = 258
+type_id = 2
 kind = "black_magic"
 level = 6
 name_en = "Quake"
@@ -413,6 +464,7 @@ name_fr = "Séisme"
 [[ability]]
 id = 51
 content_id = 259
+type_id = 2
 kind = "black_magic"
 level = 6
 name_en = "Death"
@@ -421,6 +473,7 @@ name_fr = "Calvaire"
 [[ability]]
 id = 52
 content_id = 260
+type_id = 2
 kind = "black_magic"
 level = 6
 name_en = "Stun"
@@ -429,6 +482,7 @@ name_fr = "Choc"
 [[ability]]
 id = 53
 content_id = 261
+type_id = 1
 kind = "white_magic"
 level = 7
 name_en = "Curaja"
@@ -437,6 +491,7 @@ name_fr = "Soin Max"
 [[ability]]
 id = 54
 content_id = 262
+type_id = 1
 kind = "white_magic"
 level = 7
 name_en = "NulDeath"
@@ -445,6 +500,7 @@ name_fr = "Anti-Mort"
 [[ability]]
 id = 55
 content_id = 263
+type_id = 1
 kind = "white_magic"
 level = 7
 name_en = "Diaja"
@@ -453,6 +509,7 @@ name_fr = "Lumen Max"
 [[ability]]
 id = 56
 content_id = 264
+type_id = 1
 kind = "white_magic"
 level = 7
 name_en = "Healaga"
@@ -461,6 +518,7 @@ name_fr = "Grâce X"
 [[ability]]
 id = 57
 content_id = 265
+type_id = 2
 kind = "black_magic"
 level = 7
 name_en = "Blizzaga"
@@ -469,6 +527,7 @@ name_fr = "Glacier X"
 [[ability]]
 id = 58
 content_id = 266
+type_id = 2
 kind = "black_magic"
 level = 7
 name_en = "Saber"
@@ -477,6 +536,7 @@ name_fr = "Fureur"
 [[ability]]
 id = 59
 content_id = 267
+type_id = 2
 kind = "black_magic"
 level = 7
 name_en = "Break"
@@ -485,6 +545,7 @@ name_fr = "Fossile"
 [[ability]]
 id = 60
 content_id = 268
+type_id = 2
 kind = "black_magic"
 level = 7
 name_en = "Blind"
@@ -493,6 +554,7 @@ name_fr = "Cécité"
 [[ability]]
 id = 61
 content_id = 269
+type_id = 1
 kind = "white_magic"
 level = 8
 name_en = "Full-Life"
@@ -501,6 +563,7 @@ name_fr = "Vie Max"
 [[ability]]
 id = 62
 content_id = 270
+type_id = 1
 kind = "white_magic"
 level = 8
 name_en = "NulAll"
@@ -509,6 +572,7 @@ name_fr = "Anti-Tout"
 [[ability]]
 id = 63
 content_id = 271
+type_id = 1
 kind = "white_magic"
 level = 8
 name_en = "Holy"
@@ -517,6 +581,7 @@ name_fr = "Sidéral"
 [[ability]]
 id = 64
 content_id = 272
+type_id = 1
 kind = "white_magic"
 level = 8
 name_en = "Dispel"
@@ -525,6 +590,7 @@ name_fr = "Dissipation"
 [[ability]]
 id = 65
 content_id = 273
+type_id = 2
 kind = "black_magic"
 level = 8
 name_en = "Flare"
@@ -533,6 +599,7 @@ name_fr = "Atomnium"
 [[ability]]
 id = 66
 content_id = 274
+type_id = 2
 kind = "black_magic"
 level = 8
 name_en = "Warp"
@@ -541,6 +608,7 @@ name_fr = "Vacuum"
 [[ability]]
 id = 67
 content_id = 275
+type_id = 2
 kind = "black_magic"
 level = 8
 name_en = "Stop"
@@ -549,6 +617,7 @@ name_fr = "Stop"
 [[ability]]
 id = 68
 content_id = 276
+type_id = 2
 kind = "black_magic"
 level = 8
 name_en = "Kill"
@@ -557,6 +626,7 @@ name_fr = "Agonie"
 [[ability]]
 id = 69
 content_id = 277
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Icestorm"
@@ -565,6 +635,7 @@ name_fr = "Blizzard"
 [[ability]]
 id = 70
 content_id = 278
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Blaze"
@@ -573,6 +644,7 @@ name_fr = "Flammes"
 [[ability]]
 id = 71
 content_id = 279
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Gaze"
@@ -581,6 +653,7 @@ name_fr = "Mauvais œil"
 [[ability]]
 id = 72
 content_id = 280
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Gaze"
@@ -589,6 +662,7 @@ name_fr = "Mauvais œil"
 [[ability]]
 id = 73
 content_id = 281
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Flash"
@@ -597,6 +671,7 @@ name_fr = "Amaurose"
 [[ability]]
 id = 74
 content_id = 282
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Blaze"
@@ -605,6 +680,7 @@ name_fr = "Flammes"
 [[ability]]
 id = 75
 content_id = 283
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Earthquake"
@@ -613,6 +689,7 @@ name_fr = "Commotion"
 [[ability]]
 id = 76
 content_id = 284
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Gaze"
@@ -621,6 +698,7 @@ name_fr = "Mauvais œil"
 [[ability]]
 id = 77
 content_id = 285
+type_id = 3
 kind = "monster"
 level = 0
 name_en = "Gaze"
@@ -629,6 +707,7 @@ name_fr = "Mauvais œil"
 [[ability]]
 id = 78
 content_id = 286
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Gaze"
@@ -637,6 +716,7 @@ name_fr = "Mauvais œil"
 [[ability]]
 id = 79
 content_id = 287
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Icestorm"
@@ -645,6 +725,7 @@ name_fr = "Blizzard"
 [[ability]]
 id = 80
 content_id = 288
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Blaze"
@@ -653,6 +734,7 @@ name_fr = "Flammes"
 [[ability]]
 id = 81
 content_id = 289
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Blaze"
@@ -661,6 +743,7 @@ name_fr = "Flammes"
 [[ability]]
 id = 82
 content_id = 290
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Blaze"
@@ -669,6 +752,7 @@ name_fr = "Flammes"
 [[ability]]
 id = 83
 content_id = 291
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Stone Gas"
@@ -677,6 +761,7 @@ name_fr = "Nuage pétrifiant"
 [[ability]]
 id = 84
 content_id = 292
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Mind Blast"
@@ -685,6 +770,7 @@ name_fr = "Psychochoc"
 [[ability]]
 id = 85
 content_id = 293
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Poison Gas"
@@ -693,6 +779,7 @@ name_fr = "Nuage fétide"
 [[ability]]
 id = 86
 content_id = 294
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Thunderbolt"
@@ -701,6 +788,7 @@ name_fr = "Éclair"
 [[ability]]
 id = 87
 content_id = 295
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Deadly Gas"
@@ -709,6 +797,7 @@ name_fr = "Nuage mortel"
 [[ability]]
 id = 88
 content_id = 296
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Snort"
@@ -717,6 +806,7 @@ name_fr = "Grondement"
 [[ability]]
 id = 89
 content_id = 297
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Nuke"
@@ -725,6 +815,7 @@ name_fr = "Nucléo-attaque"
 [[ability]]
 id = 90
 content_id = 298
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Ink"
@@ -733,6 +824,7 @@ name_fr = "Encre"
 [[ability]]
 id = 91
 content_id = 299
+type_id = 3
 kind = "monster"
 level = 0
 name_en = "Poison Darts"
@@ -741,6 +833,7 @@ name_fr = "Flèches empoisonnées"
 [[ability]]
 id = 92
 content_id = 300
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Gaze"
@@ -749,6 +842,7 @@ name_fr = "Mauvais œil"
 [[ability]]
 id = 93
 content_id = 301
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Tsunami"
@@ -757,6 +851,7 @@ name_fr = "Tsunami"
 [[ability]]
 id = 94
 content_id = 302
+type_id = 13
 kind = "monster"
 level = 0
 name_en = "Cyclone"
@@ -765,6 +860,7 @@ name_fr = "Cyclone"
 [[ability]]
 id = 95
 content_id = 303
+type_id = 6
 kind = "command"
 level = 0
 name_en = "Flee"
@@ -773,6 +869,7 @@ name_fr = "Fuite"
 [[ability]]
 id = 100
 content_id = 310
+type_id = 1
 kind = "white_magic"
 level = 7
 name_en = "Curaja"

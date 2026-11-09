@@ -44,7 +44,7 @@ NeoFFSE edits the saves of Final Fantasy I to XVI, XI and XIV excepted, and star
   [Visual assets](#visual-assets) describes how the app shows portraits under that rule.
 
 - The app embeds two fonts, Cornelia Sans (CC BY-SA 3.0) and Barlow (SIL OFL 1.1), and the Material Symbols icon set (Apache-2.0).
-  It also embeds six original class sprites under CC0 1.0.
+  It also embeds six original FF I class sprites and nine original FF II person sprites under CC0 1.0.
   Each file travels with its notice, and [`licenses/README.md`](../licenses/README.md) lists the source and license of each one.
   The About dialog credits both fonts.
 
@@ -99,7 +99,7 @@ neoffse/
 │   │                           backups, restore, running-game check
 │   ├── neoffse-format-pr/      FF I to VI Pixel Remaster: codec,
 │   │                           lossless document, game table, slot names.
-│   │                           FF I domain mapping and format
+│   │                           FF I and FF II domain mappings and formats
 │   ├── neoffse/                public facade: re-exports, format
 │   │                           registry, session with edit history,
 │   │                           save pipeline, backup restore
@@ -115,7 +115,7 @@ neoffse/
 │                               and private real saves, ignored (private/)
 ├── tools/cipher-vectors/       Go program that writes the cipher test vectors
 ├── tools/pr-tables/            Python script that generates data/pr/ from a game install
-├── assets/                     fonts, icons and class sprites
+├── assets/                     fonts, icons, class and person sprites
 ├── licenses/                   third-party notices
 └── docs/                       this file, roadmap, formats/
 ```
@@ -154,11 +154,12 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   A format sees file names and bytes and never a path.
 
 - **`neoffse-data`** holds the ID tables of a game, keyed by `TableKind`, with English and French names and the game's caps (`MAX_GIL` and the like).
-  It also holds the growth tables of the FF I level-up rule: base HP and vitality per class, experience totals and growth curves.
+  It also holds the growth tables of the FF I level-up rule (base HP and vitality per class, experience totals and growth curves) and the FF II skill data (base stats, the skill curve and the spell chains).
   The TOML files under `data/pr/<game>/` hold the text, and `include_str!` embeds it, so a library caller needs no data directory.
-  Only FF I has tables so far.
+  All six games have tables.
   Names repeat inside a table, so an ID is the only lookup key.
-  The parser checks the file contract (ID order, value ranges, placeholder rows), not only the types.
+  The parser checks the file contract, not only the types.
+  It enforces ID order, value ranges, one placeholder per equipment kind that has rows, an ability `kind` that agrees with its `type_id`, a unique ability `content_id`, a first status ID of 1 in the growth and skill tables, a spell chain as long as the skill curve, and no empty table.
   A contributor regenerates the files by hand with `tools/pr-tables/` ([ID tables](../README.md#id-tables)); neither the build nor the tests run it.
 
 - **`neoffse-io`** touches the user's files and knows no save format.
@@ -174,11 +175,16 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
 - **`neoffse-format-pr`** reads and writes FF I to VI PR saves in three layers.
   The codec turns a file into JSON text and back, and keeps the BOM, the trailing bytes and the zero padding so that `encode` writes the file as the game did.
   The lossless document reads and edits that text by path and leaves every value it does not touch as written.
-  The `ff1` module maps an FF I slot onto the domain of `neoffse-core`.
-  `Ff1Format` refuses a file that is no slot, or a slot of another game ([Telling the games apart](formats/pixel-remaster.md#telling-the-games-apart)).
-  `Ff1Document` reads and writes by field path, never by position, and reports the capabilities `Party`, `Inventory` and `Magic`.
-  The spell slots of the Magic section are read only: writing spells waits for research on the slot rules ([Roadmap](roadmap.md#m4-app-ff-i-end-to-end)).
-  A rise of a character's level also plays the growth step of each level gained.
+  The `ff1` and `ff2` modules map an FF I and an FF II slot onto the domain of `neoffse-core`, and each knows only its own game.
+  The `shared` module holds the generic open pipeline and document, and the character-field machinery: field bindings, reads, raw and game edits, the slot summary and the party view.
+  A game supplies its `Part` enum of character fields, its tables, its own rules beyond the shared item rules, its keyed lists and its equipment slot count (`SlotModel::EQUIPMENT_SLOTS`), and plugs into that machinery with its slot model.
+  The "Plugging in a game" section of [`shared/mod.rs`](../crates/neoffse-format-pr/src/shared/mod.rs) lists what the compiler does not check.
+  The keyed lists (`SlotModel::KEYED_LISTS`) are the lists whose rows carry a key: the open refuses a slot where one of them is missing, holds a key that is no unsigned 32-bit integer or holds a key twice, because removing one of two equal keys returns an inverse `Insert` that fails.
+  `Ff1Format` and `Ff2Format` refuse a file that is no slot, or a slot of another game ([Telling the games apart](formats/pixel-remaster.md#telling-the-games-apart)).
+  `Ff1Document` and `Ff2Document` read and write by field path and find a row by its key, and report the capabilities `Party`, `Inventory` and `Magic`.
+  In FF I the spell slots of the Magic section are read only: writing spells waits for research on the slot rules ([Roadmap](roadmap.md#m4-app-ff-i-end-to-end)).
+  In FF II the Magic section holds an editable Level for each spell and, for expert mode, the stored places of a spell; those fields name a position in their list, because an ability entry has no key of its own.
+  A rise of a character's level in FF I also plays the growth step of each level gained; FF II has no character level.
   The random draws come from the `Rolls` trait, whose real source wraps `rand`, so no `rand` type reaches the public API.
   [`docs/formats/pixel-remaster.md`](formats/pixel-remaster.md) holds every byte-level rule.
 
@@ -192,7 +198,7 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   Its library target holds the window types that `ui/app.slint` generates, one view model per screen, the code that wires their callbacks and the image providers, and the binary only calls `run`.
   The library target lets integration tests drive the windows (see [Test policy](#test-policy)).
 
-- **`neoffse-testkit`** locates and reads the committed fixtures and finds the private real saves through `NEOFFSE_SAVES`.
+- **`neoffse-testkit`** locates and reads the committed fixtures, finds the private real saves through `NEOFFSE_SAVES` and prints the counts of a private run.
   It generates no fixture (see [Test policy](#test-policy)).
 
 ### Format traits
@@ -223,7 +229,7 @@ pub trait SaveDocument: Send {
   A save that spans several files fits the same type.
 - **Detection.** `detect` is pure: it reads a `FileProbe` (name, size, head of the file) and returns a `Detection`, or `None`.
   `Confidence` runs `Possible` (the name fits), `Likely` (the name and a cheap content check fit), `Certain` (the first bytes prove it), so the registry picks the best claim.
-  The PR formats claim the same file names (only FF I ships today), so the facade breaks the tie with the game of the save folder.
+  The PR formats claim the same file names, so the facade breaks the tie with the game of the save folder.
   A format never claims the leftover `.neoffse-*.tmp` file of an atomic write.
 - **Open.** `open` copies what it needs, so the document keeps no borrow.
   It refuses a file that does not fit its game with a `FormatError::Decode`, never a panic.
@@ -277,7 +283,7 @@ Each dependency's version requirement sits in a `Cargo.toml`, and the committed 
 | PR cipher | hand-ported Rijndael-256 | the block is 32 bytes and AES fixes it at 16, so AES crates cannot decrypt a PR save |
 | ID table export | Python 3.11 or later, `UnityPy` | reads the user's install; only a contributor who regenerates the tables needs it |
 | Cipher test vectors | Go program in `tools/cipher-vectors/` | runs KiameV's ffpr-save-cypher; only a contributor who regenerates the vectors needs Go |
-| Binary formats (after M5) | `binrw` | the console and older PC formats after the PR |
+| Binary formats (after M10) | `binrw` | the console and older PC formats after the PR |
 | Atomic write | `tempfile` | temporary file in the target folder, then rename |
 | Data dir | `directories` | locates the backups ([Save safety](#save-safety)) |
 | Steam library list | `keyvalues-parser` | reads `libraryfolders.vdf` |
@@ -316,7 +322,7 @@ A library crate returns errors and does not panic on anything read from a file.
   A caller must not log them.
 - **App rows.** The Slint structs that `neoffse-app` re-exports at its crate root and that carry names, values or paths (`GameRow`, `FolderRow`, `SlotRow`, `SummaryRow`, `FieldRow`, `ReviewRow`, `CharacterCard`, `BackupRow`, `EditNotice` and the structs that group them) print them in `Debug`.
   The re-export of each carries the rustdoc line.
-- **Save content in `Debug` output.** The types that hold a slot's content (`SaveSummary`, `SaveView`, `Value`, `Edit`, `Document`, `Ff1Model` and their parts) print character names, field values or the JSON text.
+- **Save content in `Debug` output.** The types that hold a slot's content (`SaveSummary`, `SaveView`, `Value`, `Edit`, `Document`, `Ff1Model`, `Ff2Model`, `Change`, `ChangeKind` and their parts) print character names, field values or the JSON text.
   A caller must not log them.
   The rustdoc of each such type says that `Debug` prints save content and that a caller must not log it.
   `SaveFiles` prints file names and byte counts only, and `FormatError` and `OpenError` hold file names, counts and document paths, never a path on disk.
@@ -328,7 +334,8 @@ A library crate returns errors and does not panic on anything read from a file.
 - **Tests live in `tests/`.** No source file holds test code, in any crate.
   A crate's tests sit in its `tests/` directory as integration tests and use the public API.
   A crate exposes an internal stage that needs tests, such as a codec step or the cipher, in a documented public module.
-  Helpers that several test files share sit in `tests/common/mod.rs`.
+  Helpers that several test files share sit in the crate's `tests/common/` module.
+  The app also keeps its harnesses in `tests/asset_files/`, `tests/controls_harness/` and `tests/field_harness/`.
 - **Round trip on every fixture.** Decode, encode, decode again: the two decoded documents and their containers must match.
   The game's deflate encoder and `flate2` choose different streams for the same input, so a PR save never re-encodes to the game's bytes, and PR round trips compare the inflated JSON text byte for byte.
   The game accepts a deflate stream that differs from its own.
@@ -337,9 +344,9 @@ A library crate returns errors and does not panic on anything read from a file.
   The runner in `crates/neoffse-format-pr/tests/common/edit_proof.rs` drives an edit through `Box<dyn SaveDocument>` and compares the JSON tree before and after.
   It fails on a change it did not expect and on a change it expected and did not find.
   It then undoes the edit, on the edited document and on a reopened one, and applies it again.
-  An edit matrix runs on the synthetic slot `fixtures/pr/ff1-slot.json` and on every private FF I slot.
+  An edit matrix runs on the synthetic slots `fixtures/pr/ff1-slot.json` and `fixtures/pr/ff2-slot.json` and on every private slot of the same game.
 - **Domain contract.** `neoffse-core` tests the edit contract with hand-built documents and `proptest`: a refused edit changes nothing, an inverse restores the document, and a `ChangeSet` applies all or none.
-  `neoffse-data` tests the embedded FF I tables against the facts of [Game master data](formats/pixel-remaster.md#game-master-data).
+  `neoffse-data` tests the embedded tables of the six games against the facts of [Game master data](formats/pixel-remaster.md#game-master-data).
 - **Properties.** `proptest` drives each codec stage, the whole pipeline and the document with generated input.
   Decode inverts encode, an integer edit changes only its own digits, and no input makes a stage panic.
   A failing case lands in `tests/*.proptest-regressions`; commit that file with the fix.
@@ -350,14 +357,16 @@ A library crate returns errors and does not panic on anything read from a file.
 - **Fixtures.** The repository commits synthetic fixtures under `fixtures/`, and `neoffse-testkit` locates and reads them.
   A test fails when a committed fixture differs from what its generator writes, for example after a compression update changes the deflate stream.
   The test headers give the regeneration command, which sets `NEOFFSE_WRITE_FIXTURES=1`.
-  The FF I slot holds invented values that obey the game's rules, so the proof runs against a consistent save.
+  The FF I and FF II slots hold invented values that obey the game's rules, so the proof runs against a consistent save.
 - **Real saves.** They are personal data and stay out of the repository.
   A test asks the testkit for the saves of one game, for example `neoffse_testkit::private_saves("ff1")`.
   The testkit reads the folder named by `NEOFFSE_SAVES`, `fixtures/private/` by default.
   When the folder holds nothing for that game, the call returns `None` after it writes the reason on stderr, and the test returns early and passes.
   A wrong `NEOFFSE_SAVES` path skips every real-save test while the run stays green; `cargo test -- --nocapture` shows the reasons.
   The testkit tests its skip path through a child process, because editing the environment of a running test needs `unsafe` in edition 2024 and the workspace denies `unsafe_code`.
-  Real-save tests only read, and a failure message names a slot label and a field path, never a value.
+  Real-save tests never write into the folder they read, and a failure message names a slot label and a field path, never a value.
+  A test that saves copies each slot into a temporary folder first: the app tests of each game (`editor_save_private.rs` for FF I, `editor_save_private_ff2.rs` for FF II) save edits over those copies and compare the result with a facade session that applies the same edits to the original.
+  A run prints its counts with `neoffse_testkit::report`; a line carries no personal value.
 - **Real discovery.** `crates/neoffse-io/tests/real_discovery.rs` is `#[ignore]`, because it reads the Steam install of the machine it runs on.
   It checks that discovery finds a save folder for each PR game and that the folder holds a file the codec accepts.
   Its output carries game ids and counts, never a path, a SteamID64 or a file name.
@@ -386,9 +395,9 @@ A comment states what the code cannot show; it never narrates the next line.
   Write a full paragraph when a block needs one to be safe to touch.
 - A comment cites what a reader can still resolve in a year: a `docs/formats` heading, a test name, a milestone number.
   A task or review number means nothing outside the tracker that issued it.
-- A Rust source or test file holds 300 lines at most.
-  Split it into modules before it gets there.
-  The Go program under `tools/` is outside the rule.
+- A Rust source or test file holds about 300 lines.
+  A split belongs where it helps the reader, and a file may pass that size when no such split exists.
+  The Go program under `tools/` is outside the guideline.
 - The lint set lives in the root `Cargo.toml` under `[workspace.lints]`, and `scripts/clippy.sh` runs clippy with `-D warnings` over every target.
   An exception lives in the code as `#[allow(..., reason = "...")]`, and every `allow` carries its reason.
   The one exception outside the code is the allowed duplicate `syn` in `clippy.toml`, which explains itself.
@@ -409,13 +418,15 @@ The app has a Home screen, an editor, a Restore page and an About dialog.
   Each control shows the document's value: after a click or a commit, accepted or refused, a check box, a drop-down or a text box shows it again.
 - **Default and expert mode.** In the default mode the view model sends a new edit through `apply_game`, keeps the returned `GameChange` for undo and redo, and greys a control that `field_locked` or `row_locked` reports.
   In expert mode, which View > Expert mode switches on behind a warning, it sends the edit through `apply` with `CapPolicy::StorageOnly`.
+  A field whose `FieldMeta::game_edit` is set, the FF II spell Level, goes through the game interface in both modes: it has no stored place of its own, and the raw interface refuses it.
+  The Raw spells pages edit each stored place alone.
   An `AboveCap` error from the default mode is the cue to offer the switch ([Edit interfaces](#edit-interfaces)).
 - **Threads.** The Steam scan, the save and the restore run on a worker thread, which returns its result to the UI through `slint::invoke_from_event_loop`.
 - **Closing.** A close request, from the window button or File > Quit, does nothing while a dialog other than the discard dialog is open or while a save, reload or restore runs.
   The discard dialog is the exception: it answers the close, and its buttons do nothing while a worker runs.
   With unsaved edits and no such dialog, a close request opens the discard dialog, and a clean session closes.
 - **Looks.** Every Pixel Remaster game shares one look: the colours of the game's menu, Cornelia Sans, and a banded frame drawn with Slint primitives, with rounded corners of 6 px on panels.
-  A class sprite shows at twice its size in a portrait frame.
+  A class sprite (FF I) or a person sprite (FF II) shows at twice its size in a portrait frame.
   Home, the Restore page, the dialogs and the About dialog use the app shell, a flat navy look in Barlow.
 - **Screens.**
   - *Home*: each Pixel Remaster game with the saves that discovery finds (slot, party, play time, place), a filter that shows the owned games only, a Backups button per game, a Refresh button and an "Open a file..." button for any file.
@@ -423,13 +434,15 @@ The app has a Home screen, an editor, a Restore page and an About dialog.
     A slot file the scan cannot read stays in the list as a row that reads "This save cannot be read", and a click tries to open it again and reports the cause.
     A save folder that discovery found and the app could not list reads "The save folder could not be read".
     The warning "Some places could not be searched (n)" counts only the places discovery could not search.
-  - *Editor*: laid out like the game's menu, with the command list (Party, Items, Magic) and a status panel (play time and gil) on the left and the current page on the right.
+  - *Editor*: laid out like the game's menu, with the command list (Party, Items, Magic, and Raw spells in expert mode) and a status panel (play time and gil) on the left and the current page on the right.
     Party shows one card per character, and a card opens the character's page with its fields.
-    Items lists gil, the items and the key items.
-    Magic lists the spell slots of each character and is read only.
+    Items lists gil, the items, the key items and, in FF II, the keywords.
+    Magic lists the spells of each character: read only in FF I, with an editable Level in FF II.
+    Raw spells, which expert mode adds, lists the stored places of the FF II spells.
     A save without a section shows "This save has no such section."
   - *Pending changes bar*: always shown, with the count of unsaved edits ("No unsaved changes" at zero), Undo, Redo and "Review & save", which opens the change summary.
   - *Review*: the net changes, before and after, and the Steam Cloud note ([Save safety](#save-safety)).
+    In default mode a spell Level is one row; the stored places it writes appear in expert mode.
   - *Restore*: the backups of one game, newest first, with the slot, the reason and the date.
     Home reaches it through the Backups button, and the File menu reaches it through "Restore a backup..." while an editor is open.
   - *Advanced*: the raw document tree behind a warning. No milestone schedules it yet.
@@ -451,7 +464,7 @@ The providers, in order of preference:
    No milestone schedules it.
 2. **Bundled free art.** Files in `assets/` with a known author and a free license, attributed per file in [`licenses/README.md`](../licenses/README.md).
    The two fonts and the icon set are such files.
-3. **Original sprites.** The six FF I class sprites in `assets/portraits/ff1-pr/` are original work under CC0 1.0, and `OriginalSprites` serves them by job id.
+3. **Original sprites.** The six FF I class sprites in `assets/portraits/ff1-pr/` and the nine FF II person sprites in `assets/portraits/ff2-pr/` are original work under CC0 1.0, and `OriginalSprites` serves them by job id: a class in FF I, a person in FF II.
    They replace any missing portrait, and public builds show no other portraits for now.
 
 With local extraction in place, a user who owns the game sees real portraits on their own machine, and a public build redistributes nothing the project has no right to ship.
@@ -465,6 +478,7 @@ The session counts edits and compares no value, so edits that cancel out, or an 
 
 1. The user reviews the change summary and confirms.
    The summary lists the net difference from the clean state, and a value set and then set back is no change.
+   In default mode a spell Level edit shows as one row, and the stored places it writes show in expert mode, or in default mode while an edit on an expert-only page is pending.
 2. The facade checks for a running game process through the [`process`](../crates/neoffse-io/src/process.rs) module of `neoffse-io`, and the app warns when it finds one.
    The user may cancel or save anyway.
 3. The facade re-reads every file the session read and compares the bytes with what the session read.
@@ -543,8 +557,13 @@ The [roadmap](roadmap.md) holds the scope and exit criteria.
 | M2 File safety | `neoffse-io`; the game table and the trailer cap of `neoffse-format-pr` | yes |
 | M3 PR domain | `neoffse-core`, `neoffse-data`, the FF I domain mapping and format of `neoffse-format-pr` | yes |
 | M4 App, FF I | `neoffse-app` v1, the `neoffse` facade (registry, history, save pipeline) | yes |
-| M5 FF II to VI | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` for per-game capabilities | yes |
-| Release (v0.7.0) | release packaging, translations | full repository |
+| M5 FF II | the FF II mapping and format of `neoffse-format-pr`, the shared PR layer, the FF II to VI master-data tables of `neoffse-data`, the FF II editor of `neoffse-app` | yes |
+| M6 FF III | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` and `neoffse-app` for FF III | yes |
+| M7 FF IV | reopens the same four crates for FF IV | yes |
+| M8 FF V | reopens the same four crates for FF V | yes |
+| M9 FF VI | reopens the same four crates for FF VI | yes |
+| M10 Bestiaries | reopens the same four crates for the bestiaries of FF I to VI | yes |
+| Release (v0.12.0) | release packaging, translations | full repository |
 
 ## Open points
 

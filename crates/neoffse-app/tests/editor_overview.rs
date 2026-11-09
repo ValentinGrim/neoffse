@@ -147,7 +147,7 @@ fn a_game_without_a_builder_gets_an_empty_overview() {
     let site = editing_site();
     let ed = editing(&site);
     let view = ed.with_session(|session| session.view().unwrap());
-    let built = overview(&view, Game::Ff2Pr, Language::En, &OriginalSprites);
+    let built = overview(&view, Game::Ff3Pr, Language::En, &OriginalSprites);
     assert!(!built.present);
     assert_eq!(items(&built.cards).len(), 0);
     assert_eq!(built.gil, "");
@@ -218,8 +218,8 @@ fn the_overview_follows_the_language() {
 
     let french = EditorViewModel::new(Arc::clone(&ed.flow.state), Language::Fr);
     let card = items(&french.overview().cards).into_iter().next().unwrap();
-    assert_eq!(card.job, entry.name(Language::Fr));
-    assert_eq!(cards(&ed)[0].job, entry.name(Language::En));
+    assert_eq!(Some(card.job.as_str()), entry.name(Language::Fr));
+    assert_eq!(Some(cards(&ed)[0].job.as_str()), entry.name(Language::En));
 }
 
 #[test]

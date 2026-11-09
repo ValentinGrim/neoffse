@@ -1,4 +1,4 @@
-//! The editor data over a copy of the owner's FF I saves (`NEOFFSE_SAVES`,
+//! The editor data over a copy of private FF I saves (`NEOFFSE_SAVES`,
 //! read only). Every slot is copied into a temporary folder first. The test
 //! skips when the folder is absent. A failure names a slot number and a field
 //! label, never a value, a file name or a path. No edit, no save: the copy
@@ -12,7 +12,7 @@ use std::fs;
 use std::sync::Arc;
 
 use common::{Flow, Outcomes, Part, PrivateSlot, all_fields, fields, items, lists, must, pages, private_slot_copies, rows, section};
-use neoffse::core::{Key, RowId};
+use neoffse::core::{Game, Key, RowId};
 use neoffse::data::Language;
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{EditorData, EditorViewModel, FieldKind};
@@ -71,7 +71,7 @@ fn check(slot: usize, data: &EditorData, editor: &EditorViewModel) {
 
 #[test]
 fn every_private_slot_builds_the_editor_data() {
-    let Some(slots) = private_slot_copies() else { return };
+    let Some(slots) = private_slot_copies(Game::Ff1Pr) else { return };
     for (position, PrivateSlot { name, site, copy }) in slots.iter().enumerate() {
         let index = position + 1;
         let bytes = must(fs::read(copy), &format!("private slot {index}: the copy does not read"));

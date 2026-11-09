@@ -3,37 +3,26 @@
 
 mod common;
 
-use common::ff1_save::{INVENTORY, KEY_ITEMS, Row, SlotData, model};
-use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, RowId, SaveView, Value};
+use common::ff1_save::{INVENTORY, KEY_ITEMS, SlotData, model, standard_model};
+use common::slot_model::view_of;
+use common::slot_render::Row;
+use common::{character, item};
+use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, RowId, Value};
 use neoffse_data::Language;
-use neoffse_format_pr::ff1::{CAPABILITIES, Ff1Model, names};
+use neoffse_format_pr::ff1::{CAPABILITIES, names};
 
 const NAMES: [&str; 4] = ["Aria", "Bram", "Cleo", "Zoé"];
 
-fn view_of(slot: &SlotData) -> (Ff1Model, SaveView) {
-    let mut model = model(&slot.render());
-    let view = model.view(Language::En).unwrap();
-    (model, view)
-}
-
-fn character(id: u32) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id)
-}
-
-fn item(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key)
-}
-
 #[test]
 fn sections_follow_the_capabilities() {
-    let (_, view) = view_of(&SlotData::standard());
+    let (_, view) = view_of(standard_model());
     let found: Vec<Capability> = view.sections.iter().map(|section| section.capability).collect();
     assert_eq!(found, CAPABILITIES);
 }
 
 #[test]
 fn party_lists_the_characters_in_document_order() {
-    let (mut model, view) = view_of(&SlotData::standard());
+    let (mut model, view) = view_of(standard_model());
     let party = view.section(Capability::Party).unwrap();
     assert_eq!(party.entities.len(), 4);
     for (index, entity) in party.entities.iter().enumerate() {
@@ -54,7 +43,7 @@ fn party_lists_the_characters_in_document_order() {
 fn document_order_wins_over_id_order() {
     let mut slot = SlotData::standard();
     slot.characters.reverse();
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let ids: Vec<FieldId> = view.section(Capability::Party).unwrap().entities.iter().map(|e| e.id.clone()).collect();
     assert_eq!(ids, [character(4), character(3), character(2), character(1)]);
 }
@@ -63,7 +52,7 @@ fn document_order_wins_over_id_order() {
 fn an_empty_name_gets_a_generic_label() {
     let mut slot = SlotData::standard();
     slot.characters[1].name = String::new();
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let party = view.section(Capability::Party).unwrap();
     assert_eq!(party.entities[1].label, "Character 2");
     assert_eq!(party.entities[0].label, "Aria");
@@ -71,7 +60,7 @@ fn an_empty_name_gets_a_generic_label() {
 
 #[test]
 fn inventory_lists_gil_then_rows_then_key_items() {
-    let (_, view) = view_of(&SlotData::standard());
+    let (_, view) = view_of(standard_model());
     let entities = &view.section(Capability::Inventory).unwrap().entities;
     assert_eq!(entities.len(), 1 + INVENTORY.len() + KEY_ITEMS.len());
     let gil = &entities[0];
@@ -104,7 +93,7 @@ fn item_labels_follow_the_language() {
     for language in Language::ALL {
         let view = model.view(*language).unwrap();
         let label = &view.find(&item(names::INVENTORY, key).with_name(names::COUNT)).unwrap().0.label;
-        assert_eq!(label, entry.name(*language));
+        assert_eq!(Some(label.as_str()), entry.name(*language));
     }
     assert_ne!(entry.name(Language::En), entry.name(Language::Fr));
 }
@@ -114,7 +103,7 @@ fn an_unknown_id_falls_back_to_the_id() {
     let mut slot = SlotData::standard();
     slot.inventory.push(Row::new(999, 1));
     slot.key_items.push(Row::new(999, 1));
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let label = |list, key| view.find(&item(list, key).with_name(names::COUNT)).unwrap().0.label.clone();
     assert_eq!(label(names::INVENTORY, 999), "Item 999");
     assert_eq!(label(names::KEY_ITEMS, 999), "Key item 999");
@@ -122,7 +111,7 @@ fn an_unknown_id_falls_back_to_the_id() {
 
 #[test]
 fn collections_sit_in_their_sections() {
-    let (model, view) = view_of(&SlotData::standard());
+    let (model, view) = view_of(standard_model());
     let party = view.section(Capability::Party).unwrap();
     let character = FieldId::new(names::CHARACTER);
     assert_eq!(party.collections, [model.collection_meta(&character).unwrap()]);
@@ -142,7 +131,7 @@ fn an_absent_key_leaves_the_field_out() {
     let mut slot = SlotData::standard();
     slot.characters[2].equipment[2].count = None;
     slot.characters[0].charges.retain(|(level, _)| *level != 3);
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let party = &view.section(Capability::Party).unwrap().entities;
     let count_3 = character(3).with_name(names::EQUIPMENT).with_id(3).with_name(names::COUNT);
     assert_eq!(party[2].fields.len(), 42);
@@ -157,7 +146,7 @@ fn an_absent_key_leaves_the_field_out() {
         gil: None,
         ..SlotData::standard()
     };
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let entities = &view.section(Capability::Inventory).unwrap().entities;
     assert_eq!(entities.len(), INVENTORY.len() + KEY_ITEMS.len());
     assert!(entities.iter().all(|entity| entity.id != FieldId::new(names::GIL)));
@@ -176,7 +165,7 @@ fn another_failure_is_a_decode_error() {
 
 #[test]
 fn the_view_is_a_snapshot() {
-    let (mut model, view) = view_of(&SlotData::standard());
+    let (mut model, view) = view_of(standard_model());
     let kept = view.clone();
     let edit = Edit::set(FieldId::new(names::GIL), Value::Int(5));
     model.apply(&edit, CapPolicy::Enforce).unwrap();
@@ -187,7 +176,7 @@ fn the_view_is_a_snapshot() {
 
 #[test]
 fn an_insert_shows_at_its_position() {
-    let (mut model, _) = view_of(&SlotData::standard());
+    let (mut model, _) = view_of(standard_model());
     let row = RowId::new(FieldId::new(names::INVENTORY), 4);
     let edit = Edit::insert(row.clone(), Some(3), vec![(names::COUNT, Value::Int(1))]);
     model.apply(&edit, CapPolicy::Enforce).unwrap();

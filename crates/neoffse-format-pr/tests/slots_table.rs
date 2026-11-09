@@ -1,6 +1,9 @@
 //! The slot-name table: its pin to the format document and the name rules.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
+use common::doc_table;
 use neoffse_format_pr::slots::SLOT_FILES;
 
 const HEADER: [&str; 4] = ["Slot", "PC file name", "id", "PlayStation file"];
@@ -10,17 +13,9 @@ fn document() -> String {
     std::fs::read_to_string(path).unwrap()
 }
 
-/// The cells of every line of the Slot files table, header and separator
-/// included, backticks stripped.
+/// The cells of every line of the Slot files table, header and separator included.
 fn table_lines(document: &str) -> Vec<Vec<String>> {
-    document
-        .lines()
-        .skip_while(|line| line.trim_end() != "### Slot files")
-        .skip(1)
-        .skip_while(|line| !line.starts_with('|'))
-        .take_while(|line| line.starts_with('|'))
-        .map(|line| line.trim().trim_matches('|').split('|').map(|cell| cell.trim().replace('`', "")).collect())
-        .collect()
+    doc_table::table_lines(document, "### Slot files")
 }
 
 /// The row labels in table order: `Auto Save`, `Quick Save`, `1` to `20`.

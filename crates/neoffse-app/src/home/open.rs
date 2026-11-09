@@ -10,8 +10,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, PoisonError};
 
-use neoffse::core::{FormatError, Game};
-use neoffse::pr::ff1::OpenError;
+use neoffse::core::Game;
 use neoffse::{Error, Registry, Session};
 
 use super::SlotTarget;
@@ -190,7 +189,7 @@ impl OpenViewModel {
 fn open_one(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> Worked {
     let mut session = match registry.open(dir, name, game) {
         Ok(session) => session,
-        Err(error) => return Worked::Failed(problem_of(&error)),
+        Err(error) => return Worked::Failed(problem_of(registry, &error)),
     };
     match session.summary() {
         Ok(summary) => {
@@ -205,25 +204,16 @@ fn open_one(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> 
 /// The only place an error becomes a user-facing problem. The error's text
 /// never leaves this function.
 ///
-/// With no game given, every format tries the file. When each attempt names
-/// the game that owns the file (`OtherGame` with a game found), the file is a
-/// real save the registry cannot open: `Unsupported`. A format that adds
-/// games makes the rule more precise: a save of a game the registry holds
-/// opens and never reaches this function. An attempt that names no game, or
-/// any other refusal, gives `NotASave`.
-fn problem_of(error: &Error) -> OpenProblem {
+/// The facade holds the `Unsupported` rule
+/// ([`Registry::is_unsupported_game`]): a real save of a game the registry has
+/// no format for. A refusal from a game's own format, or from every format,
+/// is `NotASave`. An I/O failure and any later error kind is `Unreadable`.
+fn problem_of(registry: &Registry, error: &Error) -> OpenProblem {
+    if registry.is_unsupported_game(error) {
+        return OpenProblem::Unsupported;
+    }
     match error {
-        Error::NoFormat { attempts } if !attempts.is_empty() && attempts.iter().all(|(_, attempt)| names_a_game(attempt)) => OpenProblem::Unsupported,
         Error::Format { .. } | Error::NoFormat { .. } => OpenProblem::NotASave,
-        Error::UnsupportedGame { .. } => OpenProblem::Unsupported,
         _ => OpenProblem::Unreadable,
     }
-}
-
-/// Whether a format refused the file because another game owns it.
-fn names_a_game(error: &FormatError) -> bool {
-    let FormatError::Decode { source } = error else {
-        return false;
-    };
-    matches!(source.downcast_ref::<OpenError>(), Some(OpenError::OtherGame { found: Some(_), .. }))
 }

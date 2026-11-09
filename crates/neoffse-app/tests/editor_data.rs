@@ -15,7 +15,7 @@ const SLOTS: [&str; 5] = ["Right hand", "Left hand", "Body", "Head", "Arms"];
 
 fn english_name(kind: TableKind, id: u32) -> String {
     let tables = tables_for(Game::Ff1Pr).unwrap();
-    tables.entry(kind, id).unwrap().name(Language::En).to_owned()
+    tables.entry(kind, id).unwrap().name(Language::En).unwrap().to_owned()
 }
 
 #[test]

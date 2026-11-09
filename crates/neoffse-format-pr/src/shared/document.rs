@@ -1,4 +1,4 @@
-//! The open FF I document: the model, the container facts and the file name.
+//! The open slot document: the model, the container facts and the file name.
 
 use std::fmt;
 
@@ -7,24 +7,25 @@ use neoffse_core::{
 };
 use neoffse_data::Language;
 
-use super::{CAPABILITIES, Ff1Model, GAME};
+use super::SlotModel;
 use crate::container::{Container, decode, encode};
 use crate::slots::slot_for_name;
 
-/// An FF I slot opened by [`Ff1Format`](super::Ff1Format).
+/// A Pixel Remaster slot opened by its format.
 ///
 /// It keeps the BOM and the exact trailer of the opened file and the file
 /// name, so `encode` writes the file back as it came. Its `Debug` is written
-/// by hand and prints the file name only, and it has no `Clone`.
-pub struct Ff1Document {
-    model: Ff1Model,
+/// by hand and prints the document name of the model and the file name only,
+/// and it has no `Clone`.
+pub struct SlotDocument<M: SlotModel> {
+    model: M,
     container: Container,
     name: String,
     language: Language,
 }
 
-impl Ff1Document {
-    pub(super) fn new(model: Ff1Model, container: Container, name: String, language: Language) -> Self {
+impl<M: SlotModel> SlotDocument<M> {
+    pub(crate) fn new(model: M, container: Container, name: String, language: Language) -> Self {
         Self {
             model,
             container,
@@ -46,20 +47,21 @@ impl Ff1Document {
     }
 }
 
-/// Prints the type and the file name, never the content.
-impl fmt::Debug for Ff1Document {
+/// Prints the document name of the model and the file name, never the
+/// content.
+impl<M: SlotModel> fmt::Debug for SlotDocument<M> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.debug_struct("Ff1Document").field("name", &self.name).finish_non_exhaustive()
+        formatter.debug_struct(M::DOCUMENT).field("name", &self.name).finish_non_exhaustive()
     }
 }
 
-impl SaveDocument for Ff1Document {
+impl<M: SlotModel> SaveDocument for SlotDocument<M> {
     fn game(&self) -> Game {
-        GAME
+        M::GAME
     }
 
     fn capabilities(&self) -> &[Capability] {
-        &CAPABILITIES
+        M::CAPABILITIES
     }
 
     /// The model's summary; a slot the `id` key does not give falls back to
