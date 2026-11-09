@@ -7,8 +7,9 @@
 mod common;
 
 use common::character_field;
-use common::ff1_real::{RealSlot, must, must_some, slots};
+use common::ff1_real::slots;
 use common::private::tables;
+use common::real_slots::{RealSlot, must, must_some};
 use neoffse_core::{Capability, FieldId, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, names};

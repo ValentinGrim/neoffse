@@ -9,10 +9,10 @@ use neoffse_core::{FormatError, Game, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_format_pr::container::{self, Container};
 
 use super::ff1_format::{one_file, sav, slot_name};
-use super::ff1_real::{RealSlot, must, must_some};
 use super::ff1_save::SlotData;
 use super::json_diff::diff_trees;
 use super::json_tree::Tree;
+use super::real_slots::{RealSlot, must, must_some};
 
 /// One slot file to edit in memory.
 pub(crate) struct Subject {

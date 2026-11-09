@@ -37,6 +37,7 @@ mod json_scan;
 pub(crate) mod json_tree;
 pub(crate) mod pr_files;
 pub(crate) mod private;
+pub(crate) mod real_slots;
 pub(crate) mod rolls;
 pub(crate) mod slot_model;
 pub(crate) mod slot_render;

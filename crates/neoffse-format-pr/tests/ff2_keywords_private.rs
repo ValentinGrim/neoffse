@@ -6,8 +6,8 @@
 
 mod common;
 
-use common::ff1_real::must;
 use common::ff2_real::slots;
+use common::real_slots::must;
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, RowId, TableKind};
 use neoffse_data::Language;
 use neoffse_format_pr::ff2::{Ff2Model, names};

@@ -6,8 +6,9 @@
 mod common;
 
 use common::changed_span;
-use common::ff1_real::{RealSlot, must_some, slots};
+use common::ff1_real::slots;
 use common::private::int;
+use common::real_slots::{RealSlot, must_some};
 use neoffse_core::{CapPolicy, Edit, FieldId, Shape, Value};
 use neoffse_format_pr::container::{decode, encode};
 use neoffse_format_pr::ff1::{Ff1Model, names};

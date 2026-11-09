@@ -7,9 +7,9 @@
 mod common;
 
 use common::character_path;
-use common::ff1_real::{must, must_some};
 use common::ff2_real::slots;
 use common::private::assert_fields_read_back;
+use common::real_slots::{must, must_some};
 use neoffse_core::{Capability, FieldId};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Scalar, Segment};

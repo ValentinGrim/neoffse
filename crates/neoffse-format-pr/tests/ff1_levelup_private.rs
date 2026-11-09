@@ -8,9 +8,10 @@ mod common;
 
 use common::character_field;
 use common::character_path;
-use common::ff1_real::{RealSlot, must, must_some, slots};
+use common::ff1_real::slots;
 use common::growth_oracle::{Stored, grow};
 use common::private;
+use common::real_slots::{RealSlot, must, must_some};
 use common::rolls::Script;
 use neoffse_core::{CapPolicy, ChangeSet, Edit, FieldId, Value};
 use neoffse_data::GameTables;

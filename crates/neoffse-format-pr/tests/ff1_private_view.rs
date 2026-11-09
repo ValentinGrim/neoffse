@@ -6,8 +6,9 @@
 
 mod common;
 
-use common::ff1_real::{must, must_some, slots};
+use common::ff1_real::slots;
 use common::private::assert_fields_read_back;
+use common::real_slots::{must, must_some};
 use neoffse_core::{Capability, FieldId};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, names};

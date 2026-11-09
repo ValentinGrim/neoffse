@@ -8,12 +8,12 @@ mod common;
 
 use std::collections::HashSet;
 
-use common::ff1_real::{RealSlot, must, must_some};
 use common::ff2_ability_rules::ability_violations;
 use common::ff2_real::slots;
 use common::ff2_rules::{cap_violations, violations};
 use common::json_tree::Tree;
 use common::private::{self, all_fields, assert_fields_read_back, int, rows};
+use common::real_slots::{RealSlot, must, must_some};
 use neoffse_core::{Capability, FieldId, SaveDocument, SaveFiles, Shape, TableKind, Value};
 use neoffse_data::{GameTables, Language};
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, GAME, names};

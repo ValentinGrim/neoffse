@@ -10,7 +10,7 @@ use neoffse_format_pr::shared::{SlotModel, names};
 
 use super::edit_subject::Subject;
 use super::exit_facts::{CHARS, INV};
-use super::ff1_real::{RealSlot, must, must_some};
+use super::real_slots::{RealSlot, must, must_some};
 
 /// The tables of the game of `M`.
 pub(crate) fn tables<M: SlotModel>() -> &'static GameTables {

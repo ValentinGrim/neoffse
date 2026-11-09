@@ -8,10 +8,11 @@ mod common;
 use std::collections::HashSet;
 
 use common::ff1_ability_rules::ability_violations;
-use common::ff1_real::{RealSlot, must, must_some, slots};
+use common::ff1_real::slots;
 use common::ff1_rules::{cap_violations, violations};
 use common::json_tree::Tree;
 use common::private::{self, all_fields, int, rows};
+use common::real_slots::{RealSlot, must, must_some};
 use neoffse_core::{FieldId, Shape, TableKind, Value};
 use neoffse_data::GameTables;
 use neoffse_format_pr::ff1::{Ff1Model, names};

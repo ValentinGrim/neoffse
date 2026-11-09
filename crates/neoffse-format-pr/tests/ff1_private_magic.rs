@@ -6,7 +6,8 @@
 mod common;
 
 use common::ff1_magic::slot_mismatches;
-use common::ff1_real::{must, slots};
+use common::ff1_real::slots;
+use common::real_slots::must;
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, names};

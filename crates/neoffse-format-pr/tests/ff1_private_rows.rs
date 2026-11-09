@@ -5,8 +5,9 @@
 
 mod common;
 
-use common::ff1_real::{must, slots};
+use common::ff1_real::slots;
 use common::private::tables;
+use common::real_slots::must;
 use common::{ENFORCE, STORAGE_ONLY};
 use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
 use neoffse_format_pr::container::{decode, encode};

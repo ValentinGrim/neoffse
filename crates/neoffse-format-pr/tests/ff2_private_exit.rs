@@ -14,9 +14,9 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use common::edit_proof::Subject;
 use common::exit_ff2::{ALWAYS, build, level_without_copy, run};
-use common::ff1_real::{must, must_some};
 use common::ff2_real::slots;
 use common::private::{inventory_ids, is_placeholder, is_read_only, refuses, skipped_line, worn_ids};
+use common::real_slots::{must, must_some};
 use neoffse_core::{CapPolicy, Capability, ChangeSet, Edit, EditError, FieldId, Key, RowId, Value};
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
 use neoffse_testkit::report;
