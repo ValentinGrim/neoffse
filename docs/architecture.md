@@ -154,7 +154,7 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   A format sees file names and bytes and never a path.
 
 - **`neoffse-data`** holds the ID tables of a game, keyed by `TableKind`, with English and French names and the game's caps (`MAX_GIL` and the like).
-  It also holds the growth tables of the FF I level-up rule (base HP and vitality per class, experience totals and growth curves) and the FF II skill data (base stats, the skill curve and the spell chains).
+  It also holds the FF I monster table, the growth tables of the FF I level-up rule (base HP and vitality per class, experience totals and growth curves) and the FF II skill data (base stats, the skill curve and the spell chains).
   The TOML files under `data/pr/<game>/` hold the text, and `include_str!` embeds it, so a library caller needs no data directory.
   All six games have tables.
   Names repeat inside a table, so an ID is the only lookup key.
