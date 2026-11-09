@@ -65,7 +65,7 @@ pub(crate) fn violations<M: SlotModel>(model: &mut M, copy_counts: bool, rules: 
     let mut wearers: HashMap<i64, i64> = HashMap::new();
     let mut worn = Vec::new();
     for id in characters {
-        for number in 1..=names::EQUIPMENT_SLOTS {
+        for number in 1..=M::EQUIPMENT_SLOTS {
             let field = super::slot(id, number);
             match (int(model, &field), int(model, &field.clone().with_name(names::COUNT))) {
                 (Ok(content), Ok(count)) => {

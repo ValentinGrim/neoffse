@@ -8,13 +8,14 @@ use neoffse_core::{FieldMeta, NamedValue, Shape, TableKind};
 use neoffse_data::GameTables;
 
 use super::binding::Part;
+use super::names::EQUIPMENT_SLOTS;
 use crate::shared::meta::{derived_meta, int};
 
 /// The slot labels and their equipment tables, slot 1 to 5. The table of a
 /// slot follows `parts_group_id` of the game's `armor.csv`
 /// (`docs/formats/pixel-remaster.md#game-master-data`); the labels are the Go
 /// editor's (`docs/formats/pixel-remaster.md#equipment-slots`).
-const SLOTS: [(&str, TableKind); 5] = [
+const SLOTS: [(&str, TableKind); EQUIPMENT_SLOTS as usize] = [
     ("Right hand", TableKind::Weapon),
     ("Left hand", TableKind::Shield),
     ("Body", TableKind::Armor),
@@ -22,6 +23,7 @@ const SLOTS: [(&str, TableKind); 5] = [
     ("Arms", TableKind::Gloves),
 ];
 
+/// The binding admits the slots 1 to `EQUIPMENT_SLOTS` only, so the fallback row never shows.
 fn slot(slot: u32) -> (&'static str, TableKind) {
     let index = usize::try_from(slot).ok().and_then(|number| number.checked_sub(1));
     index.and_then(|index| SLOTS.get(index)).copied().unwrap_or(("Slot", TableKind::Item))

@@ -58,7 +58,8 @@ impl RealSlot {
     }
 }
 
-pub(super) fn label(game: &str, path: &Path) -> String {
+/// The label of a private file: the game folder plus the first 8 characters of the file name.
+pub(crate) fn label(game: &str, path: &Path) -> String {
     let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
     format!("{game} {}", name.chars().take(8).collect::<String>())
 }
@@ -104,4 +105,19 @@ pub(crate) struct RealFile {
     /// The file name.
     pub name: String,
     pub bytes: Vec<u8>,
+}
+
+/// Every private file of `game` except the Steam marker: the slots, the
+/// bestiary, the slot index and the settings. `None` after a skip report when
+/// there are none.
+pub(crate) fn files_of(game: &str) -> Option<Vec<RealFile>> {
+    let paths = super::save_files(game)?;
+    let mut files = Vec::new();
+    for path in paths {
+        let label = label(game, &path);
+        let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+        let Ok(bytes) = std::fs::read(&path) else { panic!("{label}: read failed") };
+        files.push(RealFile { label, name, bytes });
+    }
+    Some(files)
 }

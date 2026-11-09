@@ -14,12 +14,21 @@ use crate::document::Document;
 /// game, and maps both onto the field vocabulary of its game. Each method
 /// has the contract of the inherent method of the same name on
 /// [`Ff1Model`](crate::ff1::Ff1Model) and [`Ff2Model`](crate::ff2::Ff2Model).
+///
+/// Games plug in inside this crate: the shared machinery and the
+/// `impl_slot_model!` macro that writes the impl are crate-private, so no
+/// other crate can add a model.
 pub trait SlotModel: Clone + Send + 'static {
     /// The game this model reads.
     const GAME: Game;
 
     /// The capabilities of a slot of this game.
     const CAPABILITIES: &'static [Capability];
+
+    /// The equipment slots of a character: `equipment.1` to this value.
+    /// A game states its own count, and the shared field lists and rules
+    /// take it as an argument.
+    const EQUIPMENT_SLOTS: u32;
 
     /// The keyed lists of a slot of this game, as collection names: the
     /// open refuses a slot where one of them holds a key twice.
@@ -116,13 +125,24 @@ pub trait SlotModel: Clone + Send + 'static {
     fn field_locked(&self, field: &FieldId) -> Result<bool, EditError>;
 }
 
-/// Expands to the `impl SlotModel` of a game model, each method calling the inherent method of the same name, so a game states its constants and writes no delegating body.
+/// Expands to the `impl SlotModel` of a game model, so a game states its constants and writes no delegating body.
+/// Each method calls the inherent method of the same name on the model, except `tables()`, which reads the model's `tables` field.
+/// The impl denies `unconditional_recursion`: a model that lacks an inherent method would make the trait method call itself, and `cargo check` refuses it.
 macro_rules! impl_slot_model {
-    ($model:ty, game: $game:expr, capabilities: $capabilities:expr, keyed_lists: $keyed_lists:expr, document: $document:literal) => {
+    (
+        $model:ty,
+        game: $game:expr,
+        capabilities: $capabilities:expr,
+        keyed_lists: $keyed_lists:expr,
+        equipment_slots: $equipment_slots:expr,
+        document: $document:literal
+    ) => {
+        #[deny(unconditional_recursion)]
         impl $crate::shared::SlotModel for $model {
             const GAME: ::neoffse_core::Game = $game;
             const CAPABILITIES: &'static [::neoffse_core::Capability] = &$capabilities;
             const KEYED_LISTS: &'static [&'static str] = &$keyed_lists;
+            const EQUIPMENT_SLOTS: u32 = $equipment_slots;
             const DOCUMENT: &'static str = $document;
 
             fn new(document: $crate::document::Document, tables: &'static ::neoffse_data::GameTables) -> Self {

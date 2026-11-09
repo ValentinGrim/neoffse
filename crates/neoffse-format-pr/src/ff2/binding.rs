@@ -59,16 +59,12 @@ impl CharacterPart for Part {
             [Key::Name(names::MAX_MP_GAIN)] => Some(Self::MaxMpGain),
             [Key::Name(names::MAX_HP)] => Some(Self::MaxHp),
             [Key::Name(names::MAX_MP)] => Some(Self::MaxMp),
-            [Key::Name(names::POWER)] => Some(Self::Stat(Stat::Power)),
-            [Key::Name(names::VITALITY)] => Some(Self::Stat(Stat::Vitality)),
-            [Key::Name(names::AGILITY)] => Some(Self::Stat(Stat::Agility)),
-            [Key::Name(names::INTELLIGENCE)] => Some(Self::Stat(Stat::Intelligence)),
-            [Key::Name(names::SPIRIT)] => Some(Self::Stat(Stat::Spirit)),
-            [Key::Name(names::MAGIC)] => Some(Self::Stat(Stat::Magic)),
             [Key::Name(names::SKILL), Key::Id(key)] if skill_ok(*key) => Some(Self::Skill(*key)),
             [Key::Name(names::SPELL), Key::Id(chain)] => Some(Self::Spell(*chain)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot)] if slot_ok(*slot) => Some(Self::Slot(*slot)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot), Key::Name(names::COUNT)] if slot_ok(*slot) => Some(Self::SlotCount(*slot)),
+            // FF II has no Luck stat. No place is a single name, so none is shadowed here.
+            [Key::Name(name)] => Stat::of_name(name).filter(|stat| *stat != Stat::Luck).map(Self::Stat),
             _ => Place::declared(keys).map(Self::Place),
         }
     }

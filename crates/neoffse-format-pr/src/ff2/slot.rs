@@ -9,5 +9,6 @@ impl_slot_model!(
     game: super::GAME,
     capabilities: super::CAPABILITIES,
     keyed_lists: [names::CHARACTER, names::INVENTORY, names::KEY_ITEMS, names::KEYWORDS],
+    equipment_slots: names::EQUIPMENT_SLOTS,
     document: "Ff2Document"
 );

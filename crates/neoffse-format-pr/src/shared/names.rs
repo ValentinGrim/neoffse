@@ -37,17 +37,16 @@ pub const INTELLIGENCE: &str = "intelligence";
 pub const SPIRIT: &str = "spirit";
 /// Magic stat, `parameter.addtionalMagic`.
 pub const MAGIC: &str = "magic";
+/// Luck stat, `parameter.addtionalLuck`. Only FF I declares the field.
+pub const LUCK: &str = "luck";
 /// Equipment slots, `equipmentList`; the slot is the key that follows.
 pub const EQUIPMENT: &str = "equipment";
-/// `equipment` takes the slot 1 to this value
-/// (`docs/formats/pixel-remaster.md#equipment-slots`: keys 1 to 5).
-pub const EQUIPMENT_SLOTS: u32 = 5;
 
-/// The equipment fields of one character: for each slot 1 to
-/// [`EQUIPMENT_SLOTS`] the pair `equipment.<S>` then `equipment.<S>.count`.
-pub(crate) fn equipment_fields(id: u32) -> Vec<FieldId> {
-    let mut fields = Vec::with_capacity(2 * EQUIPMENT_SLOTS as usize);
-    for slot in 1..=EQUIPMENT_SLOTS {
+/// The equipment fields of one character: for each slot 1 to `slots` the
+/// pair `equipment.<S>` then `equipment.<S>.count`.
+pub(crate) fn equipment_fields(id: u32, slots: u32) -> Vec<FieldId> {
+    let mut fields = Vec::with_capacity(2 * slots as usize);
+    for slot in 1..=slots {
         let slot_field = FieldId::new(CHARACTER).with_id(id).with_name(EQUIPMENT).with_id(slot);
         fields.push(slot_field.clone());
         fields.push(slot_field.with_name(COUNT));

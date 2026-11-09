@@ -78,7 +78,7 @@ pub(crate) fn slot_content_id(field: &FieldId, number: i64, meta: &FieldMeta) ->
 
 /// `OutOfRange { min: worn }` for a count below the wearers.
 pub(crate) fn check_floor(field: &FieldId, count: i64, worn: usize, count_meta: &FieldMeta) -> Result<(), EditError> {
-    // Wearers number at most the characters times the slots: the saturation never triggers.
+    // `wearers` counts array elements, which fit an `i64`: the saturation never triggers, and if it did the floor would fail closed.
     let min = i64::try_from(worn).unwrap_or(i64::MAX);
     if count < min {
         return Err(EditError::OutOfRange {
@@ -215,7 +215,7 @@ pub(crate) fn equip_plan(
     }
     let old = slot_content(document, character, slot, slot_field)?;
     let others = wearers_of(document, content_id, slots, slot_field)?.saturating_sub(usize::from(old == i64::from(content_id)));
-    // Wearers number at most the characters times the slots: the saturation never triggers.
+    // `wearers` counts array elements, which fit an `i64`: the saturation never triggers, and if it did the floor would fail closed.
     let needed = i64::try_from(others + 1).unwrap_or(i64::MAX);
     let copied = if held.is_none() {
         plan.push(Edit::insert(row, None, vec![(names::COUNT, Value::Int(needed))]));

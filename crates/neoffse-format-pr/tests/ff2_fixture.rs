@@ -8,9 +8,8 @@ mod common;
 
 use std::collections::HashMap;
 
-use common::ff1_save::keys;
 use common::ff2_save::{SlotData, ids, standard_model, tables};
-use common::pr_files::{assert_fixture_matches, text_at, unique};
+use common::pr_files::{assert_fixture_matches, keys, text_at, unique};
 use common::slot_model::int;
 use common::{VEHICLES, character_path, corps_id, slot};
 use neoffse_core::{FieldId, TableKind, Value};

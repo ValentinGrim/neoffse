@@ -8,6 +8,7 @@ use neoffse_core::{FieldMeta, Shape, TableKind};
 use neoffse_data::GameTables;
 
 use super::binding::Part;
+use super::names::EQUIPMENT_SLOTS;
 use super::places;
 use crate::shared::meta::{STORAGE_MAX, derived_meta, int};
 
@@ -16,7 +17,7 @@ use crate::shared::meta::{STORAGE_MAX, derived_meta, int};
 /// (`docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`). The hand
 /// labels are provisional until the game's own order is read, which that
 /// section leaves open.
-const SLOTS: [(&str, &[TableKind]); 5] = [
+const SLOTS: [(&str, &[TableKind]); EQUIPMENT_SLOTS as usize] = [
     ("Hand 1", &[TableKind::Weapon, TableKind::Shield]),
     ("Hand 2", &[TableKind::Weapon, TableKind::Shield]),
     ("Body", &[TableKind::Armor]),
@@ -42,7 +43,7 @@ const SKILLS: [&str; 10] = [
 /// The first skill key that reads `value / 100 + 1` for its level: evasion.
 const FIRST_EVASION_KEY: u32 = 8;
 
-/// The binding admits the slots 1 to 5 only, so the fallback row never shows.
+/// The binding admits the slots 1 to `EQUIPMENT_SLOTS` only, so the fallback row never shows.
 fn slot(number: u32) -> (&'static str, &'static [TableKind]) {
     let index = usize::try_from(number).ok().and_then(|number| number.checked_sub(1));
     index.and_then(|index| SLOTS.get(index)).copied().unwrap_or(("Slot", &[TableKind::Item]))

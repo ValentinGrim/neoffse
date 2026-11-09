@@ -42,7 +42,7 @@ pub(crate) fn inventory<M: SlotModel>(model: &mut M) -> Vec<(u32, i64)> {
 pub(crate) fn slots<M: SlotModel>(model: &mut M) -> Vec<(u32, u32, i64, i64)> {
     let mut found = Vec::new();
     for id in 1..=4 {
-        for number in 1..=names::EQUIPMENT_SLOTS {
+        for number in 1..=M::EQUIPMENT_SLOTS {
             found.push((id, number, int(model, &slot(id, number)), int(model, &slot_count(id, number))));
         }
     }

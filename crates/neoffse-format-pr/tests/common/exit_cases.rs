@@ -295,7 +295,7 @@ pub(crate) fn build(subject: &Subject) -> Built<Case> {
     ];
     singles.extend(item_cases(&facts));
     singles.extend(super::exit_fields::field_cases(&facts));
-    singles.extend(super::exit_equip::equip_cases(&facts, super::exit_equip::FF1_SLOTS));
+    singles.extend(super::exit_equip::equip_cases(&facts, names::EQUIPMENT_SLOTS, &super::exit_equip::FF1_SLOTS));
     let find = |wanted: &str| singles.iter().find(|(name, _)| *name == wanted).and_then(|(_, case)| case.as_ref());
     let composed = compose(&[find("gil"), find("level"), find("insert_item_middle"), find("remove_key_item")]);
     singles.push(("compose", composed));

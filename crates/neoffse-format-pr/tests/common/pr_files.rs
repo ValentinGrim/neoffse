@@ -1,7 +1,8 @@
 //! Test helpers on the files of a Pixel Remaster game: framing a text into a
 //! container, a one-file set and a slot file name, the error that refuses an
 //! open, the container shapes, the committed fixtures and two small readers
-//! on a parsed slot. FF I to FF VI take the same calls.
+//! on a parsed slot and the key order of a JSON object. FF I to FF VI take the
+//! same calls.
 
 use std::collections::HashSet;
 
@@ -84,4 +85,25 @@ pub(crate) fn write_fixture(file: &str, text: &str) {
     let path = neoffse_testkit::fixture_path(file);
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(path, text).unwrap();
+}
+
+/// The keys of the JSON object `text`, in order, repeats included.
+pub(crate) fn keys(text: &str) -> Vec<String> {
+    use serde::de::{Deserializer as _, IgnoredAny, MapAccess, Visitor};
+
+    struct Keys;
+    impl<'de> Visitor<'de> for Keys {
+        type Value = Vec<String>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("an object")
+        }
+        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+            let mut keys = Vec::new();
+            while let Some((key, IgnoredAny)) = map.next_entry::<String, IgnoredAny>()? {
+                keys.push(key);
+            }
+            Ok(keys)
+        }
+    }
+    serde_json::Deserializer::from_str(text).deserialize_map(Keys).unwrap()
 }

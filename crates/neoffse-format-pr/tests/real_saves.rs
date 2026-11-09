@@ -9,13 +9,9 @@ mod common;
 
 use std::path::{Path, PathBuf};
 
+use common::real_slots::label;
 use neoffse_format_pr::container::{CodecError, Decoded, InflatePath, decode, encode};
 use neoffse_format_pr::document::{Document, DocumentError, Scalar, Segment};
-
-fn label(game: &str, path: &Path) -> String {
-    let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-    format!("{game} {}", name.chars().take(8).collect::<String>())
-}
 
 /// The games that have private saves, with their save files; a game with
 /// only the Steam cloud marker counts as absent.

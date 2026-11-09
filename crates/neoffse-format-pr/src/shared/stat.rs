@@ -2,6 +2,8 @@
 //! as `parameter.addtional...` keys. A game builds the variants it has:
 //! FF I builds all seven, FF II never builds `Luck`.
 
+use super::names::{AGILITY, INTELLIGENCE, LUCK, MAGIC, POWER, SPIRIT, VITALITY};
+
 /// The seven stat fields; each maps to one `addtional...` key of `parameter`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stat {
@@ -15,6 +17,21 @@ pub(crate) enum Stat {
 }
 
 impl Stat {
+    /// The stat whose field name is `name`, `None` for any other name. A game
+    /// that lacks a stat refuses the variant itself: FF II drops `Luck`.
+    pub(crate) fn of_name(name: &str) -> Option<Self> {
+        match name {
+            POWER => Some(Stat::Power),
+            VITALITY => Some(Stat::Vitality),
+            AGILITY => Some(Stat::Agility),
+            INTELLIGENCE => Some(Stat::Intelligence),
+            SPIRIT => Some(Stat::Spirit),
+            LUCK => Some(Stat::Luck),
+            MAGIC => Some(Stat::Magic),
+            _ => None,
+        }
+    }
+
     /// The `parameter` key of the stat (the game's spelling).
     pub(crate) fn document_key(self) -> &'static str {
         match self {
