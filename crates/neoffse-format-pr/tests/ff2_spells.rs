@@ -7,8 +7,9 @@ mod common;
 
 use common::character_path;
 use common::ff2_save::{SlotData, Spell, model, standard_model, tables};
-use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, Game, Shape, TableKind, Value};
-use neoffse_data::{GameTables, Language, Sources};
+use common::ff2_spell::{small_tables, spell_rows};
+use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, Shape, TableKind, Value};
+use neoffse_data::{GameTables, Language};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};
 
@@ -208,29 +209,11 @@ fn a_raw_set_of_a_level_is_read_only_under_both_policies() {
 }
 
 fn nameless_tables() -> &'static GameTables {
-    let mut abilities = String::new();
-    for id in 1..=4 {
-        let name = if id == 3 { "name_en = \"Cure\"\nname_fr = \"Soin\"\n" } else { "" };
-        let row = format!(
-            "[[ability]]\nid = {id}\ncontent_id = {}\ntype_id = 1\nkind = \"white_magic\"\nlevel = 0\n{name}\n",
-            100 + id
-        );
-        abilities.push_str(&row);
-    }
-    let skills = "[[status]]\nid = 1\nhp = 10\nmp = 5\npower = 1\nvitality = 2\nagility = 3\nintelligence = 4\nspirit = 5\nmagic = 6\n\n\
-                  [skill_curve]\ntotal_exp = [0, 7]\n\n[spell_chains]\nfirst = [1, 3]\nlength = 2\n";
-    let sources = Sources {
-        content: "[[content]]\nid = 5\nkind = \"item\"\nname_en = \"Ether\"\nname_fr = \"Éther\"\n",
-        abilities: &abilities,
-        jobs: "[[job]]\nid = 1\nname_en = \"Warrior\"\nname_fr = \"Guerrier\"\n",
-        commands: "[[command]]\nid = 1\nname_en = \"Attack\"\nname_fr = \"Attaque\"\n",
-        monsters: None,
-        bounds: "[bounds]\nMAX_GIL = 999999\nMAX_MAGICAL_LEVEL = 2\nMAX_WEAPON_LEVEL = 2\n",
-        growth: None,
-        skills: Some(skills),
-    };
-    // The model keeps the tables for its whole life: leak them for `'static`.
-    Box::leak(Box::new(GameTables::parse(Game::Ff2Pr, &sources).unwrap()))
+    small_tables(
+        &spell_rows(4, 3),
+        "first = [1, 3]\nlength = 2\n",
+        "[bounds]\nMAX_GIL = 999999\nMAX_MAGICAL_LEVEL = 2\nMAX_WEAPON_LEVEL = 2\n",
+    )
 }
 
 #[test]

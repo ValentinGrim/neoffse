@@ -8,8 +8,10 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::ff1_save::{SlotData, model, standard_model};
 use common::rolls::Script;
+use common::slot_model::int;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, GameChange, Value};
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
@@ -23,13 +25,6 @@ fn exp(id: u32) -> FieldId {
 
 fn set(field: FieldId, value: i64) -> Edit {
     Edit::set(field, Value::Int(value))
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 /// Applies `edit` under the game interface with every roll failing, checks

@@ -5,29 +5,12 @@
 
 mod common;
 
-use std::path::Path;
-
-use common::{ff2_registry, folder_with, must, slot_bytes, slot_name, slot_with_text_replaced, slot_with_vehicles};
+use common::{failure, failure_in, ff2_registry, folder_with, must, slot_bytes, slot_name, slot_with_text_replaced, slot_with_vehicles};
 use neoffse::core::{FormatError, Game};
 use neoffse::pr::OpenError;
 use neoffse::{Error, Registry};
 
 const NAME: &str = "slot.bin";
-
-/// The error of opening `bytes` as `NAME` in `registry`.
-#[track_caller]
-fn failure(registry: &Registry, bytes: &[u8], game: Option<Game>) -> Error {
-    let dir = folder_with(&[(NAME, bytes)]);
-    failure_in(registry, dir.path(), NAME, game)
-}
-
-#[track_caller]
-fn failure_in(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> Error {
-    let Err(error) = registry.open(dir, name, game) else {
-        panic!("the open must fail");
-    };
-    error
-}
 
 /// The game of the session that opens `bytes` as `NAME`. The summary is not
 /// read: a file built from the FF I fixture is no valid FF II slot.

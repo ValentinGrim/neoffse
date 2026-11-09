@@ -5,13 +5,11 @@
 
 mod common;
 
-use std::path::Path;
-
-use common::{ff1_registry, must_some, private_files_of};
+use common::{ff1_registry, folder_of, is_slot_name, private_files_of};
 use neoffse::Error;
 use neoffse::core::{FormatError, Game};
 use neoffse::pr::OpenError;
-use neoffse::pr::slots::SLOT_FILES;
+use neoffse_testkit::report;
 
 /// The game folders `ff2` to `ff6` with the game of each and the vehicle
 /// count its slots hold (`docs/formats/pixel-remaster.md#telling-the-games-apart`).
@@ -22,20 +20,6 @@ const FOLDERS: [(&str, Game, usize); 5] = [
     ("ff5", Game::Ff5Pr, 19),
     ("ff6", Game::Ff6Pr, 8),
 ];
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
-
-fn is_slot_name(name: &str) -> bool {
-    SLOT_FILES.iter().any(|file| file.name == name)
-}
-
-/// The folder of a private file.
-fn folder_of(path: &Path) -> &Path {
-    must_some(path.parent(), "a private file has a folder")
-}
 
 #[test]
 fn every_private_slot_of_ff2_to_ff6_is_unsupported_for_an_ff1_registry() {

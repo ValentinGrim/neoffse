@@ -10,11 +10,10 @@ use neoffse_core::{EditError, FieldId, Value};
 use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};
 
+use super::exit_facts::CHARS;
 use super::ff1_save::SlotData;
 use super::json_tree::Tree;
 use super::{character_path, embed};
-
-const CHARS: &str = "userData.ownedCharacterList.target";
 
 /// The ability ids of the spells held by the 24 slots of character `id`.
 /// An absent slot counts as empty; a slot the model cannot read is an `Err`

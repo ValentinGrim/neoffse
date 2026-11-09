@@ -7,15 +7,15 @@ mod common;
 
 use common::edit_proof::{How, Proof, Subject, ViewChange, prove};
 use common::exit_cases::{ALWAYS, FIXTURE_SKIPS, NEW_NAME, build, run};
-use common::ff1_save::{INVENTORY, KEY_ITEMS, SlotData, character_field};
+use common::exit_facts::{INV, KEYS};
+use common::ff1_save::{INVENTORY, KEY_ITEMS, SlotData};
 use common::json_diff::{Change, added, removed, value};
+use common::{character_field, gil};
 use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
 use neoffse_format_pr::container::Container;
 use neoffse_format_pr::ff1::{Ff1Format, GAME, names};
 
 const GIL: &str = "userData.owendGil";
-const INV: &str = "userData.normalOwnedItemList.target";
-const KEYS: &str = "userData.importantOwendItemList.target";
 
 fn subject() -> Subject {
     Subject::fixture(Ff1Format::new(), &SlotData::standard(), Container::game())
@@ -35,10 +35,6 @@ fn proof(changes: Vec<Change>, view: Vec<ViewChange>, pairs: &[(&str, String)]) 
 
 fn game(case: &str, edit: Edit, proof: &Proof) {
     prove(&subject(), case, &[edit], How::Game, proof);
-}
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
 }
 
 fn set_gil(number: i64) -> Edit {

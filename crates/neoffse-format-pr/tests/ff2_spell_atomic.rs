@@ -9,19 +9,13 @@ mod common;
 use common::character_path;
 use common::ff2_save::{SlotData, model, standard_model};
 use common::ff2_spell::{History, level_edit};
-use neoffse_core::{CapPolicy, EditError, FieldId, SaveFormat, Value};
+use common::slot_model::int;
+use neoffse_core::{CapPolicy, EditError, SaveFormat, Value};
 use neoffse_format_pr::container::{Container, decode};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
 
 use common::ff1_format::{one_file, sav, slot_name};
-
-fn int(model: &mut Ff2Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
-}
 
 /// A spaced slot whose copy of chain 0 stores `skillLevel` -5: the plan
 /// passes, and step 6 fails on the storage bound after five steps wrote.

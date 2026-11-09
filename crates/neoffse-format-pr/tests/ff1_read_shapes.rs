@@ -4,8 +4,9 @@
 
 mod common;
 
+use common::character_field;
 use common::character_path;
-use common::ff1_save::{SlotData, character_field};
+use common::ff1_save::SlotData;
 use neoffse_core::{EditError, FieldId};
 use neoffse_format_pr::document::{Document, DocumentError, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME, names};

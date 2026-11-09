@@ -4,24 +4,12 @@
 
 use neoffse_format_pr::ff1::GAME;
 
+use super::exit_facts::CHARS;
 use super::json_tree::Tree;
 
-const CHARS: &str = "userData.ownedCharacterList.target";
 /// `contentId - abilityId` for FF I spells.
 const OFFSET: i64 = 208;
 const SLOTS_PER_LEVEL: usize = 3;
-
-fn ints(tree: &Tree, array: &str, key: &str) -> Option<Vec<i64>> {
-    (0..tree.array_len(array)?)
-        .map(|index| {
-            tree.int(&if key.is_empty() {
-                format!("{array}[{index}]")
-            } else {
-                format!("{array}[{index}].{key}")
-            })
-        })
-        .collect()
-}
 
 /// Every breach of the rules for the characters of `tree`, one message each.
 pub(crate) fn ability_violations(tree: &Tree) -> Vec<String> {
@@ -30,7 +18,7 @@ pub(crate) fn ability_violations(tree: &Tree) -> Vec<String> {
     for character in 0..tree.array_len(CHARS).unwrap_or(0) {
         let base = format!("{CHARS}[{character}]");
         let list = format!("{base}.abilityList.target");
-        let (Some(abilities), Some(contents)) = (ints(tree, &list, "abilityId"), ints(tree, &list, "contentId")) else {
+        let (Some(abilities), Some(contents)) = (tree.ints(&list, "abilityId"), tree.ints(&list, "contentId")) else {
             found.push(format!("{list}: unreadable"));
             continue;
         };
@@ -43,7 +31,7 @@ pub(crate) fn ability_violations(tree: &Tree) -> Vec<String> {
             }
         }
         let order = format!("{base}.additionOrderOwnedAbilityIds.target");
-        if ints(tree, &order, "") != Some(contents.clone()) {
+        if tree.ints(&order, "") != Some(contents.clone()) {
             found.push(format!("{order}: not the contentIds of abilityList"));
         }
         found.extend(slot_violations(tree, &base, &abilities, &contents));
@@ -52,7 +40,7 @@ pub(crate) fn ability_violations(tree: &Tree) -> Vec<String> {
     learned.sort_unstable();
     learned.dedup();
     // The doc states the union and no order; real saves list the IDs unsorted.
-    let mut stored = ints(tree, "userData.learnedAbilityList.target", "").unwrap_or_default();
+    let mut stored = tree.ints("userData.learnedAbilityList.target", "").unwrap_or_default();
     stored.sort_unstable();
     if stored != learned {
         found.push("userData.learnedAbilityList.target: not the union of the party's abilityIds".to_owned());
@@ -73,7 +61,7 @@ fn slot_violations(tree: &Tree, base: &str, abilities: &[i64], contents: &[i64])
             continue;
         };
         let info = format!("{path}.slotInfo");
-        let keys = ints(tree, &format!("{info}.keys"), "");
+        let keys = tree.ints(&format!("{info}.keys"), "");
         let values = tree.array_len(&format!("{info}.values"));
         if keys != Some((1..).take(SLOTS_PER_LEVEL).collect()) || values != Some(SLOTS_PER_LEVEL) {
             found.push(format!("{info}: not keys 1 to 3 with three values"));

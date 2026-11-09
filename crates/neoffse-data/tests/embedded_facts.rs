@@ -5,19 +5,9 @@
 
 mod common;
 
-use common::ff1;
+use common::{CONTENT_KINDS, ff1};
 use neoffse_core::TableKind;
 use neoffse_data::Language;
-
-const CONTENT_KINDS: [TableKind; 7] = [
-    TableKind::Item,
-    TableKind::KeyItem,
-    TableKind::Weapon,
-    TableKind::Shield,
-    TableKind::Armor,
-    TableKind::Helmet,
-    TableKind::Gloves,
-];
 
 fn names(kind: TableKind, id: u32) -> (&'static str, &'static str) {
     let entry = ff1().entry(kind, id).unwrap();

@@ -30,6 +30,7 @@ fn canonical(content_id: u32, count: i64) -> String {
 /// storage check of `Remove` and `row_locked`.
 fn canonical_count(text: &str, content_id: u32) -> Option<i64> {
     let head = format!("{{\"contentId\":{content_id},\"count\":");
+    // A count `i64` cannot hold is no text `canonical` writes.
     text.strip_prefix(&head)?.strip_suffix('}')?.parse().ok()
 }
 
@@ -98,6 +99,7 @@ impl<'a> Lists<'a> {
             return Err(EditError::DuplicateRow { row: row.id().clone() });
         }
         let len = self.document.array_len(&list.target()).map_err(failed)?;
+        // `None` appends, as `Edit::Insert` documents.
         let index = position.unwrap_or(len);
         if index > len {
             return Err(EditError::PositionOutOfRange {

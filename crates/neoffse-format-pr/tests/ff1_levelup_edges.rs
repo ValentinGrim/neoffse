@@ -5,9 +5,11 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::character_field;
+use common::ff1_save::{SlotData, model, standard_model};
 use common::growth_oracle::Stored;
 use common::rolls::Script;
+use common::slot_model::int;
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, Rolls, names};
@@ -25,13 +27,6 @@ fn field(id: u32, name: &'static str) -> FieldId {
 
 fn level(id: u32) -> FieldId {
     field(id, names::LEVEL)
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 fn edits(model: &mut Ff1Model, edit: &Edit, rolls: &mut dyn Rolls) -> Vec<Edit> {

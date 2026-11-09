@@ -6,25 +6,17 @@
 
 mod common;
 
-use std::fmt::Write;
-
 use common::character_path;
 use common::ff2_save::{SlotData, Spell, content_of, model, standard_model, tables};
-use common::ff2_spell::{History, Where, level_edit, replay};
+use common::ff2_spell::{History, Where, level_edit, replay, small_tables, spell_rows};
 use common::json_diff::{Kind, assert_changes, diff};
-use neoffse_core::{Edit, EditError, FieldId, Game, Value};
-use neoffse_data::{GameTables, Sources};
+use common::slot_model::int;
+use neoffse_core::{Edit, EditError, FieldId, Value};
+use neoffse_data::GameTables;
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};
 
 const PARTS: [&str; 3] = ["abilityId", "contentId", "skillLevel"];
-
-fn int(model: &mut Ff2Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
-}
 
 /// The three stored values of the entry `position` of `group`.
 fn entry(model: &mut Ff2Model, id: u32, group: &'static str, position: u32) -> [i64; 3] {
@@ -363,25 +355,7 @@ fn a_spaced_slot_undoes_up_to_layout() {
 
 /// Tables whose chain holds three rows and whose curve holds two totals.
 fn short_curve_tables() -> &'static GameTables {
-    let mut abilities = String::new();
-    for id in 1..=3 {
-        let row = "type_id = 1\nkind = \"white_magic\"\nlevel = 0\n\n";
-        write!(abilities, "[[ability]]\nid = {id}\ncontent_id = {}\n{row}", 100 + id).unwrap();
-    }
-    let skills = "[[status]]\nid = 1\nhp = 10\nmp = 5\npower = 1\nvitality = 2\nagility = 3\nintelligence = 4\nspirit = 5\nmagic = 6\n\n\
-                  [skill_curve]\ntotal_exp = [0, 7]\n\n[spell_chains]\nfirst = [1]\nlength = 3\n";
-    let sources = Sources {
-        content: "[[content]]\nid = 5\nkind = \"item\"\nname_en = \"Ether\"\nname_fr = \"Éther\"\n",
-        abilities: &abilities,
-        jobs: "[[job]]\nid = 1\nname_en = \"Warrior\"\nname_fr = \"Guerrier\"\n",
-        commands: "[[command]]\nid = 1\nname_en = \"Attack\"\nname_fr = \"Attaque\"\n",
-        monsters: None,
-        bounds: "[bounds]\nMAX_GIL = 999999\n",
-        growth: None,
-        skills: Some(skills),
-    };
-    // The model keeps the tables for its whole life: leak them for `'static`.
-    Box::leak(Box::new(GameTables::parse(Game::Ff2Pr, &sources).unwrap()))
+    small_tables(&spell_rows(3, 0), "first = [1]\nlength = 3\n", "[bounds]\nMAX_GIL = 999999\n")
 }
 
 #[test]

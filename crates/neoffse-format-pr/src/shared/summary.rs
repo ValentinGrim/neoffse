@@ -73,7 +73,8 @@ where
     if let Some(Scalar::Int(id)) = optional(document, &[Segment::Key("id")])? {
         summary.slot = slot_for_id(id);
     }
-    // A negative or non-finite time is no play time: the field takes its empty value.
+    // A negative, non-finite or oversized time (past `Duration::MAX`) is no play time:
+    // the field takes its empty value.
     summary.play_time = match optional(document, &user_data("playTime"))? {
         Some(Scalar::Float(seconds)) => Duration::try_from_secs_f64(seconds).ok(),
         Some(Scalar::Int(seconds)) => u64::try_from(seconds).ok().map(Duration::from_secs),

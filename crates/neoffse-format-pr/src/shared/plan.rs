@@ -118,7 +118,8 @@ pub(crate) fn item_plan(document: &mut Document, tables: &GameTables, edit: &Edi
     match edit {
         Edit::Insert { row, values, .. } => check_insert_rules(document, tables, row, values, slots)?,
         Edit::Remove { row } => check_remove(document, tables, row, slots)?,
-        // Every other edit passes as one plain edit (`docs/architecture.md#edit-interfaces`).
+        // `Edit` is `#[non_exhaustive]`; both callers plan a `Set` first, so no edit
+        // reaches this arm today. A later variant would pass as one plain edit.
         _ => {}
     }
     Ok(Plan::single(edit))

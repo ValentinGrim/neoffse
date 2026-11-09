@@ -11,6 +11,8 @@ use neoffse_core::{FieldId, Value};
 use neoffse_format_pr::shared::SlotModel;
 use neoffse_format_pr::shared::names;
 
+use super::private::is_placeholder;
+
 /// What differs between the games.
 pub(crate) struct Rules<M> {
     /// True when a placeholder row of the inventory may be worn by more
@@ -29,17 +31,6 @@ fn int<M: SlotModel>(model: &mut M, field: &FieldId) -> Result<i64, String> {
         Ok(_) => Err(format!("{field}: not an integer")),
         Err(_) => Err(format!("{field}: does not read")),
     }
-}
-
-fn slot_field(id: u32, slot: u32) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(slot)
-}
-
-/// True when the tables of `M` list `content` as a placeholder row.
-fn is_placeholder<M: SlotModel>(content: i64) -> bool {
-    let tables = neoffse_data::tables_for(M::GAME);
-    let entry = u32::try_from(content).ok().and_then(|id| tables?.content(id));
-    entry.is_some_and(|entry| entry.placeholder)
 }
 
 /// Every breach of the rules, each message starting with its kind:
@@ -74,12 +65,12 @@ pub(crate) fn violations<M: SlotModel>(model: &mut M, copy_counts: bool, rules: 
     let mut wearers: HashMap<i64, i64> = HashMap::new();
     let mut worn = Vec::new();
     for id in characters {
-        for slot in 1..=names::EQUIPMENT_SLOTS {
-            let field = slot_field(id, slot);
+        for number in 1..=names::EQUIPMENT_SLOTS {
+            let field = super::slot(id, number);
             match (int(model, &field), int(model, &field.clone().with_name(names::COUNT))) {
                 (Ok(content), Ok(count)) => {
                     *wearers.entry(content).or_default() += 1;
-                    worn.push((field, slot, content, count));
+                    worn.push((field, number, content, count));
                 }
                 (first, second) => {
                     for text in [first.err(), second.err()].into_iter().flatten() {

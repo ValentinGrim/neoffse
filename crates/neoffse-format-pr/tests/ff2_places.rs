@@ -6,12 +6,11 @@
 mod common;
 
 use common::ff2_save::{SlotData, content_of, model, standard_model, tables};
-use neoffse_core::{CapPolicy, Capability, Edit, EditError, Entity, FieldId, Shape, TableKind, Value};
+use common::slot_model::int;
+use common::{ENFORCE, STORAGE_ONLY};
+use neoffse_core::{Capability, Edit, EditError, Entity, FieldId, Shape, TableKind, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff2::{Ff2Model, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
 
 fn ability(id: u32, position: u32, part: &'static str) -> FieldId {
     names::place(id, names::ABILITY, position, part)
@@ -23,13 +22,6 @@ fn dictionary(id: u32, position: u32, part: &'static str) -> FieldId {
 
 fn set(field: &FieldId, value: i64) -> Edit {
     Edit::set(field.clone(), Value::Int(value))
-}
-
-fn int(model: &mut Ff2Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(value) => value,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 /// The raw page of character `id` in the Magic section.

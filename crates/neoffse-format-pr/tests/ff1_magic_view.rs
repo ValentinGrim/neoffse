@@ -4,16 +4,14 @@
 
 mod common;
 
-use common::embed;
 use common::ff1_format::{open, standard_files};
 use common::ff1_magic::{ability, level_element, model_with_slots, spell};
 use common::ff1_save::{SlotData, model, standard_model};
+use common::{STORAGE_MAX, embed};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, NamedValue, SaveDocument, Shape, TableKind, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::container::Container;
 use neoffse_format_pr::ff1::{CAPABILITIES, names};
-
-const STORAGE_MAX: i64 = 2_147_483_647;
 
 fn set(field: &FieldId, value: i64) -> Edit {
     Edit::set(field.clone(), Value::Int(value))

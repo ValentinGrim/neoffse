@@ -5,11 +5,12 @@
 //! The oracle runs the two extreme sources: every roll fails (the bonus is
 //! 20 when `hp_value1` forces it), or every roll succeeds with a bonus of 24.
 
-use neoffse_core::{FieldId, Value};
+use neoffse_core::FieldId;
 use neoffse_data::GameTables;
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
-use super::ff1_save::character_field;
+use super::character_field;
+use super::slot_model::int;
 
 /// What a growth step moves, as the character stores it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,13 +26,6 @@ pub(crate) struct Stored {
     pub accuracy: i64,
     pub evasion: i64,
     pub charges: [i64; 8],
-}
-
-fn int(model: &mut Ff1Model, field: &FieldId) -> i64 {
-    match model.get(field).unwrap() {
-        Value::Int(number) => number,
-        other => panic!("{field}: {other:?}"),
-    }
 }
 
 impl Stored {

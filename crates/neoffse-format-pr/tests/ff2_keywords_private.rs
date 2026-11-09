@@ -6,11 +6,11 @@
 
 mod common;
 
-use common::ff1_real::must;
-use common::ff2_real::{model, slots};
+use common::ff2_real::slots;
+use common::real_slots::must;
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, RowId, TableKind};
 use neoffse_data::Language;
-use neoffse_format_pr::ff2::names;
+use neoffse_format_pr::ff2::{Ff2Model, names};
 
 fn collection() -> FieldId {
     FieldId::new(names::KEYWORDS)
@@ -21,7 +21,7 @@ fn every_real_keyword_is_a_row_of_the_keyword_table() {
     let Some(slots) = slots() else { return };
     let tables = neoffse_data::tables_for(neoffse_format_pr::ff2::GAME).unwrap();
     for slot in slots {
-        let mut model = model(&slot);
+        let mut model = slot.model::<Ff2Model>();
         let keys = must(model.rows(&collection()), &format!("{}: keywords do not read", slot.label));
         for (index, key) in keys.iter().enumerate() {
             assert!(
@@ -43,7 +43,7 @@ fn every_real_keyword_is_a_row_of_the_keyword_table() {
 fn every_real_keyword_row_is_locked_and_listed_in_the_view() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = model(&slot);
+        let mut model = slot.model::<Ff2Model>();
         let keys = must(model.rows(&collection()), &format!("{}: keywords do not read", slot.label));
         for (index, key) in keys.iter().enumerate() {
             let locked = must(
@@ -68,7 +68,7 @@ fn every_real_keyword_row_is_locked_and_listed_in_the_view() {
 fn a_real_slot_refuses_a_game_removal_and_takes_a_raw_one_back() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = model(&slot);
+        let mut model = slot.model::<Ff2Model>();
         let keys = must(model.rows(&collection()), &format!("{}: keywords do not read", slot.label));
         let Some(first) = keys.first() else { continue };
         let row = RowId::new(collection(), *first);

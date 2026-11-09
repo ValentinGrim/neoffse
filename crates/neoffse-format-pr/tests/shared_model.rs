@@ -4,7 +4,8 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field};
+use common::character_field;
+use common::ff1_save::SlotData;
 use neoffse_core::{CapPolicy, Capability, Edit, FieldId, Game, RowId, Value};
 use neoffse_data::tables_for;
 use neoffse_format_pr::document::Document;

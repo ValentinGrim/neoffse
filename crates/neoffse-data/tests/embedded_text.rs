@@ -5,29 +5,15 @@
 
 mod common;
 
-use common::ff1;
+use common::{ALL_KINDS, ff1};
 use neoffse_core::{Game, TableKind};
 use neoffse_data::sources_for;
-
-const KINDS: [TableKind; 11] = [
-    TableKind::Item,
-    TableKind::KeyItem,
-    TableKind::Weapon,
-    TableKind::Shield,
-    TableKind::Armor,
-    TableKind::Helmet,
-    TableKind::Gloves,
-    TableKind::Ability,
-    TableKind::Job,
-    TableKind::Command,
-    TableKind::Monster,
-];
 
 /// The letters the doc lists for French names, beyond ASCII.
 const FRENCH_EXTRA: &str = "ÉâèéêëîïôûŒœ";
 
 fn all_names() -> Vec<(TableKind, u32, &'static str, &'static str)> {
-    KINDS
+    ALL_KINDS
         .iter()
         .flat_map(|kind| {
             ff1()

@@ -6,12 +6,10 @@
 mod common;
 
 use common::ff1_save::{SlotData, model, standard_model};
-use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, RowId, Value};
+use common::{ENFORCE, STORAGE_ONLY};
+use neoffse_core::{ChangeSet, Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::document::Segment;
 use neoffse_format_pr::ff1::{Ff1Model, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
 
 fn inventory() -> FieldId {
     FieldId::new(names::INVENTORY)

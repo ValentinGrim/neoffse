@@ -7,28 +7,21 @@
 mod common;
 
 use common::ff1_format::one_file;
-use common::ff1_real::{files, must, must_some, slots};
-use common::{GAMES, save_files};
-use neoffse_core::{CapPolicy, Confidence, Edit, FieldId, FileProbe, FormatError, SaveDocument, Value};
+use common::ff1_real::{files, slots};
+use common::real_slots::{must, must_some};
+use common::{GAMES, gil, save_files};
+use neoffse_core::{CapPolicy, Confidence, Edit, FileProbe, FormatError, SaveDocument, Value};
 use neoffse_format_pr::container::decode;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Format, OpenError, names};
+use neoffse_format_pr::ff1::{Ff1Format, OpenError};
 use neoffse_format_pr::games::identify;
 use neoffse_format_pr::slots::slot_for_name;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
+use neoffse_testkit::report;
 
 fn holds_user_data(json: &str, label: &str) -> bool {
     must(Document::parse(json), &format!("{label}: parse failed"))
         .raw(&[Segment::Key("userData")])
         .is_ok()
-}
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
 }
 
 #[test]

@@ -7,11 +7,12 @@
 
 mod common;
 
+use common::character_field;
 use common::edit_proof::{How, Proof, Subject, ViewChange, prove};
 use common::exit_ff2::{ALWAYS, Ff2Case, build, level_without_copy, run};
 use common::ff2_ability_rules::ability_violations;
 use common::ff2_rules::{cap_violations, violations};
-use common::ff2_save::{SlotData, character_field, content_of, standard_model, tables};
+use common::ff2_save::{SlotData, content_of, standard_model, tables};
 use common::ff2_spell::{Where, level_edit};
 use common::json_diff::{added, removed, value};
 use common::json_tree::Tree;

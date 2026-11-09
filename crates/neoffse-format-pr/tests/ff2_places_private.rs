@@ -7,12 +7,13 @@
 mod common;
 
 use common::character_path;
-use common::ff1_real::{must, must_some};
-use common::ff2_real::{model, slots};
+use common::ff2_real::slots;
+use common::private::assert_fields_read_back;
+use common::real_slots::{must, must_some};
 use neoffse_core::{Capability, FieldId};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Scalar, Segment};
-use neoffse_format_pr::ff2::names;
+use neoffse_format_pr::ff2::{Ff2Model, names};
 
 /// The length of the array at `tail` under the character at `position`.
 fn length(document: &mut Document, position: usize, tail: &[Segment<'static>], what: &str) -> usize {
@@ -48,7 +49,7 @@ fn real_place_counts_follow_the_entry_counts() {
     let Some(slots) = slots() else { return };
     for slot in slots {
         let mut document = must(Document::parse(&slot.json), &format!("{}: the JSON does not parse", slot.label));
-        let mut model = model(&slot);
+        let mut model = slot.model::<Ff2Model>();
         let view = must(model.view(Language::En), &format!("{}: the view does not build", slot.label));
         let section = must_some(view.section(Capability::Magic), &format!("{}: no Magic section", slot.label));
         let ids = must(
@@ -84,17 +85,11 @@ fn real_place_counts_follow_the_entry_counts() {
 fn real_raw_pages_read_back_through_the_model() {
     let Some(slots) = slots() else { return };
     for slot in slots {
-        let mut model = model(&slot);
+        let mut model = slot.model::<Ff2Model>();
         let view = must(model.view(Language::En), &format!("{}: the view does not build", slot.label));
         let section = must_some(view.section(Capability::Magic), &format!("{}: no Magic section", slot.label));
-        for entity in section.entities.iter().filter(|entity| entity.id.keys().len() == 3) {
-            for field in &entity.fields {
-                let Ok(value) = model.get(&field.id) else {
-                    panic!("{}: {} does not read", slot.label, field.id)
-                };
-                assert!(value == field.value, "{}: {} differs from the model", slot.label, field.id);
-            }
-        }
+        let pages = section.entities.iter().filter(|entity| entity.id.keys().len() == 3);
+        assert_fields_read_back(&slot.label, &mut model, pages);
         assert!(model.document().to_json() == slot.json, "{}: the view changed the text", slot.label);
     }
 }

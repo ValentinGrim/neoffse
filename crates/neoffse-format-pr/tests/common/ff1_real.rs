@@ -2,56 +2,7 @@
 //! a field path, never a value, a length or a name
 //! (`docs/architecture.md#test-policy`).
 
-use std::path::Path;
-
-use neoffse_format_pr::container::decode;
-use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff1::{Ff1Model, GAME};
-use neoffse_format_pr::slots::SLOT_FILES;
-
-/// The value of `result`, or a panic with `what` alone. The `Err` is dropped
-/// because its text can quote save content.
-#[track_caller]
-pub(crate) fn must<T, E>(result: Result<T, E>, what: &str) -> T {
-    result.unwrap_or_else(|_| panic!("{what}"))
-}
-
-/// The value of `option`, or a panic with `what`.
-#[track_caller]
-pub(crate) fn must_some<T>(option: Option<T>, what: &str) -> T {
-    match option {
-        Some(value) => value,
-        None => panic!("{what}"),
-    }
-}
-
-/// One private slot file.
-pub(crate) struct RealSlot {
-    /// `ff1` plus the first 8 characters of the file name.
-    pub label: String,
-    /// The file name; a save file name holds no personal value.
-    pub name: String,
-    pub bytes: Vec<u8>,
-    pub json: String,
-}
-
-impl RealSlot {
-    /// A model over the decoded JSON.
-    pub(crate) fn model(&self) -> Ff1Model {
-        let Ok(document) = Document::parse(&self.json) else {
-            panic!("{}: the decoded JSON does not parse", self.label)
-        };
-        let Some(tables) = neoffse_data::tables_for(GAME) else {
-            panic!("no FF I tables")
-        };
-        Ff1Model::new(document, tables)
-    }
-}
-
-fn label(game: &str, path: &Path) -> String {
-    let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-    format!("{game} {}", name.chars().take(8).collect::<String>())
-}
+use super::real_slots::{RealFile, RealSlot, label, slots_of};
 
 /// The FF I private files named in `SLOT_FILES` that hold a `userData` key.
 /// Any other file (the bestiary, the slot index, the settings, a stray
@@ -59,46 +10,6 @@ fn label(game: &str, path: &Path) -> String {
 /// `None` after a skip report when no slot file is left.
 pub(crate) fn slots() -> Option<Vec<RealSlot>> {
     slots_of("ff1")
-}
-
-/// [`slots`] for the private folder of `game` (`ff1`, `ff2`, ...).
-pub(crate) fn slots_of(game: &str) -> Option<Vec<RealSlot>> {
-    let files = super::save_files(game)?;
-    let mut slots = Vec::new();
-    for path in files {
-        let label = label(game, &path);
-        let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-        if !SLOT_FILES.iter().any(|slot| slot.name == name) {
-            continue;
-        }
-        let Ok(bytes) = std::fs::read(&path) else { panic!("{label}: read failed") };
-        let Ok(decoded) = decode(&bytes) else { panic!("{label}: decode failed") };
-        let Ok(mut document) = Document::parse(&decoded.json) else {
-            panic!("{label}: parse failed")
-        };
-        if document.raw(&[Segment::Key("userData")]).is_ok() {
-            slots.push(RealSlot {
-                label,
-                name,
-                bytes,
-                json: decoded.json,
-            });
-        }
-    }
-    if slots.is_empty() {
-        neoffse_testkit::skip(&format!("{game} holds no slot file"));
-        return None;
-    }
-    Some(slots)
-}
-
-/// One private FF I file, whatever it holds.
-pub(crate) struct RealFile {
-    /// `ff1` plus the first 8 characters of the file name.
-    pub label: String,
-    /// The file name.
-    pub name: String,
-    pub bytes: Vec<u8>,
 }
 
 /// Every private FF I file except the Steam marker: the slots, the bestiary,

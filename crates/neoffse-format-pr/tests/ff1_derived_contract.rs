@@ -4,13 +4,13 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
+use common::ff1_save::{SlotData, model, standard_model};
 use common::json_diff::{diff, value};
+use common::{STORAGE_MAX, character_field};
 use neoffse_core::{CapPolicy, Capability, ChangeSet, Edit, EditError, FieldId, Shape, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
-const STORAGE_MAX: i64 = 2_147_483_647;
 const CHARACTER_PATH: &str = "userData.ownedCharacterList.target";
 
 fn int(model: &mut Ff1Model, id: u32, name: &'static str) -> Option<i64> {

@@ -9,13 +9,13 @@ mod stand_in;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use neoffse::Session;
 use neoffse::core::{Edit, FieldId, Game, SaveFiles, Value};
 use neoffse::io::backup::Moment;
 use neoffse::io::dirs::DataDir;
 use neoffse::pr::container::{self, Container};
 use neoffse::pr::ff1::names;
 use neoffse::pr::slots::SLOT_FILES;
+use neoffse::{Error, Registry, Session};
 use tempfile::TempDir;
 
 #[allow(unused_imports, reason = "each test crate uses a subset of the shared helpers")]
@@ -122,6 +122,33 @@ pub(crate) fn private_slot_copies() -> Option<Vec<(String, TempDir)>> {
         })
         .collect();
     Some(copies)
+}
+
+/// Whether `name` is one of the FF I to VI slot file names.
+pub(crate) fn is_slot_name(name: &str) -> bool {
+    SLOT_FILES.iter().any(|file| file.name == name)
+}
+
+/// The folder of a private file.
+pub(crate) fn folder_of(path: &Path) -> &Path {
+    must_some(path.parent(), "a private file has a folder")
+}
+
+/// The error of opening `name` of `dir` in `registry`.
+#[track_caller]
+pub(crate) fn failure_in(registry: &Registry, dir: &Path, name: &str, game: Option<Game>) -> Error {
+    let Err(error) = registry.open(dir, name, game) else {
+        panic!("the open must fail");
+    };
+    error
+}
+
+/// The error of opening `bytes` in `registry`. The file name is fixed: the
+/// stand-in formats ignore it and the real ones read the game from the bytes.
+#[track_caller]
+pub(crate) fn failure(registry: &Registry, bytes: &[u8], game: Option<Game>) -> Error {
+    let dir = folder_with(&[("slot.bin", bytes)]);
+    failure_in(registry, dir.path(), "slot.bin", game)
 }
 
 /// A probe that finds no running game.

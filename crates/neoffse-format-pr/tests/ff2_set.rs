@@ -5,27 +5,13 @@
 
 mod common;
 
+use common::character_field;
 use common::character_path;
-use common::ff2_save::{SlotData, character_field, ids, key_items, model, standard_model, tables};
-use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, RowId, TableKind, Value};
+use common::ff2_save::{SlotData, ids, key_items, model, standard_model, tables};
+use common::{ENFORCE, STORAGE_MAX, STORAGE_ONLY, count, gil, row, slot};
+use neoffse_core::{CapPolicy, ChangeSet, Edit, EditError, FieldId, TableKind, Value};
 use neoffse_format_pr::document::{Document, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Model, names};
-
-const ENFORCE: CapPolicy = CapPolicy::Enforce;
-const STORAGE_ONLY: CapPolicy = CapPolicy::StorageOnly;
-const STORAGE_MAX: i64 = 2_147_483_647;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
-
-fn count(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key).with_name(names::COUNT)
-}
-
-fn slot(slot: u32) -> FieldId {
-    character_field(1, names::EQUIPMENT).with_id(slot)
-}
 
 fn skill(key: u32) -> FieldId {
     character_field(1, names::SKILL).with_id(key)
@@ -69,7 +55,7 @@ fn unknown_fields_and_missing_rows() {
     data.characters[0].skills.retain(|(key, _)| *key != 3);
     data.characters[0].equipment.retain(|equip| equip.key != 4);
     let mut model = model_of(&data);
-    for field in [skill(3), slot(4), slot(4).with_name(names::COUNT)] {
+    for field in [skill(3), slot(1, 4), slot(1, 4).with_name(names::COUNT)] {
         let result = model.apply(&Edit::set(field.clone(), Value::Int(1)), ENFORCE);
         assert!(matches!(result, Err(EditError::UnknownField { field: named }) if named == field), "{field}");
     }
@@ -162,26 +148,26 @@ fn equipment_ids_must_belong_to_the_slot_table_under_enforce() {
         (5, 211),
     ];
     for (number, id) in accepted {
-        assert!(try_set(&slot(number), i64::from(id), ENFORCE).is_ok(), "slot {number} id {id}");
+        assert!(try_set(&slot(1, number), i64::from(id), ENFORCE).is_ok(), "slot {number} id {id}");
     }
     // A hand set to a non-weapon, non-shield id, an id of the wrong slot, an unknown id.
     let refused = [(1, armor), (2, helmet), (3, 47), (3, weapon), (4, 209), (5, 210), (1, 999_999), (3, 0)];
     for (number, id) in refused {
-        let result = try_set(&slot(number), i64::from(id), ENFORCE);
+        let result = try_set(&slot(1, number), i64::from(id), ENFORCE);
         assert!(
             matches!(result, Err(EditError::UnknownId { id: found, .. }) if found == i64::from(id)),
             "slot {number} id {id}"
         );
     }
-    assert!(try_set(&slot(1), 999_999, STORAGE_ONLY).is_ok());
-    assert!(try_set(&slot(3), 0, STORAGE_ONLY).is_ok());
+    assert!(try_set(&slot(1, 1), 999_999, STORAGE_ONLY).is_ok());
+    assert!(try_set(&slot(1, 3), 0, STORAGE_ONLY).is_ok());
 }
 
 #[test]
 fn the_raw_interface_takes_the_shield_placeholder_in_a_hand() {
     // The Shield table lists 208, so the raw interface holds no rule against it.
     for number in [1, 2] {
-        assert!(try_set(&slot(number), 208, ENFORCE).is_ok(), "slot {number}");
+        assert!(try_set(&slot(1, number), 208, ENFORCE).is_ok(), "slot {number}");
     }
 }
 
@@ -222,7 +208,7 @@ fn a_failed_set_leaves_the_text_untouched() {
         (hp.clone(), Value::Int(-1), STORAGE_ONLY),
         (hp.clone(), Value::Int(10_000), ENFORCE),
         (character_field(1, names::JOB), Value::Int(2), STORAGE_ONLY),
-        (slot(1), Value::Int(209), ENFORCE),
+        (slot(1, 1), Value::Int(209), ENFORCE),
     ];
     for (field, value, policy) in cases {
         assert!(model.apply(&Edit::set(field.clone(), value), policy).is_err(), "{field}");
@@ -249,10 +235,6 @@ fn a_change_set_applies_all_or_none_through_the_model() {
     assert_eq!(model.get(&hp).unwrap(), Value::Int(50));
     inverse.apply_with(CapPolicy::StorageOnly, |edit, policy| model.apply(edit, policy)).unwrap();
     assert_eq!(model.document().to_json(), text);
-}
-
-fn row(list: &'static str, key: u32) -> RowId {
-    RowId::new(FieldId::new(list), key)
 }
 
 /// An item id with a row in the Item table and none in the inventory.

@@ -4,7 +4,9 @@
 mod common;
 
 use common::character_path;
-use common::ff2_save::{Row, SlotData, inventory, key_items, keywords, model, tables};
+use common::ff2_save::{Row, SlotData, inventory, key_items, keywords, model, standard_model, tables};
+use common::slot_model::view_of;
+use common::{character, item};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, FormatError, RowId, SaveView, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Segment};
@@ -12,27 +14,13 @@ use neoffse_format_pr::ff2::{CAPABILITIES, Ff2Model, names};
 
 const NAMES: [&str; 4] = ["Ivo", "Mara", "Tane", "Élan"];
 
-fn view_of(slot: &SlotData) -> (Ff2Model, SaveView) {
-    let mut model = model(&slot.render());
-    let view = model.view(Language::En).unwrap();
-    (model, view)
-}
-
-fn character(id: u32) -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(id)
-}
-
-fn item(list: &'static str, key: u32) -> FieldId {
-    FieldId::new(list).with_id(key)
-}
-
 fn count_label(view: &SaveView, list: &'static str, key: u32) -> String {
     view.find(&item(list, key).with_name(names::COUNT)).unwrap().0.label.clone()
 }
 
 #[test]
 fn sections_follow_the_capabilities() {
-    let (_, view) = view_of(&SlotData::standard());
+    let (_, view) = view_of(standard_model());
     let found: Vec<Capability> = view.sections.iter().map(|section| section.capability).collect();
     assert_eq!(found, CAPABILITIES);
     assert!(view.section(Capability::Magic).is_some());
@@ -40,7 +28,7 @@ fn sections_follow_the_capabilities() {
 
 #[test]
 fn party_lists_the_characters_in_document_order() {
-    let (mut model, view) = view_of(&SlotData::standard());
+    let (mut model, view) = view_of(standard_model());
     let party = view.section(Capability::Party).unwrap();
     assert_eq!(party.entities.len(), 4);
     for (index, entity) in party.entities.iter().enumerate() {
@@ -60,7 +48,7 @@ fn party_lists_the_characters_in_document_order() {
 
 #[test]
 fn the_computed_maxima_follow_their_stored_fields() {
-    let (_, view) = view_of(&SlotData::standard());
+    let (_, view) = view_of(standard_model());
     let party = &view.section(Capability::Party).unwrap().entities;
     let position = |id: u32, name: &'static str| party[0].fields.iter().position(|field| field.id == character(id).with_name(name)).unwrap();
     assert_eq!(position(1, names::MAX_HP), position(1, names::HP) + 1);
@@ -72,7 +60,7 @@ fn the_computed_maxima_follow_their_stored_fields() {
 fn document_order_wins_over_id_order() {
     let mut slot = SlotData::standard();
     slot.characters.reverse();
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let ids: Vec<FieldId> = view.section(Capability::Party).unwrap().entities.iter().map(|e| e.id.clone()).collect();
     assert_eq!(ids, [character(4), character(3), character(2), character(1)]);
 }
@@ -81,7 +69,7 @@ fn document_order_wins_over_id_order() {
 fn an_empty_name_gets_a_generic_label() {
     let mut slot = SlotData::standard();
     slot.characters[1].name = String::new();
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let party = view.section(Capability::Party).unwrap();
     assert_eq!(party.entities[1].label, "Character 2");
     assert_eq!(party.entities[0].label, "Ivo");
@@ -90,13 +78,13 @@ fn an_empty_name_gets_a_generic_label() {
 #[test]
 fn an_empty_seat_does_not_shorten_the_roster() {
     // The standard corps holds an empty seat (characterId 0); the roster still lists four characters.
-    let (_, view) = view_of(&SlotData::standard());
+    let (_, view) = view_of(standard_model());
     assert_eq!(view.section(Capability::Party).unwrap().entities.len(), 4);
 }
 
 #[test]
 fn inventory_lists_gil_then_rows_then_key_items_then_keywords() {
-    let (_, view) = view_of(&SlotData::standard());
+    let (_, view) = view_of(standard_model());
     let entities = &view.section(Capability::Inventory).unwrap().entities;
     assert_eq!(entities.len(), 1 + inventory().len() + key_items().len() + keywords().len());
     let gil = &entities[0];
@@ -145,14 +133,14 @@ fn a_key_no_table_lists_keeps_its_prefix() {
     let mut slot = SlotData::standard();
     slot.inventory.push(Row::new(999_999, 1));
     slot.key_items.push(Row::new(999_999, 1));
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     assert_eq!(count_label(&view, names::INVENTORY, 999_999), "Item 999999");
     assert_eq!(count_label(&view, names::KEY_ITEMS, 999_999), "Key item 999999");
 }
 
 #[test]
 fn collections_sit_in_their_sections() {
-    let (model, view) = view_of(&SlotData::standard());
+    let (model, view) = view_of(standard_model());
     let party = view.section(Capability::Party).unwrap();
     let character = FieldId::new(names::CHARACTER);
     assert_eq!(party.collections, [model.collection_meta(&character).unwrap()]);
@@ -172,7 +160,7 @@ fn an_absent_key_leaves_the_field_out() {
     let mut slot = SlotData::standard();
     slot.characters[2].equipment[2].count = None;
     slot.characters[0].omit = Some("parameter");
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let party = &view.section(Capability::Party).unwrap().entities;
     let count_3 = character(3).with_name(names::EQUIPMENT).with_id(3).with_name(names::COUNT);
     assert_eq!(party[2].fields.len(), 33);
@@ -186,7 +174,7 @@ fn an_absent_key_leaves_the_field_out() {
         gil: None,
         ..SlotData::standard()
     };
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let entities = &view.section(Capability::Inventory).unwrap().entities;
     assert_eq!(entities.len(), inventory().len() + key_items().len() + keywords().len());
     assert!(entities.iter().all(|entity| entity.id != FieldId::new(names::GIL)));
@@ -197,7 +185,7 @@ fn a_status_without_a_base_row_leaves_the_maxima_out() {
     let mut slot = SlotData::standard();
     slot.characters[1].status_id = Some("99".to_owned());
     slot.characters[2].status_id = None;
-    let (_, view) = view_of(&slot);
+    let (_, view) = view_of(model(&slot.render()));
     let party = &view.section(Capability::Party).unwrap().entities;
     for index in [1, 2] {
         let id = u32::try_from(index).unwrap() + 1;
@@ -223,7 +211,7 @@ fn another_failure_is_a_decode_error() {
 
 #[test]
 fn the_view_is_a_snapshot() {
-    let (mut model, view) = view_of(&SlotData::standard());
+    let (mut model, view) = view_of(standard_model());
     let kept = view.clone();
     let edit = Edit::set(FieldId::new(names::GIL), Value::Int(5));
     model.apply(&edit, CapPolicy::Enforce).unwrap();
@@ -234,7 +222,7 @@ fn the_view_is_a_snapshot() {
 
 #[test]
 fn an_insert_shows_at_its_position() {
-    let (mut model, _) = view_of(&SlotData::standard());
+    let (mut model, _) = view_of(standard_model());
     let free = common::ff2_save::ids(neoffse_core::TableKind::Item)
         .into_iter()
         .find(|id| inventory().iter().all(|(row, _)| row != id))

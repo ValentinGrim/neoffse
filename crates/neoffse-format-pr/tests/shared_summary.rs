@@ -5,25 +5,18 @@
 
 mod common;
 
+use common::CORPS;
 use common::ff1_save::SlotData;
-use neoffse_format_pr::document::{Document, Scalar, Segment};
-use neoffse_format_pr::ff1::{Ff1Model, GAME};
-
-const CORPS: [Segment<'static>; 5] = [
-    Segment::Key("userData"),
-    Segment::Doc,
-    Segment::Key("corpsList"),
-    Segment::Doc,
-    Segment::Key("target"),
-];
+use common::slot_model::model_of;
+use neoffse_format_pr::document::{Document, Scalar};
+use neoffse_format_pr::ff1::Ff1Model;
 
 fn standard() -> Document {
     Document::parse(&SlotData::standard().render()).unwrap()
 }
 
 fn party_of(document: Document) -> Vec<String> {
-    let mut model = Ff1Model::new(document, neoffse_data::tables_for(GAME).unwrap());
-    model.summary().unwrap().party
+    model_of::<Ff1Model>(document).summary().unwrap().party
 }
 
 fn entry(character: u32) -> Scalar {

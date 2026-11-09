@@ -14,28 +14,12 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use common::edit_proof::Subject;
 use common::exit_ff2::{ALWAYS, build, level_without_copy, run};
-use common::ff1_real::{must, must_some};
 use common::ff2_real::slots;
-use common::json_diff::diff_trees;
-use common::json_tree::Tree;
-use neoffse_core::{CapPolicy, Capability, ChangeSet, Edit, EditError, FieldId, Key, RowId, SaveDocument, Value};
-use neoffse_format_pr::container;
-use neoffse_format_pr::ff2::{Ff2Format, GAME, names};
-
-const CHARS: &str = "userData.ownedCharacterList.target";
-const INV: &str = "userData.normalOwnedItemList.target";
-
-#[allow(clippy::print_stderr, reason = "the counts of the run are the only output a skipped-or-not test has")]
-fn report(line: &str) {
-    eprintln!("{line}");
-}
-
-fn skipped_line(skipped: &BTreeMap<&'static str, usize>) -> String {
-    if skipped.is_empty() {
-        return "none".to_owned();
-    }
-    skipped.iter().map(|(name, count)| format!("{name} x{count}")).collect::<Vec<_>>().join(", ")
-}
+use common::private::{inventory_ids, is_placeholder, is_read_only, refuses, skipped_line, worn_ids};
+use common::real_slots::{must, must_some};
+use neoffse_core::{CapPolicy, Capability, ChangeSet, Edit, EditError, FieldId, Key, RowId, Value};
+use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
+use neoffse_testkit::report;
 
 #[test]
 fn real_slots_prove_every_edit_kind() {
@@ -65,35 +49,23 @@ fn real_slots_prove_every_edit_kind() {
     ));
 }
 
-/// The decoded text and container of `document` equal the subject's.
-fn assert_original(subject: &Subject, document: &dyn SaveDocument, what: &str) {
-    let label = &subject.label;
-    let files = must(document.encode(), &format!("{label} {what}: encode failed"));
-    let written = must_some(files.get(&subject.name), &format!("{label} {what}: the encoding lacks the file"));
-    let after = must(container::decode(written), &format!("{label} {what}: decode failed"));
-    assert!(after.json == subject.json, "{} {what}: the text changed", subject.label);
-    assert!(after.container == subject.container, "{} {what}: the container changed", subject.label);
-    let changes = diff_trees(&subject.tree, &Tree::parse(&after.json));
-    assert!(changes.is_empty(), "{} {what}: the diff lists a change at {}", subject.label, changes[0].path);
-}
-
 #[test]
 fn real_empty_edits_round_trip_every_slot() {
     let Some(slots) = slots() else { return };
     for slot in &slots {
         let subject = Subject::real(Ff2Format::new(), slot);
         let mut document = subject.open();
-        assert_original(&subject, &*document, "decode and encode");
+        subject.assert_original(&*document, "decode and encode");
         must(document.view(), &format!("{}: the view does not read", subject.label));
-        assert_original(&subject, &*document, "after a view");
+        subject.assert_original(&*document, "after a view");
         must(
             document.apply_all(&ChangeSet::default(), CapPolicy::StorageOnly),
             &format!("{}: the empty change set is refused", subject.label),
         );
-        assert_original(&subject, &*document, "after an empty edit");
+        subject.assert_original(&*document, "after an empty edit");
         let files = must(document.encode(), &format!("{}: encode failed", subject.label));
         let reopened = must(subject.reopen(&files), &format!("{}: the encoding does not reopen", subject.label));
-        assert_original(&subject, &*reopened, "decode, encode, decode");
+        subject.assert_original(&*reopened, "decode, encode, decode");
     }
 }
 
@@ -120,43 +92,6 @@ fn real_level_proofs_fail_without_the_dictionary_copy() {
     ));
 }
 
-fn refuses(subject: &Subject, what: &str, edit: &Edit, matches: impl Fn(&EditError) -> bool) {
-    let mut document = subject.open();
-    let result = document.apply_game(edit);
-    assert!(result.as_ref().err().is_some_and(matches), "{} {what}: not refused as expected", subject.label);
-    assert_original(subject, &*document, what);
-}
-
-fn is_read_only(error: &EditError) -> bool {
-    matches!(error, EditError::ReadOnly { .. })
-}
-
-/// The inventory ids in document order.
-fn inventory_ids(subject: &Subject) -> Vec<u32> {
-    (0..subject.tree.array_len(INV).unwrap_or(0))
-        .filter_map(|index| subject.tree.int(&format!("{INV}[{index}].contentId")))
-        .filter_map(|id| u32::try_from(id).ok())
-        .collect()
-}
-
-/// Every content id that a character wears, in document order.
-fn worn_ids(subject: &Subject) -> Vec<u32> {
-    let mut ids = Vec::new();
-    for index in 0..subject.tree.array_len(CHARS).unwrap_or(0) {
-        let list = format!("{CHARS}[{index}].equipmentList.values");
-        for slot in 0..subject.tree.array_len(&list).unwrap_or(0) {
-            ids.extend(subject.tree.int(&format!("{list}[{slot}].contentId")).and_then(|id| u32::try_from(id).ok()));
-        }
-    }
-    ids
-}
-
-fn is_placeholder(id: u32) -> bool {
-    neoffse_data::tables_for(GAME)
-        .and_then(|tables| tables.content(id))
-        .is_some_and(|entry| entry.placeholder)
-}
-
 #[test]
 fn real_refused_edits_write_nothing() {
     let Some(slots) = slots() else { return };
@@ -165,10 +100,10 @@ fn real_refused_edits_write_nothing() {
         let held = inventory_ids(&subject);
         let worn = worn_ids(&subject);
         let inventory = |id: u32| RowId::new(FieldId::new(names::INVENTORY), id);
-        if let Some(id) = worn.iter().find(|id| held.contains(id) && !is_placeholder(**id)) {
+        if let Some(id) = worn.iter().find(|id| held.contains(id) && !is_placeholder::<Ff2Model>(**id)) {
             refuses(&subject, "remove a worn row", &Edit::remove(inventory(*id)), is_read_only);
         }
-        if let Some(id) = held.iter().find(|id| is_placeholder(**id)) {
+        if let Some(id) = held.iter().find(|id| is_placeholder::<Ff2Model>(**id)) {
             refuses(&subject, "remove a placeholder row", &Edit::remove(inventory(*id)), is_read_only);
         }
         let mut document = subject.open();
@@ -177,7 +112,7 @@ fn real_refused_edits_write_nothing() {
         let Some([_, Key::Id(character)]) = party.entities.first().map(|entity| entity.id.keys()) else {
             panic!("{}: no character", subject.label)
         };
-        let field = |name| common::ff2_save::character_field(*character, name);
+        let field = |name| common::character_field(*character, name);
         let hand = field(names::EQUIPMENT).with_id(1);
         refuses(
             &subject,

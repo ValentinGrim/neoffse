@@ -1,10 +1,11 @@
 //! Checks the person portraits under `assets/portraits/ff2-pr/` and their
 //! licence. Reads repository files only.
 
-use std::fs;
-use std::path::PathBuf;
+use slint::{Rgba8Pixel, SharedPixelBuffer};
 
-use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
+mod asset_files;
+
+use asset_files::{assert_portrait_png, pixels_in, portraits_dir, read_text};
 
 /// The nine FF II people as file stems, in `job.csv` order, with the number of
 /// opaque pixels each image holds.
@@ -23,65 +24,14 @@ const PEOPLE: [(&str, usize); 9] = [
 /// The six FF I class stems under `ff1-pr/`.
 const CLASSES: [&str; 6] = ["warrior", "thief", "monk", "red-mage", "white-mage", "black-mage"];
 
-const PNG_SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
-
-fn portraits_dir() -> PathBuf {
-    neoffse_testkit::workspace_root().join("assets").join("portraits")
-}
-
-fn image_path(folder: &str, stem: &str) -> PathBuf {
-    portraits_dir().join(folder).join(format!("{stem}.png"))
-}
-
-fn read_bytes(path: &PathBuf) -> Vec<u8> {
-    fs::read(path).unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()))
-}
-
-fn read_text(path: &PathBuf) -> String {
-    fs::read_to_string(path).unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()))
-}
-
-fn be_u32(bytes: &[u8]) -> u32 {
-    u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
-}
-
-fn pixels_in(folder: &str, stem: &str) -> SharedPixelBuffer<Rgba8Pixel> {
-    let bytes = read_bytes(&image_path(folder, stem));
-    let image = Image::load_from_data(&bytes, Some("png")).unwrap_or_else(|error| panic!("{stem}.png does not decode: {error:?}"));
-    image.to_rgba8().unwrap_or_else(|| panic!("{stem}.png has no pixel buffer"))
-}
-
 fn pixels(stem: &str) -> SharedPixelBuffer<Rgba8Pixel> {
     pixels_in("ff2-pr", stem)
 }
 
 #[test]
-fn every_person_has_a_png_file() {
+fn every_image_is_a_32_px_rgba_png_with_binary_alpha_and_clear_corners() {
     for (stem, _) in PEOPLE {
-        let bytes = read_bytes(&image_path("ff2-pr", stem));
-        assert!(bytes.len() >= 29, "{stem}.png is too short");
-        assert_eq!(bytes[..8], PNG_SIGNATURE, "{stem}.png lacks the PNG signature");
-        assert_eq!(&bytes[12..16], b"IHDR", "{stem}.png does not start with IHDR");
-        assert_eq!(be_u32(&bytes[16..20]), 32, "{stem}.png width");
-        assert_eq!(be_u32(&bytes[20..24]), 32, "{stem}.png height");
-        assert_eq!(bytes[24], 8, "{stem}.png bit depth");
-        assert_eq!(bytes[25], 6, "{stem}.png colour type");
-    }
-}
-
-#[test]
-fn the_images_decode_to_32_px_with_binary_alpha() {
-    for (stem, _) in PEOPLE {
-        let buffer = pixels(stem);
-        assert_eq!((buffer.width(), buffer.height()), (32, 32), "{stem}.png size");
-        assert!(
-            buffer.as_slice().iter().all(|pixel| pixel.a == 0 || pixel.a == 255),
-            "{stem}.png has a partly transparent pixel"
-        );
-        let slice = buffer.as_slice();
-        for index in [0, 31, 31 * 32, 31 * 32 + 31] {
-            assert_eq!(slice[index].a, 0, "{stem}.png corner {index} is opaque");
-        }
+        assert_portrait_png("ff2-pr", stem);
     }
 }
 

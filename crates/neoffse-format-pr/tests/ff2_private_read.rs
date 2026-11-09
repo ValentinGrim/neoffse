@@ -8,54 +8,24 @@ mod common;
 
 use std::collections::HashSet;
 
-use common::ff1_real::{RealSlot, must, must_some};
 use common::ff2_ability_rules::ability_violations;
-use common::ff2_real::{model, slots};
+use common::ff2_real::slots;
 use common::ff2_rules::{cap_violations, violations};
 use common::json_tree::Tree;
+use common::private::{self, all_fields, assert_fields_read_back, int, rows};
+use common::real_slots::{RealSlot, must, must_some};
 use neoffse_core::{Capability, FieldId, SaveDocument, SaveFiles, Shape, TableKind, Value};
-use neoffse_data::Language;
+use neoffse_data::{GameTables, Language};
 use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, GAME, names};
 use neoffse_format_pr::slots::slot_for_name;
 
-fn tables() -> &'static neoffse_data::GameTables {
-    must_some(neoffse_data::tables_for(GAME), "no FF II tables")
+/// Binds the shared helpers to FF II.
+fn tables() -> &'static GameTables {
+    private::tables::<Ff2Model>()
 }
 
-fn rows(model: &mut Ff2Model, list: &'static str, label: &str) -> Vec<u32> {
-    must(model.rows(&FieldId::new(list)), &format!("{label}: {list} rows do not read"))
-}
-
-/// Every party field of every character, `gil` and every item count.
-fn all_fields(model: &mut Ff2Model, label: &str) -> Vec<FieldId> {
-    let mut fields = vec![FieldId::new(names::GIL)];
-    for id in rows(model, names::CHARACTER, label) {
-        fields.extend(names::party_fields(id));
-    }
-    for list in [names::INVENTORY, names::KEY_ITEMS] {
-        let collection = FieldId::new(list);
-        fields.extend(
-            rows(model, list, label)
-                .into_iter()
-                .map(|key| collection.clone().with_id(key).with_name(names::COUNT)),
-        );
-    }
-    fields
-}
-
-fn for_each_slot(mut check: impl FnMut(&RealSlot, &mut Ff2Model)) {
-    let Some(slots) = slots() else { return };
-    for slot in slots {
-        let mut model = model(&slot);
-        check(&slot, &mut model);
-    }
-}
-
-fn int(model: &mut Ff2Model, label: &str, field: &FieldId) -> i64 {
-    match model.get(field) {
-        Ok(Value::Int(value)) => value,
-        _ => panic!("{label}: {field} does not read as an integer"),
-    }
+fn for_each_slot(check: impl FnMut(&RealSlot, &mut Ff2Model)) {
+    private::for_each_slot(slots(), check);
 }
 
 #[test]
@@ -80,7 +50,7 @@ fn real_slots_open_as_ff2() {
 #[test]
 fn real_slots_read_every_declared_field() {
     for_each_slot(|slot, model| {
-        for field in all_fields(model, &slot.label) {
+        for field in all_fields(model, &slot.label, names::party_fields) {
             let Ok(value) = model.get(&field) else {
                 panic!("{}: {field} does not read", slot.label)
             };
@@ -146,7 +116,7 @@ fn real_equipment_resolves_in_the_slot_tables() {
     for_each_slot(|slot, model| {
         for id in rows(model, names::CHARACTER, &slot.label) {
             for (number, accepted) in (1..).zip(kinds) {
-                let field = FieldId::new(names::CHARACTER).with_id(id).with_name(names::EQUIPMENT).with_id(number);
+                let field = common::slot(id, number);
                 let content = u32::try_from(int(model, &slot.label, &field)).unwrap_or(0);
                 assert!(
                     accepted.iter().any(|kind| tables().entry(*kind, content).is_some()),
@@ -187,7 +157,7 @@ fn real_inventory_ids_are_table_entries() {
 #[test]
 fn real_reads_leave_the_text_unchanged() {
     for_each_slot(|slot, model| {
-        for field in all_fields(model, &slot.label) {
+        for field in all_fields(model, &slot.label, names::party_fields) {
             must(model.get(&field), &format!("{}: {field} does not read", slot.label));
         }
         assert!(model.document().to_json() == slot.json, "{}: a read changed the text", slot.label);
@@ -232,14 +202,7 @@ fn real_views_cover_every_row() {
         for entity in &party.entities {
             assert!(entity.fields.len() == 34, "{}: {} holds a field count other than 34", slot.label, entity.id);
         }
-        for entity in party.entities.iter().chain(&inventory.entities) {
-            for field in &entity.fields {
-                let Ok(value) = model.get(&field.id) else {
-                    panic!("{}: {} does not read", slot.label, field.id)
-                };
-                assert!(value == field.value, "{}: {} differs from the model", slot.label, field.id);
-            }
-        }
+        assert_fields_read_back(&slot.label, model, party.entities.iter().chain(&inventory.entities));
         assert!(model.document().to_json() == slot.json, "{}: the view changed the text", slot.label);
     });
 }

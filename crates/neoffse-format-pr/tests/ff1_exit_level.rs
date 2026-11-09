@@ -6,8 +6,9 @@
 
 mod common;
 
+use common::character_field;
 use common::edit_proof::{How, Proof, Subject, ViewChange, prove};
-use common::ff1_save::{SlotData, character_field};
+use common::ff1_save::SlotData;
 use common::json_diff::value;
 use neoffse_core::{Edit, Value};
 use neoffse_format_pr::container::Container;

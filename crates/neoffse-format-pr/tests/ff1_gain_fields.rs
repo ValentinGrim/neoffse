@@ -4,14 +4,13 @@
 
 mod common;
 
-use common::ff1_save::{SlotData, character_field, model, standard_model};
-use common::{changed_span, character_path};
+use common::ff1_save::{SlotData, model, standard_model};
+use common::{STORAGE_MAX, changed_span, character_field, character_path};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, Shape, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::Segment;
 use neoffse_format_pr::ff1::{Ff1Model, names};
 
-const STORAGE_MAX: i64 = 2_147_483_647;
 const ACCURACY: &str = "addtionalAccuracyRate";
 const EVASION: &str = "addtionalAbilityEvasionRate";
 

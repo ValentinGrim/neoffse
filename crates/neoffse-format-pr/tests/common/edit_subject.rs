@@ -9,9 +9,10 @@ use neoffse_core::{FormatError, Game, SaveDocument, SaveFiles, SaveFormat};
 use neoffse_format_pr::container::{self, Container};
 
 use super::ff1_format::{one_file, sav, slot_name};
-use super::ff1_real::RealSlot;
 use super::ff1_save::SlotData;
+use super::json_diff::diff_trees;
 use super::json_tree::Tree;
+use super::real_slots::{RealSlot, must, must_some};
 
 /// One slot file to edit in memory.
 pub(crate) struct Subject {
@@ -95,5 +96,18 @@ impl Subject {
     /// Opens `files` through the trait object the app calls.
     pub(crate) fn reopen(&self, files: &SaveFiles) -> Result<Box<dyn SaveDocument>, FormatError> {
         self.format.open(files)
+    }
+
+    /// The decoded text and container of `document` equal the subject's, and
+    /// the tree diff lists no change. The messages carry no value.
+    pub(crate) fn assert_original(&self, document: &dyn SaveDocument, what: &str) {
+        let label = &self.label;
+        let files = must(document.encode(), &format!("{label} {what}: encode failed"));
+        let written = must_some(files.get(&self.name), &format!("{label} {what}: the encoding lacks the file"));
+        let after = must(container::decode(written), &format!("{label} {what}: decode failed"));
+        assert!(after.json == self.json, "{label} {what}: the text changed");
+        assert!(after.container == self.container, "{label} {what}: the container changed");
+        let changes = diff_trees(&self.tree, &Tree::parse(&after.json));
+        assert!(changes.is_empty(), "{label} {what}: the diff lists a change at {}", changes[0].path);
     }
 }

@@ -7,38 +7,14 @@ mod common;
 
 use std::collections::BTreeMap;
 
-use common::{game_tables, kind_rule::kind_of};
+use common::{CONTENT_KINDS, EQUIPMENT, game_tables, ids, kind_rule::kind_of, nameless, table};
 use neoffse_core::{Game, TableKind};
-use neoffse_data::{AbilityKind, Entry, GameTables, Language, sources_for};
+use neoffse_data::{AbilityKind, GameTables, Language, sources_for};
 
-/// The seven content tables FF I has, in the order of the figures of the document.
-const CONTENT: [TableKind; 7] = [
-    TableKind::Item,
-    TableKind::KeyItem,
-    TableKind::Weapon,
-    TableKind::Shield,
-    TableKind::Armor,
-    TableKind::Helmet,
-    TableKind::Gloves,
-];
-
-/// The five equipment tables: `CONTENT` without the items.
-const EQUIPMENT: [TableKind; 5] = [CONTENT[2], CONTENT[3], CONTENT[4], CONTENT[5], CONTENT[6]];
+const GAME: Game = Game::Ff5Pr;
 
 fn ff5() -> &'static GameTables {
-    game_tables(Game::Ff5Pr)
-}
-
-fn table(kind: TableKind) -> &'static [Entry] {
-    ff5().table(kind).unwrap()
-}
-
-fn ids(kind: TableKind) -> Vec<u32> {
-    table(kind).iter().map(|entry| entry.id).collect()
-}
-
-fn nameless(kind: TableKind) -> Vec<u32> {
-    table(kind).iter().filter(|entry| entry.name_en.is_none()).map(|entry| entry.id).collect()
+    game_tables(GAME)
 }
 
 #[test]
@@ -62,12 +38,12 @@ fn counts_per_table() {
         (TableKind::CommandContent, 236),
     ];
     for (kind, count) in content {
-        assert_eq!(table(kind).len(), count, "{kind:?}");
+        assert_eq!(table(GAME, kind).len(), count, "{kind:?}");
     }
     assert_eq!(content.iter().map(|(_, count)| count).sum::<usize>(), 474);
-    assert_eq!(table(TableKind::Ability).len(), 1004);
-    assert_eq!(table(TableKind::Job).len(), 22);
-    assert_eq!(table(TableKind::Command).len(), 238);
+    assert_eq!(table(GAME, TableKind::Ability).len(), 1004);
+    assert_eq!(table(GAME, TableKind::Job).len(), 22);
+    assert_eq!(table(GAME, TableKind::Command).len(), 238);
 }
 
 #[test]
@@ -81,8 +57,8 @@ fn only_the_tables_ff5_has_exist() {
 #[test]
 fn ids_rise_inside_every_table() {
     let others = [TableKind::CommandContent, TableKind::Ability, TableKind::Job, TableKind::Command];
-    for kind in CONTENT.into_iter().chain(others) {
-        let list = ids(kind);
+    for kind in CONTENT_KINDS.into_iter().chain(others) {
+        let list = ids(GAME, kind);
         assert!(list.windows(2).all(|pair| pair[0] < pair[1]), "{kind:?}");
     }
 }
@@ -90,7 +66,7 @@ fn ids_rise_inside_every_table() {
 #[test]
 fn documented_id_ranges() {
     // Inventory note, "Jobs and commands": job IDs 1-22.
-    assert_eq!(ids(TableKind::Job), (1..=22).collect::<Vec<_>>());
+    assert_eq!(ids(GAME, TableKind::Job), (1..=22).collect::<Vec<_>>());
     // Measured in content.csv, item.csv, weapon.csv, armor.csv, command.csv and ability.csv of
     // build 20265087, not in the committed files or a note. Content 1 is gil, not listed.
     let ranges = [
@@ -106,7 +82,7 @@ fn documented_id_ranges() {
         (TableKind::Ability, 1, 1175, 1004),
     ];
     for (kind, first, last, count) in ranges {
-        let list = ids(kind);
+        let list = ids(GAME, kind);
         assert_eq!((list.first(), list.last(), list.len()), (Some(&first), Some(&last), count), "{kind:?}");
     }
 }
@@ -127,13 +103,13 @@ fn the_empty_slot_rows() {
     }
     let mut marked: Vec<u32> = EQUIPMENT
         .iter()
-        .flat_map(|kind| table(*kind).iter().filter(|entry| entry.placeholder).map(|entry| entry.id))
+        .flat_map(|kind| table(GAME, *kind).iter().filter(|entry| entry.placeholder).map(|entry| entry.id))
         .collect();
     marked.sort_unstable();
     assert_eq!(marked, [59, 174, 175, 176, 177]);
     for kind in [TableKind::Item, TableKind::KeyItem, TableKind::CommandContent] {
         assert!(ff5().placeholder(kind).is_none(), "{kind:?}");
-        assert!(table(kind).iter().all(|entry| !entry.placeholder), "{kind:?}");
+        assert!(table(GAME, kind).iter().all(|entry| !entry.placeholder), "{kind:?}");
     }
 }
 
@@ -154,20 +130,23 @@ fn command_content_rows_are_keyed_by_content_id() {
 fn four_command_contents_have_no_name() {
     // `#rows-without-a-name` and `#content-types-5-to-9`: contents 879, 1030 and 1503 have key
     // None. Content 877 has key None too: its command, 4, has no name either.
-    let none = nameless(TableKind::CommandContent);
+    let none = nameless(GAME, TableKind::CommandContent);
     assert_eq!(none, [877, 879, 1030, 1503]);
     for id in &none {
         let entry = ff5().entry(TableKind::CommandContent, *id).unwrap();
         assert_eq!((entry.name(Language::En), entry.name(Language::Fr)), (None, None), "content {id}");
     }
     // The 32 levelled job abilities (918 to 949) and every other row keep their own key.
-    assert_eq!(table(TableKind::CommandContent).iter().filter(|entry| entry.name_en.is_some()).count(), 232);
+    assert_eq!(
+        table(GAME, TableKind::CommandContent).iter().filter(|entry| entry.name_en.is_some()).count(),
+        232
+    );
     for id in 918..=949 {
         let entry = ff5().entry(TableKind::CommandContent, id).unwrap();
         assert!(entry.name_en.is_some() && entry.name_fr.is_some(), "content {id}");
     }
-    for kind in CONTENT {
-        assert!(nameless(kind).is_empty(), "{kind:?}");
+    for kind in CONTENT_KINDS {
+        assert!(nameless(GAME, kind).is_empty(), "{kind:?}");
     }
 }
 
@@ -175,7 +154,7 @@ fn four_command_contents_have_no_name() {
 fn the_ability_type_ids_match_the_document() {
     // `#master-data-per-game`, "Abilities": 43 values.
     let mut histogram = BTreeMap::new();
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         *histogram.entry(entry.ability.unwrap().type_id).or_insert(0_usize) += 1;
     }
     // Pairs of (type_id, rows).
@@ -193,7 +172,7 @@ fn the_ability_type_ids_match_the_document() {
 #[test]
 fn the_ability_kinds_match_the_document() {
     let mut kinds = BTreeMap::new();
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         let info = entry.ability.unwrap();
         assert_eq!(kind_of(info.type_id), Some(info.kind), "ability {}", entry.id);
         *kinds.entry(format!("{:?}", info.kind)).or_insert(0_usize) += 1;
@@ -207,22 +186,30 @@ fn the_ability_kinds_match_the_document() {
 #[test]
 fn the_spell_levels_match_the_document() {
     // `#master-data-per-game`, "Abilities": 207 rows above level 0, a highest of 6 (`MAX_LV_PROG`
-    // is 255 and `MAX_LV` 99).
-    let raised: Vec<_> = table(TableKind::Ability).iter().filter(|entry| entry.ability.unwrap().level > 0).collect();
+    // is 255 and `MAX_LV` 99), on types 1, 2, 9, 35, 501 and 502 (white, black, summon, an internal
+    // type, time magic and magic sword).
+    let raised: Vec<_> = table(GAME, TableKind::Ability)
+        .iter()
+        .filter(|entry| entry.ability.unwrap().level > 0)
+        .collect();
     assert_eq!(raised.len(), 207);
     assert_eq!(raised.iter().map(|entry| entry.ability.unwrap().level).max(), Some(6));
+    let mut types: Vec<u32> = raised.iter().map(|entry| entry.ability.unwrap().type_id).collect();
+    types.sort_unstable();
+    types.dedup();
+    assert_eq!(types, [1, 2, 9, 35, 501, 502]);
 }
 
 #[test]
 fn the_three_causes_of_a_nameless_ability() {
     // `#rows-without-a-name`: 207 rows with key None, 2 with a key in no file (484, 686), 1 with
     // no content row (1090). The three sets are disjoint.
-    let none = nameless(TableKind::Ability);
+    let none = nameless(GAME, TableKind::Ability);
     assert_eq!(none.len(), 207 + 2 + 1);
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         assert_eq!(entry.name_en.is_none(), entry.name_fr.is_none(), "ability {}", entry.id);
     }
-    let contentless: Vec<u32> = table(TableKind::Ability)
+    let contentless: Vec<u32> = table(GAME, TableKind::Ability)
         .iter()
         .filter(|entry| entry.ability.unwrap().content_id.is_none())
         .map(|entry| entry.id)
@@ -235,7 +222,7 @@ fn the_three_causes_of_a_nameless_ability() {
         let entry = ff5().entry(TableKind::Ability, id).unwrap();
         assert!(entry.name_en.is_none() && entry.ability.unwrap().content_id.is_some(), "ability {id}");
     }
-    let named = table(TableKind::Ability).iter().filter(|entry| entry.name_en.is_some()).count();
+    let named = table(GAME, TableKind::Ability).iter().filter(|entry| entry.name_en.is_some()).count();
     assert_eq!(named, 1004 - 210);
     // Documented rows that qualify by type: 575 and 1165.
     assert!(none.contains(&575) && none.contains(&1165));
@@ -244,9 +231,9 @@ fn the_three_causes_of_a_nameless_ability() {
 #[test]
 fn command_4_has_no_name() {
     // Saves hold command 4 in `commandList`; the 237 others are named.
-    assert_eq!(nameless(TableKind::Command), [4]);
-    assert!(nameless(TableKind::Job).is_empty(), "jobs");
-    for entry in table(TableKind::Job).iter().chain(table(TableKind::Command)) {
+    assert_eq!(nameless(GAME, TableKind::Command), [4]);
+    assert!(nameless(GAME, TableKind::Job).is_empty(), "jobs");
+    for entry in table(GAME, TableKind::Job).iter().chain(table(GAME, TableKind::Command)) {
         assert_eq!(entry.name_en.is_none(), entry.name_fr.is_none(), "{:?} {}", entry.kind, entry.id);
     }
 }
@@ -254,7 +241,7 @@ fn command_4_has_no_name() {
 #[test]
 fn every_other_ability_has_a_unique_content_id() {
     let mut seen = BTreeMap::new();
-    for entry in table(TableKind::Ability) {
+    for entry in table(GAME, TableKind::Ability) {
         let Some(content_id) = entry.ability.unwrap().content_id else { continue };
         assert_ne!(content_id, 0);
         assert_eq!(seen.insert(content_id, entry.id), None, "content {content_id}");
@@ -297,4 +284,11 @@ fn there_are_no_growth_tables() {
     assert_eq!(ff5().base_vitality(1), None);
     assert_eq!(ff5().exp_to_reach(1), None);
     assert_eq!(ff5().growth_step(1, 2), None);
+}
+
+#[test]
+fn a_content_id_is_no_ability_id() {
+    // 36 is an item, and no ability has that id.
+    assert!(ff5().entry(TableKind::Ability, 36).is_none());
+    assert!(ff5().content(36).is_some());
 }
