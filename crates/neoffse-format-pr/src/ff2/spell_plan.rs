@@ -1,13 +1,15 @@
 //! The Level edit of a spell: the plain `Set`s that one level change writes.
 //!
-//! The game changes five things for one spell of one character
-//! (`docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`): the chain row
-//! and its content id, `skillLevel` set to the proficiency total of the
-//! level, the same three values on the `abilityDictionary` copy, and the old
-//! content id in the two order lists, replaced in place when the list holds
-//! it. The plan finds each position once, before any write, and emits one
-//! `Set` per place. Every place is addressed by its position in its list, so
-//! the inverse of each `Set` is the `Set` of the old value at that position.
+//! The game changes up to eight stored places for one spell of one character
+//! (`docs/formats/pixel-remaster.md#row-and-value-in-ff-ii`): on the
+//! `abilityList` entry the chain row, its content id and `skillLevel` set to
+//! the proficiency total of the level, the same three values on the
+//! `abilityDictionary` copy, and the old content id in each of the two order
+//! lists, replaced in place when the list holds it. The plan finds each
+//! position once, before any write, and emits one `Set` per place that does
+//! not already hold its target. Every place is addressed by its position in
+//! its list, so the inverse of each `Set` is the `Set` of the old value at
+//! that position.
 //! The game appends the new content id to an order list that lacks the old
 //! one; NeoFFSE leaves such a list as it is.
 
@@ -33,8 +35,9 @@ struct Row {
 /// row, no content id for it, or no proficiency total for the level.
 fn row_of(tables: &GameTables, chain: u32, level: i64, field: &FieldId) -> Result<Row, EditError> {
     let unknown = |id: i64| EditError::UnknownId { field: field.clone(), id };
-    // The meta bounds `level` to the chain length before the plan runs; a level
-    // outside `u32` is in no chain, like one past its end.
+    // When the tables hold `MAX_MAGICAL_LEVEL`, the meta bounds `level` to the
+    // chain length before the plan runs; a level outside `u32` is in no chain,
+    // like one past its end.
     let level_id = u32::try_from(level).map_err(|_| unknown(level))?;
     let ability = tables.spell_ability(chain, level_id).ok_or_else(|| unknown(level))?;
     let content = tables

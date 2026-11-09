@@ -14,12 +14,16 @@
 //!
 //! The parser checks the file contract, not only the types: ids start at 1
 //! and rise, a `kind` string is one of the known kinds, an ability `level` is
-//! 0 to 8, its `content_id`, when present, is not 0, its `type_id` is required,
-//! a content `kind` is one of `item`, `key_item`, `weapon`, `shield`, `armor`,
-//! `helmet`, `gloves`, `keyword`, `magic_stone` or `command_content`,
-//! a row has both names or neither (`name in one language only` otherwise), `placeholder` appears only as `true`,
-//! only on an equipment kind and once per kind, and every cap key starts with
-//! `MAX_` and holds no negative value. A row that breaks a value rule gives
+//! 0 to 8, its `content_id`, when present, is not 0 and no earlier row holds
+//! it, its `type_id` sits in the closed kind table and its `kind` is the kind
+//! of that type, a content `kind` is one of `item`, `key_item`, `weapon`,
+//! `shield`, `armor`, `helmet`, `gloves`, `keyword`, `magic_stone` or
+//! `command_content`, a row has both names or neither (`name in one language
+//! only` otherwise), `placeholder` appears only as `true`, only on an
+//! equipment kind and once per kind, an equipment kind that has rows has a
+//! placeholder, the content, ability, job and command arrays and a present
+//! monsters file hold a row, and every cap key starts with `MAX_` and holds no
+//! negative value. A row that breaks a value rule gives
 //! [`DataError::Rule`]. `growth.toml` holds base HP and vitality per class, the
 //! total experience per level and the growth rows of the level-up rule, one
 //! array per column and growth group. It has its own rules: status ids rise
@@ -31,8 +35,9 @@
 //! proficiency curve and the spell chains of FF II. Its rules: the first status id
 //! is 1 and the ids rise, `total_exp` starts at 0 and rises strictly with
 //! `MAX_MAGICAL_LEVEL` and `MAX_WEAPON_LEVEL` rows when `bounds.toml` names them,
-//! the chains rise, start at least `length` apart, and every ability id of a chain
-//! is an ability row with a content id. `monsters.toml`, `growth.toml` and
+//! the chain `length` equals the number of curve rows, the chains rise, start at
+//! least `length` apart, and every ability id of a chain is an ability row with
+//! a content id. `monsters.toml`, `growth.toml` and
 //! `skills.toml` may be absent: a game without them has no monster table and its
 //! growth and skill accessors give `None` or 0.
 //!

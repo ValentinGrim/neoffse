@@ -56,7 +56,9 @@ pub enum DocumentError {
     WrongKind {
         /// Rendered location of the value.
         path: String,
-        /// `"object"`, `"array"`, `"string"` or `"scalar"`.
+        /// `"object"`, `"array"`, `"string"`, `"scalar"`, `"integer"` or
+        /// `"unsigned 32-bit integer"`. The slot reads raise the two integer
+        /// kinds.
         expected: &'static str,
     },
     /// A `Doc` step met a string whose content is not a JSON object or

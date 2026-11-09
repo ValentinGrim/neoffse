@@ -537,6 +537,9 @@ The saves give the FF II to VI counts [M], and the `transportation.csv` of each 
 
 After the game rule, the format checks the shape of what it edits [I].
 `ownedCharacterList`, `normalOwnedItemList` and `importantOwendItemList` must exist, each row key (`id` of a character, `contentId` of an item) must be an unsigned 32-bit integer, and no key repeats inside a list ([Characters](#characters), [Inventory](#inventory)).
+An FF II slot adds a fourth list: `userData → ownedKeyWaordList → target` must exist, each element must be an unsigned 32-bit integer, and no element repeats ([Keywords in FF II](#keywords-in-ff-ii)).
+The game keeps the keywords unique, so a game-written slot passes.
+The check is NeoFFSE's own: a `Remove` of a repeated key returns an `Insert` that fails as a duplicate row, so its undo would fail on every call.
 The format refuses a file that fails a check as not a slot.
 
 ### Documents inside strings
@@ -1001,7 +1004,7 @@ Whether the game clamps an edited gain field is open ([Open questions](#open-que
 
 **Caps in NeoFFSE.**
 A cap is a limit the game states; a storage bound is the range a save field can hold (next paragraph).
-Under `CapPolicy::Enforce` and in the game interface, NeoFFSE applies a cap to the stored field that carries the value [I]:
+For FF I, under `CapPolicy::Enforce` and in the game interface, NeoFFSE applies a cap to the stored field that carries the value [I]:
 
 | Stored field | Cap |
 |---|---|
@@ -1013,10 +1016,11 @@ Under `CapPolicy::Enforce` and in the game interface, NeoFFSE applies a cap to t
 | each value of `currentMpCountList` | `MAX_MAGICAL_TIMES` |
 | `addtionalPower`, `addtionalVitality`, `addtionalAgility`, `addtionalIntelligence`, `addtionalSpirit`, `addtionalLuck` | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_LUCK` (99 each) |
 
-The six stat fields hold gains over a base the file does not store, and NeoFFSE applies the stat cap to the stored gain.
+In FF I, the six stat fields hold gains over a base the file does not store, and NeoFFSE applies the stat cap to the stored gain.
 No stored gain of the four measured FF I slots exceeds 99 [M, 4 slots].
 NeoFFSE caps `currentHP`, not the gain `addtionalMaxHp`: it reads `currentHP` as bounded by the displayed maximum that `MAX_HP` limits, while the game caps the sum of base and gain, so a stored gain above 999 stays legal.
 The magic stat (`addtionalMagic`), `addtionalMaxHp`, `addtionalMaxMpCountList` and the equipment slot `count` have no cap: the master data states none.
+In FF II the game interface checks each gain against `cap - base`, and the raw interface caps no gain ([Character growth in FF II](#character-growth-in-ff-ii)).
 
 **Storage bound.**
 Neither the master data nor the saves state a bound for the integer fields NeoFFSE edits, apart from the caps above.
@@ -1427,6 +1431,10 @@ For a row whose name key is `None`, sits in no message file, or has no content r
 Real saves hold such rows: FF II's ability 711 and FF III's ability 136 sit on every character.
 A table that leaves keyless rows out breaks those saves.
 Whether and where a screen draws the empty string is unconfirmed ([question 27](#open-questions)).
+
+**Labels in NeoFFSE.**
+The view labels a listed row with no name `Entry <id>` [I].
+It labels an id that no table lists by its list: `Keyword <id>`, `Item <id>` or `Key item <id>`.
 
 **What the game does.**
 `Last.Systems.ContentUtitlity::GetAbilityName(id)` fetches the ability, calls `GetContentOfTypeValue(4, id)`, takes `MesIdName` and calls `MessageManager.GetMessage`.
@@ -2341,9 +2349,19 @@ The base comes from the character's `character_status.csv` row, and the caps are
 | Max MP | `MAX_MP` | 999 |
 | Power, Vitality, Agility, Intelligence, Spirit, Magic | `MAX_STRNGTH`, `MAX_VITALITY`, `MAX_AGILITY`, `MAX_INTELIGENCE`, `MAX_SPRIT`, `MAX_MAGIC` | 99 |
 
+NeoFFSE's game interface refuses a Max HP, Max MP or stat gain above `cap - base`: the edit fails as `AboveCap`, and the cap it reports is `cap - base` [I].
+It answers `UnknownId` for a status with no base row and `UnknownField` for a character with no `characterStatusId`.
+The raw interface caps no FF II gain, even under `Enforce`: it takes any value inside the storage bound.
+
 Wounded states occur in slot 1: current HP 468 of 491, 430 of 513 and 648 of 771 [M].
 The maximum HP is not the current HP in FF II, which answers [question 20](#open-questions) for this game.
 `MAX_LUCK` exists, the status rows hold 0 for Luck and nothing raises it [D, B].
+
+**Fields in NeoFFSE.**
+FF II has no Level, Experience or Luck field in either mode, and NeoFFSE keeps the stored `addtionalLevel`, `currentExp` and `addtionalLuck` as they are [I].
+The Person (`jobId`) is read only.
+Current HP and current MP stop at `MAX_HP` and `MAX_MP`, and Max HP and Max MP are computed, read-only fields: the base of the status row plus the stored gain, held to the cap [I].
+A skill is edited as its stored total, and NeoFFSE computes no level for display [I].
 
 #### Spells in FF II
 
@@ -2411,7 +2429,7 @@ No battle has shown a positive spell gain, so the constant +2 of the spell rule 
 **Level in NeoFFSE.**
 NeoFFSE reads a spell's level from the row, by `(abilityId - 5) mod 16 + 1` [I], which is the level the game shows [G] ([Row and value in FF II](#row-and-value-in-ff-ii)).
 It pairs an `abilityList` entry with its `abilityDictionary` key 3 entry by chain and takes the first entry of the chain in each list [I].
-A Level edit writes the five changes listed in [Row and value in FF II](#row-and-value-in-ff-ii).
+A Level edit writes up to eight stored places, listed in [Row and value in FF II](#row-and-value-in-ff-ii), and skips a place that already holds its target value, apart from the first [I].
 The edit finds every place it writes before it writes the first one.
 A spell with no entry in the key-3 `abilityDictionary` copy, or none in `abilityList`, fails as an unknown field, and nothing is written [I].
 When an order list lacks the old content ID, NeoFFSE leaves that list unchanged, where the game appends the new ID.
@@ -2433,13 +2451,12 @@ A spell whose value passes its row's band shows the row's level, and its gauge f
 The next level takes the experience of the value's level: a level 1 spell filled to level 4 stays level 1 and needs the experience of level 4 to reach level 2 [G, same run].
 `ExecutionSkillUpMagic` moves one row at each next total [B], and the MP cost and power stay those of the row [B, I].
 Only a raw expert edit of `proficiency` makes that state: NeoFFSE's Level field reads the row and writes row and value together.
-A level change that matches what the game writes changes five things for one spell of one character [B, I]:
+A level change that matches what the game writes sets up to eight stored places for one spell of one character, one value each [B, I]:
 
-1. the `abilityId` of that level in the chain, and the content ID of its type-4 row,
-2. `skillLevel`, set to `total_exp(level)`,
-3. the same two values on the entry in `abilityList` and on the entry in `abilityDictionary` key 3,
-4. the old content ID in `additionOrderOwnedAbilityIds`, replaced,
-5. the old content ID in `sortOrderOwnedAbilityIds`, replaced when it holds it.
+1. on the `abilityList` entry: the `abilityId` of that level in the chain, the content ID of its type-4 row, and `skillLevel`, set to `total_exp(level)`,
+2. the same three values on the entry in `abilityDictionary` key 3,
+3. the old content ID in `additionOrderOwnedAbilityIds`, replaced in place,
+4. the old content ID in `sortOrderOwnedAbilityIds`, replaced in place when it holds it.
 
 **The two copies.**
 `OwnedCharacterData` holds `OwnedAbilityList` at +0x18 and `AbilityDictionary` at +0x50 [B].
@@ -2536,7 +2553,7 @@ The Row command is FF II's sixth command, so a five-entry `commandList` is an FF
 
 | Path | Holds |
 |---|---|
-| `learnedAbilityList` | every ability ID that an `AddAbility` wrote, across the party, kept after a row change or a forget; 46 in slot 1, with 711 first [M, B]; a won battle adds the current rows of the party ([Game edits in FF II](#game-edits-in-ff-ii)) |
+| `learnedAbilityList` | every ability ID that an `AddAbility` wrote, across the party, kept after a row change or a forget; 46 in slot 1, with 711 first [M, B]; a won battle adds the current rows of the party ([Game edits in FF II](#game-edits-in-ff-ii)) [I] |
 | `character.sortOrderOwnedAbilityIds` | the player's spell order, as content IDs [M, B] |
 | `character.abilitySlotDataList` | the empty grid [M] |
 | `character.currentMpCountList`, `addtionalMaxMpCountList` | zeros [M] |
@@ -2648,6 +2665,7 @@ The shared gate of [Telling the games apart](#telling-the-games-apart) rejects n
 - `ownedTransportationList.target` holds 7 entries, the count that maps to FF II.
 - `cheatSettingsData.jobProficiencyRate`, `wonderWandIndex` and `mapData.otherPartyDataList` are absent, so no marker contradicts the count.
 - `ownedCharacterList`, `normalOwnedItemList` and `importantOwendItemList` exist with unique `id` and `contentId` values.
+- `ownedKeyWaordList.target` exists and holds unsigned 32-bit integers with no repeat, the fourth list that an FF II slot must pass.
 
 FF II has no key-name marker of its own.
 The count of `skillLevelTargets` keys separates the games: 10 on every FF II character, 0 on FF I, FF IV, FF V and FF VI, and 2 on FF III [M, 16 files].
@@ -2739,6 +2757,8 @@ Question 51 is an FF II in-game test of the spell gain.
 6. `timeStampTicks`: local time or UTC?
 7. Meaning of `clearFlag` against `isCompleteFlag` (the FF I Auto Save holds `clearFlag` 0 and `isCompleteFlag` 1), of the top-level `playTime` (`0.0` in all 14 game slots), of `pointIn`, `playableCharacterCorpsId` and `scenarioFlags`.
 8. Does the game accept an inventory item missing from a non-empty `normalOwnedItemSortIdList`?
+   FF II: an edited copy with new item rows, whose sort list NeoFFSE leaves as read, loaded in the game and kept the rows ([Game edits in FF II](#game-edits-in-ff-ii)) [G, edited copy].
+   The other games stay open.
 9. The PlayStation variant: file layout after extraction, presence of a bestiary, BOM.
 10. System settings `language`: value `3` in all six games; mapping not measured.
 11. Does the game read equipment `count`, and what do the inventory counts 5 and 9 of the placeholders mean?

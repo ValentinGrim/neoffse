@@ -5,8 +5,9 @@
 //! `docs/formats/pixel-remaster.md` is the source of truth for every rule
 //! this crate implements. The codec and the document move bytes and JSON
 //! text and know no domain type. [`games`] and [`slots`] use the games and
-//! slots of `neoffse-core`, and [`ff1`] and [`ff2`] alone map a game's fields:
-//! each knows only the slot of its own game.
+//! slots of `neoffse-core`. [`ff1`], [`ff2`] and [`shared`] map a game's
+//! fields: each game maps its characters and knows only the slot of its own
+//! game, and [`shared`] maps gil and the item counts for every game.
 //!
 //! - [`cipher`]: Rijndael with a 256-bit block, CBC mode, the PR key and IV,
 //!   and the PR zero padding.

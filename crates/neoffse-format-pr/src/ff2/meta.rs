@@ -107,7 +107,9 @@ pub(super) fn part_meta(part: Part, tables: &GameTables) -> FieldMeta {
         Part::Spell(_) => {
             // The top level is the length of a chain, `MAX_MAGICAL_LEVEL`
             // (`docs/formats/pixel-remaster.md#bounds-in-ff-ii`). A game
-            // without the key falls back to the storage bound, as `int` does.
+            // without the key falls back to the storage bound, as `int` does;
+            // `row_of` in `spell_plan` then refuses a level past the chain as
+            // `UnknownId`.
             let top = tables.bound("MAX_MAGICAL_LEVEL").unwrap_or(STORAGE_MAX);
             let mut meta = FieldMeta::new("Spell level", Shape::Int { min: 1, max: top });
             // One level change rewrites several stored places, so every mode

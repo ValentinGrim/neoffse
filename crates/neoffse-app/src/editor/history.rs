@@ -80,8 +80,8 @@ impl EditorViewModel {
     /// call and the result holds Slint strings.
     ///
     /// In the default mode the rows of the pages only expert mode edits stay
-    /// out: a Level edit lists one row, not the eight stored places it
-    /// writes. Expert mode lists every row, and so does the default mode
+    /// out: a Level edit lists one row, not the stored places it writes (up
+    /// to eight). Expert mode lists every row, and so does the default mode
     /// while an edit committed on such a page is pending, so no write goes
     /// unseen.
     ///
