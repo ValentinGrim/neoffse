@@ -143,7 +143,7 @@ fn a_row_the_editor_cannot_rewrite_is_locked() {
         .iter()
         .position(|row| row.text.contains(&format!("\"contentId\":{unworn},")))
         .unwrap();
-    data.inventory[index] = common::ff2_save::Row::raw(format!("{{ \"contentId\":{unworn}, \"count\":1 }}"));
+    data.inventory[index] = common::slot_render::Row::raw(format!("{{ \"contentId\":{unworn}, \"count\":1 }}"));
     let mut model = common::ff2_save::model(&data.render());
     assert!(model.row_locked(&row(names::INVENTORY, unworn)).unwrap());
 }

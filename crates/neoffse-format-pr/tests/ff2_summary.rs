@@ -5,8 +5,8 @@ mod common;
 
 use std::time::Duration;
 
-use common::ff1_format::slot_name;
 use common::ff2_save::SlotData;
+use common::pr_files::slot_name;
 use common::slot_model::model_of;
 use common::{LOCATION, PLAY_TIME, corps_id, id_variants, slot_under};
 use neoffse_core::{FormatError, SaveSlot};

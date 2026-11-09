@@ -6,8 +6,8 @@
 
 mod common;
 
-use common::ff1_format::one_file;
 use common::ff1_real::{files, slots};
+use common::pr_files::one_file;
 use common::real_slots::{must, must_some};
 use common::{GAMES, gil, save_files};
 use neoffse_core::{CapPolicy, Confidence, Edit, FileProbe, FormatError, SaveDocument, Value};

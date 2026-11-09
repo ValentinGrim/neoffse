@@ -11,7 +11,7 @@
 use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME};
 
-use super::slot_render::Equip;
+use super::slot_render::{Equip, Row};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Character {
@@ -37,23 +37,6 @@ pub(crate) struct Character {
     pub abilities: Vec<(u32, u32)>,
     /// A key of the character or of its `parameter` to leave out, by name.
     pub omit: Option<&'static str>,
-}
-
-/// A row of an item list: the JSON text of the element, so a test can break it.
-#[derive(Debug, Clone)]
-pub(crate) struct Row {
-    pub text: String,
-}
-
-impl Row {
-    /// The canonical element text of the game.
-    pub(crate) fn new(content_id: u32, count: u32) -> Self {
-        Self::raw(format!("{{\"contentId\":{content_id},\"count\":{count}}}"))
-    }
-
-    pub(crate) fn raw(text: impl Into<String>) -> Self {
-        Self { text: text.into() }
-    }
 }
 
 #[derive(Debug, Clone)]

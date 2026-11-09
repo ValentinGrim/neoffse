@@ -34,7 +34,10 @@ impl Ff2Model {
     ///
     /// An `Insert` or `Remove` acts on a row of `inventory`, `key_items` or
     /// `keywords` and returns the `Remove` or `Insert` that restores the row
-    /// at its place, bytes included. `Insert` checks the collection, the key bounds,
+    /// at its place. An inventory or key item row comes back byte for byte.
+    /// A keyword comes back with the content and the order of the list; a
+    /// spaced list comes back compact, because the game writes compact
+    /// lists. `Insert` checks the collection, the key bounds,
     /// the `count` value, under `Enforce` the ID tables of the list, then
     /// duplicates and the position. `Remove` refuses a row whose stored token
     /// is not the string token of the canonical `{"contentId":K,"count":N}`

@@ -5,10 +5,9 @@
 mod common;
 
 use common::embed;
-use common::ff1_format::{one_file, sav, slot_name};
 use common::ff1_save;
 use common::ff2_save::{SlotData, inventory, key_items, keywords};
-use common::pr_files::{containers, open_error, source_of};
+use common::pr_files::{containers, one_file, open_error, sav, slot_name, source_of};
 use neoffse_core::{Capability, FieldId, FileProbe, Game, RowId, SaveDocument, SaveFiles, SaveFormat, SaveSlot};
 use neoffse_data::{Entry, Language};
 use neoffse_format_pr::OpenError;

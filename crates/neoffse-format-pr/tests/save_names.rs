@@ -6,8 +6,9 @@ mod common;
 
 use std::ffi::OsStr;
 
+use common::STEAM_CLOUD_MARKER;
 use common::is_save_name;
-use common::{STEAM_CLOUD_MARKER, ff1_format::slot_name};
+use common::pr_files::slot_name;
 
 #[test]
 fn a_slot_file_name_passes() {

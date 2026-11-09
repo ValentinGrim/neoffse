@@ -206,7 +206,7 @@ fn raw_only(case: Option<Case>) -> Option<Ff2Case> {
 }
 
 /// `skillLevel` of the `abilityList` entry, with the row left alone: the
-/// state of question 37.
+/// state that `docs/formats/pixel-remaster.md#row-and-value-in-ff-ii` closes.
 fn proficiency(facts: &Facts<'_>, found: &Found) -> Option<Ff2Case> {
     let path = format!("{}.abilityList.target[{}].skillLevel", found.base, found.list);
     let field = names::place(found.id, names::ABILITY, u32::try_from(found.list).ok()?, names::PROFICIENCY);

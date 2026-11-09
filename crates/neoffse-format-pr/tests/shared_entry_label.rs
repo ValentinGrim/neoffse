@@ -4,7 +4,8 @@
 
 mod common;
 
-use common::ff1_save::{Row, SlotData};
+use common::ff1_save::SlotData;
+use common::slot_render::Row;
 use neoffse_core::{Capability, FieldId, Game, SaveView};
 use neoffse_data::{GameTables, Language, Sources};
 use neoffse_format_pr::document::Document;

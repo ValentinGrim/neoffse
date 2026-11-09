@@ -8,7 +8,6 @@ use neoffse_data::{GameTables, Language};
 
 use super::SlotDocument;
 use super::SlotModel;
-use super::names;
 use super::read::decode_error;
 use crate::container::decode;
 use crate::document::Document;
@@ -19,8 +18,8 @@ use crate::open_error::OpenError;
 ///
 /// The steps run in this order, each failing as `FormatError::Decode`: file
 /// count, container, JSON text, game of the vehicle count, refusal of
-/// another game, marker keys, then the shape gate over the character, the
-/// inventory and the key item lists, then a repeated key. The game rule is
+/// another game, marker keys, then, for each list of `M::KEYED_LISTS`, the
+/// shape gate and then a repeated key. The game rule is
 /// `docs/formats/pixel-remaster.md#telling-the-games-apart`.
 pub(crate) fn open_slot<M: SlotModel>(tables: &'static GameTables, language: Language, files: &SaveFiles) -> Result<SlotDocument<M>, FormatError> {
     if files.len() != 1 {
@@ -37,7 +36,7 @@ pub(crate) fn open_slot<M: SlotModel>(tables: &'static GameTables, language: Lan
     }
     check_markers(&mut document, M::GAME, vehicles).map_err(decode_error)?;
     let mut model = M::new(document, tables);
-    for collection in [names::CHARACTER, names::INVENTORY, names::KEY_ITEMS] {
+    for collection in M::KEYED_LISTS.iter().copied() {
         let not_a_slot = |source| decode_error(OpenError::NotASlot { source: Box::new(source) });
         let keys = model.rows(&FieldId::new(collection)).map_err(not_a_slot)?;
         if let Some(key) = repeated_key(&keys) {

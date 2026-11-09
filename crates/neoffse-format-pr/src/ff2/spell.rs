@@ -16,6 +16,7 @@ use super::places::{Group, entries_of};
 use crate::document::{Document, Segment};
 use crate::shared::paths::{Path, element, with};
 use crate::shared::read::{character_part, format_error, read_int};
+use crate::shared::view::row_label;
 
 /// One spell a character owns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,11 +84,7 @@ pub(super) fn level(document: &mut Document, tables: &GameTables, base: &Path, c
 /// The name of ability `id` in `language`, `Entry <id>` when its row has no
 /// name (`docs/formats/pixel-remaster.md#rows-without-a-name`).
 pub(super) fn ability_label(tables: &GameTables, language: Language, id: u32) -> String {
-    tables
-        .entry(TableKind::Ability, id)
-        .and_then(|entry| entry.name(language))
-        .filter(|name| !name.is_empty())
-        .map_or_else(|| format!("Entry {id}"), str::to_owned)
+    row_label(tables.entry(TableKind::Ability, id), id, "Entry", language)
 }
 
 /// The Level fields of character `id`, one per owned spell in `abilityList`

@@ -41,9 +41,10 @@ impl EditorViewModel {
     }
 
     /// Undoes the last edit. `None`: it went through, or there was nothing to
-    /// undo. An undo that starts at the clean point makes the review show
-    /// every row, since the undone edit may have sat on an expert-only page. `Some`: the notice to show. It works in both modes: the replay
-    /// runs under `StorageOnly`. The caller refreshes with `data`.
+    /// undo. `Some`: the notice to show. An undo that starts at the clean
+    /// point makes the review show every row, since the undone edit may have
+    /// sat on an expert-only page. It works in both modes: the replay runs
+    /// under `StorageOnly`. The caller refreshes with `data`.
     ///
     /// A call with no save open, or while a save runs, gives a
     /// `not-editable` notice. A session lost to a failed rollback and a

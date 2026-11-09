@@ -21,6 +21,14 @@ pub trait SlotModel: Clone + Send + 'static {
     /// The capabilities of a slot of this game.
     const CAPABILITIES: &'static [Capability];
 
+    /// The keyed lists of a slot of this game, as collection names: the
+    /// open refuses a slot where one of them holds a key twice.
+    ///
+    /// A `Remove` of a repeated key returns an `Insert` that fails with
+    /// `DuplicateRow`, so an undo of it would fail on every call. Each game
+    /// names every list it declares whose rows carry a key.
+    const KEYED_LISTS: &'static [&'static str];
+
     /// The name `Debug` prints for a document of this model: the name of the
     /// alias of `SlotDocument` that the game module exports.
     const DOCUMENT: &'static str;
@@ -110,10 +118,11 @@ pub trait SlotModel: Clone + Send + 'static {
 
 /// Expands to the `impl SlotModel` of a game model, each method calling the inherent method of the same name, so a game states its constants and writes no delegating body.
 macro_rules! impl_slot_model {
-    ($model:ty, game: $game:expr, capabilities: $capabilities:expr, document: $document:literal) => {
+    ($model:ty, game: $game:expr, capabilities: $capabilities:expr, keyed_lists: $keyed_lists:expr, document: $document:literal) => {
         impl $crate::shared::SlotModel for $model {
             const GAME: ::neoffse_core::Game = $game;
             const CAPABILITIES: &'static [::neoffse_core::Capability] = &$capabilities;
+            const KEYED_LISTS: &'static [&'static str] = &$keyed_lists;
             const DOCUMENT: &'static str = $document;
 
             fn new(document: $crate::document::Document, tables: &'static ::neoffse_data::GameTables) -> Self {

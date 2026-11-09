@@ -4,7 +4,8 @@
 
 mod common;
 
-use common::ff1_save::{Row, SlotData, model, model_with_escaped_row, standard_model};
+use common::ff1_save::{SlotData, model, model_with_escaped_row, standard_model};
+use common::slot_render::Row;
 use common::{ENFORCE, STORAGE_ONLY};
 use neoffse_core::{Edit, EditError, FieldId, RowId, Value};
 use neoffse_format_pr::ff1::{Ff1Model, names};
