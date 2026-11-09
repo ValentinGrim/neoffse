@@ -3,23 +3,9 @@
 
 mod common;
 
-use common::open_session;
+use common::{gil, level, open_session, set};
 use neoffse::Session;
-use neoffse::core::Edit;
 use neoffse::core::{Capability, EditError, FieldId, Value};
-use neoffse::pr::ff1::names;
-
-fn gil() -> FieldId {
-    FieldId::new(names::GIL)
-}
-
-fn level() -> FieldId {
-    FieldId::new(names::CHARACTER).with_id(1).with_name(names::LEVEL)
-}
-
-fn set(field: &FieldId, value: i64) -> Edit {
-    Edit::set(field.clone(), Value::Int(value))
-}
 
 fn value(session: &mut Session, field: &FieldId) -> Value {
     let view = session.view().unwrap();

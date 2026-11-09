@@ -1,6 +1,7 @@
-//! Compares a saved FF I slot with a reference run of the same two edits.
-//! A message names the slot position and a field id, never a value: the slots
-//! are personal data.
+//! Compares a saved slot with a reference run of the same edits. A message
+//! names the slot position and a field id, never a value: the slots are
+//! personal data. FF I passes the [`Step`] of its level edit; FF II passes
+//! none, and every rolled name must then equal the original.
 
 use neoffse::core::{FieldId, Key, SaveView, Value};
 use neoffse::data::GameTables;

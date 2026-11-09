@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{failure, failure_in, ff2_registry, folder_with, must, slot_bytes, slot_name, slot_with_text_replaced, slot_with_vehicles};
+use common::{failure, failure_in, ff2_registry, folder_with, must, slot_bytes, slot_file_at, slot_with_text_replaced, slot_with_vehicles};
 use neoffse::core::{FormatError, Game};
 use neoffse::pr::OpenError;
 use neoffse::{Error, Registry};
@@ -130,7 +130,7 @@ fn a_broken_slot_of_a_registered_game_is_not_unsupported() {
 #[test]
 fn a_scan_without_a_folder_game_claims_by_name_and_open_refuses_a_wrong_claim() {
     let registry = ff2_registry();
-    let (ff2_name, ff1_name) = (slot_name(2), slot_name(3));
+    let (ff2_name, ff1_name) = (slot_file_at(2), slot_file_at(3));
     let dir = folder_with(&[(ff2_name, &slot_with_vehicles(7)), (ff1_name, &slot_bytes())]);
 
     // Equal claims go to the first game of `Game::ALL`, owner or not.

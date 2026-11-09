@@ -10,7 +10,7 @@ use std::io;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
-use common::{data_dir, folder_with, gil, gil_value, moment, no_process, open_session, set, slot_name};
+use common::{data_dir, folder_with, gil, gil_value, moment, no_process, open_session, set, slot_file_at};
 use neoffse::core::{Edit, Value};
 use neoffse::io::atomic::{FileOps, RealFileOps};
 use neoffse::io::backup;
@@ -96,7 +96,7 @@ struct Outcome {
 fn run(fault: Fault) -> Outcome {
     let (dir, mut session) = open_session();
     let (_data_root, data) = data_dir();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let before = fs::read(dir.path().join(name)).unwrap();
     let start = gil_value(&mut session);
     session.edit(&set(&gil(), start + 1)).unwrap();
@@ -118,7 +118,7 @@ fn run(fault: Fault) -> Outcome {
 }
 
 fn assert_unchanged(outcome: &Outcome) {
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     assert_eq!(fs::read(outcome.dir.path().join(name)).unwrap(), outcome.before);
     let left: Vec<_> = fs::read_dir(outcome.dir.path()).unwrap().collect();
     assert_eq!(left.len(), 1, "no temporary file stays behind");
@@ -178,7 +178,7 @@ fn slot_at_the_payload_limit() -> Vec<u8> {
 #[test]
 fn an_encode_failure_takes_no_backup() {
     let bytes = slot_at_the_payload_limit();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let dir = folder_with(&[(name, &bytes)]);
     let (data_root, data) = data_dir();
     let mut session = Registry::new(neoffse::data::Language::En).open(dir.path(), name, None).unwrap();

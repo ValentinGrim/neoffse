@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::fs;
 use std::path::Path;
 
-use common::{data_dir, folder_with, moment, no_process, slot_bytes, slot_name};
+use common::{data_dir, folder_with, moment, no_process, slot_bytes, slot_file_at};
 use neoffse::core::Game;
 use neoffse::data::Language;
 use neoffse::io::atomic::RealFileOps;
@@ -28,7 +28,7 @@ fn executable() -> &'static str {
 
 /// A backup of `bytes` under the slot name, then a valid slot in the folder.
 fn backed_up(game: &str, bytes: &[u8]) -> (tempfile::TempDir, tempfile::TempDir, DataDir, Backup) {
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let dir = folder_with(&[(name, bytes)]);
     let (data_root, data) = data_dir();
     let request = Request {
@@ -44,21 +44,21 @@ fn backed_up(game: &str, bytes: &[u8]) -> (tempfile::TempDir, tempfile::TempDir,
 }
 
 fn file(dir: &Path) -> Vec<u8> {
-    fs::read(dir.join(slot_name(2))).unwrap()
+    fs::read(dir.join(slot_file_at(2))).unwrap()
 }
 
 #[test]
 fn a_broken_file_comes_back_as_it_was() {
     let broken = b"no format opens these bytes".as_slice();
     let (dir, _data_root, data, backup) = backed_up(GAME_ID, broken);
-    assert!(registry().open(dir.path(), slot_name(2), None).is_ok());
+    assert!(registry().open(dir.path(), slot_file_at(2), None).is_ok());
 
     let restored = registry()
         .restore_with(&RealFileOps, no_process, moment(), &data, &backup, dir.path(), Running::Refuse)
         .unwrap();
     assert_eq!(file(dir.path()), broken);
-    assert_eq!(fs::read(restored.safety.unwrap().dir.join(slot_name(2))).unwrap(), slot_bytes());
-    assert!(matches!(registry().open(dir.path(), slot_name(2), None), Err(Error::NoFormat { .. })));
+    assert_eq!(fs::read(restored.safety.unwrap().dir.join(slot_file_at(2))).unwrap(), slot_bytes());
+    assert!(matches!(registry().open(dir.path(), slot_file_at(2), None), Err(Error::NoFormat { .. })));
 }
 
 #[test]

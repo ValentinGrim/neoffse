@@ -5,16 +5,12 @@
 
 mod common;
 
-use common::open_session;
-use neoffse::core::{Edit, FieldId, Value};
+use common::{open_session, set};
+use neoffse::core::{FieldId, Value};
 use neoffse::pr::ff1::names;
 
 fn field(name: &'static str) -> FieldId {
     FieldId::new(names::CHARACTER).with_id(1).with_name(name)
-}
-
-fn set(field: &FieldId, value: i64) -> Edit {
-    Edit::set(field.clone(), Value::Int(value))
 }
 
 fn int(view: &neoffse::core::SaveView, name: &'static str) -> i64 {

@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::{open_session, slot_bytes, slot_name};
+use common::{open_session, slot_bytes, slot_file_at};
 use neoffse::Session;
 use neoffse::core::{Edit, FieldId, Value};
 use neoffse::pr::ff1::names;
@@ -22,7 +22,7 @@ fn debug_holds_the_game_and_the_name_only() {
     session.edit(&edit).unwrap();
     let text = format!("{session:?}");
     assert!(text.contains("ff1-pr"));
-    assert!(text.contains(slot_name(2)));
+    assert!(text.contains(slot_file_at(2)));
     assert!(text.contains("dirty: true"));
     // No byte of the file, and no folder path.
     let bytes = slot_bytes();

@@ -47,7 +47,7 @@ pub(crate) use permissions::{Locked, lock};
 pub(crate) use portraits::{jobs, party, pixels, size_of};
 pub(crate) use refusing::{Refusing, registry_with};
 pub(crate) use restoring::{Ended, Paged, Restoring, restore_page};
-pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe, session_in};
+pub(crate) use rig::{Machine, Rig, backup_count, break_data_dir, closeable_rig, gil_in, newest_created, rig, scripted_probe, session_in, session_of};
 pub(crate) use save_proof::{Step, assert_same};
 pub(crate) use saving::{Saving, saving, saving_over};
 pub(crate) use site::{ID_1, ID_2, Site, documents_folder, documents_slot, environment, install, steam_folder, steam_slot};

@@ -6,7 +6,7 @@ mod common;
 use std::cell::RefCell;
 use std::fs;
 
-use common::{assert_gil_only_change, data_dir, gil, gil_value, level, moment, no_process, open_session, set, slot_name};
+use common::{assert_gil_only_change, data_dir, gil, gil_value, level, moment, no_process, open_session, set, slot_file_at};
 use neoffse::io::atomic::RealFileOps;
 use neoffse::io::backup;
 use neoffse::io::error::{IoError, Operation};
@@ -19,10 +19,10 @@ const GAME_ID: &str = "ff1-pr";
 fn a_clean_session_saves_nothing() {
     let (dir, mut session) = open_session();
     let (data_root, data) = data_dir();
-    let before = fs::read(dir.path().join(slot_name(2))).unwrap();
+    let before = fs::read(dir.path().join(slot_file_at(2))).unwrap();
     let saved = session.save_with(&RealFileOps, no_process, moment(), &data, Running::Refuse).unwrap();
     assert!(saved.backup.is_none());
-    assert_eq!(fs::read(dir.path().join(slot_name(2))).unwrap(), before);
+    assert_eq!(fs::read(dir.path().join(slot_file_at(2))).unwrap(), before);
     assert_eq!(fs::read_dir(data_root.path()).unwrap().count(), 0);
     assert!(!data.backups_dir().exists());
 }
@@ -31,7 +31,7 @@ fn a_clean_session_saves_nothing() {
 fn a_save_backs_up_writes_and_cleans_the_session() {
     let (dir, mut session) = open_session();
     let (_data_root, data) = data_dir();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let before = fs::read(dir.path().join(name)).unwrap();
     let gil_before = gil_value(&mut session);
     session.edit(&set(&gil(), gil_before + 7)).unwrap();
@@ -60,7 +60,7 @@ fn a_save_backs_up_writes_and_cleans_the_session() {
 fn a_save_changes_the_gil_and_nothing_else() {
     let (dir, mut session) = open_session();
     let (_data_root, data) = data_dir();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let gil_before = gil_value(&mut session);
     session.edit(&set(&gil(), gil_before + 3)).unwrap();
     session.edit(&set(&level(), 2)).unwrap();
@@ -106,7 +106,7 @@ fn a_save_moves_the_clean_point_inside_the_history() {
 fn refuse_stops_when_the_probe_finds_the_game() {
     let (dir, mut session) = open_session();
     let (data_root, data) = data_dir();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let before = fs::read(dir.path().join(name)).unwrap();
     let start = gil_value(&mut session);
     session.edit(&set(&gil(), start + 1)).unwrap();
@@ -137,7 +137,7 @@ fn refuse_stops_when_the_probe_finds_the_game() {
 fn a_file_changed_on_disk_refuses_the_save() {
     let (dir, mut session) = open_session();
     let (data_root, data) = data_dir();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let mut other = fs::read(dir.path().join(name)).unwrap();
     let middle = other.len() / 2;
     other[middle] ^= 0x01;
@@ -159,7 +159,7 @@ fn a_file_changed_on_disk_refuses_the_save() {
 fn a_file_deleted_on_disk_is_an_io_error() {
     let (dir, mut session) = open_session();
     let (data_root, data) = data_dir();
-    fs::remove_file(dir.path().join(slot_name(2))).unwrap();
+    fs::remove_file(dir.path().join(slot_file_at(2))).unwrap();
     let start = gil_value(&mut session);
     session.edit(&set(&gil(), start + 1)).unwrap();
     let error = session.save_with(&RealFileOps, no_process, moment(), &data, Running::Allow).unwrap_err();
@@ -203,6 +203,6 @@ fn the_real_save_runs_once_with_allow() {
     let saved = session.save(&data, Running::Allow).unwrap();
     assert!(saved.backup.is_some());
     assert!(!session.is_dirty());
-    let mut reopened = Registry::new(neoffse::data::Language::En).open(dir.path(), slot_name(2), None).unwrap();
+    let mut reopened = Registry::new(neoffse::data::Language::En).open(dir.path(), slot_file_at(2), None).unwrap();
     assert_eq!(gil_value(&mut reopened), start + 2);
 }

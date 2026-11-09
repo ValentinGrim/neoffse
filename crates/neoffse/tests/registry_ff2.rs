@@ -8,7 +8,7 @@ mod common;
 use std::fs;
 use std::path::Path;
 
-use common::{data_dir, ff2_slot_bytes, folder_with, moment, must, no_process, slot_bytes, slot_name, slot_with_vehicles};
+use common::{data_dir, ff2_slot_bytes, folder_with, moment, must, no_process, slot_bytes, slot_file_at, slot_with_vehicles};
 use neoffse::core::{Capability, Edit, FieldId, Game, RowId, Value};
 use neoffse::data::Language;
 use neoffse::io::atomic::RealFileOps;
@@ -28,30 +28,30 @@ fn registry() -> Registry {
 }
 
 fn ff2_session() -> (TempDir, Session) {
-    let dir = folder_with(&[(slot_name(2), &ff2_slot_bytes())]);
-    let session = must(registry().open(dir.path(), slot_name(2), None), "open the FF II fixture");
+    let dir = folder_with(&[(slot_file_at(2), &ff2_slot_bytes())]);
+    let session = must(registry().open(dir.path(), slot_file_at(2), None), "open the FF II fixture");
     (dir, session)
 }
 
 /// Saves a dirty session and returns the bytes now on disk.
 fn saved(session: &mut Session, dir: &Path, data: &DataDir) -> Vec<u8> {
     must(session.save_with(&RealFileOps, no_process, moment(), data, Running::Allow), "save the session");
-    fs::read(dir.join(slot_name(2))).unwrap()
+    fs::read(dir.join(slot_file_at(2))).unwrap()
 }
 
 #[test]
 fn the_ff2_fixture_opens_as_ff2_with_and_without_a_game() {
-    let dir = folder_with(&[(slot_name(2), &ff2_slot_bytes())]);
+    let dir = folder_with(&[(slot_file_at(2), &ff2_slot_bytes())]);
     for game in [None, Some(Game::Ff2Pr)] {
-        let session = must(registry().open(dir.path(), slot_name(2), game), "open the FF II fixture");
+        let session = must(registry().open(dir.path(), slot_file_at(2), game), "open the FF II fixture");
         assert_eq!(session.game(), Game::Ff2Pr);
     }
 }
 
 #[test]
 fn the_ff1_fixture_still_opens_as_ff1() {
-    let dir = folder_with(&[(slot_name(2), &slot_bytes())]);
-    let session = must(registry().open(dir.path(), slot_name(2), None), "open the FF I fixture");
+    let dir = folder_with(&[(slot_file_at(2), &slot_bytes())]);
+    let session = must(registry().open(dir.path(), slot_file_at(2), None), "open the FF I fixture");
     assert_eq!(session.game(), Game::Ff1Pr);
 }
 
@@ -59,7 +59,7 @@ fn the_ff1_fixture_still_opens_as_ff1() {
 fn a_spell_level_edit_undoes_to_the_original_bytes_and_redoes() {
     let (dir, mut session) = ff2_session();
     let (_data_root, data) = data_dir();
-    let original = fs::read(dir.path().join(slot_name(2))).unwrap();
+    let original = fs::read(dir.path().join(slot_file_at(2))).unwrap();
     let level = names::spell_field(1, CHAIN);
 
     session.edit(&Edit::set(level, Value::Int(TO))).unwrap();
@@ -77,7 +77,7 @@ fn a_spell_level_edit_undoes_to_the_original_bytes_and_redoes() {
 fn a_one_sided_expert_edit_of_a_place_undoes_to_the_original_bytes() {
     let (dir, mut session) = ff2_session();
     let (_data_root, data) = data_dir();
-    let original = fs::read(dir.path().join(slot_name(2))).unwrap();
+    let original = fs::read(dir.path().join(slot_file_at(2))).unwrap();
     let place = names::place(1, names::ABILITY, ENTRY, names::PROFICIENCY);
 
     session.edit_expert(&Edit::set(place, Value::Int(456))).unwrap();
@@ -91,7 +91,7 @@ fn a_one_sided_expert_edit_of_a_place_undoes_to_the_original_bytes() {
 fn a_keyword_add_undoes_to_the_original_bytes() {
     let (dir, mut session) = ff2_session();
     let (_data_root, data) = data_dir();
-    let original = fs::read(dir.path().join(slot_name(2))).unwrap();
+    let original = fs::read(dir.path().join(slot_file_at(2))).unwrap();
     // The fixture holds keyword rows 917, 918, 919 and 921: 920 is absent.
     let keywords = FieldId::new(names::KEYWORDS);
 
@@ -131,8 +131,8 @@ fn the_changes_list_the_level_under_the_spell_name_on_the_magic_entity() {
 #[test]
 fn a_file_of_a_game_without_a_format_is_unsupported() {
     for vehicles in [14, 11, 19, 8] {
-        let dir = folder_with(&[(slot_name(2), &slot_with_vehicles(vehicles))]);
-        let Err(error) = registry().open(dir.path(), slot_name(2), None) else {
+        let dir = folder_with(&[(slot_file_at(2), &slot_with_vehicles(vehicles))]);
+        let Err(error) = registry().open(dir.path(), slot_file_at(2), None) else {
             panic!("{vehicles} vehicles must not open");
         };
         assert!(registry().is_unsupported_game(&error), "{vehicles} vehicles");
