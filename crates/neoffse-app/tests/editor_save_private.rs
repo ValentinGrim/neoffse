@@ -73,7 +73,7 @@ fn below_cap(view: &SaveView, max_level: i64) -> Option<(usize, u32, i64)> {
 
 #[test]
 fn every_private_slot_saves_a_gil_and_level_edit() {
-    let Some(slots) = private_slot_copies() else { return };
+    let Some(slots) = private_slot_copies(Game::Ff1Pr) else { return };
     let tables = must_some(tables_for(Game::Ff1Pr), "no FF I tables");
     let max_level = must_some(tables.bound("MAX_LV"), "no MAX_LV in the FF I tables");
     let gil_id = FieldId::new(names::GIL);

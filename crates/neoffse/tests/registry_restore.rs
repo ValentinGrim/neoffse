@@ -7,7 +7,7 @@ mod common;
 use std::fs;
 use std::path::Path;
 
-use common::{data_dir, gil, gil_value, moment, no_process, open_session, set, slot_name};
+use common::{data_dir, gil, gil_value, moment, no_process, open_session, set, slot_file_at};
 use neoffse::core::Game;
 use neoffse::data::Language;
 use neoffse::io::atomic::RealFileOps;
@@ -39,7 +39,7 @@ struct Saved {
 fn saved_session() -> Saved {
     let (dir, mut session) = open_session();
     let (data_root, data) = data_dir();
-    let name = slot_name(2);
+    let name = slot_file_at(2);
     let before = fs::read(dir.path().join(name)).unwrap();
     let start = gil_value(&mut session);
     session.edit(&set(&gil(), start + 7)).unwrap();
@@ -69,7 +69,7 @@ fn only_backup(saved: &Saved) -> Backup {
 }
 
 fn file(dir: &Path) -> Vec<u8> {
-    fs::read(dir.join(slot_name(2))).unwrap()
+    fs::read(dir.join(slot_file_at(2))).unwrap()
 }
 
 #[test]
@@ -83,14 +83,14 @@ fn a_restore_puts_back_the_bytes_before_the_save() {
     assert_eq!(restored.created.len(), 0);
     let safety = restored.safety.expect("the file was present, so a safety backup exists");
     assert_eq!(safety.manifest.reason, "before-restore");
-    assert_eq!(fs::read(safety.dir.join(slot_name(2))).unwrap(), saved.after);
+    assert_eq!(fs::read(safety.dir.join(slot_file_at(2))).unwrap(), saved.after);
 
     let listing = registry().backups(&saved.data, Game::Ff1Pr).unwrap();
     assert_eq!(listing.unreadable.len(), 0);
     let reasons: Vec<&str> = listing.backups.iter().map(|backup| backup.manifest.reason.as_str()).collect();
     assert_eq!(reasons, ["before-restore", "before-save"]);
 
-    let mut reopened = registry().open(saved.dir.path(), slot_name(2), None).unwrap();
+    let mut reopened = registry().open(saved.dir.path(), slot_file_at(2), None).unwrap();
     assert_eq!(gil_value(&mut reopened), saved.start);
 }
 
@@ -103,7 +103,7 @@ fn restoring_the_safety_backup_undoes_the_restore() {
 
     restore_at(&saved, &safety, later(120));
     assert_eq!(file(saved.dir.path()), saved.after);
-    let mut reopened = registry().open(saved.dir.path(), slot_name(2), None).unwrap();
+    let mut reopened = registry().open(saved.dir.path(), slot_file_at(2), None).unwrap();
     assert_eq!(gil_value(&mut reopened), saved.start + 7);
 }
 

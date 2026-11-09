@@ -82,9 +82,14 @@ pub(crate) fn backup_count(data: &Path) -> usize {
         .map_or(0, |listing| listing.backups.len())
 }
 
-/// A session opened on the save file `file`.
+/// A session opened on the FF I save file `file`.
 pub(crate) fn session_in(file: &Path) -> Session {
-    let opened = Registry::new(Language::En).open(file.parent().unwrap(), file.file_name().unwrap().to_str().unwrap(), Some(Game::Ff1Pr));
+    session_of(Game::Ff1Pr, file)
+}
+
+/// A session opened on the save file `file` as `game`.
+pub(crate) fn session_of(game: Game, file: &Path) -> Session {
+    let opened = Registry::new(Language::En).open(file.parent().unwrap(), file.file_name().unwrap().to_str().unwrap(), Some(game));
     must(opened, "the save does not open")
 }
 

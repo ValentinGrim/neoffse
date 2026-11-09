@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{ff1_registry, folder_of, is_slot_name, private_files_of};
+use common::{ff1_registry, folder_of, is_slot_name, private_files_of, private_slots_of};
 use neoffse::Error;
 use neoffse::core::{FormatError, Game};
 use neoffse::pr::OpenError;
@@ -26,9 +26,9 @@ fn every_private_slot_of_ff2_to_ff6_is_unsupported_for_an_ff1_registry() {
     let registry = ff1_registry();
     for (position, (folder, game, vehicles)) in FOLDERS.into_iter().enumerate() {
         assert_eq!(Game::ALL.get(position + 1), Some(&game), "{folder} is the game after {position} others");
-        let Some(files) = private_files_of(folder) else { continue };
+        let Some(slots) = private_slots_of(folder) else { continue };
         let mut opened = 0;
-        for (index, (name, path)) in files.iter().enumerate().filter(|(_, (name, _))| is_slot_name(name)) {
+        for (index, (name, path)) in slots.iter().enumerate() {
             let dir = folder_of(path);
             let Err(error) = registry.open(dir, name, None) else {
                 panic!("{folder} slot {index} must not open as FF I");
@@ -49,10 +49,7 @@ fn every_private_slot_of_ff2_to_ff6_is_unsupported_for_an_ff1_registry() {
             );
             opened += 1;
         }
-        report(&format!(
-            "{folder}: {opened} slot files refused as the game they belong to, {} files listed",
-            files.len()
-        ));
+        report(&format!("{folder}: {opened} slot files refused as the game they belong to"));
     }
 }
 

@@ -10,6 +10,7 @@ mod common;
 use std::fs;
 
 use common::{Flow, Outcomes, Part, PrivateSlot, field, fields, items, must, pages, private_slot_copies};
+use neoffse::core::Game;
 use neoffse_app::home::OpenOutcome;
 use neoffse_app::{EntityPage, FieldRow};
 
@@ -29,7 +30,7 @@ fn read(copy: &std::path::Path, slot: usize) -> Vec<u8> {
 
 #[test]
 fn every_private_slot_builds_its_cards() {
-    let Some(slots) = private_slot_copies() else { return };
+    let Some(slots) = private_slot_copies(Game::Ff1Pr) else { return };
     for (position, PrivateSlot { name, site, copy }) in slots.iter().enumerate() {
         let opened = position + 1;
         let bytes = read(copy, opened);

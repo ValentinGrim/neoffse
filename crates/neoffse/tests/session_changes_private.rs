@@ -12,14 +12,7 @@ use common::{gil, gil_value, must, must_some, private_slot_paths, set};
 use neoffse::core::Game;
 use neoffse::data::Language;
 use neoffse::{ChangeKind, Registry};
-
-#[allow(
-    clippy::print_stderr,
-    reason = "the timing of one call is the output of this test, and stderr is its only channel"
-)]
-fn report(slot: &str, milliseconds: f64) {
-    eprintln!("changes on {slot}: {milliseconds:.2} ms");
-}
+use neoffse_testkit::report;
 
 #[test]
 fn a_gil_edit_shows_one_change_on_every_private_slot() {
@@ -35,7 +28,7 @@ fn a_gil_edit_shows_one_change_on_every_private_slot() {
 
         let started = Instant::now();
         let changes = must(session.changes(Language::En), "list the changes");
-        report(&index.to_string(), started.elapsed().as_secs_f64() * 1000.0);
+        report(&format!("changes on {index}: {:.2} ms", started.elapsed().as_secs_f64() * 1000.0));
         assert!(changes.len() == 1, "slot {index} must show one change");
         assert!(matches!(changes[0].kind, ChangeKind::Field { .. }), "slot {index} must show a field change");
 
