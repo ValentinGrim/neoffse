@@ -5,12 +5,34 @@
 
 mod common;
 
-use common::{ALL_KINDS, ff1};
+use common::{ALL_KINDS, EMBEDDED, ff1, game_tables};
 use neoffse_core::{Game, TableKind};
 use neoffse_data::sources_for;
 
 /// The letters the doc lists for French names, beyond ASCII.
 const FRENCH_EXTRA: &str = "ÉâèéêëîïôûŒœ";
+
+/// Every table kind a game can carry; a kind a game lacks answers `None`.
+const EVERY_KIND: [TableKind; 15] = [
+    TableKind::Item,
+    TableKind::KeyItem,
+    TableKind::Weapon,
+    TableKind::Shield,
+    TableKind::Armor,
+    TableKind::Helmet,
+    TableKind::Gloves,
+    TableKind::Ability,
+    TableKind::Job,
+    TableKind::Command,
+    TableKind::Map,
+    TableKind::Monster,
+    TableKind::Keyword,
+    TableKind::MagicStone,
+    TableKind::CommandContent,
+];
+
+/// The longest English name any shipped table holds is under this.
+const MAX_NAME_CHARS: usize = 40;
 
 fn all_names() -> Vec<(TableKind, u32, &'static str, &'static str)> {
     ALL_KINDS
@@ -33,6 +55,22 @@ fn names_hold_no_icon_tag_and_no_markup() {
             assert!(!name.is_empty(), "{at}");
             assert!(!name.contains(['"', '\\', '\t', '<', '>']), "{at}");
             assert_eq!(name.trim(), name, "{at}");
+        }
+    }
+}
+
+#[test]
+fn english_names_of_every_game_have_a_plain_shape() {
+    for game in EMBEDDED {
+        let tables = game_tables(*game);
+        for kind in EVERY_KIND {
+            for entry in tables.table(kind).unwrap_or_default() {
+                let Some(name) = entry.name_en.as_deref() else { continue };
+                let at = format!("{game:?} {kind:?} {}", entry.id);
+                assert!(!name.contains(['"', '\\', '\t', '<', '>']), "{at}");
+                assert_eq!(name.trim(), name, "{at}");
+                assert!(name.chars().count() <= MAX_NAME_CHARS, "{at}");
+            }
         }
     }
 }
