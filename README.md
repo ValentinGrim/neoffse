@@ -13,23 +13,25 @@ The app opens, edits and saves Final Fantasy I and Final Fantasy II Pixel Remast
 Home lists the saves that Steam discovery finds for the six Pixel Remaster games, and "Open a file..." takes any file.
 FF I and FF II have a format so far, and the other four games read "Not supported yet".  
 The editor has three pages.
-Party shows one card per character and opens a page with the name, job, level, experience, HP, stats, spell charges and equipment.
+Party shows one card per character and opens the page of that character.
 Items lists gil, items and key items.
-Magic lists the spell slots and stays read only.  
-FF II has no character level or experience.
-Its Party page edits the name, HP, MP, the gains of HP, MP and the six stats, equipment and the ten skill values.
-Its Items page also lists the keywords, which you add by default and remove in expert mode.
-Its Magic page edits the Level of each spell, and expert mode adds a Raw spells page for the places a spell is stored in.  
+Magic lists the spells of each character.  
+In FF I, the character page edits the name, job, level, experience, HP, stats, spell charges and equipment, and the Magic page stays read only.
 A Level or Experience edit sets the other field too.
 A higher level also adds the stats the game gives for each level gained, with random rolls like the game's.  
+FF II has no character level or experience.
+Its character page edits the name, HP, MP, the gains of HP, MP and the six stats, equipment and the ten skill values.
+Its Items page also lists the keywords, which you add by default and remove in expert mode.
+Its Magic page edits the Level of each spell, and expert mode adds a Raw spells page for the places a spell is stored in.  
 Undo, redo and a review of the net changes come before every save.
 A save checks for a running game and for a file that changed on disk, backs the file up, writes a temporary file, reads it back and renames it.
 The Restore page lists the backups of a game and restores one.
 View > Expert mode switches to raw edits behind a warning.  
 A few in-game checks of the level and experience rules are still open ([Open questions](docs/formats/pixel-remaster.md#open-questions)).  
 `neoffse` re-exports the crates below and adds a `Registry` that scans and opens saves, a `Session` with the edit history and the save pipeline, the list of changes for a review, and the backup listing and restore.
-`Ff1Format` and `Ff2Format` in `neoffse-format-pr` open a slot file and refuse a file of another game or a file that is no slot.
+`Ff1Format` and `Ff2Format` in `neoffse-format-pr` open a slot file and refuse a file of another game, a file that is no slot and a slot that holds a key twice in one of its lists.
 Their documents list the party, the items, the key items and the gil, edit them, and encode the file back.
+`Ff2Document` also lists the keywords and the spell levels.
 The tests show that an edit followed by encode and decode changes the intended values and nothing else.  
 A document offers two ways to edit.
 `apply_game` edits the way the game does: equipping an item also updates the inventory and the slot count, and it refuses a value above the game's cap.
@@ -37,7 +39,7 @@ A document offers two ways to edit.
 `neoffse-data` embeds the ID tables of the six games: items, equipment, abilities, jobs, commands, the game's caps and the keywords of FF II, with English and French names.  
 FF I adds the monsters and the level-up growth tables, and FF II adds the base stats, the skill curve and the spell chains.  
 `neoffse-format-pr` decodes and encodes the Pixel Remaster save files of the six games and edits their JSON text by path, without rewriting the values it does not touch.
-Only FF I and FF II have a domain mapping so far.  
+Only FF I and FF II have a domain mapping so far, and both run through one shared layer (`neoffse_format_pr::shared`) that a later game plugs its own model into.  
 `neoffse-io` finds the Steam save folders of the games it is given, replaces a file only after a check passes on the written copy, keeps timestamped backups with a restore, and scans for a running game.  
 The game scan is best effort: a process the system hides stays invisible, so an empty result proves nothing.  
 The first target is Final Fantasy I to VI Pixel Remaster on Steam PC (Windows and Linux, Proton included).  

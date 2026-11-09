@@ -1,4 +1,4 @@
-//! The overview over a copy of the owner's FF I saves (`NEOFFSE_SAVES`, read
+//! The overview over a copy of private FF I saves (`NEOFFSE_SAVES`, read
 //! only). Every slot is copied into a temporary folder first. The test skips
 //! when the folder is absent. A failure names a slot number and a field
 //! label, never a value, a file name or a path. No edit, no save.

@@ -177,6 +177,7 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   The `ff1` and `ff2` modules map an FF I and an FF II slot onto the domain of `neoffse-core`, and each knows only its own game.
   The `shared` module holds the generic open pipeline and document, and the character-field machinery: field bindings, reads, raw and game edits, the slot summary and the party view.
   A game supplies its `Part` enum of character fields, its tables and its rules, and plugs into that machinery with its slot model.
+  The model also names the game's keyed lists (`SlotModel::KEYED_LISTS`): the open refuses a slot where one of them holds a key twice, because removing one of two equal keys returns an inverse `Insert` that fails.
   `Ff1Format` and `Ff2Format` refuse a file that is no slot, or a slot of another game ([Telling the games apart](formats/pixel-remaster.md#telling-the-games-apart)).
   `Ff1Document` and `Ff2Document` read and write by field path, never by position, and report the capabilities `Party`, `Inventory` and `Magic`.
   In FF I the spell slots of the Magic section are read only: writing spells waits for research on the slot rules ([Roadmap](roadmap.md#m4-app-ff-i-end-to-end)).
@@ -195,7 +196,7 @@ The metadata and view types come with a constructor (`FieldMeta::new`), so a cal
   Its library target holds the window types that `ui/app.slint` generates, one view model per screen, the code that wires their callbacks and the image providers, and the binary only calls `run`.
   The library target lets integration tests drive the windows (see [Test policy](#test-policy)).
 
-- **`neoffse-testkit`** locates and reads the committed fixtures and finds the private real saves through `NEOFFSE_SAVES`.
+- **`neoffse-testkit`** locates and reads the committed fixtures, finds the private real saves through `NEOFFSE_SAVES` and prints the counts of a private run.
   It generates no fixture (see [Test policy](#test-policy)).
 
 ### Format traits
@@ -280,7 +281,7 @@ Each dependency's version requirement sits in a `Cargo.toml`, and the committed 
 | PR cipher | hand-ported Rijndael-256 | the block is 32 bytes and AES fixes it at 16, so AES crates cannot decrypt a PR save |
 | ID table export | Python 3.11 or later, `UnityPy` | reads the user's install; only a contributor who regenerates the tables needs it |
 | Cipher test vectors | Go program in `tools/cipher-vectors/` | runs KiameV's ffpr-save-cypher; only a contributor who regenerates the vectors needs Go |
-| Binary formats (after M5) | `binrw` | the console and older PC formats after the PR |
+| Binary formats (after M10) | `binrw` | the console and older PC formats after the PR |
 | Atomic write | `tempfile` | temporary file in the target folder, then rename |
 | Data dir | `directories` | locates the backups ([Save safety](#save-safety)) |
 | Steam library list | `keyvalues-parser` | reads `libraryfolders.vdf` |
@@ -331,7 +332,7 @@ A library crate returns errors and does not panic on anything read from a file.
 - **Tests live in `tests/`.** No source file holds test code, in any crate.
   A crate's tests sit in its `tests/` directory as integration tests and use the public API.
   A crate exposes an internal stage that needs tests, such as a codec step or the cipher, in a documented public module.
-  Helpers that several test files share sit in `tests/common/mod.rs`.
+  Helpers that several test files share sit in the crate's `tests/common/` module.
 - **Round trip on every fixture.** Decode, encode, decode again: the two decoded documents and their containers must match.
   The game's deflate encoder and `flate2` choose different streams for the same input, so a PR save never re-encodes to the game's bytes, and PR round trips compare the inflated JSON text byte for byte.
   The game accepts a deflate stream that differs from its own.
@@ -340,7 +341,7 @@ A library crate returns errors and does not panic on anything read from a file.
   The runner in `crates/neoffse-format-pr/tests/common/edit_proof.rs` drives an edit through `Box<dyn SaveDocument>` and compares the JSON tree before and after.
   It fails on a change it did not expect and on a change it expected and did not find.
   It then undoes the edit, on the edited document and on a reopened one, and applies it again.
-  An edit matrix runs on the synthetic slot `fixtures/pr/ff1-slot.json` and on every private FF I slot.
+  An edit matrix runs on the synthetic slots `fixtures/pr/ff1-slot.json` and `fixtures/pr/ff2-slot.json` and on every private slot of the same game.
 - **Domain contract.** `neoffse-core` tests the edit contract with hand-built documents and `proptest`: a refused edit changes nothing, an inverse restores the document, and a `ChangeSet` applies all or none.
   `neoffse-data` tests the embedded tables of the six games against the facts of [Game master data](formats/pixel-remaster.md#game-master-data).
 - **Properties.** `proptest` drives each codec stage, the whole pipeline and the document with generated input.
@@ -353,7 +354,7 @@ A library crate returns errors and does not panic on anything read from a file.
 - **Fixtures.** The repository commits synthetic fixtures under `fixtures/`, and `neoffse-testkit` locates and reads them.
   A test fails when a committed fixture differs from what its generator writes, for example after a compression update changes the deflate stream.
   The test headers give the regeneration command, which sets `NEOFFSE_WRITE_FIXTURES=1`.
-  The FF I slot holds invented values that obey the game's rules, so the proof runs against a consistent save.
+  The FF I and FF II slots hold invented values that obey the game's rules, so the proof runs against a consistent save.
 - **Real saves.** They are personal data and stay out of the repository.
   A test asks the testkit for the saves of one game, for example `neoffse_testkit::private_saves("ff1")`.
   The testkit reads the folder named by `NEOFFSE_SAVES`, `fixtures/private/` by default.
@@ -361,6 +362,7 @@ A library crate returns errors and does not panic on anything read from a file.
   A wrong `NEOFFSE_SAVES` path skips every real-save test while the run stays green; `cargo test -- --nocapture` shows the reasons.
   The testkit tests its skip path through a child process, because editing the environment of a running test needs `unsafe` in edition 2024 and the workspace denies `unsafe_code`.
   Real-save tests only read, and a failure message names a slot label and a field path, never a value.
+  A run prints its counts with `neoffse_testkit::report`; a line carries no personal value.
 - **Real discovery.** `crates/neoffse-io/tests/real_discovery.rs` is `#[ignore]`, because it reads the Steam install of the machine it runs on.
   It checks that discovery finds a save folder for each PR game and that the folder holds a file the codec accepts.
   Its output carries game ids and counts, never a path, a SteamID64 or a file name.
@@ -549,8 +551,13 @@ The [roadmap](roadmap.md) holds the scope and exit criteria.
 | M2 File safety | `neoffse-io`; the game table and the trailer cap of `neoffse-format-pr` | yes |
 | M3 PR domain | `neoffse-core`, `neoffse-data`, the FF I domain mapping and format of `neoffse-format-pr` | yes |
 | M4 App, FF I | `neoffse-app` v1, the `neoffse` facade (registry, history, save pipeline) | yes |
-| M5 FF II to VI | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` for per-game capabilities | yes |
-| Release (v0.7.0) | release packaging, translations | full repository |
+| M5 FF II | the FF II mapping and format of `neoffse-format-pr`, the shared PR layer, the FF II to VI master-data tables of `neoffse-data`, the FF II editor of `neoffse-app` | yes |
+| M6 FF III | reopens `neoffse-core`, `neoffse-data`, `neoffse-format-pr` and `neoffse-app` for FF III | yes |
+| M7 FF IV | reopens the same four crates for FF IV | yes |
+| M8 FF V | reopens the same four crates for FF V | yes |
+| M9 FF VI | reopens the same four crates for FF VI | yes |
+| M10 Bestiaries | reopens the same four crates for the bestiaries of FF I to VI | yes |
+| Release (v0.12.0) | release packaging, translations | full repository |
 
 ## Open points
 

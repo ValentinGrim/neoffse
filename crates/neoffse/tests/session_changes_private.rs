@@ -1,4 +1,4 @@
-//! `Session::changes` on the owner's FF I saves (`NEOFFSE_SAVES`, read
+//! `Session::changes` on private FF I saves (`NEOFFSE_SAVES`, read
 //! only; the test edits in memory and never saves). The test skips when the
 //! folder holds no slot file and prints slot positions and durations, never
 //! file names or values.

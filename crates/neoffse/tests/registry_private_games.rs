@@ -1,4 +1,4 @@
-//! An FF I registry against the owner's FF II to VI saves (`NEOFFSE_SAVES`,
+//! An FF I registry against private FF II to VI saves (`NEOFFSE_SAVES`,
 //! read in place and never written). The tests skip a folder the saves lack,
 //! and print counts, never file names or values.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]

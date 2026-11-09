@@ -22,9 +22,11 @@
 //!   `SaveDocument` on top of it, as aliases of the generic types of
 //!   [`shared`].
 //! - [`ff2`]: the FF II slot as fields of `neoffse-core`. [`ff2::Ff2Model`]
-//!   reads the characters (HP, MP, the stat and maximum gains, the ten
-//!   skills, five equipment slots), the two item lists and gil. FF II has
-//!   no level or experience field.
+//!   reads and edits the characters (HP, MP, the stat and maximum gains, the
+//!   ten skills, five equipment slots), the level of each spell, the item and
+//!   key item lists, the keywords and gil, through the same two interfaces as
+//!   FF I. [`ff2::Ff2Format`] and [`ff2::Ff2Document`] are aliases of the
+//!   generic types of [`shared`]. FF II has no level or experience field.
 //! - [`shared`]: what the six games share: the section names of a slot, the
 //!   document paths of its collections, the reads that find a row or a
 //!   dictionary entry by key, the open pipeline ([`shared::SlotFormat`])

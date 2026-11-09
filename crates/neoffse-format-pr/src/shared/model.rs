@@ -12,8 +12,8 @@ use crate::document::Document;
 ///
 /// A model owns the lossless [`Document`] of a slot and the ID tables of its
 /// game, and maps both onto the field vocabulary of its game. Each method
-/// has the contract of the inherent method of the same name on the model of
-/// the first game.
+/// has the contract of the inherent method of the same name on
+/// [`Ff1Model`](crate::ff1::Ff1Model) and [`Ff2Model`](crate::ff2::Ff2Model).
 pub trait SlotModel: Clone + Send + 'static {
     /// The game this model reads.
     const GAME: Game;

@@ -2412,6 +2412,8 @@ No battle has shown a positive spell gain, so the constant +2 of the spell rule 
 NeoFFSE reads a spell's level from the row, by `(abilityId - 5) mod 16 + 1` [I], which is the level the game shows [G] ([Row and value in FF II](#row-and-value-in-ff-ii)).
 It pairs an `abilityList` entry with its `abilityDictionary` key 3 entry by chain and takes the first entry of the chain in each list [I].
 A Level edit writes the five changes listed in [Row and value in FF II](#row-and-value-in-ff-ii).
+The edit finds every place it writes before it writes the first one.
+A spell with no entry in the key-3 `abilityDictionary` copy, or none in `abilityList`, fails as an unknown field, and nothing is written [I].
 When an order list lacks the old content ID, NeoFFSE leaves that list unchanged, where the game appends the new ID.
 On a pair whose row and `skillLevel` disagree, the game shows the row's level as well, and its gauge follows the value, as that section describes.
 
