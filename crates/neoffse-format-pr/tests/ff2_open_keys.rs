@@ -1,15 +1,17 @@
 //! The shape gate of `Ff2Format::open_document` on the keyword list: a
 //! repeated keyword is not a slot, because a `Remove` of it returns an
-//! `Insert` that fails (`docs/formats/pixel-remaster.md#keywords-in-ff-ii`).
+//! `Insert` that fails (`docs/formats/pixel-remaster.md#keywords-in-ff-ii`),
+//! and neither is a slot with no keyword list or a keyword that is no integer.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
 mod common;
 
 use common::ff2_save::{SlotData, keywords};
-use common::pr_files::{one_file, sav, slot_name, source_of};
+use common::pr_files::{one_file, open_error, sav, slot_name, source_of};
 use neoffse_core::{CapPolicy, Edit, EditError, FieldId, RowId, SaveDocument};
 use neoffse_format_pr::OpenError;
 use neoffse_format_pr::container::Container;
+use neoffse_format_pr::document::{Document, DocumentError, Scalar, Segment};
 use neoffse_format_pr::ff2::{Ff2Document, Ff2Format, names};
 
 fn open_data(data: &SlotData) -> Result<Ff2Document, neoffse_core::FormatError> {
@@ -55,4 +57,50 @@ fn a_keyword_zero_opens_and_its_raw_removal_is_refused_with_the_text_unchanged()
         assert!(matches!(error, EditError::OutOfRange { value: 0, min: 1, .. }), "{policy:?}: {error:?}");
         assert_eq!(document.encode().unwrap(), before, "{policy:?}");
     }
+}
+
+/// The document error under the `NotASlot` error that opening `text` gives,
+/// once it names the keyword list.
+fn keyword_list_failure(text: &str) -> DocumentError {
+    let files = one_file(slot_name(1), sav(text, &Container::game()));
+    let OpenError::NotASlot { source } = open_error(Ff2Format::new().open_document(&files)) else {
+        panic!("expected NotASlot")
+    };
+    let EditError::Format { field, source } = *source.downcast::<EditError>().expect("the source is an EditError") else {
+        panic!("expected a Format error")
+    };
+    assert_eq!(field, FieldId::new(names::KEYWORDS));
+    *source.downcast::<DocumentError>().expect("the source is a DocumentError")
+}
+
+#[test]
+fn a_slot_without_the_keyword_list_is_not_a_slot() {
+    let text = SlotData::standard().render();
+    // The key renamed reads as absent, as in `ff2_open`.
+    let renamed = text.replacen("\\\"ownedKeyWaordList\\\"", "\\\"ownedKeyWaordListX\\\"", 1);
+    assert_ne!(renamed, text, "the rename found the key");
+    let error = keyword_list_failure(&renamed);
+    assert!(
+        matches!(&error, DocumentError::MissingKey { path, key } if path == "userData" && key == "ownedKeyWaordList"),
+        "{error:?}"
+    );
+}
+
+#[test]
+fn a_keyword_that_is_no_integer_is_not_a_slot() {
+    let mut document = Document::parse(&SlotData::standard().render()).unwrap();
+    let element = [
+        Segment::Key("userData"),
+        Segment::Doc,
+        Segment::Key("ownedKeyWaordList"),
+        Segment::Doc,
+        Segment::Key("target"),
+        Segment::Index(1),
+    ];
+    document.set(&element, &Scalar::Text("word".to_owned())).unwrap();
+    let error = keyword_list_failure(&document.to_json());
+    assert!(
+        matches!(&error, DocumentError::WrongKind { path, expected: "integer" } if path == "userData.ownedKeyWaordList.target[1]"),
+        "{error:?}"
+    );
 }

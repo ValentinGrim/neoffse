@@ -12,8 +12,8 @@ use std::fmt::Display;
 use neoffse_core::{CapPolicy, ChangeSet, Edit, Game, SaveDocument, SaveFiles, SaveView};
 use neoffse_format_pr::container::{self, Decoded};
 use neoffse_format_pr::document::Document;
-use neoffse_format_pr::ff1::Ff1Model;
-use neoffse_format_pr::ff2::Ff2Model;
+use neoffse_format_pr::ff1::{self, Ff1Model};
+use neoffse_format_pr::ff2::{self, Ff2Model};
 
 use super::edit_paths::{describe, shown, spaced_levels};
 pub(crate) use super::edit_subject::Subject;
@@ -176,6 +176,10 @@ impl Run<'_> {
     /// `How::Rolled`: the forward set comes from a model over the subject's
     /// text, one edit after the other, and the boxed document replays it.
     fn rolled(&self, document: &mut dyn SaveDocument, edits: &[Edit]) -> Vec<Pair> {
+        // The model below carries FF I tables and the FF I roll script.
+        if self.subject.game() != Game::Ff1Pr {
+            self.fail("How::Rolled replays FF I rolls and needs an FF I subject")
+        }
         let Some(tables) = neoffse_data::tables_for(Game::Ff1Pr) else {
             self.fail("no FF I tables")
         };
@@ -252,7 +256,12 @@ impl Run<'_> {
 
     /// Step 6: the reopened view is the view before with `proof.view` applied.
     fn check_view(&self, before: &SaveView, after: &SaveView) {
-        if let Some(what) = mismatch(before, after, &self.proof.view) {
+        let derived = match self.subject.game() {
+            Game::Ff1Pr => ff1::names::derived_fields(1),
+            Game::Ff2Pr => ff2::names::derived_fields(1),
+            _ => self.fail("no derived fields for this game"),
+        };
+        if let Some(what) = mismatch(before, after, &self.proof.view, &derived) {
             self.fail(what);
         }
     }

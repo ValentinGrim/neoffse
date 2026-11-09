@@ -56,6 +56,42 @@ fn the_rollback_alone_would_leave_the_spaced_text_rewritten() {
 }
 
 #[test]
+fn a_two_edit_level_plan_that_fails_at_its_second_step_restores_the_spaced_text() {
+    // Level 5 plans the ability id of the entry and the dictionary value: two
+    // edits, so `run_game` takes a snapshot. The broken slot fails at the
+    // second, after the first rewrote the spaced text compactly.
+    let mut healthy = SlotData::standard();
+    healthy.spaced = true;
+    healthy.characters[0].spells[0].dict_value = 7;
+    assert_eq!(
+        model(&healthy.render()).apply_game(&level_edit(1, 0, 5)).unwrap().forward.len(),
+        2,
+        "the plan has two edits"
+    );
+    let text = broken_copy();
+    let mut model = model(&text);
+    let error = model.apply_game(&level_edit(1, 0, 5)).unwrap_err();
+    assert!(matches!(error, EditError::OutOfRange { value: -5, .. }), "{error:?}");
+    assert_eq!(model.document().to_json(), text);
+}
+
+#[test]
+fn the_rollback_restores_a_value_above_the_cap() {
+    // The list copy holds 900, past the proficiency cap, and the dictionary
+    // copy breaks the storage bound at the last step. The rollback of the
+    // list write restores 900 under `StorageOnly`; under `Enforce` it would
+    // refuse and the call would end in `RollbackFailed`.
+    let mut slot = SlotData::standard();
+    slot.characters[0].spells[0].list_value = 900;
+    slot.characters[0].spells[0].dict_value = -5;
+    let text = slot.render();
+    let mut model = model(&text);
+    let error = model.apply_game(&level_edit(1, 0, 6)).unwrap_err();
+    assert!(matches!(error, EditError::OutOfRange { value: -5, .. }), "{error:?}");
+    assert_eq!(model.document().to_json(), text);
+}
+
+#[test]
 fn a_failed_edit_leaves_no_history_entry() {
     let text = broken_copy();
     let mut history = History::open(&Ff2Format::new(), &text);

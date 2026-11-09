@@ -6,7 +6,9 @@
 
 mod common;
 
+use common::exit_facts::{CHARS, INV, KEYS};
 use common::ff1_real::slots;
+use common::json_tree::Tree;
 use common::private::assert_fields_read_back;
 use common::real_slots::{must, must_some};
 use neoffse_core::{Capability, FieldId};
@@ -54,9 +56,11 @@ fn real_views_cover_every_row() {
             panic!("{}: the view does not read", slot.label)
         };
         assert!(view.sections.len() == 3, "{}: section count", slot.label);
-        let count = |model: &mut Ff1Model, name| must(model.rows(&FieldId::new(name)), &format!("{}: {name} rows do not read", slot.label)).len();
-        let characters = count(&mut model, names::CHARACTER);
-        let rows = count(&mut model, names::INVENTORY) + count(&mut model, names::KEY_ITEMS);
+        // The counts come from the JSON tree, not from the model that builds the view.
+        let tree = Tree::parse(&slot.json);
+        let count = |path| must_some(tree.array_len(path), &format!("{}: no array at {path}", slot.label));
+        let characters = count(CHARS);
+        let rows = count(INV) + count(KEYS);
         let party = must_some(view.section(Capability::Party), &format!("{}: no Party section", slot.label));
         let inventory = must_some(view.section(Capability::Inventory), &format!("{}: no Inventory section", slot.label));
         assert!(party.entities.len() == characters, "{}: party entities", slot.label);

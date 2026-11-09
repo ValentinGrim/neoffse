@@ -8,6 +8,8 @@ mod common;
 
 use std::collections::HashSet;
 
+use common::exit_facts::{CHARS, INV, KEYS};
+use common::exit_ff2::WORDS;
 use common::ff2_ability_rules::ability_violations;
 use common::ff2_real::slots;
 use common::ff2_rules::{cap_violations, violations};
@@ -186,11 +188,11 @@ fn real_views_cover_every_row() {
             panic!("{}: the view does not read", slot.label)
         };
         assert!(view.sections.len() == 3, "{}: section count", slot.label);
-        let characters = rows(model, names::CHARACTER, &slot.label).len();
-        let items = [names::INVENTORY, names::KEY_ITEMS, names::KEYWORDS]
-            .into_iter()
-            .map(|list| rows(model, list, &slot.label).len())
-            .sum::<usize>();
+        // The counts come from the JSON tree, not from the model that builds the view.
+        let tree = Tree::parse(&slot.json);
+        let count = |path| must_some(tree.array_len(path), &format!("{}: no array at {path}", slot.label));
+        let characters = count(CHARS);
+        let items = count(INV) + count(KEYS) + count(WORDS);
         let party = must_some(view.section(Capability::Party), &format!("{}: no Party section", slot.label));
         let inventory = must_some(view.section(Capability::Inventory), &format!("{}: no Inventory section", slot.label));
         assert!(party.entities.len() == characters, "{}: party entities", slot.label);

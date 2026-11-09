@@ -183,7 +183,12 @@ pub(super) fn level_without_copy(facts: &Facts<'_>) -> Option<Ff2Case> {
 /// `ability_id` and the first place of the addition order.
 pub(super) fn cases(facts: &Facts<'_>) -> Vec<(&'static str, Option<Ff2Case>)> {
     let has_copy = |found: &Found| found.copy.is_some();
-    let up = find(facts, |found| has_copy(found) && found.level < TOP);
+    // A copy past index 0 tells a pairing by chain from one that always takes
+    // the first copy; a save with no such spell falls back to any copy.
+    let up = find(facts, |found| {
+        has_copy(found) && found.level < TOP && found.copy.as_ref().is_some_and(|(index, _)| *index > 0)
+    })
+    .or_else(|| find(facts, |found| has_copy(found) && found.level < TOP));
     let down = find(facts, |found| has_copy(found) && found.level > 1);
     let one_sided = find(facts, |_| true);
     vec![
