@@ -172,8 +172,7 @@ fn every_ability_has_level_0() {
 #[test]
 fn five_abilities_have_no_name_and_the_rest_have_two() {
     let none = nameless(GAME, TableKind::Ability);
-    assert_eq!(none.len(), 5);
-    assert!(none.contains(&711));
+    assert_eq!(none, [711, 736, 737, 799, 800]);
     for entry in table(GAME, TableKind::Ability) {
         assert_eq!(entry.name_en.is_none(), entry.name_fr.is_none(), "ability {}", entry.id);
     }
@@ -181,6 +180,30 @@ fn five_abilities_have_no_name_and_the_rest_have_two() {
     for kind in [TableKind::Job, TableKind::Command, TableKind::Item, TableKind::Weapon, TableKind::Keyword] {
         assert!(nameless(GAME, kind).is_empty(), "{kind:?}");
     }
+}
+
+/// `docs/formats/pixel-remaster.md#spells-in-ff-ii`, "Chains and levels": the 16 rows of
+/// a chain share one name and one `type_id`; 20 chains hold type 1 and 20 hold type 2.
+#[test]
+fn each_chain_shares_one_name_and_one_type_and_the_types_split_twenty_twenty() {
+    let mut chains_per_type: BTreeMap<u32, u32> = BTreeMap::new();
+    for chain in 0..ff2().spell_chains() {
+        let row = |level: u32| {
+            let id = ff2().spell_ability(chain, level).unwrap();
+            ff2().entry(TableKind::Ability, id).unwrap()
+        };
+        let first = row(1);
+        let first_type = first.ability.unwrap().type_id;
+        assert!(first.name_en.is_some() && first.name_fr.is_some(), "chain {chain}");
+        for level in 1..=16 {
+            let entry = row(level);
+            assert_eq!(entry.name_en, first.name_en, "chain {chain} level {level}");
+            assert_eq!(entry.name_fr, first.name_fr, "chain {chain} level {level}");
+            assert_eq!(entry.ability.unwrap().type_id, first_type, "chain {chain} level {level}");
+        }
+        *chains_per_type.entry(first_type).or_default() += 1;
+    }
+    assert_eq!(chains_per_type, BTreeMap::from([(1, 20), (2, 20)]));
 }
 
 #[test]
