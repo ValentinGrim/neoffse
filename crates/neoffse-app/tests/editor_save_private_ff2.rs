@@ -1,4 +1,4 @@
-//! FF II edits saved through the editor over a copy of the owner's FF II
+//! FF II edits saved through the editor over a copy of the private FF II
 //! saves (`NEOFFSE_SAVES`, read only). Every slot is copied into a temporary
 //! folder first and saved into it with a temporary data folder. In default
 //! mode the test edits a spell Level (a `game_edit` field), adds a keyword and

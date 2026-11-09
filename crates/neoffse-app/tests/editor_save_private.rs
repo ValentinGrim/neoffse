@@ -1,5 +1,5 @@
 //! A gil edit and a level increase saved through the editor over a copy of the
-//! owner's FF I saves (`NEOFFSE_SAVES`, read only). Every slot is copied into a
+//! private FF I saves (`NEOFFSE_SAVES`, read only). Every slot is copied into a
 //! temporary folder first, saved into it with a temporary data folder, and
 //! compared with the original opened by the facade with the same two edits
 //! applied through `Session::edit`. The growth rolls are not injectable: the

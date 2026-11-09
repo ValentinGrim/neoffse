@@ -36,10 +36,11 @@
 //!   `CapPolicy::StorageOnly` is the expert mode of an app.
 //! - [`Ff2Model::apply_game`] edits the way the game would. It enforces caps
 //!   and tables, expands an equipment `Set` into the slot, the inventory row
-//!   and the slot count, writes a spell's level to the five places the game
-//!   changes together, refuses the edits the game never makes, and returns
-//!   a `GameChange`. [`Ff2Model::row_locked`] and [`Ff2Model::field_locked`]
-//!   name the rows and fields it refuses whatever the value.
+//!   and the slot count, writes a spell's level to the stored places the
+//!   game changes together (up to eight, one value each), refuses the edits
+//!   the game never makes, and returns a `GameChange`.
+//!   [`Ff2Model::row_locked`] and [`Ff2Model::field_locked`] name the rows
+//!   and fields it refuses whatever the value.
 //!
 //! [`Ff2Model::summary`] and [`Ff2Model::view`] read the slot for the Home
 //! screen and the editor: the first gives the slot, play time, place and

@@ -2,8 +2,8 @@
 //! mode edits.
 //!
 //! The review leaves the rows of such pages out in the default mode, because
-//! the Level edit of a spell writes eight stored places and the user asked
-//! for one change. An edit committed on one of those pages is a change the
+//! the Level edit of a spell writes up to eight stored places and the user
+//! asked for one change. An edit committed on one of those pages is a change the
 //! user made on purpose, so the review shows every row while one is pending.
 //! The state follows the session's return to its clean point: a save, a
 //! discard or a new file clears it, and an undo back to the clean point parks

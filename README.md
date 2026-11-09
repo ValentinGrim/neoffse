@@ -61,7 +61,7 @@ The reason behind each one sits in [Principles](docs/architecture.md#principles)
 |:-------------------:|:--------------------------------------------------------------------------------------------:|
 | `neoffse`           | public facade, the crate other projects depend on: registry, session, save pipeline, restore |
 | `neoffse-core`      | domain model and format traits: games, field paths, edits, field metadata                    |
-| `neoffse-data`      | ID tables, caps and growth tables of the six games, embedded from `data/pr/<game>/*.toml`    |
+| `neoffse-data`      | ID tables and caps of six games, FF I growth and FF II skill tables, from `data/pr/<game>/`  |
 | `neoffse-io`        | save discovery, backups, restore, verified atomic writes, game check                         |
 | `neoffse-format-pr` | FF I to VI Pixel Remaster: codec, lossless document, game list; FF I and FF II formats       |
 | `neoffse-app`       | Slint desktop app                                                                            |

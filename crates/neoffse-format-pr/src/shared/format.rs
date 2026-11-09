@@ -54,9 +54,9 @@ impl<M: SlotModel> SlotFormat<M> {
     ///
     /// # Panics
     ///
-    /// Panics when the embedded data holds no tables for the game of `M`,
-    /// as [`neoffse_data::tables_for`] does. The tables are a constant of
-    /// the build.
+    /// Panics when [`neoffse_data::tables_for`] returns `None` for the game
+    /// of `M`, which means the embedded data holds no tables for it. The
+    /// tables are a constant of the build.
     #[must_use]
     pub fn new() -> Self {
         Self::with_language(Language::En)
@@ -67,8 +67,8 @@ impl<M: SlotModel> SlotFormat<M> {
     ///
     /// # Panics
     ///
-    /// Panics when the embedded data holds no tables for the game of `M`,
-    /// as [`neoffse_data::tables_for`] does.
+    /// Panics when [`neoffse_data::tables_for`] returns `None` for the game
+    /// of `M`, which means the embedded data holds no tables for it.
     #[must_use]
     pub fn with_language(language: Language) -> Self {
         let Some(tables) = tables_for(M::GAME) else {
@@ -97,10 +97,10 @@ impl<M: SlotModel> SlotFormat<M> {
     /// (`docs/formats/pixel-remaster.md#telling-the-games-apart`). It rests
     /// on counts measured on one Steam build, so a build that changes a
     /// transportation table makes it refuse that build's slots. The shape
-    /// check needs the character list and the two item lists, nothing else,
-    /// and each key of a list (`id` or `contentId`) must appear once: the
-    /// model looks a row up by key, so a repeated key would make a `Remove`
-    /// that its inverse cannot undo.
+    /// check needs each list that `M::KEYED_LISTS` names, nothing else, and
+    /// each key of a list (an `id`, a `contentId` or, for the FF II keywords,
+    /// a bare integer) must appear once: the model looks a row up by key, so
+    /// a repeated key would make a `Remove` that its inverse cannot undo.
     ///
     /// # Errors
     ///
@@ -108,7 +108,7 @@ impl<M: SlotModel> SlotFormat<M> {
     /// `OpenError` (`FileCount`, `NotASlot`,
     /// `OtherGame`), a `CodecError` for bytes that are no container, or a
     /// `DocumentError` for text that is no JSON. A list that is missing or
-    /// holds a row of another shape, and a repeated `id` or `contentId`
+    /// holds a row of another shape, and a repeated key
     /// (`EditError::DuplicateRow` as the source of `NotASlot`), are not a
     /// slot.
     pub fn open_document(&self, files: &SaveFiles) -> Result<SlotDocument<M>, FormatError> {

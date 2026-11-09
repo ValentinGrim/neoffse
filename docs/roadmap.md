@@ -109,8 +109,8 @@ the Unity asset bundles.
 
 **Scope.**
 - The FF II mapping and format in `neoffse-format-pr`: characters, items,
-  key items, keywords, gil, the weapon and skill levels, and the level of
-  each spell.
+  key items, keywords, gil, the ten skill totals, and the level of each
+  spell.
 - The shared PR layer (`neoffse_format_pr::shared`) that `Ff1Format` and
   `Ff2Format` both run through, so each later game plugs in its own model.
 - The master-data tables of FF II to VI in `neoffse-data`.
