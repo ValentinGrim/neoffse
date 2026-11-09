@@ -7,7 +7,7 @@ mod common;
 
 use std::collections::BTreeMap;
 
-use common::{CONTENT_KINDS, EQUIPMENT, game_tables, ids, kind_rule::kind_of, nameless, table};
+use common::{CONTENT_KINDS, EQUIPMENT, game_tables, ids, nameless, table};
 use neoffse_core::{Game, TableKind};
 use neoffse_data::{AbilityKind, GameTables, Language, sources_for};
 
@@ -174,7 +174,6 @@ fn the_ability_kinds_match_the_document() {
     let mut kinds = BTreeMap::new();
     for entry in table(GAME, TableKind::Ability) {
         let info = entry.ability.unwrap();
-        assert_eq!(kind_of(info.type_id), Some(info.kind), "ability {}", entry.id);
         *kinds.entry(format!("{:?}", info.kind)).or_insert(0_usize) += 1;
     }
     let names = "WhiteMagic BlackMagic Summon Ninjutsu Other TimeMagic MagicSword BlueMagic Monster Command Internal".split(' ');

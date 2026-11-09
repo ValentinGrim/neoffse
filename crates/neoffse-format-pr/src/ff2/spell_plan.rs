@@ -42,6 +42,7 @@ fn row_of(tables: &GameTables, chain: u32, level: i64, field: &FieldId) -> Resul
         .and_then(|entry| entry.ability)
         .and_then(|info| info.content_id)
         .ok_or_else(|| unknown(i64::from(ability)))?;
+    // The parser ties each chain's length to the skill curve, so every level of a chain has a total; a `None` stays `UnknownId` and writes nothing.
     let total = tables.skill_total(level_id).ok_or_else(|| unknown(level))?;
     Ok(Row {
         ability: i64::from(ability),

@@ -1,8 +1,6 @@
 //! Helpers shared by the test files of `neoffse-data`.
 #![allow(dead_code, reason = "each test file uses a different part of these helpers")]
 
-pub(crate) mod kind_rule;
-
 use neoffse_core::{Game, TableKind};
 use neoffse_data::{DataError, Entry, GameTables, Sources, tables_for};
 

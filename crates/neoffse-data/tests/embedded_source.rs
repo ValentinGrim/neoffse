@@ -34,6 +34,7 @@ fn the_embedded_text_is_the_committed_file() {
         // An optional file is embedded exactly when it is committed.
         assert_eq!(sources.monsters.map(str::to_owned), committed(game, "monsters.toml"), "{game:?}");
         assert_eq!(sources.growth.map(str::to_owned), committed(game, "growth.toml"), "{game:?}");
+        assert_eq!(sources.skills.map(str::to_owned), committed(game, "skills.toml"), "{game:?}");
     }
 }
 

@@ -118,6 +118,10 @@ pub(crate) fn parse_growth(text: &str) -> Result<Growth, DataError> {
         rise(NAME, &mut last, row.id)?;
         base.push((row.id, row.hp, row.vitality));
     }
+    // After the id order check, so an id of 0 or a descent stays an `IdOrder` error.
+    if let Some(first) = file.character_status.first().filter(|row| row.id != 1) {
+        return Err(rule(format!("status id {}", first.id), "first status id is not 1"));
+    }
     let exp = file.exp_table.total_exp;
     // Level 1 holds 0, so any experience maps to a level (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`).
     if exp.first() != Some(&0) {

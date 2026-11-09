@@ -68,22 +68,28 @@ impl GameTables {
     /// Returns the first [`DataError`]: a TOML error, a `kind` string it does
     /// not know, an id that is below 1 or does not rise above the id before
     /// it in its file, or a row that breaks a rule of the file contract
-    /// ([`DataError::Rule`]): an ability level above 8, an ability
-    /// `content_id` of 0 (an absent one is valid), a row with one name field
-    /// and not the other, a placeholder written as `false`, a placeholder
-    /// outside the five equipment kinds or repeated in one kind, a cap key
-    /// without the `MAX_` prefix, or a negative cap. `growth.toml` adds its
-    /// own rules: status ids rise from 1, `total_exp` starts at 0 and rises
-    /// strictly, `exp_table` has `MAX_LV` rows when `bounds.toml` holds that
-    /// cap, job and group ids rise, every group starts at level 2 and holds one value per
-    /// level of `exp_table` in each column, `hp_value1` is 0 or 1, every job
-    /// names a group that exists, and no table is empty. `skills.toml` adds
-    /// its own rules: status ids rise from 1, `skill_curve.total_exp` starts
-    /// at 0, rises strictly and has `MAX_MAGICAL_LEVEL` and `MAX_WEAPON_LEVEL`
-    /// rows when `bounds.toml` holds those caps, `spell_chains.length` is at
-    /// least 1, the chains rise and start at least `length` apart, every
-    /// ability id of a chain is a row of the ability table with a content id,
-    /// and no table is empty.
+    /// ([`DataError::Rule`]). Ability rules: a level above 8, a `content_id`
+    /// of 0 (an absent one is valid) or one an earlier row holds, a `type_id`
+    /// outside the closed kind table
+    /// (`docs/formats/pixel-remaster.md#ability-types`), and a `kind` that
+    /// differs from the kind of its `type_id`. Content rules: a placeholder
+    /// written as `false`, outside the five equipment kinds or repeated in
+    /// one kind, and an equipment kind with rows and no placeholder. Other
+    /// rules: a row with one name field and not the other, a cap key without
+    /// the `MAX_` prefix, a negative cap, and an empty array in `content`,
+    /// `abilities`, `jobs`, `commands` or a present `monsters` file.
+    /// `growth.toml` adds its own rules: status ids rise from 1 (the first one
+    /// is 1), `total_exp` starts at 0 and rises strictly, `exp_table` has
+    /// `MAX_LV` rows when `bounds.toml` holds that cap, job and group ids rise,
+    /// every group starts at level 2 and holds one value per level of
+    /// `exp_table` in each column, `hp_value1` is 0 or 1, every job names a
+    /// group that exists, and no table is empty. `skills.toml` adds its own
+    /// rules: status ids rise from 1, `skill_curve.total_exp` starts at 0,
+    /// rises strictly and has `MAX_MAGICAL_LEVEL` and `MAX_WEAPON_LEVEL` rows
+    /// when `bounds.toml` holds those caps, `spell_chains.length` is at least
+    /// 1 and equals the number of `skill_curve` rows, the chains rise and
+    /// start at least `length` apart, every ability id of a chain is a row of
+    /// the ability table with a content id, and no table is empty.
     pub fn parse(game: Game, sources: &Sources<'_>) -> Result<GameTables, DataError> {
         let parsed = parse_sources(sources)?;
         Ok(GameTables {
@@ -134,8 +140,9 @@ impl GameTables {
         self.table(kind)?.iter().find(|entry| entry.placeholder)
     }
 
-    /// The first ability, in id order, whose `content_id` matches
-    /// (`docs/formats/pixel-remaster.md#abilities`). An ability without a
+    /// The ability whose `content_id` matches
+    /// (`docs/formats/pixel-remaster.md#abilities`): the parser refuses a
+    /// repeated `content_id`, so at most one row matches. An ability without a
     /// content id is never found.
     #[must_use]
     pub fn ability_by_content(&self, content_id: u32) -> Option<&Entry> {

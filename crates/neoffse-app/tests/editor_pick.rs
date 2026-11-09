@@ -147,13 +147,14 @@ fn entry_name_finds_or_says_none() {
     assert_eq!(first_hit.as_deref(), job.name_en.as_deref());
 }
 
-/// Tables whose only content is job 3, with no name in either language.
+/// Tables whose only job is job 3, with no name in either language. Every
+/// other table holds one nameless row, since the parser refuses an empty array.
 fn nameless_job_tables() -> GameTables {
     let sources = Sources {
-        content: "content = []\n",
-        abilities: "ability = []\n",
+        content: "[[content]]\nid = 1\nkind = \"item\"\n",
+        abilities: "[[ability]]\nid = 1\ntype_id = 4\nkind = \"command\"\nlevel = 0\n",
         jobs: "[[job]]\nid = 3\n",
-        commands: "command = []\n",
+        commands: "[[command]]\nid = 1\n",
         monsters: None,
         bounds: "[bounds]\n",
         growth: None,

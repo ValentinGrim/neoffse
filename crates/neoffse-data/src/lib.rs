@@ -63,6 +63,7 @@ pub mod embedded;
 pub mod entry;
 pub mod error;
 mod growth;
+mod kinds;
 mod parse;
 mod rows;
 mod skills;
