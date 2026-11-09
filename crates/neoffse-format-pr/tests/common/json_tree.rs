@@ -122,6 +122,21 @@ impl Tree {
         }
     }
 
+    /// The integers of the array at `array`, or of its member `key` in each
+    /// element (an empty `key` reads the elements themselves). `None` when
+    /// the array is missing or one of them is no integer.
+    pub(crate) fn ints(&self, array: &str, key: &str) -> Option<Vec<i64>> {
+        (0..self.array_len(array)?)
+            .map(|index| {
+                self.int(&if key.is_empty() {
+                    format!("{array}[{index}]")
+                } else {
+                    format!("{array}[{index}].{key}")
+                })
+            })
+            .collect()
+    }
+
     /// The index of the first element of the array at `array` whose member
     /// `key` is the integer `wanted`.
     pub(crate) fn find_row(&self, array: &str, key: &str, wanted: i64) -> Option<usize> {

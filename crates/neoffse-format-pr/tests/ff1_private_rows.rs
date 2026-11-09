@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::ff1_real::{RealSlot, must, slots};
+use common::ff1_real::{must, slots};
 use common::private::tables;
 use common::{ENFORCE, STORAGE_ONLY};
 use neoffse_core::{Edit, FieldId, RowId, TableKind, Value};
@@ -39,13 +39,7 @@ fn real_insert_survives_encode_and_decode() {
             panic!("{label}: encode failed")
         };
         let Ok(again) = decode(&bytes) else { panic!("{label}: second decode failed") };
-        let mut rebuilt = RealSlot {
-            label: label.clone(),
-            name: slot.name.clone(),
-            bytes,
-            json: again.json,
-        }
-        .model::<Ff1Model>();
+        let mut rebuilt = slot.with_bytes(bytes, again.json).model::<Ff1Model>();
         let mut want = old.clone();
         want.push(id);
         let rows = must(rebuilt.rows(&inventory()), &format!("{label}: rows after the round trip do not read"));

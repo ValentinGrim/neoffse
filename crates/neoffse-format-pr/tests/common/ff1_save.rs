@@ -11,15 +11,7 @@
 use neoffse_format_pr::document::{Document, Segment};
 use neoffse_format_pr::ff1::{Ff1Model, GAME};
 
-/// One entry of `equipmentList`.
-#[derive(Debug, Clone)]
-pub(crate) struct Equip {
-    pub key: u32,
-    /// Raw number text.
-    pub content_id: String,
-    /// Raw number text; `None` leaves the key out.
-    pub count: Option<String>,
-}
+use super::slot_render::Equip;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Character {
@@ -147,14 +139,7 @@ fn standard_character(index: usize) -> Character {
         stats: [10, 20, 30, 40, 50, 60, 70].map(|stat| stat + base),
         charges: (1..=8).map(|level| (level, (level + id) % 10)).collect(),
         charges_gain: (1..=8).map(|level| (level, (2 * level + id) % 8)).collect(),
-        equipment: (1..=5)
-            .zip(EQUIPPED[index])
-            .map(|(key, content)| Equip {
-                key,
-                content_id: content.to_string(),
-                count: Some(count_of(content).to_string()),
-            })
-            .collect(),
+        equipment: Equip::worn(EQUIPPED[index], count_of),
         abilities: if id == 3 { vec![(5, 213), (6, 214)] } else { Vec::new() },
         omit: None,
     }

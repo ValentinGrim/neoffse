@@ -6,7 +6,7 @@
 mod common;
 
 use common::STORAGE_ONLY;
-use common::ff1_real::{RealSlot, slots};
+use common::ff1_real::slots;
 use common::ff1_rules::violations;
 use common::private::{int, rows, tables};
 use neoffse_core::{Edit, EditError, FieldId, RowId, Value};
@@ -77,13 +77,7 @@ fn real_equip_keeps_the_game_rules() {
         let decoded = decode(&slot.bytes).unwrap_or_else(|_| panic!("{label}: decode failed"));
         let bytes = encode(&model.document().to_json(), &decoded.container).unwrap_or_else(|_| panic!("{label}: encode failed"));
         let again = decode(&bytes).unwrap_or_else(|_| panic!("{label}: second decode failed"));
-        let mut rebuilt = RealSlot {
-            label: label.clone(),
-            name: slot.name.clone(),
-            bytes,
-            json: again.json,
-        }
-        .model::<Ff1Model>();
+        let mut rebuilt = slot.with_bytes(bytes, again.json).model::<Ff1Model>();
         assert!(
             snapshot(&mut rebuilt, label) == snapshot(&mut model, label),
             "{label}: reads after the round trip"

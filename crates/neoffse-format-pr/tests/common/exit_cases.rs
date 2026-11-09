@@ -54,10 +54,30 @@ pub(crate) struct Case {
     pub rolled: bool,
 }
 
-pub(crate) struct Built {
-    pub cases: Vec<Case>,
+/// The cases of a matrix and the names of those the save cannot build.
+pub(crate) struct Built<C> {
+    pub cases: Vec<C>,
     /// Cases whose ingredient the save lacks.
     pub skipped: Vec<&'static str>,
+}
+
+impl<C> Built<C> {
+    pub(crate) fn new() -> Self {
+        Self {
+            cases: Vec::new(),
+            skipped: Vec::new(),
+        }
+    }
+
+    /// Keeps each built case and records the name of each `None`.
+    pub(crate) fn extend(&mut self, named: impl IntoIterator<Item = (&'static str, Option<C>)>) {
+        for (name, case) in named {
+            match case {
+                Some(case) => self.cases.push(case),
+                None => self.skipped.push(name),
+            }
+        }
+    }
 }
 
 pub(super) fn case(name: &'static str, edits: Vec<Edit>, proof: Proof) -> Case {
@@ -234,48 +254,53 @@ pub(super) fn compose(parts: &[Option<&Case>]) -> Option<Case> {
     Some(joined)
 }
 
+/// The item cases both games share, in matrix order: the count of an item,
+/// two inserts into the inventory, an insert and a removal of a key item and
+/// the removal of a free item.
+pub(super) fn item_cases(facts: &Facts<'_>) -> Vec<(&'static str, Option<Case>)> {
+    vec![
+        ("item_count", item_count(facts)),
+        ("insert_item_middle", insert_item(facts, "insert_item_middle", Some(facts.inv_len / 2))),
+        ("insert_item_append", insert_item(facts, "insert_item_append", None)),
+        ("insert_key_item", insert_key_item(facts)),
+        (
+            "remove_item",
+            facts.free_item.and_then(|key| remove(facts, "remove_item", Facts::inventory(key), INV)),
+        ),
+        (
+            "remove_key_item",
+            facts.free_key.and_then(|key| remove(facts, "remove_key_item", Facts::key_item(key), KEYS)),
+        ),
+    ]
+}
+
+/// The `gil` case.
+pub(super) fn gil_case(facts: &Facts<'_>) -> (&'static str, Option<Case>) {
+    ("gil", nudged(facts, "gil", FieldId::new(names::GIL), 0, "userData.owendGil".to_owned()))
+}
+
 /// Every case the save allows, and the names of the ones it does not.
-pub(crate) fn build(subject: &Subject) -> Built {
+pub(crate) fn build(subject: &Subject) -> Built<Case> {
     let facts = Facts::read(subject);
     let char_path = &facts.char_path;
     let parameter = |part: &str| format!("{char_path}.parameter.{part}");
-    let gil = FieldId::new(names::GIL);
     let mut singles = vec![
-        ("gil", nudged(&facts, "gil", gil, 0, "userData.owendGil".to_owned())),
+        gil_case(&facts),
         ("level", level(&facts)),
         ("level_up", super::exit_growth::level_up(&facts)),
         ("stat", nudged(&facts, "stat", facts.field(names::POWER), 0, parameter("addtionalPower"))),
         ("job", job(&facts)),
         ("name", rename(&facts)),
         ("charges", charges(&facts)),
-        ("item_count", item_count(&facts)),
-        ("insert_item_middle", insert_item(&facts, "insert_item_middle", Some(facts.inv_len / 2))),
-        ("insert_item_append", insert_item(&facts, "insert_item_append", None)),
-        ("insert_key_item", insert_key_item(&facts)),
-        (
-            "remove_item",
-            facts.free_item.and_then(|key| remove(&facts, "remove_item", Facts::inventory(key), INV)),
-        ),
-        (
-            "remove_key_item",
-            facts.free_key.and_then(|key| remove(&facts, "remove_key_item", Facts::key_item(key), KEYS)),
-        ),
     ];
+    singles.extend(item_cases(&facts));
     singles.extend(super::exit_fields::field_cases(&facts));
     singles.extend(super::exit_equip::equip_cases(&facts, super::exit_equip::FF1_SLOTS));
     let find = |wanted: &str| singles.iter().find(|(name, _)| *name == wanted).and_then(|(_, case)| case.as_ref());
     let composed = compose(&[find("gil"), find("level"), find("insert_item_middle"), find("remove_key_item")]);
     singles.push(("compose", composed));
-    let mut built = Built {
-        cases: Vec::new(),
-        skipped: Vec::new(),
-    };
-    for (name, case) in singles {
-        match case {
-            Some(case) => built.cases.push(case),
-            None => built.skipped.push(name),
-        }
-    }
+    let mut built = Built::new();
+    built.extend(singles);
     built
 }
 

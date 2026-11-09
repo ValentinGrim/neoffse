@@ -16,20 +16,11 @@ use neoffse_format_pr::document::Document;
 use neoffse_format_pr::ff2::{Ff2Model, GAME};
 
 pub(crate) use super::ff1_save::Row;
+use super::slot_render::Equip;
 
 /// The FF II tables.
 pub(crate) fn tables() -> &'static GameTables {
     neoffse_data::tables_for(GAME).unwrap()
-}
-
-/// One entry of `equipmentList`.
-#[derive(Debug, Clone)]
-pub(crate) struct Equip {
-    pub key: u32,
-    /// Raw number text.
-    pub content_id: String,
-    /// Raw number text; `None` leaves the key out.
-    pub count: Option<String>,
 }
 
 /// One spell of `abilityList` and of the `abilityDictionary` copy.
@@ -232,14 +223,7 @@ fn standard_character(index: usize) -> Character {
                 )
             })
             .collect(),
-        equipment: (1..=5)
-            .zip(worn(index))
-            .map(|(key, content)| Equip {
-                key,
-                content_id: content.to_string(),
-                count: Some(count_of(content).to_string()),
-            })
-            .collect(),
+        equipment: Equip::worn(worn(index), count_of),
         spells: spells(index),
         addition_order: None,
         sort_order: None,

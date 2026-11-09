@@ -12,7 +12,7 @@ use common::ff1_save::keys;
 use common::ff2_save::{SlotData, ids, standard_model, tables};
 use common::pr_files::{assert_fixture_matches, text_at, unique};
 use common::slot_model::int;
-use common::{VEHICLES, character_path, slot};
+use common::{VEHICLES, character_path, corps_id, slot};
 use neoffse_core::{FieldId, TableKind, Value};
 use neoffse_data::GameTables;
 use neoffse_format_pr::document::{Document, Scalar, Segment};
@@ -71,19 +71,7 @@ fn the_fixture_is_game_style_and_covers_the_cases() {
 fn the_party_has_three_members_and_an_empty_seat() {
     let text = SlotData::standard().render();
     let mut document = Document::parse(&text).unwrap();
-    let corps = |seat: usize| {
-        vec![
-            Segment::Key("userData"),
-            Segment::Doc,
-            Segment::Key("corpsList"),
-            Segment::Doc,
-            Segment::Key("target"),
-            Segment::Index(seat),
-            Segment::Doc,
-            Segment::Key("characterId"),
-        ]
-    };
-    let seats: Vec<Scalar> = (0..4).map(|seat| document.get(&corps(seat)).unwrap()).collect();
+    let seats: Vec<Scalar> = (0..4).map(|seat| document.get(&corps_id(seat)).unwrap()).collect();
     assert_eq!(seats, [1, 2, 3, 0].map(Scalar::Int));
     let enabled = |index| character_path(index, &[Segment::Doc, Segment::Key("isEnableCorps")]);
     let flags: Vec<Scalar> = (0..4).map(|index| document.get(&enabled(index)).unwrap()).collect();

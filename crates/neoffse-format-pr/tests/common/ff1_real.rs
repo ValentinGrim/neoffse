@@ -38,6 +38,17 @@ pub(crate) struct RealSlot {
 }
 
 impl RealSlot {
+    /// This slot with other file `bytes` and the `json` they decode to: the
+    /// result of an edit written and read back.
+    pub(crate) fn with_bytes(&self, bytes: Vec<u8>, json: String) -> Self {
+        Self {
+            label: self.label.clone(),
+            name: self.name.clone(),
+            bytes,
+            json,
+        }
+    }
+
     /// A model `M` over the decoded JSON.
     pub(crate) fn model<M: SlotModel>(&self) -> M {
         let Ok(document) = Document::parse(&self.json) else {

@@ -39,6 +39,7 @@ pub(crate) mod pr_files;
 pub(crate) mod private;
 pub(crate) mod rolls;
 pub(crate) mod slot_model;
+pub(crate) mod slot_render;
 mod slot_rules;
 
 use ff1_format::{one_file, sav};

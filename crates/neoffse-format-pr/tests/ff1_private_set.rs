@@ -40,13 +40,7 @@ fn assert_digit_edit(slot: &RealSlot, field: &FieldId) {
             "{label}: {field} changed more than digits"
         );
     }
-    let mut rebuilt = RealSlot {
-        label: label.clone(),
-        name: slot.name.clone(),
-        bytes,
-        json: again.json,
-    }
-    .model::<Ff1Model>();
+    let mut rebuilt = slot.with_bytes(bytes, again.json).model::<Ff1Model>();
     assert!(int(&mut rebuilt, label, field) == value, "{label}: {field} does not read back");
 }
 

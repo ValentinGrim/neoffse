@@ -14,9 +14,9 @@ use neoffse_core::{Edit, FieldId, RowId, TableKind};
 use neoffse_format_pr::ff2::names;
 
 use super::edit_proof::{How, Proof, Subject, ViewChange, prove};
-use super::exit_cases::{Case, compose, insert_item, insert_key_item, item_count, nudged, remove, rename};
+use super::exit_cases::{Built, Case, compose, gil_case, item_cases, nudged, rename};
 use super::exit_equip::{FF2_SLOTS, equip_cases};
-use super::exit_facts::{Facts, INV, KEYS};
+use super::exit_facts::Facts;
 use super::json_diff::{added, removed};
 
 /// The cases every FF II slot must allow. The spell, place, equipment and
@@ -63,12 +63,6 @@ pub(crate) struct Ff2Case {
     pub edits: Vec<Edit>,
     /// Each interface the case runs through, with the proof it owes there.
     pub runs: Vec<(How, Proof)>,
-}
-
-pub(crate) struct Built {
-    pub cases: Vec<Ff2Case>,
-    /// Cases whose ingredient the save lacks.
-    pub skipped: Vec<&'static str>,
 }
 
 /// The case of `case` with its runs: `apply_game` when `game` (under its
@@ -154,55 +148,34 @@ fn keyword_remove(facts: &Facts<'_>) -> Option<Ff2Case> {
 }
 
 /// Every case the save allows, and the names of the ones it does not.
-pub(crate) fn build(subject: &Subject) -> Built {
+pub(crate) fn build(subject: &Subject) -> Built<Ff2Case> {
     let facts = Facts::read(subject);
     let char_path = &facts.char_path;
     let parameter = |part: &str| format!("{char_path}.parameter.{part}");
     let scalar = |name: &'static str, field: &'static str, key: &str| nudged(&facts, name, facts.field(field), 0, parameter(key));
-    let gil = FieldId::new(names::GIL);
     let mut singles = vec![
-        ("gil", nudged(&facts, "gil", gil, 0, "userData.owendGil".to_owned())),
+        gil_case(&facts),
         ("name", rename(&facts)),
         ("hp", scalar("hp", names::HP, "currentHP")),
         ("mp", scalar("mp", names::MP, "currentMP")),
         ("max_hp_gain", scalar("max_hp_gain", names::MAX_HP_GAIN, "addtionalMaxHp")),
         ("max_mp_gain", scalar("max_mp_gain", names::MAX_MP_GAIN, "addtionalMaxMp")),
         ("stat", scalar("stat", names::POWER, "addtionalPower")),
-        ("item_count", item_count(&facts)),
-        ("insert_item_middle", insert_item(&facts, "insert_item_middle", Some(facts.inv_len / 2))),
-        ("insert_item_append", insert_item(&facts, "insert_item_append", None)),
-        ("insert_key_item", insert_key_item(&facts)),
-        (
-            "remove_item",
-            facts.free_item.and_then(|key| remove(&facts, "remove_item", Facts::inventory(key), INV)),
-        ),
-        (
-            "remove_key_item",
-            facts.free_key.and_then(|key| remove(&facts, "remove_key_item", Facts::key_item(key), KEYS)),
-        ),
     ];
+    singles.extend(item_cases(&facts));
     singles.extend((0..names::SKILLS).zip(SKILL_CASES).map(|(key, name)| (name, skill(&facts, key))));
     singles.extend(equip_cases(&facts, FF2_SLOTS));
     let find = |wanted: &str| singles.iter().find(|(name, _)| *name == wanted).and_then(|(_, case)| case.as_ref());
     let composed = compose(&[find("gil"), find("name"), find("insert_item_middle"), find("remove_key_item")]);
     singles.push(("compose", composed));
-    let mut built = Built {
-        cases: Vec::new(),
-        skipped: Vec::new(),
-    };
-    for (name, case) in singles {
-        match case {
-            Some(case) => built.cases.push(shape(case, true, EXPERT.contains(&name))),
-            None => built.skipped.push(name),
-        }
-    }
+    let mut built = Built::new();
+    built.extend(
+        singles
+            .into_iter()
+            .map(|(name, case)| (name, case.map(|case| shape(case, true, EXPERT.contains(&name))))),
+    );
     let others = [("keyword_add", keyword_add(&facts)), ("keyword_remove", keyword_remove(&facts))];
-    for (name, case) in others.into_iter().chain(super::exit_ff2_spell::cases(&facts)) {
-        match case {
-            Some(case) => built.cases.push(case),
-            None => built.skipped.push(name),
-        }
-    }
+    built.extend(others.into_iter().chain(super::exit_ff2_spell::cases(&facts)));
     built
 }
 
