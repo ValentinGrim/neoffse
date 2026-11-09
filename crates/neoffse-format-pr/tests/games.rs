@@ -2,9 +2,12 @@
 //! and the name rules that keep discovery inside `My Games`.
 #![allow(clippy::unwrap_used, clippy::expect_used, reason = "a test asserts by panicking")]
 
+mod common;
+
 use std::collections::HashSet;
 use std::path::{Component, Path};
 
+use common::doc_table;
 use neoffse_format_pr::games::GAMES;
 
 const NUMERALS: [&str; 6] = ["I", "II", "III", "IV", "V", "VI"];
@@ -35,17 +38,9 @@ fn the_table_holds_the_six_games_in_order() {
 
 const HEADER: [&str; 4] = ["Game", "Steam app ID", "Game folder in My Games", "Executable"];
 
-/// The cells of every line of the Games table, header and separator
-/// included, backticks stripped.
+/// The cells of every line of the Games table, header and separator included.
 fn table_lines(document: &str) -> Vec<Vec<String>> {
-    document
-        .lines()
-        .skip_while(|line| line.trim_end() != "### Games")
-        .skip(1)
-        .skip_while(|line| !line.starts_with('|'))
-        .take_while(|line| line.starts_with('|'))
-        .map(|line| line.trim().trim_matches('|').split('|').map(|cell| cell.trim().replace('`', "")).collect())
-        .collect()
+    doc_table::table_lines(document, "### Games")
 }
 
 /// The data rows of the Games table: no header, no separator.

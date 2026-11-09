@@ -8,8 +8,8 @@ mod common;
 
 use common::character_path;
 use common::ff1_rules::assert_game_rules;
-use common::ff1_save::{SlotData, keys, model};
-use common::pr_files::{assert_fixture_matches, text_at, unique};
+use common::ff1_save::{SlotData, model};
+use common::pr_files::{assert_fixture_matches, keys, text_at, unique};
 use common::slot;
 use neoffse_core::{FieldId, Value};
 use neoffse_format_pr::document::{Document, Segment};

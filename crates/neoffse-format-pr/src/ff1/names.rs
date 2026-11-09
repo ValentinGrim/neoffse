@@ -20,9 +20,12 @@ use neoffse_core::FieldId;
 use crate::shared::names::{computed_fields, equipment_fields, with_computed};
 
 pub use crate::shared::names::{
-    AGILITY, CHARACTER, COUNT, EQUIPMENT, EQUIPMENT_SLOTS, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT,
-    VITALITY,
+    AGILITY, CHARACTER, COUNT, EQUIPMENT, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, LUCK, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT, VITALITY,
 };
+
+/// `equipment` takes the slot 1 to this value
+/// (`docs/formats/pixel-remaster.md#equipment-slots`: keys 1 to 5).
+pub const EQUIPMENT_SLOTS: u32 = 5;
 
 /// Character level, `parameter.addtionalLevel`.
 pub const LEVEL: &str = "level";
@@ -32,8 +35,6 @@ pub const EXP: &str = "exp";
 /// (`docs/formats/pixel-remaster.md#maximum-hp-and-experience-tables`,
 /// "Next-level figure").
 pub const NEXT_LEVEL: &str = "next_level";
-/// Luck stat, `parameter.addtionalLuck`.
-pub const LUCK: &str = "luck";
 /// Accuracy growth, `parameter.addtionalAccuracyRate`.
 pub const ACCURACY_GAIN: &str = "accuracy_gain";
 /// Magic evasion growth, `parameter.addtionalAbilityEvasionRate`.
@@ -83,7 +84,7 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
     for name in [CHARGES, CHARGES_MAX_GAIN] {
         fields.extend((1..=SPELL_LEVELS).map(|level| character().with_name(name).with_id(level)));
     }
-    fields.extend(equipment_fields(id));
+    fields.extend(equipment_fields(id, EQUIPMENT_SLOTS));
     fields
 }
 

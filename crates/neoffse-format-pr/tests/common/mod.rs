@@ -7,6 +7,7 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
+pub(crate) mod doc_table;
 pub(crate) mod edit_paths;
 pub(crate) mod edit_proof;
 mod edit_subject;
@@ -32,6 +33,7 @@ pub(crate) mod ff2_rules;
 pub(crate) mod ff2_save;
 pub(crate) mod ff2_spell;
 pub(crate) mod growth_oracle;
+pub(crate) mod history;
 pub(crate) mod json_diff;
 mod json_scan;
 pub(crate) mod json_tree;

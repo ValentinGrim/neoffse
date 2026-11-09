@@ -17,9 +17,12 @@ use neoffse_core::FieldId;
 use crate::shared::names::{computed_fields, equipment_fields, with_computed};
 
 pub use crate::shared::names::{
-    AGILITY, CHARACTER, COUNT, EQUIPMENT, EQUIPMENT_SLOTS, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT,
-    VITALITY,
+    AGILITY, CHARACTER, COUNT, EQUIPMENT, GIL, HP, INTELLIGENCE, INVENTORY, JOB, KEY_ITEMS, MAGIC, MAX_HP, MAX_HP_GAIN, NAME, POWER, SPIRIT, VITALITY,
 };
+
+/// `equipment` takes the slot 1 to this value
+/// (`docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`: keys 1 to 5).
+pub const EQUIPMENT_SLOTS: u32 = 5;
 
 /// Current MP, `parameter.currentMP`.
 pub const MP: &str = "mp";
@@ -112,7 +115,7 @@ pub fn character_fields(id: u32) -> Vec<FieldId> {
         MAGIC,
     ]);
     fields.extend((0..SKILLS).map(|key| character().with_name(SKILL).with_id(key)));
-    fields.extend(equipment_fields(id));
+    fields.extend(equipment_fields(id, EQUIPMENT_SLOTS));
     fields
 }
 

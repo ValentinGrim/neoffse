@@ -7,12 +7,13 @@
 mod common;
 
 use common::ff2_save::{SlotData, ids, keywords, model, standard_model, tables};
-use common::ff2_spell::{History, replay};
+use common::ff2_spell::replay;
+use common::history::History;
 use common::json_diff::{Kind, added, diff, removed};
 use neoffse_core::{CapPolicy, Capability, Edit, EditError, FieldId, RowId, TableKind, Value};
 use neoffse_data::Language;
 use neoffse_format_pr::document::{Document, Segment};
-use neoffse_format_pr::ff2::{Ff2Model, names};
+use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
 
 const LIST: &str = "userData.ownedKeyWaordList.target";
 
@@ -309,7 +310,7 @@ fn an_empty_list_takes_a_keyword_at_position_zero() {
 
 #[test]
 fn a_session_adds_undoes_and_redoes_a_keyword() {
-    let mut history = History::open(&SlotData::standard().render());
+    let mut history = History::open(&Ff2Format::new(), &SlotData::standard().render());
     let before = history.text();
     history.edit(&add(absent())).unwrap();
     let added_text = history.text();

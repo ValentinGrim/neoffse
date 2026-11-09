@@ -62,13 +62,6 @@ impl CharacterPart for Part {
             [Key::Name(names::MAGIC_EVASION_GAIN)] => Some(Self::MagicEvasionGain),
             [Key::Name(names::MAX_HP)] => Some(Self::MaxHp),
             [Key::Name(names::NEXT_LEVEL)] => Some(Self::NextLevel),
-            [Key::Name(names::POWER)] => Some(Self::Stat(Stat::Power)),
-            [Key::Name(names::VITALITY)] => Some(Self::Stat(Stat::Vitality)),
-            [Key::Name(names::AGILITY)] => Some(Self::Stat(Stat::Agility)),
-            [Key::Name(names::INTELLIGENCE)] => Some(Self::Stat(Stat::Intelligence)),
-            [Key::Name(names::SPIRIT)] => Some(Self::Stat(Stat::Spirit)),
-            [Key::Name(names::LUCK)] => Some(Self::Stat(Stat::Luck)),
-            [Key::Name(names::MAGIC)] => Some(Self::Stat(Stat::Magic)),
             [Key::Name(names::CHARGES), Key::Id(level)] if level_ok(*level) => Some(Self::Charges(*level)),
             [Key::Name(names::CHARGES_MAX_GAIN), Key::Id(level)] if level_ok(*level) => Some(Self::ChargesMaxGain(*level)),
             [Key::Name(names::EQUIPMENT), Key::Id(slot)] if slot_ok(*slot) => Some(Self::Slot(*slot)),
@@ -76,6 +69,7 @@ impl CharacterPart for Part {
             [Key::Name(names::SPELL), Key::Id(level), Key::Id(slot)] if level_ok(*level) && spell_slot_ok(*slot) => {
                 Some(Self::Spell { level: *level, slot: *slot })
             }
+            [Key::Name(name)] => Stat::of_name(name).map(Self::Stat),
             _ => None,
         }
     }

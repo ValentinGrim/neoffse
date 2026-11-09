@@ -14,9 +14,8 @@ use neoffse_data::GrowthStep;
 
 use super::level::character_field;
 use super::{Ff1Model, Rolls, names};
-use crate::document::Segment;
-use crate::shared::paths::{Collection, characters_target, element, with};
-use crate::shared::read::{find_row, format_error, missing_row, read_int};
+use crate::shared::derived::status_id;
+use crate::shared::read::character_part;
 
 /// The Knight job id. Knight and Ninja add the charges of a row and hold every
 /// value at [`KNIGHT_NINJA_CHARGE_CAP`]; every other job replaces the values
@@ -99,7 +98,8 @@ impl Ff1Model {
     ///
     /// `UnknownId` for a job without a growth row (field `character.<id>.job`)
     /// and for a status without a base vitality (field `character.<id>.level`).
-    /// Nothing is written.
+    /// `UnknownField` for `character.<id>.level` when the character lacks
+    /// `characterStatusId`. Nothing is written.
     pub(super) fn growth_edits(&mut self, id: u32, to: i64, rolls: &mut dyn Rolls) -> Result<Vec<Edit>, EditError> {
         let from = self.stored_int(&character_field(id, names::LEVEL))?;
         if to <= from {
@@ -149,15 +149,13 @@ impl Ff1Model {
         }
     }
 
-    /// The `characterStatusId` of character `id`. A missing key or another
-    /// kind of value is the `Format` error of the level field.
+    /// The `characterStatusId` of character `id`. `UnknownField` for
+    /// `character.<id>.level` when the key is missing (the answer of FF II's
+    /// gain path); another kind of value is the `Format` error of that field.
     fn status_of(&mut self, id: u32) -> Result<i64, EditError> {
         let field = character_field(id, names::LEVEL);
-        let index = find_row(&mut self.document, Collection::Character, id)
-            .map_err(|source| format_error(&field, source))?
-            .ok_or_else(|| missing_row(names::CHARACTER, id))?;
-        let path = with(element(characters_target(), index), &[Segment::Key("characterStatusId")]);
-        read_int(&mut self.document, &path).map_err(|source| format_error(&field, source))
+        let base = character_part(&mut self.document, id, &field, |_, base| Ok(base))?;
+        status_id(&mut self.document, &base, &field)?.ok_or(EditError::UnknownField { field })
     }
 }
 

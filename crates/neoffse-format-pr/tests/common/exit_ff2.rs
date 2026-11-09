@@ -164,7 +164,7 @@ pub(crate) fn build(subject: &Subject) -> Built<Ff2Case> {
     ];
     singles.extend(item_cases(&facts));
     singles.extend((0..names::SKILLS).zip(SKILL_CASES).map(|(key, name)| (name, skill(&facts, key))));
-    singles.extend(equip_cases(&facts, FF2_SLOTS));
+    singles.extend(equip_cases(&facts, names::EQUIPMENT_SLOTS, &FF2_SLOTS));
     let find = |wanted: &str| singles.iter().find(|(name, _)| *name == wanted).and_then(|(_, case)| case.as_ref());
     let composed = compose(&[find("gil"), find("name"), find("insert_item_middle"), find("remove_key_item")]);
     singles.push(("compose", composed));

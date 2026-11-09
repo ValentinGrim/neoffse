@@ -114,6 +114,11 @@ pub(crate) fn plan_head<P: CharacterPart>(
 
 /// The plan of an `Insert`, a `Remove` or any other edit that is no `Set`:
 /// the item-list rules run before the edit passes as one.
+///
+/// The wearer floor and the key-item count of 1 are measured for FF I and
+/// FF II only (`docs/formats/pixel-remaster.md#inventory`,
+/// `docs/formats/pixel-remaster.md#equipment-slots-in-ff-ii`): a game whose
+/// research finds other rules does not call this function.
 pub(crate) fn item_plan(document: &mut Document, tables: &GameTables, edit: &Edit, slots: u32) -> Result<Plan, EditError> {
     match edit {
         Edit::Insert { row, values, .. } => check_insert_rules(document, tables, row, values, slots)?,

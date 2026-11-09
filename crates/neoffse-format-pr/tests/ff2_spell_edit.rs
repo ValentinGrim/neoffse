@@ -7,11 +7,12 @@
 mod common;
 
 use common::ff2_save::{SlotData, Spell, content_of, model, standard_model, tables};
-use common::ff2_spell::{History, Where, level_edit, replay};
+use common::ff2_spell::{Where, level_edit, replay};
+use common::history::History;
 use common::json_diff::{Kind, assert_changes, diff};
 use common::slot_model::int;
 use neoffse_core::{Edit, EditError, FieldId, Value};
-use neoffse_format_pr::ff2::{Ff2Model, names};
+use neoffse_format_pr::ff2::{Ff2Format, Ff2Model, names};
 
 const PARTS: [&str; 3] = ["abilityId", "contentId", "skillLevel"];
 
@@ -340,7 +341,7 @@ fn a_spaced_slot_undoes_up_to_layout() {
     let mut slot = SlotData::standard();
     slot.spaced = true;
     let text = slot.render();
-    let mut history = History::open(&text);
+    let mut history = History::open(&Ff2Format::new(), &text);
     let before = history.text();
     history.edit(&level_edit(1, 0, 9)).unwrap();
     assert_ne!(history.text(), before);

@@ -8,7 +8,8 @@ mod common;
 
 use common::character_path;
 use common::ff2_save::{SlotData, model, standard_model};
-use common::ff2_spell::{History, level_edit};
+use common::ff2_spell::level_edit;
+use common::history::History;
 use common::slot_model::int;
 use neoffse_core::{CapPolicy, EditError, SaveFormat, Value};
 use neoffse_format_pr::container::{Container, decode};
@@ -57,7 +58,7 @@ fn the_rollback_alone_would_leave_the_spaced_text_rewritten() {
 #[test]
 fn a_failed_edit_leaves_no_history_entry() {
     let text = broken_copy();
-    let mut history = History::open(&text);
+    let mut history = History::open(&Ff2Format::new(), &text);
     let before = history.text();
     let error = history.edit(&level_edit(1, 0, 6)).unwrap_err();
     assert!(matches!(error, EditError::OutOfRange { .. }), "{error:?}");
@@ -98,14 +99,14 @@ fn a_dictionary_without_key_3_fails_before_any_write() {
     }
     let mut broken = SlotData::standard();
     broken.characters[0].omit = Some("abilityDictionary");
-    let mut history = History::open(&broken.render());
+    let mut history = History::open(&Ff2Format::new(), &broken.render());
     assert!(history.edit(&level_edit(1, 0, 6)).is_err());
     assert_eq!(history.undo.len(), 0);
 }
 
 #[test]
 fn an_undo_restores_the_mismatched_pre_state() {
-    let mut history = History::open(&SlotData::standard().render());
+    let mut history = History::open(&Ff2Format::new(), &SlotData::standard().render());
     let original = history.text();
     // Character 2 holds chain 5 at row level 1 with 456 (list) and 400 (copy).
     for level in [1, 4, 16] {
@@ -127,7 +128,7 @@ fn an_undo_restores_the_mismatched_pre_state() {
 
 #[test]
 fn several_edits_undo_and_redo_in_order() {
-    let mut history = History::open(&SlotData::standard().render());
+    let mut history = History::open(&Ff2Format::new(), &SlotData::standard().render());
     let original = history.text();
     let edits = [level_edit(1, 0, 9), level_edit(1, 0, 2), level_edit(2, 5, 1), level_edit(4, 15, 3)];
     let mut states = vec![original.clone()];
@@ -150,7 +151,7 @@ fn several_edits_undo_and_redo_in_order() {
 #[test]
 fn the_trait_carries_the_level_edit_to_the_file() {
     let text = SlotData::standard().render();
-    let mut history = History::open(&text);
+    let mut history = History::open(&Ff2Format::new(), &text);
     let edit = level_edit(1, 0, 6);
     history.edit(&edit).unwrap();
     // The change of the boxed document equals the change of the model.

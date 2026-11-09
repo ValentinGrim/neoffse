@@ -186,24 +186,3 @@ pub(crate) fn model_with_escaped_row(canonical_key: u32, escaped_key: u32) -> (F
 pub(crate) fn standard_model() -> Ff1Model {
     model(&SlotData::standard().render())
 }
-
-/// The keys of the JSON object `text`, in order, repeats included.
-pub(crate) fn keys(text: &str) -> Vec<String> {
-    use serde::de::{Deserializer as _, IgnoredAny, MapAccess, Visitor};
-
-    struct Keys;
-    impl<'de> Visitor<'de> for Keys {
-        type Value = Vec<String>;
-        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            formatter.write_str("an object")
-        }
-        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-            let mut keys = Vec::new();
-            while let Some((key, IgnoredAny)) = map.next_entry::<String, IgnoredAny>()? {
-                keys.push(key);
-            }
-            Ok(keys)
-        }
-    }
-    serde_json::Deserializer::from_str(text).deserialize_map(Keys).unwrap()
-}

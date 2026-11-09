@@ -6,9 +6,9 @@
 
 mod common;
 
-use common::ff1_real::{files, slots};
+use common::ff1_real::slots;
 use common::pr_files::one_file;
-use common::real_slots::{must, must_some};
+use common::real_slots::{files_of, must, must_some};
 use common::{GAMES, gil, save_files};
 use neoffse_core::{CapPolicy, Confidence, Edit, FileProbe, FormatError, SaveDocument, Value};
 use neoffse_format_pr::container::decode;
@@ -46,7 +46,7 @@ fn real_slot_files_open_and_round_trip() {
 
 #[test]
 fn real_detection_agrees_with_the_files() {
-    let Some(files) = files() else { return };
+    let Some(files) = files_of("ff1") else { return };
     let format = Ff1Format::new();
     for file in files {
         let json = must(decode(&file.bytes), &format!("{}: decode failed", file.label)).json;
@@ -70,7 +70,7 @@ fn real_detection_agrees_with_the_files() {
 
 #[test]
 fn real_non_slot_files_do_not_open() {
-    let Some(files) = files() else { return };
+    let Some(files) = files_of("ff1") else { return };
     for file in files {
         let decoded = must(decode(&file.bytes), &format!("{}: decode failed", file.label));
         if holds_user_data(&decoded.json, &file.label) {

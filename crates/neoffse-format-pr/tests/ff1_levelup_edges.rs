@@ -154,13 +154,16 @@ fn a_job_or_status_without_a_growth_row_is_refused() {
 }
 
 #[test]
-fn a_missing_status_key_is_a_format_error() {
+fn a_missing_status_key_is_an_unknown_field() {
     let mut data = SlotData::standard();
     data.characters[0].status_id = None;
     let mut model = model(&data.render());
     let before = model.document().to_json();
     let refused = model.apply_game_with(&set(level(1), 40), &mut Script::queued(&[], &[]));
-    assert!(matches!(refused, Err(EditError::Format { .. })), "{refused:?}");
+    assert!(
+        matches!(refused, Err(EditError::UnknownField { ref field }) if *field == level(1)),
+        "{refused:?}"
+    );
     assert_eq!(model.document().to_json(), before);
     let plan = edits(&mut model, &set(level(1), 1), &mut Script::queued(&[], &[]));
     assert_eq!(plan.len(), 2);
